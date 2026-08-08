@@ -280,3 +280,63 @@ export async function getResearchDashboard(
     body: JSON.stringify(body),
   });
 }
+
+// ── Phase 6: Live analysis, price series, watchlist ────────────────────
+
+export async function getLiveStockAnalysis(
+  symbol: string,
+  refresh = false,
+  strategy = 'minervini_trend_template'
+): Promise<import('./types').LiveStockAnalysis> {
+  const params = new URLSearchParams({ strategy, refresh: String(refresh) });
+  return fetchJson(`${API_BASE}/stocks/${symbol}/live?${params}`, { cache: 'no-store' });
+}
+
+export async function getOhlcv(
+  symbol: string,
+  from?: string,
+  to?: string
+): Promise<import('./types').SecurityOHLCVDTO> {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return fetchJson(`${API_BASE}/securities/${symbol}/ohlcv?${params}`, { cache: 'no-store' });
+}
+
+/** Universe-level breadth and sector relative strength (Phase 6.6/6.7). */
+export async function getMarketContext(
+  asOf?: string
+): Promise<import('./types').MarketContext> {
+  const params = new URLSearchParams();
+  if (asOf) params.set('as_of', asOf);
+  return fetchJson(`${API_BASE}/market/context?${params}`, { cache: 'no-store' });
+}
+
+export async function getWatchlist(): Promise<import('./types').WatchlistResponse> {
+  return fetchJson(`${API_BASE}/watchlist`, { cache: 'no-store' });
+}
+
+export async function addToWatchlist(
+  symbol: string
+): Promise<import('./types').WatchlistResponse> {
+  return fetchJson(`${API_BASE}/watchlist/${symbol}`, { method: 'POST' });
+}
+
+export async function removeFromWatchlist(
+  symbol: string
+): Promise<import('./types').WatchlistResponse> {
+  return fetchJson(`${API_BASE}/watchlist/${symbol}`, { method: 'DELETE' });
+}
+
+/** Phase 7 — Elliott Wave labelling of the stored price history. */
+export async function getElliottWave(
+  symbol: string,
+  lookbackDays: number,
+  thresholdPct: number
+): Promise<import('./types').ElliottWaveAnalysis> {
+  const params = new URLSearchParams({
+    lookback_days: String(lookbackDays),
+    threshold_pct: String(thresholdPct),
+  });
+  return fetchJson(`${API_BASE}/stocks/${symbol}/elliott-wave?${params}`, { cache: 'no-store' });
+}

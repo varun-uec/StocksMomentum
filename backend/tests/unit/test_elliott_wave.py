@@ -1,0 +1,178 @@
+"""Elliott Wave labelling tests (Phase 7) — hand-built series with known pivots."""
+
+from __future__ import annotations
+
+from datetime import date, timedelta
+from decimal import Decimal
+
+from momentum25.domain.analytics.elliott_wave import (
+    Pivot,
+    analyze_elliott_wave,
+    label_waves,
+    zigzag_pivots,
+)
+from momentum25.domain.entities.market_data import OHLCVBar
+
+_START = date(2024, 1, 1)
+
+
+def _bars(closes: list[float]) -> list[OHLCVBar]:
+    """One bar per close, with high == low == close so pivots are unambiguous."""
+    return [
+        OHLCVBar(
+            date=_START + timedelta(days=i),
+            open=Decimal(str(c)),
+            high=Decimal(str(c)),
+            low=Decimal(str(c)),
+            close=Decimal(str(c)),
+            volume=1000,
+        )
+        for i, c in enumerate(closes)
+    ]
+
+
+def _ramp(start: float, end: float, steps: int = 5) -> list[float]:
+    """Linear path from ``start`` to ``end`` (exclusive of ``start``)."""
+    step = (end - start) / steps
+    return [start + step * (i + 1) for i in range(steps)]
+
+
+def _path(points: list[float]) -> list[OHLCVBar]:
+    closes = [points[0]]
+    for a, b in zip(points, points[1:], strict=False):
+        closes.extend(_ramp(a, b))
+    return _bars(closes)
+
+
+def _pivots(kinds_prices: list[tuple[str, float]]) -> tuple[Pivot, ...]:
+    return tuple(
+        Pivot(_START + timedelta(days=i * 10), Decimal(str(p)), k)
+        for i, (k, p) in enumerate(kinds_prices)
+    )
+
+
+# ── zigzag ───────────────────────────────────────────────────────────────
+
+
+def test_zigzag_finds_alternating_confirmed_pivots() -> None:
+    pivots = zigzag_pivots(_path([100, 130, 110, 160, 140, 190]), Decimal("5"))
+    # The final leg's extreme (190) is unconfirmed -- no reversal followed it.
+    assert [p.kind for p in pivots] == ["L", "H", "L", "H", "L"]
+    assert [float(p.price) for p in pivots] == [100, 130, 110, 160, 140]
+
+
+def test_zigzag_ignores_moves_below_threshold() -> None:
+    # 2% wiggles against a 10% threshold produce no confirmed reversal.
+    assert zigzag_pivots(_path([100, 102, 100, 102, 100]), Decimal("10")) == ()
+
+
+def test_zigzag_is_deterministic() -> None:
+    bars = _path([100, 130, 110, 160, 140, 190, 170])
+    assert zigzag_pivots(bars, Decimal("5")) == zigzag_pivots(bars, Decimal("5"))
+
+
+# ── cardinal rules ───────────────────────────────────────────────────────
+
+
+def test_valid_five_wave_impulse_is_labelled() -> None:
+    pivots = _pivots(
+        [("L", 100), ("H", 130), ("L", 115), ("H", 180), ("L", 160), ("H", 200)]
+    )
+    primary, _ = label_waves(pivots, span_sessions=300)
+    assert primary is not None
+    assert primary.pattern == "impulse"
+    assert [w.label for w in primary.labels] == ["0", "1", "2", "3", "4", "5"]
+    assert primary.current_position == "Waves 1-5 complete, A-B-C correction expected"
+    assert primary.degree == "Intermediate"
+
+
+def test_wave_2_retracing_beyond_wave_1_start_is_rejected() -> None:
+    pivots = _pivots([("L", 100), ("H", 130), ("L", 95), ("H", 180), ("L", 160), ("H", 200)])
+    primary, _ = label_waves(pivots, span_sessions=300)
+    assert primary is None or [w.label for w in primary.labels] != ["0", "1", "2", "3", "4", "5"]
+
+
+def test_wave_4_overlapping_wave_1_is_rejected() -> None:
+    # Wave 4 low (125) drops into wave 1's territory (which topped at 130).
+    pivots = _pivots([("L", 100), ("H", 130), ("L", 115), ("H", 180), ("L", 125), ("H", 200)])
+    primary, _ = label_waves(pivots, span_sessions=300)
+    assert primary is not None
+    assert [w.label for w in primary.labels] == ["0", "1", "2", "3"]  # truncated before wave 4
+
+
+def test_wave_3_shortest_is_rejected() -> None:
+    # w1 = 40, w3 = 20, w5 = 50 -> wave 3 is the shortest.
+    pivots = _pivots([("L", 100), ("H", 140), ("L", 130), ("H", 150), ("L", 145), ("H", 195)])
+    primary, alternative = label_waves(pivots, span_sessions=300)
+    assert primary is not None
+    # No count may label all five waves over these pivots; the structure is
+    # re-anchored instead of asserting an impulse that breaks the rule.
+    for count in (primary, alternative):
+        assert count is None or "5" not in [w.label for w in count.labels]
+    assert float(primary.labels[0].price) != 100.0
+
+
+# ── projection zone ──────────────────────────────────────────────────────
+
+
+def test_wave_5_projection_is_a_range_off_the_wave_4_low() -> None:
+    pivots = _pivots([("L", 100), ("H", 130), ("L", 115), ("H", 180), ("L", 160)])
+    primary, _ = label_waves(pivots, span_sessions=300)
+    assert primary is not None
+    zone = primary.projection
+    assert zone is not None
+    assert "wave 5" in zone.basis
+    # wave 1 length = 30 -> 0.618x to 1.0x projected from the wave 4 low (160).
+    assert float(zone.low) == 160 + 0.618 * 30
+    assert float(zone.high) == 190.0
+    assert zone.low < zone.high
+
+
+def test_partial_impulse_reports_the_wave_in_progress() -> None:
+    pivots = _pivots([("L", 100), ("H", 130), ("L", 115)])
+    primary, _ = label_waves(pivots, span_sessions=100)
+    assert primary is not None
+    assert primary.current_position == "Wave 2 complete, wave 3 in progress"
+    assert primary.projection is not None
+    assert "wave 3" in primary.projection.basis
+
+
+# ── corrective structures ────────────────────────────────────────────────
+
+
+def test_downward_abc_correction_is_offered_as_the_alternative_count() -> None:
+    # Down-up-down off a high is genuinely ambiguous: waves 1-2-3 of a developing
+    # impulse, or a completed A-B-C. Both are exposed, neither is picked silently.
+    pivots = _pivots([("H", 200), ("L", 150), ("H", 180), ("L", 120)])
+    primary, alternative = label_waves(pivots, span_sessions=100)
+    assert primary is not None and alternative is not None
+    assert primary.pattern == "impulse"
+    assert primary.direction == "down"
+    assert alternative.pattern == "correction"
+    assert [w.label for w in alternative.labels] == ["0", "A", "B", "C"]
+    assert alternative.current_position == "Waves A-B-C complete"
+
+
+def test_no_alternative_is_manufactured_when_only_one_count_holds() -> None:
+    pivots = _pivots([("L", 100), ("H", 130), ("L", 115), ("H", 180), ("L", 160), ("H", 200)])
+    _, alternative = label_waves(pivots, span_sessions=300)
+    assert alternative is None
+
+
+# ── end-to-end ───────────────────────────────────────────────────────────
+
+
+def test_analyze_reports_pivots_and_notes_when_no_count_holds() -> None:
+    result = analyze_elliott_wave("TEST", _path([100, 102, 100]), Decimal("10"))
+    assert result.pivots == ()
+    assert result.primary is None
+    assert result.notes and "too few" in result.notes[0]
+
+
+def test_analyze_is_deterministic_end_to_end() -> None:
+    bars = _path([100, 130, 110, 180, 160, 200, 170])
+    a = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    b = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    assert a == b
+    assert a.symbol == "TEST"
+    assert a.bars_analyzed == len(bars)

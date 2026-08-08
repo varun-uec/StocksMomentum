@@ -8,15 +8,26 @@ from typing import Any
 
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
 from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
+from momentum25.domain.analytics.market_context import (
+    RS_PERIODS,
+    RelativeStrengthPoint,
+    relative_strength_vs_index,
+)
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
 from momentum25.domain.ports.repositories import (
+    BenchmarkIndexRepository,
     OHLCVRepository,
     ScreeningRunRepository,
     SecurityRepository,
     StrategyRepository,
 )
-from momentum25.domain.research.stop_loss import StopLossSuggestion, suggest_stop_loss
+from momentum25.domain.research.stop_loss import (
+    DEFAULT_CHANDELIER_LOOKBACK,
+    StopLossSuggestion,
+    suggest_chandelier_stop,
+    suggest_stop_loss,
+)
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
 from momentum25.domain.value_objects.indicators import IndicatorSet
 from momentum25.infrastructure.logging.setup import get_logger
@@ -199,6 +210,14 @@ class LiveStockAnalysis:
     rs_basis: dict[str, Any] = field(default_factory=dict)
     indicators: dict[str, Any] = field(default_factory=dict)
     suggested_stop: StopLossSuggestion | None = None
+    # Phase 6.5 — trailing (chandelier) variant of ``suggested_stop``. Both are
+    # downside caps; neither implies a target or a reward.
+    trailing_stop: StopLossSuggestion | None = None
+    # Phase 6.2 — stock return minus benchmark-index return over 1/3/6/12 months.
+    # Empty when the configured benchmark index has no ingested history: an
+    # unmeasured excess return is reported as absent, never as zero.
+    relative_strength_vs_index: tuple[RelativeStrengthPoint, ...] = field(default_factory=tuple)
+    benchmark_index: str | None = None
 
 
 class GetLiveStockAnalysis:
@@ -220,8 +239,15 @@ class GetLiveStockAnalysis:
         explainability_builder: ExplainabilityBuilderImpl,
         nse_client: Any,
         refresh_gate: RefreshGate | None = None,
+        benchmark_repo: BenchmarkIndexRepository | None = None,
     ) -> None:
-        """Wire the use case with its collaborators."""
+        """Wire the use case with its collaborators.
+
+        ``benchmark_repo`` is optional: without it the index-relative strength
+        block (Phase 6.2) is simply absent from the response, which is the
+        correct degradation -- the alternative would be reporting an excess
+        return computed against a benchmark that was never loaded.
+        """
         self._securities = securities
         self._ohlcv_repo = ohlcv_repo
         self._strategies = strategies
@@ -230,6 +256,7 @@ class GetLiveStockAnalysis:
         self._explainability_builder = explainability_builder
         self._nse_client = nse_client
         self._refresh_gate = refresh_gate or RefreshGate()
+        self._benchmark_repo = benchmark_repo
 
     async def execute(
         self,
@@ -285,6 +312,15 @@ class GetLiveStockAnalysis:
             atr14=indicators.atr14,
             swing_support=indicators.swing_support,
         )
+        recent_highs = [b.high for b in ctx.series.bars[-DEFAULT_CHANDELIER_LOOKBACK:]]
+        trailing_stop = suggest_chandelier_stop(
+            highest_high=max(recent_highs) if recent_highs else None,
+            atr14=indicators.atr14,
+        )
+
+        rs_vs_index, benchmark_index = await self._relative_strength_vs_index(
+            security.id, strategy.config.benchmark_index, reference_date
+        )
 
         all_rules = [rr for er in score.engine_results for rr in er.rule_results]
         explanation = self._explainability_builder.build_explanation(score, all_rules)
@@ -332,6 +368,40 @@ class GetLiveStockAnalysis:
             rs_basis=rs_basis,
             indicators=_indicator_snapshot(indicators),
             suggested_stop=suggested_stop,
+            trailing_stop=trailing_stop,
+            relative_strength_vs_index=rs_vs_index,
+            benchmark_index=benchmark_index,
+        )
+
+    async def _relative_strength_vs_index(
+        self, security_id: int, benchmark_index: str | None, as_of: date
+    ) -> tuple[tuple[RelativeStrengthPoint, ...], str | None]:
+        """Return the stock's excess return over the strategy's benchmark index.
+
+        Returns an empty tuple when no benchmark is configured, no benchmark
+        repository is wired, or the index has no ingested closes. Only
+        ``NIFTY500`` has been backfilled into ``benchmark_index_daily`` -- see
+        ``application/use_cases/validation.py`` for why a missing index must not
+        be silently replaced with a flat 0% series.
+        """
+        if self._benchmark_repo is None or not benchmark_index:
+            return (), benchmark_index
+
+        index_closes = await self._benchmark_repo.get_close_series(benchmark_index)
+        if not index_closes:
+            _logger.info("rs_vs_index_unavailable", index=benchmark_index)
+            return (), benchmark_index
+
+        # One extra session of headroom beyond the longest lookback so the 12m
+        # window survives any dates the stock and index do not share.
+        lookback = max(sessions for _, sessions in RS_PERIODS) + 50
+        series = await self._ohlcv_repo.get_series(
+            security_id, lookback_days=lookback, as_of=as_of
+        )
+        stock_closes = {bar.date: bar.close for bar in series.bars}
+        return (
+            relative_strength_vs_index(stock_closes, index_closes),
+            benchmark_index,
         )
 
     async def _refresh_bars(self, symbol: str, security_id: int, reference_date: date) -> int:

@@ -9,6 +9,8 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.application.use_cases.elliott_wave import GetElliottWaveAnalysis
+from momentum25.application.use_cases.market_context import GetMarketContext
 from momentum25.application.use_cases.rankings import GetRankings, GetStockExplanation
 from momentum25.application.use_cases.research.refresh_corporate_actions import (
     RefreshCorporateActions,
@@ -29,6 +31,11 @@ from momentum25.application.use_cases.stocks import (
     GetStockExplanation as GetStockExplanationBySymbol,
 )
 from momentum25.application.use_cases.strategies import GetStrategy, ListStrategies
+from momentum25.application.use_cases.watchlist import (
+    AddToWatchlist,
+    GetWatchlist,
+    RemoveFromWatchlist,
+)
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl
 from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
@@ -38,11 +45,13 @@ from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
+    SqlBenchmarkIndexRepository,
     SqlCorporateActionRepository,
     SqlOHLCVRepository,
     SqlScreeningRunRepository,
     SqlSecurityRepository,
     SqlStrategyRepository,
+    SqlWatchlistRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 from momentum25.infrastructure.providers.nse_client import NSEMarketDataClient
@@ -88,6 +97,12 @@ async def get_ohlcv_repo() -> AsyncIterator[SqlOHLCVRepository]:
     """Provide an OHLCV repository instance."""
     async with _managed_session() as session:
         yield SqlOHLCVRepository(session)
+
+
+async def get_watchlist_repo() -> AsyncIterator[SqlWatchlistRepository]:
+    """Provide a watchlist repository instance."""
+    async with _managed_session() as session:
+        yield SqlWatchlistRepository(session)
 
 
 async def get_screening_run_repository() -> AsyncIterator[SqlScreeningRunRepository]:
@@ -204,6 +219,37 @@ async def get_list_strategies(
     yield ListStrategies(strategies=strategies)
 
 
+async def get_get_watchlist(
+    watchlist: Annotated[SqlWatchlistRepository, Depends(get_watchlist_repo)],
+) -> AsyncIterator[GetWatchlist]:
+    """Provide a GetWatchlist use-case instance."""
+    yield GetWatchlist(watchlist=watchlist)
+
+
+async def get_add_to_watchlist(
+    securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    watchlist: Annotated[SqlWatchlistRepository, Depends(get_watchlist_repo)],
+) -> AsyncIterator[AddToWatchlist]:
+    """Provide an AddToWatchlist use-case instance."""
+    yield AddToWatchlist(securities=securities, watchlist=watchlist)
+
+
+async def get_remove_from_watchlist(
+    securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    watchlist: Annotated[SqlWatchlistRepository, Depends(get_watchlist_repo)],
+) -> AsyncIterator[RemoveFromWatchlist]:
+    """Provide a RemoveFromWatchlist use-case instance."""
+    yield RemoveFromWatchlist(securities=securities, watchlist=watchlist)
+
+
+async def get_elliott_wave_analysis(
+    securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
+) -> AsyncIterator[GetElliottWaveAnalysis]:
+    """Provide a GetElliottWaveAnalysis use-case instance."""
+    yield GetElliottWaveAnalysis(securities=securities, ohlcv=ohlcv)
+
+
 async def get_get_strategy(
     strategies: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[GetStrategy]:
@@ -312,4 +358,20 @@ async def get_live_stock_analysis() -> AsyncIterator[GetLiveStockAnalysis]:
             explainability_builder=ExplainabilityBuilderImpl(),
             nse_client=NSEMarketDataClient(),
             refresh_gate=get_live_refresh_gate(),
+            benchmark_repo=SqlBenchmarkIndexRepository(session),
+        )
+
+
+async def get_market_context() -> AsyncIterator[GetMarketContext]:
+    """Provide a GetMarketContext use-case instance (Phase 6.6/6.7).
+
+    All three repositories share one session: breadth and sector strength must
+    describe the same snapshot of the universe.
+    """
+    async with _shared_session() as session:
+        yield GetMarketContext(
+            securities=SqlSecurityRepository(session),
+            ohlcv_repo=SqlOHLCVRepository(session),
+            benchmark_repo=SqlBenchmarkIndexRepository(session),
+            benchmark_index=get_settings().benchmark_index,
         )

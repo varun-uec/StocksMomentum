@@ -54,6 +54,23 @@ class IndicatorSet:
     swing_resistance: Decimal | None = None
     swing_support: Decimal | None = None
 
+    # ── Distance from key moving averages (Phase 6.3) ────────────────────
+    # ``(close / SMA - 1) * 100``. A raw trend-context number, signed: negative
+    # means the close sits below that average. Derived from the same SMA values
+    # above, so the two can never disagree.
+    pct_from_sma50: Decimal | None = None
+    pct_from_sma200: Decimal | None = None
+
+    # ── Additional raw oscillators (Phase 6.4) ───────────────────────────
+    # Values only. The platform publishes no per-indicator Buy/Sell/Neutral
+    # interpretation, so none of these carries one -- see
+    # ``web/src/components/stock/TechnicalWorkbench.tsx``.
+    stoch_k14: Decimal | None = None  # Stochastic %K(14), fast
+    stoch_d14: Decimal | None = None  # Stochastic %D = SMA(3) of %K
+    williams_r14: Decimal | None = None  # Williams %R(14), range [-100, 0]
+    cci20: Decimal | None = None  # Commodity Channel Index (20)
+    roc12: Decimal | None = None  # Rate of Change (12), percent
+
     # ── Multi-timeframe RS fields ────────────────────────────────────────
     rs_raw_1m: Decimal | None = None  # 1-month (22d) raw return
     rs_raw_3m: Decimal | None = None  # 3-month (63d) raw return

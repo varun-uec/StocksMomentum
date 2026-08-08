@@ -302,3 +302,17 @@ class RuleResultModel(Base):
     weight: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     contribution: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class WatchlistItemModel(Base):
+    """A security on the single global watchlist (Phase 6.9)."""
+
+    __tablename__ = "watchlist_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    security_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("securities.id"), nullable=False, unique=True
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

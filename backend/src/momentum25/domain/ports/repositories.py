@@ -79,6 +79,18 @@ class OHLCVRepository(Protocol):
         """
         ...
 
+    async def closes_between(
+        self, start: date, end: date
+    ) -> dict[int, list[tuple[date, Decimal]]]:
+        """Return every close in ``[start, end]``, grouped by security, ascending by date.
+
+        Bulk accessor for cross-sectional (universe-wide) analytics such as the
+        market-breadth and sector-strength panels, which need one trailing year
+        of closes for the whole universe at once. Issuing one query per security
+        for that is thousands of round trips for a single page load.
+        """
+        ...
+
     async def get_bars_after(
         self, security_id: int, after_date: date, limit: int
     ) -> list[OHLCVBar]:
@@ -230,4 +242,21 @@ class BenchmarkIndexRepository(Protocol):
         lookup against a table that is small (a few thousand rows) relative
         to the number of lookups.
         """
+        ...
+
+
+@runtime_checkable
+class WatchlistRepository(Protocol):
+    """Persistence for the single global watchlist (Phase 6.9)."""
+
+    async def add(self, security_id: int) -> None:
+        """Add a security to the watchlist; a no-op if already present."""
+        ...
+
+    async def remove(self, security_id: int) -> None:
+        """Remove a security from the watchlist; a no-op if absent."""
+        ...
+
+    async def list_symbols(self) -> list[str]:
+        """Return the watchlisted symbols, oldest addition first."""
         ...

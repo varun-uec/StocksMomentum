@@ -53,6 +53,11 @@ _QUANT = Decimal("0.0001")
 #       Wilder's smoothing. Measured effect on random walks: RSI shifts a mean of
 #       6.7 points (max 21.8); ATR shifts a mean of 3.8% (max 14.4%). Runs stamped
 #       1 are NOT comparable to runs stamped 2.
+#
+# NOT bumped for Phase 6.3/6.4 (pct_from_sma50/200, Stochastic, Williams %R, CCI,
+# ROC): those are purely additive display fields. No pre-existing indicator value
+# changes, and no rule consumes them, so runs stamped 2 before and after remain
+# byte-for-byte comparable. Bump only when an existing value moves.
 INDICATOR_VERSION = 2
 
 
@@ -335,6 +340,92 @@ def _adr_pct(df: pd.DataFrame, window: int = 20) -> float | None:
     return float(np.mean(ratios) * 100.0)
 
 
+def _stochastic(
+    df: pd.DataFrame, window: int = 14, smooth: int = 3
+) -> tuple[float | None, float | None]:
+    """Fast Stochastic %K(``window``) and %D = SMA(``smooth``) of %K.
+
+      %K_t = 100 * (close_t - min(low, window)) / (max(high, window) - min(low, window))
+      %D_t = SMA(smooth) of %K
+
+    A flat range (max high == min low) leaves %K undefined -- there is no
+    position within a zero-width range -- and returns ``None`` rather than a
+    substituted 50 or 0.
+
+    %K and %D are resolved independently: %K needs ``window`` bars, %D needs
+    ``window + smooth - 1``, so a series can legitimately have one and not the
+    other.
+    """
+    if len(df) < window:
+        return None, None
+    high_max = df["high"].rolling(window=window).max()
+    low_min = df["low"].rolling(window=window).min()
+    span = high_max - low_min
+    percent_k = 100.0 * (df["close"] - low_min) / span.where(span != 0)
+    percent_d = percent_k.rolling(window=smooth).mean()
+    k_val, d_val = percent_k.iloc[-1], percent_d.iloc[-1]
+    return (
+        float(k_val) if not pd.isna(k_val) else None,
+        float(d_val) if not pd.isna(d_val) else None,
+    )
+
+
+def _williams_r(df: pd.DataFrame, window: int = 14) -> float | None:
+    """Williams %R over ``window``: ``-100 * (max_high - close) / (max_high - min_low)``.
+
+    Range ``[-100, 0]``. Algebraically ``%K - 100`` for the same window; both are
+    reported because both are conventional displays and readers expect the scale
+    they know, not a derivation they have to perform.
+    """
+    if len(df) < window:
+        return None
+    high_max = float(df["high"].iloc[-window:].max())
+    low_min = float(df["low"].iloc[-window:].min())
+    if high_max == low_min:
+        return None
+    return -100.0 * (high_max - float(df["close"].iloc[-1])) / (high_max - low_min)
+
+
+def _cci(df: pd.DataFrame, window: int = 20) -> float | None:
+    """Commodity Channel Index over ``window``.
+
+      TP = (high + low + close) / 3
+      CCI = (TP - SMA(TP, window)) / (0.015 * mean_absolute_deviation(TP, window))
+
+    The 0.015 constant is Lambert's original scaling. Note the denominator is the
+    *mean absolute deviation*, not the standard deviation -- substituting the
+    latter (a common error) shifts every reading and breaks the conventional
+    ±100 reference points. Zero deviation (a perfectly flat window) is undefined
+    and returns ``None``.
+    """
+    if len(df) < window:
+        return None
+    tp = (df["high"] + df["low"] + df["close"]) / 3.0
+    recent = tp.iloc[-window:]
+    mean_tp = float(recent.mean())
+    mad = float((recent - mean_tp).abs().mean())
+    if mad == 0:
+        return None
+    return (float(tp.iloc[-1]) - mean_tp) / (0.015 * mad)
+
+
+def _roc(close: pd.Series, window: int = 12) -> float | None:
+    """Rate of Change: percent change of close over ``window`` sessions."""
+    if len(close) < window + 1:
+        return None
+    prior = float(close.iloc[-(window + 1)])
+    if prior == 0:
+        return None
+    return (float(close.iloc[-1]) / prior - 1.0) * 100.0
+
+
+def _pct_from(close: float, ma: float | None) -> float | None:
+    """Signed percentage distance of ``close`` from a moving average."""
+    if ma is None or ma == 0:
+        return None
+    return (close / ma - 1.0) * 100.0
+
+
 def _sma_slope(close: pd.Series, sma_window: int, slope_window: int) -> float | None:
     """Return the SMA percentage change over ``slope_window`` trading days.
 
@@ -457,6 +548,16 @@ class IndicatorPipelineImpl:
         # ── Swing pivot support/resistance (Phase 2.3) ───────────────────
         swing_resistance, swing_support = _swing_levels(df)
 
+        # ── Distance from key moving averages (Phase 6.3) ────────────────
+        pct_from_sma50 = _pct_from(latest_close, sma50)
+        pct_from_sma200 = _pct_from(latest_close, sma200)
+
+        # ── Additional raw oscillators (Phase 6.4) ───────────────────────
+        stoch_k14, stoch_d14 = _stochastic(df, 14, 3)
+        williams_r14 = _williams_r(df, 14)
+        cci20 = _cci(df, 20)
+        roc12 = _roc(close_series, 12)
+
         # Egress boundary: quantize every float metric to a fixed-precision Decimal
         return IndicatorSet(
             as_of=reference_date,
@@ -485,6 +586,13 @@ class IndicatorPipelineImpl:
             macd_histogram=_quantize(macd_histogram),
             swing_resistance=_quantize(swing_resistance),
             swing_support=_quantize(swing_support),
+            pct_from_sma50=_quantize(pct_from_sma50),
+            pct_from_sma200=_quantize(pct_from_sma200),
+            stoch_k14=_quantize(stoch_k14),
+            stoch_d14=_quantize(stoch_d14),
+            williams_r14=_quantize(williams_r14),
+            cci20=_quantize(cci20),
+            roc12=_quantize(roc12),
         )
 
     @staticmethod

@@ -1,9 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useState }  from 'react';
-import { getStockExplanation, getStockHistory } from '@/lib/api-client';
+import { getLiveStockAnalysis, getOhlcv, getStockExplanation, getStockHistory } from '@/lib/api-client';
 import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
 import { HORIZONS, DEFAULT_HORIZON } from '@/lib/horizons';
 import type { EngineExplanation, RuleExplanation, StockExplanation } from '@/lib/types';
@@ -13,6 +14,26 @@ import { ScoreGauge } from '@/components/shared/ScoreGauge';
 import { RulePassMatrix } from '@/components/stock/RulePassMatrix';
 import { EngineContributionBars } from '@/components/stock/EngineContributionBars';
 import { focusRing, chartPalette } from '@/lib/theme';
+import { PriceChart, TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
+import { MomentumOverview } from '@/components/stock/MomentumOverview';
+import { MomentumView } from '@/components/stock/MomentumView';
+import { TechnicalWorkbench } from '@/components/stock/TechnicalWorkbench';
+import { VolumeAccumulation } from '@/components/stock/VolumeAccumulation';
+import { PatternCard } from '@/components/stock/PatternCard';
+import { WhyItRanks } from '@/components/stock/WhyItRanks';
+import { SuggestedStop } from '@/components/stock/SuggestedStop';
+import { RelativeStrengthVsIndex } from '@/components/stock/RelativeStrengthVsIndex';
+import { WatchlistStar } from '@/components/stock/WatchlistStar';
+
+/** ISO date `days` before today, for the chart's `from` query param. */
+function fromDateFor(timeframe: TimeframeId): string | undefined {
+  const days = TIMEFRAMES.find((t) => t.id === timeframe)?.days;
+  if (!days) return undefined;
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 
 // ── Rule-level "what would improve this" guidance ──────────────────────
 const IMPROVEMENT_HINTS: Record<string, string> = {
@@ -43,6 +64,7 @@ const SECTIONS = [
   { id: 'engines', label: 'Engines' },
   { id: 'rules', label: 'Rules' },
   { id: 'history', label: 'History' },
+  { id: 'live', label: 'Live Analysis' },
 ];
 
 function engineRules(explanation: StockExplanation, engineId: string): RuleExplanation[] {
@@ -132,6 +154,19 @@ export default function StockResearchPage() {
   const horizonLabel = HORIZONS.find((h) => h.strategyName === strategyName)?.label ?? 'default';
   const chartColors = useChartColors();
   const [activeSection, setActiveSection] = useState('overview');
+  const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
+
+  const { data: live, isLoading: liveLoading, error: liveError } = useQuery({
+    queryKey: ['stock-live', symbol, strategyName],
+    queryFn: () => getLiveStockAnalysis(symbol, false, strategyName),
+    enabled: !!symbol,
+  });
+
+  const { data: ohlcv, isLoading: ohlcvLoading } = useQuery({
+    queryKey: ['stock-ohlcv', symbol, timeframe],
+    queryFn: () => getOhlcv(symbol, fromDateFor(timeframe)),
+    enabled: !!symbol,
+  });
 
   const { data: explanation, isLoading: explLoading, error: explError } = useQuery({
     queryKey: ['stock-explanation', symbol, strategyName],
@@ -191,6 +226,13 @@ export default function StockResearchPage() {
       >
         {explanation.rank && <Badge color="indigo">Rank #{explanation.rank}</Badge>}
         <Badge color={readiness.color}>{readiness.label}</Badge>
+        <Link
+          href={`/stock/${symbol}/elliott-wave?strategy=${strategyName}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
+        >
+          Elliott Wave Analysis →
+        </Link>
+        <WatchlistStar symbol={symbol} />
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
@@ -414,6 +456,97 @@ export default function StockResearchPage() {
                   </ResponsiveContainer>
                 </div>
               </Card>
+            )}
+          </section>
+
+          {/* Live on-demand analysis (Phase 6) */}
+          <section id="live" className="scroll-mt-32 space-y-6">
+            <Card
+              title="On-demand analysis"
+              subtitle={
+                live
+                  ? `Freshly evaluated as of ${live.data_as_of}${live.refreshed ? ` · ${live.bars_fetched} new bars fetched` : ' · stored bars (not refreshed)'}`
+                  : 'Evaluating this symbol through the live strategy engine…'
+              }
+              badge={
+                live
+                  ? {
+                      text: live.verdict,
+                      color:
+                        live.verdict === 'PASSED'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                          : live.verdict === 'FAILED'
+                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+                    }
+                  : undefined
+              }
+            >
+              {liveLoading && <LoadingSpinner text="Evaluating this symbol on demand…" />}
+              {liveError && (
+                <p className="text-xs text-rose-600 dark:text-rose-400">
+                  The live evaluation for {symbol} could not be completed. The historical run data
+                  above is unaffected.
+                </p>
+              )}
+              {live && (
+                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                  {!live.data_sufficient && (
+                    <p className="text-amber-600 dark:text-amber-400">
+                      Insufficient price history to evaluate every rule — the figures below are
+                      partial.
+                    </p>
+                  )}
+                  {live.indeterminate_rules.length > 0 && (
+                    <p className="text-amber-600 dark:text-amber-400">
+                      Could not be measured for this symbol: {live.indeterminate_rules.join(', ')}.
+                      This is reported as {live.verdict}, not as a failure.
+                    </p>
+                  )}
+                  <p>
+                    Verdict {live.verdict} · relative strength measured against{' '}
+                    {String(live.rs_basis.universe_size ?? '—')} symbols
+                    {live.rs_basis.as_of ? ` as of ${String(live.rs_basis.as_of)}` : ''}.
+                  </p>
+                </div>
+              )}
+            </Card>
+
+            {live && <MomentumOverview live={live} bars={ohlcv?.bars ?? []} />}
+
+            <Card title="Price history">
+              <PriceChart
+                bars={ohlcv?.bars ?? []}
+                timeframe={timeframe}
+                onTimeframeChange={setTimeframe}
+                isLoading={ohlcvLoading}
+              />
+            </Card>
+
+            {live?.explanation && (
+              <>
+                <MomentumView explanation={live.explanation} />
+                <TechnicalWorkbench indicators={live.indicators} />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <VolumeAccumulation
+                    explanation={live.explanation}
+                    indicators={live.indicators}
+                  />
+                  <SuggestedStop
+                    stop={live.suggested_stop}
+                    trailingStop={live.trailing_stop}
+                    latestClose={
+                      ohlcv?.bars.length ? parseFloat(ohlcv.bars[ohlcv.bars.length - 1].close) : null
+                    }
+                  />
+                </div>
+                <RelativeStrengthVsIndex
+                  points={live.relative_strength_vs_index ?? []}
+                  benchmarkIndex={live.benchmark_index}
+                />
+                <PatternCard explanation={live.explanation} />
+                <WhyItRanks explanation={live.explanation} />
+              </>
             )}
           </section>
         </div>

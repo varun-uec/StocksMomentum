@@ -607,3 +607,168 @@ export interface ResearchDashboardResponse {
   false_positive_rate: string;
   false_negative_rate: string;
 }
+
+// ── Phase 6: Live on-demand analysis, price series, watchlist ──────────
+
+/** Every computed indicator, serialized as decimal strings by the backend. */
+export interface IndicatorSnapshot {
+  sma50: string | null;
+  sma150: string | null;
+  sma200: string | null;
+  ema10: string | null;
+  ema21: string | null;
+  rsi14: string | null;
+  atr14: string | null;
+  adr_pct: string | null;
+  high_52w: string | null;
+  low_52w: string | null;
+  pct_above_low_52w: string | null;
+  pct_below_high_52w: string | null;
+  sma200_slope_pct: string | null;
+  rs_rating: string | null;
+  rs_percentile: string | null;
+  rs_line_slope: string | null;
+  avg_volume50: string | null;
+  rel_volume: string | null;
+  adx14: string | null;
+  plus_di14: string | null;
+  minus_di14: string | null;
+  macd_line: string | null;
+  macd_signal: string | null;
+  macd_histogram: string | null;
+  // Phase 6.3 — signed % distance of the close from each key moving average.
+  pct_from_sma50: string | null;
+  pct_from_sma200: string | null;
+  // Phase 6.4 — additional raw oscillators. Values only, no verdicts.
+  stoch_k14: string | null;
+  stoch_d14: string | null;
+  williams_r14: string | null;
+  cci20: string | null;
+  roc12: string | null;
+  [key: string]: string | null;
+}
+
+/** Phase 6.2 — stock vs benchmark-index performance over one lookback period. */
+export interface RelativeStrengthPoint {
+  period: '1m' | '3m' | '6m' | '12m';
+  sessions: number;
+  stock_return_pct: string | null;
+  index_return_pct: string | null;
+  excess_return_pct: string | null;
+}
+
+export interface StopLossSuggestion {
+  level: string | null;
+  method: string;
+}
+
+export interface LiveStockAnalysis {
+  symbol: string;
+  verdict: 'PASSED' | 'FAILED' | 'INDETERMINATE' | 'INSUFFICIENT_DATA';
+  data_as_of: string;
+  refreshed: boolean;
+  bars_fetched: number;
+  data_sufficient: boolean;
+  explanation: StockExplanation | null;
+  indeterminate_rules: string[];
+  rs_basis: Record<string, unknown>;
+  indicators: IndicatorSnapshot;
+  suggested_stop: StopLossSuggestion | null;
+  /** Phase 6.5 — trailing (chandelier) downside cap. Also not a target. */
+  trailing_stop: StopLossSuggestion | null;
+  /** Phase 6.2 — empty when the benchmark index has no ingested history. */
+  relative_strength_vs_index: RelativeStrengthPoint[];
+  benchmark_index: string | null;
+}
+
+// ── Phase 6.6 / 6.7: universe-level market context ─────────────────────
+
+export interface MarketBreadth {
+  as_of: string;
+  evaluated: number;
+  above_sma50: number;
+  above_sma50_of: number;
+  pct_above_sma50: string | null;
+  above_sma200: number;
+  above_sma200_of: number;
+  pct_above_sma200: string | null;
+  new_52w_highs: number;
+  new_52w_lows: number;
+  high_low_of: number;
+}
+
+export interface SectorRelativeStrength {
+  sector: string;
+  constituents: number;
+  rank: number;
+  /** Equal-weighted mean excess return per period, keyed '1m' | '3m' | '6m' | '12m'. */
+  excess_return_pct: Record<string, string | null>;
+}
+
+export interface MarketContext {
+  as_of: string;
+  benchmark_index: string | null;
+  breadth: MarketBreadth;
+  sectors: SectorRelativeStrength[];
+}
+
+export interface OHLCVBarDTO {
+  date: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: number;
+}
+
+export interface SecurityOHLCVDTO {
+  symbol: string;
+  bars: OHLCVBarDTO[];
+}
+
+export interface WatchlistResponse {
+  symbols: string[];
+}
+
+// ── Phase 7: Elliott Wave labelling ────────────────────────────────────
+
+export interface ElliottPivot {
+  bar_date: string;
+  price: string;
+  kind: 'H' | 'L';
+}
+
+export interface ElliottWaveLabel {
+  label: string;
+  bar_date: string;
+  price: string;
+}
+
+export interface ElliottProjectionZone {
+  low: string;
+  high: string;
+  basis: string;
+}
+
+export interface ElliottWaveCount {
+  pattern: 'impulse' | 'correction';
+  direction: 'up' | 'down';
+  degree: string;
+  labels: ElliottWaveLabel[];
+  current_position: string;
+  rules_applied: string[];
+  /** False when the count ends before the latest confirmed pivot (no projection). */
+  is_current: boolean;
+  projection: ElliottProjectionZone | null;
+}
+
+export interface ElliottWaveAnalysis {
+  symbol: string;
+  as_of: string | null;
+  threshold_pct: string;
+  bars_analyzed: number;
+  pivots: ElliottPivot[];
+  primary: ElliottWaveCount | null;
+  alternative: ElliottWaveCount | null;
+  notes: string[];
+}

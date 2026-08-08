@@ -125,6 +125,24 @@ class SqlOHLCVRepository:
             for r in result.scalars().all()
         }
 
+    async def closes_between(
+        self, start: date, end: date
+    ) -> dict[int, list[tuple[date, Decimal]]]:
+        """Return every close in ``[start, end]``, grouped by security, ascending by date."""
+        result = await self._session.execute(
+            select(
+                OHLCVDailyModel.security_id,
+                OHLCVDailyModel.date,
+                OHLCVDailyModel.close,
+            )
+            .where(OHLCVDailyModel.date >= start, OHLCVDailyModel.date <= end)
+            .order_by(OHLCVDailyModel.security_id, OHLCVDailyModel.date)
+        )
+        grouped: dict[int, list[tuple[date, Decimal]]] = {}
+        for security_id, bar_date, close in result.all():
+            grouped.setdefault(security_id, []).append((bar_date, close))
+        return grouped
+
     async def latest_date(self) -> date | None:
         """Return the most recent stored bar date, or ``None``."""
         result = await self._session.execute(select(func.max(OHLCVDailyModel.date)))
