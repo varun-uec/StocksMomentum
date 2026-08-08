@@ -39,7 +39,7 @@ class SecurityModel(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
-    isin: Mapped[str | None] = mapped_column(String)
+    isin: Mapped[str | None] = mapped_column(String, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     sector: Mapped[str | None] = mapped_column(String)
     industry: Mapped[str | None] = mapped_column(String)

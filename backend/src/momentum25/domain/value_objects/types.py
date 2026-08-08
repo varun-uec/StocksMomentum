@@ -25,6 +25,19 @@ class Symbol(str):
         return super().__new__(cls, normalized)
 
 
+class Exchange(StrEnum):
+    """Where a security is listed (Phase 5.1 exchange dimension).
+
+    ``BOTH`` is a cross-listed security: one canonical record, one ISIN, traded
+    on both NSE and BSE. It is deliberately a third value rather than two rows
+    so that a company never appears twice in a screening universe.
+    """
+
+    NSE = "NSE"
+    BSE = "BSE"
+    BOTH = "BOTH"
+
+
 class RunStatus(StrEnum):
     """Lifecycle states of a screening run (see ADD §16 state machine)."""
 

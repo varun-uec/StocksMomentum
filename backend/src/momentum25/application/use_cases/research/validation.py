@@ -72,7 +72,7 @@ class ValidateRunComparisonUseCase:
 
         strategy_name = f"strategy_{run_a.strategy_id}"
 
-        return compare_runs(
+        report = compare_runs(
             run_a_snapshots=snapshots_a,
             run_b_snapshots=snapshots_b,
             run_id_a=run_id_a,
@@ -81,6 +81,17 @@ class ValidateRunComparisonUseCase:
             run_date_b=run_b.run_date,
             strategy_name=strategy_name,
         )
+
+        # Attach each run's indicator-formula revision so a cross-version diff is
+        # disclosed rather than silently attributed to the change under test
+        # (Phase 0.3/0.4). Comparison is still permitted -- only never silent.
+        object.__setattr__(
+            report, "indicator_version_a", (run_a.stats or {}).get("indicator_version")
+        )
+        object.__setattr__(
+            report, "indicator_version_b", (run_b.stats or {}).get("indicator_version")
+        )
+        return report
 
     async def _build_snapshots(
         self,

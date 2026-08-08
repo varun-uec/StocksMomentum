@@ -149,6 +149,29 @@ class SqlSecurityRepository:
         )
         return result.rowcount or 0
 
+    async def set_exchanges(self, exchange_by_symbol: dict[str, str]) -> int:
+        """Set the listing ``exchange`` for the given symbols. Returns rows updated.
+
+        Deliberately a separate statement rather than a field in
+        :meth:`upsert_many`'s conflict update: every other caller constructs
+        ``Security`` with the ``"NSE"`` default because it does not *know* the
+        exchange, so including it in the daily upsert would demote every
+        cross-listed security back to ``NSE`` on the next screening run. The
+        cross-listing reconciliation is the single writer of this column.
+        """
+        updated = 0
+        for symbol, exchange in exchange_by_symbol.items():
+            result = cast(
+                CursorResult[Any],
+                await self._session.execute(
+                    update(SecurityModel)
+                    .where(SecurityModel.symbol == symbol.upper())
+                    .values(exchange=exchange)
+                ),
+            )
+            updated += result.rowcount or 0
+        return updated
+
     async def backfill_isins(self, isin_by_security_id: dict[int, str]) -> int:
         """Populate ``isin`` for the given securities, only where it is NULL.
 

@@ -10,11 +10,14 @@ from sqlalchemy import text
 
 from momentum25 import __version__
 from momentum25.application.dto.health import (
+    DataFreshnessDTO,
     HealthDTO,
     LivenessDTO,
     ReadinessDTO,
     StartupDTO,
 )
+from momentum25.domain.research.trading_calendar import assess_freshness
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.observability.metrics import metrics_endpoint
 from momentum25.infrastructure.persistence.database import get_database
@@ -117,6 +120,39 @@ async def startup(request: Request) -> StartupDTO:
         version=__version__,
         strategies_loaded=strategies_loaded,
         engines_registered=engines_registered,
+    )
+
+
+@router.get("/health/data-freshness", response_model=DataFreshnessDTO)
+async def data_freshness() -> DataFreshnessDTO:
+    """Report whether persisted market data is current (Phase 1.5).
+
+    Distinguishes an expected gap (market closed for a weekend/holiday) from
+    a real one (ingestion behind or stopped) using the real NSE trading
+    calendar, rather than a bare "latest run" timestamp a client has to
+    interpret unaided.
+    """
+    async with get_database().session() as session:
+        latest = await SqlOHLCVRepository(session).latest_date()
+
+    today = datetime.now(timezone.utc).date()
+    calendar = get_nse_trading_calendar()
+    sessions_since = (
+        calendar.sessions_between(latest, today) if latest is not None else []
+    )
+    # sessions_between includes `latest` itself when it's a session; drop it
+    # so "sessions since the last bar" doesn't count the bar's own day.
+    sessions_since = [d for d in sessions_since if latest is None or d > latest]
+
+    assessment = assess_freshness(latest, today, sessions_since)
+    next_session = calendar.next_session(today)
+
+    return DataFreshnessDTO(
+        latest_bar_date=latest,
+        as_of=today,
+        sessions_missed=assessment.sessions_missed,
+        classification=assessment.classification.value,
+        next_session=next_session,
     )
 
 

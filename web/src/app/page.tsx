@@ -5,11 +5,46 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
-import { getLatestRunForStrategy, getRankings } from '@/lib/api-client';
+import { getLatestRunForStrategy, getRankings, getDataFreshness } from '@/lib/api-client';
 import { Badge, PageHeader, EmptyState, LoadingSpinner, ErrorMessage } from '@/components/shared/Card';
 import { HORIZONS, DEFAULT_HORIZON, type Horizon } from '@/lib/horizons';
-import type { RankingsResponse, ScreeningRunSummary } from '@/lib/types';
+import type { RankingsResponse, ScreeningRunSummary, DataFreshnessDTO } from '@/lib/types';
 import { focusRing } from '@/lib/theme';
+
+/**
+ * Data-freshness banner (Phase 1.5). Previously the only staleness signal
+ * was a bare "Latest screening: <timestamp>" string -- indistinguishable
+ * from a broken ingest without the reader doing calendar arithmetic
+ * themselves. This states the classification explicitly, using the real
+ * NSE trading calendar so a market-closed weekend/holiday never reads as
+ * a problem.
+ */
+function StalenessBanner({ freshness }: { freshness: DataFreshnessDTO }) {
+  if (freshness.classification === 'FRESH') return null;
+
+  const isMarketClosed = freshness.classification === 'MARKET_CLOSED';
+  const tone = isMarketClosed
+    ? 'border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300'
+    : 'border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300';
+
+  const message = isMarketClosed
+    ? 'Market closed since the last session — no new data expected until it reopens.'
+    : freshness.latest_bar_date
+      ? `Data is ${freshness.sessions_missed} trading session${freshness.sessions_missed === 1 ? '' : 's'} behind — last bar ${freshness.latest_bar_date}.`
+      : 'No market data has been ingested yet.';
+
+  return (
+    <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${tone}`}>
+      <Badge color={isMarketClosed ? 'slate' : 'amber'}>{freshness.classification.replace('_', ' ')}</Badge>
+      <span>{message}</span>
+      {freshness.next_session && (
+        <span className="text-slate-400 dark:text-slate-500 ml-auto tabular-nums">
+          Next session: {freshness.next_session}
+        </span>
+      )}
+    </div>
+  );
+}
 
 /** Build a summary object from the run stats. */
 function buildSummary(data: RankingsResponse): ScreeningRunSummary {
@@ -66,6 +101,12 @@ export default function Home() {
     refetchInterval: 60_000,
   });
 
+  const { data: freshness } = useQuery({
+    queryKey: ['data-freshness'],
+    queryFn: getDataFreshness,
+    refetchInterval: 60_000,
+  });
+
   const isLoading = runIdLoading || rankingsLoading;
   const isRefreshing = runFetching || rankingsFetching;
 
@@ -115,6 +156,8 @@ export default function Home() {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {freshness && <StalenessBanner freshness={freshness} />}
+
         {isLoading && <LoadingSpinner text="Loading screening data…" />}
 
         {rankingsError && !isLoading && (

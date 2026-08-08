@@ -21,6 +21,7 @@ from momentum25.domain.research.data_quality import is_stale_as_of
 from momentum25.domain.value_objects.results import SectorStats, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import get_git_commit
+from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _logger = get_logger("historical_screening")
 
@@ -189,6 +190,7 @@ class HistoricalScreeningUseCase:
                     "performance for older dates."
                 ),
                 "git_commit": get_git_commit(),
+                "indicator_version": INDICATOR_VERSION,
             }
             await self._screening_run_repo.update(run)
             await self._commit()

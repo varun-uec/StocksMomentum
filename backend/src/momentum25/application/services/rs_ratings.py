@@ -69,7 +69,12 @@ async def compute_universe_rs_ratings(
             continue
         returns.append((str(security.symbol), weighted_sum / total_weight))
 
-    if not returns:
+    # A percentile needs at least two comparable returns; with 0 or 1, there is
+    # no universe to rank against. Returning a fabricated midpoint (50) here
+    # previously made a single-symbol lookup silently pass or fail
+    # ``tt_rs_rating_min`` on a made-up number instead of surfacing that RS
+    # could not be measured (Phase 1.2).
+    if len(returns) < 2:
         return {}
 
     sorted_returns = sorted(returns, key=lambda x: x[1])
@@ -77,7 +82,7 @@ async def compute_universe_rs_ratings(
     rs_ratings: dict[str, int] = {}
     for idx, (symbol, _) in enumerate(sorted_returns):
         # Percentile rank 1-99
-        percentile = int(round((idx / (n - 1)) * 98)) + 1 if n > 1 else 50
+        percentile = int(round((idx / (n - 1)) * 98)) + 1
         rs_ratings[symbol] = max(1, min(99, percentile))
 
     return rs_ratings

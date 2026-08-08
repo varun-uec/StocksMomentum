@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
 
+from momentum25.app.services.screening_job import run_screening_pipeline
 from momentum25.application.dto.common import Page
 from momentum25.application.dto.runs import RunDTO, TriggerRefreshRequest
 from momentum25.application.use_cases.runs import (
@@ -49,22 +50,48 @@ async def trigger_refresh(
     return await fetch.execute(run_id)
 
 
-@router.post("/execute", response_model=RunDTO, status_code=status.HTTP_201_CREATED)
+@router.post("/execute", response_model=RunDTO)
 async def execute_screening(
     body: TriggerRefreshRequest,
+    background_tasks: BackgroundTasks,
+    response: Response,
     execute: Annotated[ExecuteScreening, Depends(get_execute_screening)],
+    create: Annotated[TriggerRefresh, Depends(get_trigger_refresh)],
     fetch: Annotated[GetRun, Depends(get_get_run)],
 ) -> RunDTO:
-    """Execute the full end-to-end screening pipeline and return the completed run.
+    """Execute the full end-to-end screening pipeline.
 
-    Fetches live NSE market data, computes indicators, runs the strategy engine,
-    persists scores and rankings, and returns the completed run DTO.
+    Fetches live NSE market data, computes indicators, runs the strategy
+    engine, and persists scores and rankings.
+
+    Default (``background=true``): creates a ``PENDING`` run and returns it
+    immediately (``202``); the pipeline runs after the response is sent and
+    the caller polls ``GET /runs/{id}`` for completion. A synchronous
+    ``ExecuteScreening`` run over the full universe was 300+ sequential NSE
+    fetches followed by scoring every security inside one HTTP request --
+    long enough to exceed most gateway timeouts (Phase 1.6).
+
+    ``background=false``: blocks and returns the ``COMPLETED`` run directly
+    (``201``), matching the pre-Phase-1.6 behaviour -- used by tests and the
+    CLI, which have no timeout to exceed.
     """
+    if body.background:
+        run_id = await create.execute(body.strategy, body.force)
+        background_tasks.add_task(
+            run_screening_pipeline,
+            body.strategy,
+            force=body.force,
+            run_id=run_id,
+        )
+        response.status_code = status.HTTP_202_ACCEPTED
+        return await fetch.execute(run_id)
+
     run_id = await execute.execute(
         strategy_name=body.strategy,
         target_symbols=None,
         force=body.force,
     )
+    response.status_code = status.HTTP_201_CREATED
     return await fetch.execute(run_id)
 
 

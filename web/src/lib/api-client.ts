@@ -14,6 +14,7 @@ import type {
   HistoricalScreeningResponse,
   RunDTO,
   StrategySummary,
+  DataFreshnessDTO,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000/api/v1';
@@ -47,6 +48,10 @@ export async function getLatestRunForStrategy(strategy: string): Promise<RunDTO 
   return fetchJson(`${API_BASE}/runs/latest?strategy=${encodeURIComponent(strategy)}`, {
     cache: 'no-store',
   });
+}
+
+export async function getDataFreshness(): Promise<DataFreshnessDTO> {
+  return fetchJson(`${API_BASE}/health/data-freshness`, { cache: 'no-store' });
 }
 
 export async function getRuns(

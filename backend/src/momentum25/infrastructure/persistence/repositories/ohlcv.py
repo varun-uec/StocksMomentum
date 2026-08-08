@@ -49,7 +49,21 @@ class SqlOHLCVRepository:
                 "low": stmt.excluded.low,
                 "close": stmt.excluded.close,
                 "volume": stmt.excluded.volume,
-                "adj_close": stmt.excluded.adj_close,
+                # Re-derive from the incoming raw close and the *stored*
+                # adj_factor rather than taking the incoming adj_close.
+                #
+                # Providers do not report an adjusted close, so every ingested
+                # bar carries ``adj_close=None``. Writing that straight through
+                # (the prior behaviour) wiped the adjusted close computed by
+                # ``update_adjustment_factors`` on every re-ingestion of an
+                # already-adjusted bar, while leaving ``adj_factor`` untouched —
+                # leaving the two columns describing different prices. Forward
+                # returns read ``adj_close`` (falling back to raw ``close``) and
+                # the indicator pipeline reads ``adj_factor``, so a desynced row
+                # made research and screening silently disagree about the same
+                # split. Deriving it here keeps the invariant
+                # ``adj_close == close * adj_factor`` true after any ingestion.
+                "adj_close": stmt.excluded.close * OHLCVDailyModel.__table__.c.adj_factor,
                 "prev_close": stmt.excluded.prev_close,
                 "turnover_value": stmt.excluded.turnover_value,
             },

@@ -42,3 +42,20 @@ class StartupDTO(BaseModel):
     version: str
     strategies_loaded: int
     engines_registered: int
+
+
+class DataFreshnessDTO(BaseModel):
+    """Whether persisted market data is current, and why if not (Phase 1.5).
+
+    ``classification`` distinguishes an expected gap (``MARKET_CLOSED`` --
+    weekend or NSE holiday) from a real one (``STALE`` -- ingestion is behind
+    or has stopped), so a client never has to guess which one a bare
+    timestamp means.
+    """
+
+    latest_bar_date: date | None
+    as_of: date
+    sessions_missed: int
+    classification: str  # "FRESH" | "MARKET_CLOSED" | "STALE"
+    next_session: date | None
+    calendar_source: str = "XBOM (NSE observes the same trading holidays)"

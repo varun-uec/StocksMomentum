@@ -341,6 +341,15 @@ export interface RunDTO {
   error: string | null;
 }
 
+export interface DataFreshnessDTO {
+  latest_bar_date: string | null;
+  as_of: string;
+  sessions_missed: number;
+  classification: 'FRESH' | 'MARKET_CLOSED' | 'STALE';
+  next_session: string | null;
+  calendar_source: string;
+}
+
 export interface StrategySummary {
   name: string;
   description: string;

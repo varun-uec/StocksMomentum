@@ -40,6 +40,21 @@ _MIN_BARS_BUFFER = 25
 # Fixed precision for the indicator egress boundary (ADR-009 determinism contract).
 _QUANT = Decimal("0.0001")
 
+# Indicator-formula revision. ``config_hash`` covers the *strategy* (which rules,
+# weights, thresholds) but not the *formulas* those rules consume, so before this
+# a silent formula change made new runs quietly incomparable to stored ones while
+# leaving config_hash identical. Stamped into ``ScreeningRun.stats`` by both the
+# live and historical orchestrators; runs may only be compared to each other when
+# their ``indicator_version`` matches as well as their ``config_hash``.
+#
+# Bump on ANY change to a computed indicator value. History:
+#   1 — original formulas.
+#   2 — Phase 0.3/0.4: RSI and ATR corrected from a rolling mean (Cutler's) to
+#       Wilder's smoothing. Measured effect on random walks: RSI shifts a mean of
+#       6.7 points (max 21.8); ATR shifts a mean of 3.8% (max 14.4%). Runs stamped
+#       1 are NOT comparable to runs stamped 2.
+INDICATOR_VERSION = 2
+
 
 def _quantize(value: float | None) -> Decimal | None:
     """Cast a float metric to a fixed-precision ``Decimal`` (or ``None``).
@@ -63,55 +78,249 @@ def _sma(series: pd.Series, window: int) -> float | None:
 def _ema(series: pd.Series, span: int) -> pd.Series:
     """Exponential Moving Average using pandas ewm (span semantics).
 
-    EMA_t = price_t * k + EMA_{t-1} * (1 - k), k = 2 / (span + 1)
-    Seed = SMA(span) of first ``span`` values.
+    EMA_t = price_t * k + EMA_{t-1} * (1 - k), k = 2 / (span + 1). Seeded with the
+    series' first value (``ewm(adjust=False)``'s actual behaviour -- not an
+    SMA-of-first-``span``-values seed, a common but different convention some other
+    EMA implementations use). Values before the span-th are therefore not a "true"
+    EMA yet; callers requiring the fully warmed-up value should have at least
+    ``span`` bars of buffer beyond their minimum, as the SMA-window callers already do.
     """
     return series.ewm(span=span, adjust=False).mean()
+
+
+def _wilder_smooth(values: pd.Series, window: int) -> pd.Series:
+    """Wilder's smoothing (modified moving average) of ``values``.
+
+    Wilder's recurrence is ``avg_t = (avg_{t-1} * (window - 1) + value_t) / window``,
+    seeded with the simple mean of the first ``window`` values. That recurrence is
+    exactly an EWM with ``alpha = 1 / window`` and ``adjust=False``, so it is
+    expressed here as one vectorized ``ewm`` call over a series whose first
+    ``window - 1`` entries are masked out and whose ``window``-th entry carries the
+    seed — pandas begins the recursion at the first non-NaN value.
+
+    This is *not* interchangeable with ``rolling(window).mean()``: the rolling mean
+    (Cutler's variant) weights the trailing ``window`` observations equally and
+    forgets everything older, while Wilder's retains an exponentially-decaying tail
+    of the full history. The two do not converge, and every published RSI/ATR
+    threshold (RSI 30/70, ATR-multiple stops) is calibrated against Wilder's.
+    """
+    if len(values) < window:
+        return pd.Series([float("nan")] * len(values), index=values.index, dtype="float64")
+    seeded = values.astype("float64").copy()
+    seeded.iloc[: window - 1] = np.nan
+    seeded.iloc[window - 1] = float(values.iloc[:window].mean())
+    return seeded.ewm(alpha=1.0 / window, adjust=False, ignore_na=False).mean()
 
 
 def _rsi(series: pd.Series, window: int = 14) -> float | None:
     """Wilder's RSI over ``window`` periods.
 
-    RSI = 100 - 100 / (1 + RS), where RS = avg_gain / avg_loss
-    Uses Wilder's smoothing (simple moving average of gains/losses).
-    Verified against standard TA definitions.
+    ``RSI = 100 - 100 / (1 + RS)`` where ``RS = avg_gain / avg_loss`` and both
+    averages use Wilder's smoothing (:func:`_wilder_smooth`), seeded from the first
+    ``window`` price changes. Covered by hand-computed golden tests in
+    ``tests/unit/test_indicator_formulas.py``.
     """
     if len(series) < window + 1:
         return None
-    deltas = series.diff().dropna()
-    gains = deltas.where(deltas > 0, 0.0)
-    losses = -deltas.where(deltas < 0, 0.0)
-    avg_gain = gains.rolling(window=window).mean().iloc[-1]
-    avg_loss = losses.rolling(window=window).mean().iloc[-1]
+    deltas = series.astype("float64").diff().dropna()
+    if len(deltas) < window:
+        return None
+    gains = deltas.clip(lower=0.0)
+    losses = (-deltas).clip(lower=0.0)
+    avg_gain = _wilder_smooth(gains, window).iloc[-1]
+    avg_loss = _wilder_smooth(losses, window).iloc[-1]
+    if pd.isna(avg_gain) or pd.isna(avg_loss):
+        return None
     if avg_loss == 0:
-        return 100.0
+        # No average downside over the smoothed history: RSI is 100 by definition
+        # (and 50 in the degenerate flat case where there is no movement at all).
+        return 100.0 if avg_gain > 0 else 50.0
     if avg_gain == 0:
         return 0.0
-    rs = avg_gain / avg_loss
+    rs = float(avg_gain) / float(avg_loss)
     return float(100.0 - 100.0 / (1.0 + rs))
+
+
+def _true_range(df: pd.DataFrame) -> np.ndarray[Any, np.dtype[np.float64]]:
+    """Per-bar true range, excluding the first bar (no previous close).
+
+    ``TR = max(high - low, |high - prev_close|, |low - prev_close|)``. Shared by
+    :func:`_atr` and :func:`_adx` so the two indicators agree on the same
+    definition of a bar's range rather than each computing it independently.
+    """
+    high = df["high"].to_numpy(dtype="float64")
+    low = df["low"].to_numpy(dtype="float64")
+    close = df["close"].to_numpy(dtype="float64")
+    prev_close = close[:-1]
+    result: np.ndarray[Any, np.dtype[np.float64]] = np.maximum(
+        high[1:] - low[1:],
+        np.maximum(np.abs(high[1:] - prev_close), np.abs(low[1:] - prev_close)),
+    )
+    return result
 
 
 def _atr(df: pd.DataFrame, window: int = 14) -> float | None:
     """Wilder's Average True Range over ``window`` periods.
 
-    TR = max(high - low, |high - prev_close|, |low - prev_close|)
-    ATR = rolling mean of TR over window.
-    Verified against standard TA definitions.
+    Smoothed with Wilder's method (:func:`_wilder_smooth`). The first bar has no
+    previous close so its true range is undefined and is excluded rather than
+    approximated by ``high - low`` — that approximation biases the seed on the very
+    window it seeds. Covered by hand-computed golden tests in
+    ``tests/unit/test_indicator_formulas.py``.
     """
     if len(df) < window + 1:
         return None
-    high = df["high"].values
-    low = df["low"].values
-    close = df["close"].values
-    prev_close = np.roll(close, 1)
-    prev_close[0] = close[0]
-
-    tr = np.maximum(high - low, np.maximum(
-        np.abs(high - prev_close), np.abs(low - prev_close)
-    ))
-    tr_series = pd.Series(tr)
-    val = tr_series.rolling(window=window).mean().iloc[-1]
+    tr = _true_range(df)
+    val = _wilder_smooth(pd.Series(tr), window).iloc[-1]
     return float(val) if not pd.isna(val) else None
+
+
+def _adx(df: pd.DataFrame, window: int = 14) -> tuple[float | None, float | None, float | None]:
+    """Wilder's ADX(14) with +DI/-DI, per Wilder's original published method.
+
+    For each bar (excluding the first, which has no previous bar to diff against):
+      up_move = high_t - high_{t-1}; down_move = low_{t-1} - low_t
+      +DM = up_move   if up_move > down_move and up_move > 0   else 0
+      -DM = down_move if down_move > up_move and down_move > 0 else 0
+    +DM, -DM, and TR (:func:`_true_range`) are each Wilder-smoothed over ``window``.
+      +DI = 100 * smoothed(+DM) / smoothed(TR)
+      -DI = 100 * smoothed(-DM) / smoothed(TR)
+      DX  = 100 * |+DI - -DI| / (+DI + -DI)
+    ADX is DX itself Wilder-smoothed over ``window`` -- a second smoothing pass, so
+    ADX needs roughly ``2 * window`` bars of true range (``2*window + 1`` bars of
+    price) before it stabilizes; fewer than that returns ``None`` for ADX while
+    +DI/-DI (needing only one smoothing pass) may already be defined.
+
+    Returns:
+        ``(adx, plus_di, minus_di)``, each ``None`` if there isn't enough history.
+    """
+    if len(df) < window + 1:
+        return None, None, None
+
+    high = df["high"].to_numpy(dtype="float64")
+    low = df["low"].to_numpy(dtype="float64")
+    up_move = high[1:] - high[:-1]
+    down_move = low[:-1] - low[1:]
+
+    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+    tr = _true_range(df)
+
+    smoothed_plus_dm = _wilder_smooth(pd.Series(plus_dm), window)
+    smoothed_minus_dm = _wilder_smooth(pd.Series(minus_dm), window)
+    smoothed_tr = _wilder_smooth(pd.Series(tr), window)
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        plus_di = 100.0 * smoothed_plus_dm / smoothed_tr
+        minus_di = 100.0 * smoothed_minus_dm / smoothed_tr
+        di_sum = plus_di + minus_di
+        dx = 100.0 * (plus_di - minus_di).abs() / di_sum
+    dx = dx.where(di_sum != 0, 0.0)
+
+    # dx inherits (window - 1) leading NaNs from the first smoothing pass
+    # (smoothed_plus_dm/smoothed_tr are undefined until the DM/TR seed).
+    # _wilder_smooth's own seeding rule -- "average the first `window`
+    # entries" -- must be applied to `window` *real* DX values, the way
+    # Wilder's published ADX seeds itself (a simple average of the first
+    # `window` DX readings). Passing the NaN-prefixed series straight through
+    # would instead seed on a single real value (whatever lands at position
+    # `window - 1`, which is NaN here), silently discarding almost the entire
+    # seed window. Dropping the leading NaNs first re-aligns "the first
+    # `window` entries" with "the first `window` real DX values".
+    dx_valid = dx.dropna().reset_index(drop=True)
+    adx_val = (
+        _wilder_smooth(dx_valid, window).iloc[-1] if len(dx_valid) >= window else float("nan")
+    )
+
+    plus_di_val = plus_di.iloc[-1]
+    minus_di_val = minus_di.iloc[-1]
+
+    return (
+        float(adx_val) if not pd.isna(adx_val) else None,
+        float(plus_di_val) if not pd.isna(plus_di_val) else None,
+        float(minus_di_val) if not pd.isna(minus_di_val) else None,
+    )
+
+
+def _macd(
+    close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
+) -> tuple[float | None, float | None, float | None]:
+    """MACD(12,26,9): fast/slow EMA crossover with a signal-line EMA of the MACD line.
+
+      macd_line = EMA(fast) - EMA(slow)
+      signal_line = EMA(signal) of macd_line
+      histogram = macd_line - signal_line
+
+    Uses the same :func:`_ema` (pandas ``ewm(span=...)``) as the existing
+    ema10/ema21 fields, so all EMA-based indicators in this pipeline share one
+    definition. Requires ``slow + signal`` bars for the signal line to have fully
+    absorbed its own seed transient.
+
+    Returns:
+        ``(macd_line, signal_line, histogram)``, each ``None`` if insufficient history.
+    """
+    if len(close) < slow + signal:
+        return None, None, None
+    macd_line_series = _ema(close, fast) - _ema(close, slow)
+    signal_series = _ema(macd_line_series, signal)
+    histogram_series = macd_line_series - signal_series
+
+    macd_val = macd_line_series.iloc[-1]
+    signal_val = signal_series.iloc[-1]
+    hist_val = histogram_series.iloc[-1]
+    if pd.isna(macd_val) or pd.isna(signal_val) or pd.isna(hist_val):
+        return None, None, None
+    return float(macd_val), float(signal_val), float(hist_val)
+
+
+def _swing_levels(
+    df: pd.DataFrame, left: int = 5, right: int = 5
+) -> tuple[float | None, float | None]:
+    """Nearest confirmed N-bar fractal swing resistance/support above/below the latest close.
+
+    A bar at index ``i`` is a swing high if its high exceeds the high of every bar
+    in ``[i-left, i+right]`` around it (swing low: symmetric on lows). A pivot needs
+    ``right`` bars *after* it to be confirmed, so the most recent ``right`` bars can
+    never themselves be pivots -- this is a real constraint of the method, not a
+    data gap: a fractal swing high is only knowable in hindsight.
+
+    Unlike the fixed 20-day high/low window used internally by the breakout engine,
+    this returns the nearest actual swing point to the current price on each side,
+    which is what a stop-loss/target needs (Phase 3) rather than an arbitrary
+    calendar window.
+
+    Returns:
+        ``(nearest_resistance, nearest_support)`` -- the confirmed swing high
+        closest above the latest close, and the confirmed swing low closest below
+        it. Either may be ``None`` if no such confirmed pivot exists in history.
+    """
+    n = len(df)
+    min_bars = left + right + 1
+    if n < min_bars:
+        return None, None
+
+    high = df["high"].to_numpy(dtype="float64")
+    low = df["low"].to_numpy(dtype="float64")
+    latest_close = float(df["close"].to_numpy(dtype="float64")[-1])
+
+    swing_highs: list[float] = []
+    swing_lows: list[float] = []
+    # Only pivots with `right` bars after them are confirmed -- i.e. up to
+    # index n - 1 - right.
+    for i in range(left, n - right):
+        window_high = high[i - left : i + right + 1]
+        if high[i] == window_high.max() and (window_high == high[i]).sum() == 1:
+            swing_highs.append(high[i])
+        window_low = low[i - left : i + right + 1]
+        if low[i] == window_low.min() and (window_low == low[i]).sum() == 1:
+            swing_lows.append(low[i])
+
+    resistances_above = [h for h in swing_highs if h > latest_close]
+    supports_below = [s for s in swing_lows if s < latest_close]
+
+    nearest_resistance = float(min(resistances_above)) if resistances_above else None
+    nearest_support = float(max(supports_below)) if supports_below else None
+    return nearest_resistance, nearest_support
 
 
 def _adr_pct(df: pd.DataFrame, window: int = 20) -> float | None:
@@ -239,6 +448,15 @@ class IndicatorPipelineImpl:
         avg_volume50 = self._avg_volume(df, avg_volume_window)
         rel_volume = self._rel_volume(df, avg_volume_window)
 
+        # ── ADX(14) + DI+/DI- (Phase 2.1) ────────────────────────────────
+        adx14, plus_di14, minus_di14 = _adx(df, 14)
+
+        # ── MACD(12,26,9) (Phase 2.2) ────────────────────────────────────
+        macd_line, macd_signal, macd_histogram = _macd(close_series)
+
+        # ── Swing pivot support/resistance (Phase 2.3) ───────────────────
+        swing_resistance, swing_support = _swing_levels(df)
+
         # Egress boundary: quantize every float metric to a fixed-precision Decimal
         return IndicatorSet(
             as_of=reference_date,
@@ -259,6 +477,14 @@ class IndicatorPipelineImpl:
             rs_line_slope=_quantize(rs_line_slope),
             avg_volume50=_quantize(avg_volume50),
             rel_volume=_quantize(rel_volume),
+            adx14=_quantize(adx14),
+            plus_di14=_quantize(plus_di14),
+            minus_di14=_quantize(minus_di14),
+            macd_line=_quantize(macd_line),
+            macd_signal=_quantize(macd_signal),
+            macd_histogram=_quantize(macd_histogram),
+            swing_resistance=_quantize(swing_resistance),
+            swing_support=_quantize(swing_support),
         )
 
     @staticmethod

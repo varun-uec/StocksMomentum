@@ -37,11 +37,17 @@ from momentum25.application.use_cases.research.comparison import StrategyCompari
 from momentum25.application.use_cases.research.contribution import ContributionAnalysisUseCase
 from momentum25.application.use_cases.research.evaluation import EvaluateStrategyUseCase
 from momentum25.application.use_cases.research.experiment import ExperimentUseCase
-from momentum25.application.use_cases.research.historical_screening import HistoricalScreeningUseCase
+from momentum25.application.use_cases.research.historical_screening import (
+    HistoricalScreeningUseCase,
+)
+from momentum25.application.use_cases.research.refresh_corporate_actions import (
+    RefreshCorporateActions,
+)
 from momentum25.application.use_cases.research.validation import (
     DeterminismVerificationUseCase,
     ValidateRunComparisonUseCase,
 )
+from momentum25.interface.api.dependencies import get_refresh_corporate_actions
 from momentum25.interface.api.dependencies_research import (
     get_contribution_analysis_use_case,
     get_determinism_verification_use_case,
@@ -84,6 +90,30 @@ async def historical_screen(
         total_failed=result["total_failed"],
         strategy_name=body.strategy_name,
     )
+
+
+# ── Corporate Actions ───────────────────────────────────────────────────
+
+
+@router.post(
+    "/corporate-actions/refresh",
+    summary="Refresh corporate-action price adjustments for the active universe",
+    description=(
+        "Fetches corporate actions per active security, persists them, and "
+        "recomputes each bar's backward adjustment factor and adjusted close. "
+        "Until this runs, every bar's adj_factor is 1, so splits and bonuses "
+        "corrupt long-window indicators for affected securities (Phase 0.5). "
+        "Deliberately a separate periodic operation, not part of the daily "
+        "screening request path -- NSE's endpoint is per-symbol, so refreshing "
+        "the whole universe costs one external call per security."
+    ),
+)
+async def refresh_corporate_actions(
+    use_case: Annotated[RefreshCorporateActions, Depends(get_refresh_corporate_actions)],
+    as_of: Annotated[date | None, Query()] = None,
+) -> dict[str, int]:
+    """Refresh adjustment factors for every active security."""
+    return await use_case.execute(as_of)
 
 
 # ── Run Comparison / Validation ─────────────────────────────────────────
@@ -171,6 +201,9 @@ async def compare_runs(
             for d in report.top_losers
         ],
         is_identical=report.is_identical(),
+        indicator_version_a=report.indicator_version_a,
+        indicator_version_b=report.indicator_version_b,
+        indicator_versions_differ=report.indicator_versions_differ(),
     )
 
 
@@ -400,8 +433,8 @@ async def run_experiment(
     use_case: Annotated[ExperimentUseCase, Depends(get_experiment_use_case)],
 ) -> ExperimentResponse:
     """Run an experiment comparing base and variant strategy configurations."""
-    from momentum25.domain.research.models import ExperimentConfig
     from momentum25.application.dto.research import ExperimentResultDTO
+    from momentum25.domain.research.models import ExperimentConfig
     config = ExperimentConfig(
         name=f"exp_{body.base_strategy_name}",
         description=f"Experiment for {body.base_strategy_name}",

@@ -14,7 +14,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from decimal import Decimal
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +24,6 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
-from momentum25.infrastructure.adapters import BhavcopyProvider
 from momentum25.infrastructure.persistence.models import SecurityModel
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
@@ -59,8 +57,15 @@ def _make_uptrend_bars(days: int, start: date, base_price: float = 100.0) -> lis
     return bars
 
 
-def _make_descending_bars(days: int, start: date, base_price: float = 200.0) -> list[dict]:
-    """Generate bars with a steadily declining close (descending 200 SMA)."""
+def _make_descending_bars(days: int, start: date, base_price: float = 400.0) -> list[dict]:
+    """Generate bars with a steadily declining close (descending 200 SMA).
+
+    The default base must keep the close above the strategy's declared minimum
+    price for the whole run: at 0.8/day over 300 days the series falls 240, so a
+    200.0 base ended *below zero* and the security was excluded by the liquidity
+    floor before the trend rules ever ran (Phase 0.1). This fixture exists to
+    fail the trend gate, not the universe gate.
+    """
     bars = []
     price = base_price
     for i in range(days):
@@ -106,6 +111,12 @@ async def _seed_bars(
             close=Decimal(str(b["close"])),
             volume=b["volume"],
             adj_close=b.get("adj_close"),
+            # Real rupee turnover (close x volume), as the bhavcopy provider now
+            # persists it. The strategy's declared liquidity floor (Phase 0.1)
+            # gates on real turnover and deliberately excludes securities that
+            # have none, so a fixture lacking this column would no longer
+            # represent an ingested security.
+            turnover_value=Decimal(str(b["close"])) * Decimal(b["volume"]),
         )
         for b in bars
     ]
@@ -134,7 +145,7 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
     # ── 2. Seed historical OHLCV data (simulating NSE market data) ─────────
     await _seed_bars(db_session, passer.id, _make_uptrend_bars(300, start_date, 100.0))
     await _seed_bars(
-        db_session, failer.id, _make_descending_bars(300, start_date, 200.0)
+        db_session, failer.id, _make_descending_bars(300, start_date, 400.0)
     )
     # IPO has insufficient history (< 275 bars)
     await _seed_bars(
@@ -146,7 +157,6 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
     ohlcv_repo = SqlOHLCVRepository(db_session)
     screening_run_repo = SqlScreeningRunRepository(db_session)
     strategy_repo = SqlStrategyRepository(db_session)
-    market_data_provider = BhavcopyProvider(httpx.AsyncClient())
     indicator_pipeline = IndicatorPipelineImpl(db_session)
 
     from momentum25.domain.engines.trend_template import TrendTemplateEngine
@@ -173,7 +183,6 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
         security_repo=security_repo,
         ohlcv_repo=ohlcv_repo,
         screening_run_repo=screening_run_repo,
-        market_data_provider=market_data_provider,
         indicator_pipeline=indicator_pipeline,
         strategy_engine=strategy_engine,
         strategy=strategy,
@@ -279,7 +288,6 @@ async def test_vertical_slice_single_symbol(db_session: AsyncSession) -> None:
     ohlcv_repo = SqlOHLCVRepository(db_session)
     screening_run_repo = SqlScreeningRunRepository(db_session)
     strategy_repo = SqlStrategyRepository(db_session)
-    market_data_provider = BhavcopyProvider(httpx.AsyncClient())
     indicator_pipeline = IndicatorPipelineImpl(db_session)
 
     from momentum25.domain.engines.trend_template import TrendTemplateEngine
@@ -306,7 +314,6 @@ async def test_vertical_slice_single_symbol(db_session: AsyncSession) -> None:
         security_repo=security_repo,
         ohlcv_repo=ohlcv_repo,
         screening_run_repo=screening_run_repo,
-        market_data_provider=market_data_provider,
         indicator_pipeline=indicator_pipeline,
         strategy_engine=strategy_engine,
         strategy=strategy,

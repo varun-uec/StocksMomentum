@@ -48,6 +48,16 @@ class Settings(BaseSettings):
     benchmark_index: str = "NIFTY500"
     strategy_dir: str = "../docs/architecture/strategies"
 
+    # --- Zerodha Kite Connect (licensed feed, Phase 5.2) ---
+    # ``kite_access_token`` is a *daily* token: Zerodha invalidates it at 6 AM
+    # every day and recovery requires an interactive login (no refresh flow for
+    # standard accounts), so it is configuration that changes daily, not a secret
+    # set once at deploy time. Empty by default — the adapter is only usable
+    # when all three are supplied.
+    kite_api_key: str = ""
+    kite_api_secret: str = ""
+    kite_access_token: str = ""
+
     # --- Scheduler ---
     scheduler_enabled: bool = False
     schedule_cron: str = "30 18 * * 1-5"
@@ -64,6 +74,13 @@ class Settings(BaseSettings):
     # --- Rate limiting ---
     rate_limit_max_requests: int = 200
     rate_limit_window_seconds: int = 60
+
+    # --- Live single-symbol lookup (Phase 1.1/1.3) ---
+    # Minimum seconds between NSE refreshes of the same symbol via the live
+    # lookup endpoint -- prevents a client hammering ?refresh=true from
+    # triggering an NSE round-trip on every request.
+    live_refresh_cooldown_seconds: int = 300
+    live_cache_ttl_seconds: int = 60
 
     # --- Retry configuration ---
     retry_max_attempts: int = 3

@@ -1,19 +1,24 @@
-"""Market Synchronisation Service — live NSE data pipeline orchestration.
+"""Market Synchronisation Service — bulk NSE data ingestion.
 
 Loops over a target universe of NSE symbols, fetches their true historical prices
 via :class:`NSEMarketDataClient`, upserts the bars into PostgreSQL via
-:class:`SqlOHLCVRepository`, and pipelines the computed indicators through our
-existing Minervini TrendTemplate rule engine.
+:class:`SqlOHLCVRepository`, and computes indicators via
+:class:`IndicatorPipelineImpl`.
 
-This is the hexagonal orchestration integration layer that replaces mock data
-with live, production-ready asynchronous market data.
+Rule evaluation is deliberately not done here. An earlier version of this
+class re-implemented the 8 Minervini trend-template rules by hand (duplicate
+business logic, forbidden by CLAUDE.md) and evaluated them against
+``get_series(security_id=0, ...)`` -- a hardcoded id, always wrong. It went
+undetected because this class has never had a caller. Single-symbol
+evaluation now goes through the real :class:`StrategyEngine`, via
+``GetLiveStockAnalysis`` (``application/use_cases/stocks.py``), which reuses
+``build_evaluation_context`` from the daily orchestrator.
 """
 
 from __future__ import annotations
 
 import asyncio
 from datetime import date, timedelta
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +26,6 @@ from structlog import get_logger
 
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.security import Security
-from momentum25.domain.value_objects.indicators import IndicatorSet
 from momentum25.domain.value_objects.types import Symbol
 from momentum25.infrastructure.persistence.repositories.ohlcv import SqlOHLCVRepository
 from momentum25.infrastructure.persistence.repositories.security import SqlSecurityRepository
@@ -41,7 +45,7 @@ _MAX_CONCURRENT_SYMBOLS = 10
 
 
 class MarketSyncService:
-    """Orchestrates live NSE data ingestion, persistence, and rule evaluation.
+    """Orchestrates bulk live NSE data ingestion and indicator computation.
 
     Workflow:
         1. Fetch the active NSE symbol universe via :class:`NSEMarketDataClient`.
@@ -49,8 +53,7 @@ class MarketSyncService:
         3. For each symbol, fetch multi-month historical OHLCV bars.
         4. Upsert bars into the ``ohlcv_daily`` table.
         5. Compute technical indicators via :class:`IndicatorPipelineImpl`.
-        6. Evaluate the Minervini TrendTemplate rules.
-        7. Log pass/fail results for observability.
+        6. Log results for observability.
 
     Attributes:
         nse_client: The NSE market data client.
@@ -150,26 +153,17 @@ class MarketSyncService:
         results = [r for r in task_results if r is not None]
 
         # Step 7: Aggregate summary
-        passed = sum(1 for r in results if r.get("trend_template_passed", False))
-        failed = sum(1 for r in results if r.get("trend_template_passed") is False)
-
         summary: dict[str, Any] = {
             "reference_date": ref_date.isoformat(),
             "total_symbols": len(symbols),
             "processed": len(results),
-            "passed_trend_template": passed,
-            "failed_trend_template": failed,
             "insufficient_history": sum(
                 1 for r in results if r.get("insufficient_history", False)
             ),
             "errors": errors,
-            "symbols_passed": [r["symbol"] for r in results if r.get("trend_template_passed")],
         }
 
-        _logger.info(
-            "market_sync_completed",
-            **{k: v for k, v in summary.items() if k != "symbols_passed"},
-        )
+        _logger.info("market_sync_completed", **summary)
         return summary
 
     async def _sync_and_evaluate_one(
@@ -192,7 +186,6 @@ class MarketSyncService:
             "symbol": symbol,
             "bars_fetched": 0,
             "bars_upserted": 0,
-            "trend_template_passed": False,
             "insufficient_history": False,
             "indicators": {},
         }
@@ -255,120 +248,11 @@ class MarketSyncService:
             }
 
             # Check if we have sufficient history for trend template
-            if indicators.sma200 is not None:
-                result["insufficient_history"] = False
-                # Quick trend template evaluation based on available indicators
-                passed = await self._evaluate_trend_template(symbol, indicators)
-                result["trend_template_passed"] = passed
-            else:
-                result["insufficient_history"] = True
+            result["insufficient_history"] = indicators.sma200 is None
         else:
             _logger.warning("security_not_in_database", symbol=symbol)
 
         return result
-
-    async def _evaluate_trend_template(
-        self,
-        symbol: str,
-        indicators: IndicatorSet,
-    ) -> bool:
-        """Evaluate the Minervini trend template rules against computed indicators.
-
-        Checks the core 8 rules:
-            1. Close > SMA150 AND Close > SMA200
-            2. SMA150 > SMA200
-            3. SMA200 trending up (slope > 0)
-            4. SMA50 > SMA150 AND SMA50 > SMA200
-            5. Close > SMA50
-            6. Close >= 52w Low * 1.30
-            7. Close >= 52w High * 0.75
-            8. RS Rating >= 70 (uses stub rating as baseline)
-
-        Args:
-            symbol: The trading symbol (for logging).
-            indicators: The computed indicator set.
-
-        Returns:
-            ``True`` if all 8 trend template rules pass, ``False`` otherwise.
-        """
-        close = None
-        try:
-            series = await self._ohlcv_repo.get_series(
-                security_id=0, lookback_days=1, as_of=indicators.as_of
-            )
-            close = series.latest.close if series.latest else None
-        except Exception:
-            _logger.warning("could_not_get_latest_close", symbol=symbol)
-
-        if close is None:
-            _logger.warning("no_close_price_available", symbol=symbol)
-            return False
-
-        rules: dict[str, bool] = {}
-
-        # R1: Close > SMA150 AND Close > SMA200
-        r1 = all(
-            x is not None and close > x
-            for x in [indicators.sma150, indicators.sma200]
-        )
-        rules["price_above_long_mas"] = r1
-
-        # R2: SMA150 > SMA200
-        r2 = (
-            indicators.sma150 is not None
-            and indicators.sma200 is not None
-            and indicators.sma150 > indicators.sma200
-        )
-        rules["ma150_above_ma200"] = r2
-
-        # R3: SMA200 trending up
-        r3 = (
-            indicators.sma200_slope_pct is not None
-            and indicators.sma200_slope_pct > Decimal("0")
-        )
-        rules["ma200_trending_up"] = r3
-
-        # R4: SMA50 > SMA150 AND SMA50 > SMA200
-        r4 = all(
-            x is not None and indicators.sma50 is not None and indicators.sma50 > x
-            for x in [indicators.sma150, indicators.sma200]
-        )
-        rules["ma50_alignment"] = r4
-
-        # R5: Close > SMA50
-        r5 = indicators.sma50 is not None and close > indicators.sma50
-        rules["price_above_ma50"] = r5
-
-        # R6: Close >= 52w Low * 1.30
-        r6 = (
-            indicators.low_52w is not None
-            and close >= indicators.low_52w * Decimal("1.30")
-        )
-        rules["above_52w_low_30pct"] = r6
-
-        # R7: Close >= 52w High * 0.75
-        r7 = (
-            indicators.high_52w is not None
-            and close >= indicators.high_52w * Decimal("0.75")
-        )
-        rules["within_52w_high_25pct"] = r7
-
-        # R8: RS Rating >= 70 (using stub rating from indicator pipeline)
-        r8 = indicators.rs_rating is not None and indicators.rs_rating >= 70
-        rules["rs_rating_gte_70"] = r8
-
-        all_passed = all(rules.values())
-        passed_count = sum(rules.values())
-
-        _logger.info(
-            "trend_template_evaluation",
-            symbol=symbol,
-            passed=all_passed,
-            passed_count=passed_count,
-            rules=rules,
-        )
-
-        return all_passed
 
     async def _upsert_securities(self, symbols: list[str]) -> list[Security]:
         """Upsert a list of symbols into the securities table.

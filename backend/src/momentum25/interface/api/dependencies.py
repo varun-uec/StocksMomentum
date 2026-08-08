@@ -21,9 +21,13 @@ from momentum25.application.use_cases.runs import (
 )
 from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.application.use_cases.stocks import (
+    GetLiveStockAnalysis,
+    GetStockHistory,
+    RefreshGate,
+)
+from momentum25.application.use_cases.stocks import (
     GetStockExplanation as GetStockExplanationBySymbol,
 )
-from momentum25.application.use_cases.stocks import GetStockHistory
 from momentum25.application.use_cases.strategies import GetStrategy, ListStrategies
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl
 from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
@@ -31,6 +35,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
     SqlCorporateActionRepository,
@@ -40,7 +45,25 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlStrategyRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
+from momentum25.infrastructure.providers.nse_client import NSEMarketDataClient
+from momentum25.infrastructure.redis.client import get_redis_provider
 from momentum25.infrastructure.system_clock import SystemClock
+
+
+def get_live_refresh_gate() -> RefreshGate:
+    """Return a Redis-backed refresh gate, or the no-cooldown fallback.
+
+    Constructing :class:`RedisRefreshGate` never touches the network -- it
+    only wraps the lazily-connected client -- so this is safe to call even
+    when Redis is unreachable; failures surface per-call inside the gate,
+    not here.
+    """
+    from momentum25.infrastructure.redis.refresh_gate import RedisRefreshGate
+
+    return RedisRefreshGate(
+        get_redis_provider().client,
+        cooldown_seconds=get_settings().live_refresh_cooldown_seconds,
+    )
 
 # ── Repository providers ─────────────────────────────────────────────────
 
@@ -253,4 +276,40 @@ async def get_refresh_corporate_actions() -> AsyncIterator[RefreshCorporateActio
             security_repo=SqlSecurityRepository(session),
             corporate_action_repo=SqlCorporateActionRepository(session),
             ohlcv_repo=SqlOHLCVRepository(session),
+        )
+
+
+async def get_live_stock_analysis() -> AsyncIterator[GetLiveStockAnalysis]:
+    """Provide a GetLiveStockAnalysis use-case instance (Phase 1.1).
+
+    Assembles the same engines/indicator-pipeline slice as
+    :func:`get_execute_screening`, plus the NSE historical-bar client for
+    on-demand refresh and a Redis-backed refresh cooldown when Redis is
+    reachable (degrades to no cooldown on a Redis outage, see
+    ``application.use_cases.stocks.RefreshGate``).
+    """
+    register_builtin_engines()
+    async with _shared_session() as session:
+        security_repo = SqlSecurityRepository(session)
+        ohlcv_repo = SqlOHLCVRepository(session)
+        strategy_repo = SqlStrategyRepository(session)
+        indicator_pipeline = IndicatorPipelineImpl(session)
+
+        scoring_engine = ScoringEngineImpl()
+        ranking_engine = RankingEngineImpl()
+        strategy_engine = StrategyEngine(
+            engines=engine_registry,
+            scoring=scoring_engine,
+            ranking=ranking_engine,
+        )
+
+        yield GetLiveStockAnalysis(
+            securities=security_repo,
+            ohlcv_repo=ohlcv_repo,
+            strategies=strategy_repo,
+            indicator_pipeline=indicator_pipeline,
+            strategy_engine=strategy_engine,
+            explainability_builder=ExplainabilityBuilderImpl(),
+            nse_client=NSEMarketDataClient(),
+            refresh_gate=get_live_refresh_gate(),
         )

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
 from structlog import get_logger
@@ -22,11 +23,46 @@ from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.research.data_quality import is_stale_as_of
+from momentum25.domain.research.liquidity_floor import (
+    MIN_AVG_TURNOVER,
+    MIN_CLOSE,
+    MIN_PRIOR_SESSIONS,
+    LiquidityDecision,
+    evaluate_liquidity_eligibility,
+)
 from momentum25.domain.value_objects.results import SectorStats, StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import get_git_commit
+from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _logger = get_logger("screening_orchestrator")
+
+
+async def build_evaluation_context(
+    security: Security,
+    indicators: Any,
+    ohlcv_repo: Any,
+    as_of: date,
+    lookback_days: int = 275,
+) -> EvaluationContext:
+    """Build a complete :class:`EvaluationContext` for a single security.
+
+    Shared by the daily orchestrator and the on-demand single-symbol lookup
+    (Phase 1.1) so both evaluate through the identical assembly -- a context
+    built one way for batch runs and another for live lookups would make the
+    two paths silently disagree about the same rules.
+    """
+    if security.id is None:
+        raise ValueError(f"Security {security.symbol} has no id")
+
+    series = await ohlcv_repo.get_series(security.id, lookback_days=lookback_days, as_of=as_of)
+    return EvaluationContext(
+        security=security,
+        series=series,
+        indicators=indicators,
+        benchmark=OHLCVSeries(security_id=0, bars=()),
+        sector_stats=SectorStats(),
+    )
 
 
 class ScreeningOrchestrator:
@@ -37,7 +73,6 @@ class ScreeningOrchestrator:
         security_repo: Any,
         ohlcv_repo: Any,
         screening_run_repo: Any,
-        market_data_provider: Any,
         indicator_pipeline: Any,
         strategy_engine: Any,
         strategy: Strategy,
@@ -47,15 +82,23 @@ class ScreeningOrchestrator:
         self._security_repo = security_repo
         self._ohlcv_repo = ohlcv_repo
         self._screening_run_repo = screening_run_repo
-        self._market_data_provider = market_data_provider
         self._indicator_pipeline = indicator_pipeline
         self._strategy_engine = strategy_engine
         self._strategy = strategy
         self._strategy_repo = strategy_repo
         self._semaphore = asyncio.Semaphore(10)
 
-    async def run_daily_screening(self, trading_date: date) -> ScreeningRunSummary:
+    async def run_daily_screening(
+        self, trading_date: date, existing_run_id: int | None = None
+    ) -> ScreeningRunSummary:
         """Execute the full daily screening lifecycle for *trading_date*.
+
+        Args:
+            trading_date: The date to screen.
+            existing_run_id: If provided, updates this already-created run row
+                (status RUNNING -> COMPLETED/FAILED) instead of creating a new
+                one. Used by the background execution path (Phase 1.6), which
+                returns a run id to the client before the pipeline finishes.
 
         Returns a :class:`ScreeningRunSummary` with counts and timing.
         """
@@ -67,29 +110,51 @@ class ScreeningOrchestrator:
         symbols = [s.symbol for s in securities]
         summary.total_evaluated = len(symbols)
 
-        # 2. Data sync — ensure OHLCV bars for trading_date exist
+        # 2. Data-freshness precondition.
+        #
+        # This orchestrator screens whatever is already persisted; ingestion is the
+        # caller's responsibility (``ExecuteScreening`` upserts bars before
+        # delegating here). Until Phase 0.2 this block called
+        # ``fetch_eod(trading_date)`` and then *discarded* the result without ever
+        # persisting it — a no-op that read as a working sync and would have
+        # silently screened stale bars for any caller that trusted it. Rather than
+        # duplicate ingestion here (this class holds no symbol→security_id map),
+        # the precondition is now checked and disclosed explicitly. Per-security
+        # staleness is still enforced downstream by ``is_stale_as_of``.
         latest = await self._ohlcv_repo.latest_date()
         if latest is None or latest < trading_date:
-            _logger.info("data_sync_required", date=trading_date.isoformat())
-            raw_bars = await self._market_data_provider.fetch_eod(trading_date)
-            if raw_bars:
-                _logger.info("data_synced", bars=len(raw_bars))
+            _logger.warning(
+                "screening_on_stale_data",
+                requested_date=trading_date.isoformat(),
+                latest_persisted=latest.isoformat() if latest else None,
+                detail="no ingestion performed by the orchestrator; see ExecuteScreening",
+            )
 
         # 3. Ensure strategy is persisted so the run has a valid strategy_id
         strategy_id = await self._ensure_strategy_id()
 
-        # 4. Create the screening run
-        run = ScreeningRun(
-            strategy_id=strategy_id,
-            run_date=trading_date,
-            data_version=str(latest or trading_date),
-            config_hash=self._strategy.config_hash,
-            trigger=RunTrigger.MANUAL,
-            status=RunStatus.RUNNING,
-            started_at=datetime.now(UTC),
-        )
-        run_id = await self._screening_run_repo.create(run)
-        run.id = run_id
+        # 4. Create (or adopt an existing PENDING) screening run
+        if existing_run_id is not None:
+            run = await self._screening_run_repo.get(existing_run_id)
+            if run is None:
+                raise ValueError(f"existing_run_id {existing_run_id} not found")
+            run.status = RunStatus.RUNNING
+            run.started_at = datetime.now(UTC)
+            run.data_version = str(latest or trading_date)
+            await self._screening_run_repo.update(run)
+            run_id = existing_run_id
+        else:
+            run = ScreeningRun(
+                strategy_id=strategy_id,
+                run_date=trading_date,
+                data_version=str(latest or trading_date),
+                config_hash=self._strategy.config_hash,
+                trigger=RunTrigger.MANUAL,
+                status=RunStatus.RUNNING,
+                started_at=datetime.now(UTC),
+            )
+            run_id = await self._screening_run_repo.create(run)
+            run.id = run_id
 
         try:
             # 5. Concurrent processing with throttled semaphore
@@ -111,6 +176,11 @@ class ScreeningOrchestrator:
                 "total_skipped": summary.total_skipped_insufficient_data,
                 "total_failed": summary.total_failed,
                 "git_commit": get_git_commit(),
+                "indicator_version": INDICATOR_VERSION,
+                "universe_source": "declared_liquidity_floor",
+                "total_skipped_ineligible_universe": (
+                    summary.total_skipped_ineligible_universe
+                ),
             }
             await self._screening_run_repo.update(run)
 
@@ -212,6 +282,25 @@ class ScreeningOrchestrator:
                         )
                         return
 
+                    # Universe admission: the strategy's declared liquidity floor
+                    # (``config.universe``, ADR-005). Phase 0.1 — before this, the
+                    # declared floor was never enforced on the live path at all and
+                    # the universe was instead an alphabetical truncation applied
+                    # during ingestion. Evaluated through the same
+                    # ``evaluate_liquidity_eligibility`` the research/historical
+                    # path uses, so live and backtest admit on identical logic.
+                    decision = self._evaluate_universe_admission(ctx.series, trading_date)
+                    if not decision.eligible:
+                        summary.total_skipped_ineligible_universe += 1
+                        memberships.append(
+                            UniverseMembership(
+                                security_id=security.id,
+                                eligible=False,
+                                reason=decision.reason,
+                            )
+                        )
+                        return
+
                     # Inject universe-relative RS rating
                     rs_rating = rs_ratings.get(symbol)
                     if rs_rating is not None:
@@ -243,6 +332,36 @@ class ScreeningOrchestrator:
         return scores, memberships
 
 
+    def _evaluate_universe_admission(
+        self, series: OHLCVSeries, trading_date: date
+    ) -> LiquidityDecision:
+        """Apply the strategy's declared liquidity floor to one security's series.
+
+        Thresholds come from ``strategy.config.universe`` (ADR-005), defaulting to
+        the research-fixed constants when a key is absent so behaviour is
+        unchanged for any config that omits them. ``series`` is only ever EQ here:
+        the bhavcopy provider filters ``series='EQ'`` at ingestion, so no non-EQ
+        bar can reach this point.
+        """
+        universe_cfg = self._strategy.config.universe
+        bars = series.bars
+        if not bars or bars[-1].date != trading_date:
+            return LiquidityDecision(False, "no_bar_on_trading_date", None)
+
+        return evaluate_liquidity_eligibility(
+            close=bars[-1].close,
+            series="EQ",
+            prior_session_count=len(bars) - 1,
+            trailing_turnovers=[b.turnover_value for b in bars],
+            min_close=Decimal(str(universe_cfg.get("min_price_inr", MIN_CLOSE))),
+            min_avg_turnover=Decimal(
+                str(universe_cfg.get("min_avg_turnover_inr", MIN_AVG_TURNOVER))
+            ),
+            min_prior_sessions=int(
+                universe_cfg.get("min_history_days", MIN_PRIOR_SESSIONS)
+            ),
+        )
+
     async def _build_context(
         self,
         security: Security,
@@ -250,19 +369,7 @@ class ScreeningOrchestrator:
         trading_date: date,
     ) -> EvaluationContext:
         """Build a complete evaluation context for a single security."""
-        if security.id is None:
-            raise ValueError(f"Security {security.symbol} has no id")
-
-        series = await self._ohlcv_repo.get_series(
-            security.id, lookback_days=275, as_of=trading_date
-        )
-        return EvaluationContext(
-            security=security,
-            series=series,
-            indicators=indicators,
-            benchmark=OHLCVSeries(security_id=0, bars=()),
-            sector_stats=SectorStats(),
-        )
+        return await build_evaluation_context(security, indicators, self._ohlcv_repo, trading_date)
 
     async def _commit(self) -> None:
         """Commit the current unit of work if the repository exposes a session."""

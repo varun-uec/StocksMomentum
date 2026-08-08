@@ -139,9 +139,26 @@ class RunComparisonReport:
     top_gainers: tuple[RankingComparison, ...] = field(default_factory=tuple)  # biggest rank improvement
     top_losers: tuple[RankingComparison, ...] = field(default_factory=tuple)   # biggest rank regression
 
+    # Indicator-formula revision of each run (``ScreeningRun.stats``). Not covered
+    # by ``config_hash``, which hashes the strategy but not the formulas its rules
+    # consume, so two runs of the same strategy can still be computed with
+    # different RSI/ATR definitions. ``None`` for runs recorded before the stamp
+    # existed -- which is itself informative: those predate the Phase 0.3/0.4
+    # correction and used the rolling-mean formulas.
+    indicator_version_a: int | None = None
+    indicator_version_b: int | None = None
+
     def is_identical(self) -> bool:
         """Return True if no ranking or score differences were detected."""
         return self.ranking_changed == 0 and self.score_changed == 0
+
+    def indicator_versions_differ(self) -> bool:
+        """Return True when the two runs were computed with different formulas.
+
+        A True here means score and rank deltas in this report are NOT solely
+        attributable to whatever change was under investigation.
+        """
+        return self.indicator_version_a != self.indicator_version_b
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

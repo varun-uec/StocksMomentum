@@ -135,12 +135,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._max_requests = max_requests
         self._window_seconds = window_seconds
         self._requests: dict[str, list[float]] = {}
+        self._last_sweep = time.time()
 
     def _cleanup(self, client_ip: str, now: float) -> None:
         """Remove timestamps outside the current window."""
         cutoff = now - self._window_seconds
         timestamps = self._requests.get(client_ip, [])
         self._requests[client_ip] = [t for t in timestamps if t > cutoff]
+
+    def _sweep_idle_clients(self, now: float) -> None:
+        """Evict IPs with no requests in the current window.
+
+        ``_cleanup`` only prunes the *current* request's IP, so a distinct IP
+        that never comes back would otherwise stay in ``_requests`` forever --
+        an unbounded-growth memory leak under scan/probe traffic. Runs at most
+        once per window.
+        """
+        if now - self._last_sweep < self._window_seconds:
+            return
+        self._last_sweep = now
+        cutoff = now - self._window_seconds
+        stale = [ip for ip, ts in self._requests.items() if not ts or max(ts) <= cutoff]
+        for ip in stale:
+            del self._requests[ip]
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -151,7 +168,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
-        now = time.perf_counter()
+        # Wall-clock, not perf_counter: this window is compared against a
+        # fixed number of seconds and (via _sweep_idle_clients) against
+        # itself across dispatch calls, so it must mean the same thing on
+        # every call -- perf_counter's origin is arbitrary per-process and
+        # is not meant for that kind of persisted comparison.
+        now = time.time()
+        self._sweep_idle_clients(now)
         self._cleanup(client_ip, now)
 
         if len(self._requests.get(client_ip, [])) >= self._max_requests:

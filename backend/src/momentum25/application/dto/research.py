@@ -92,6 +92,18 @@ class RunComparisonResponse(BaseModel):
     top_losers: list[RankingComparisonDTO]
     is_identical: bool
 
+    # ── Comparability disclosure (Phase 0.3/0.4) ────────────────────────────
+    # Indicator formulas are not covered by config_hash, so two runs can share a
+    # strategy yet be computed with different RSI/ATR definitions. Correcting
+    # those formulas shifts RSI by a mean of 6.7 points and ATR by ~3.8%, which
+    # would otherwise be silently attributed to whatever change was under
+    # investigation. These fields disclose the mismatch instead of blocking the
+    # comparison -- comparing across versions is legitimate, doing it unknowingly
+    # is not.
+    indicator_version_a: int | None = None
+    indicator_version_b: int | None = None
+    indicator_versions_differ: bool = False
+
 
 class DeterminismVerificationResponse(BaseModel):
     """Result of a determinism verification test."""

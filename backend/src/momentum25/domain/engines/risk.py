@@ -19,6 +19,7 @@ from typing import Any
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.strategy import EngineConfig, RuleConfig
+from momentum25.domain.research.swing_targets import compute_swing_target_plan
 from momentum25.domain.value_objects.results import EngineResult, RuleResult
 
 
@@ -45,7 +46,9 @@ class RiskEngine:
         evaluators: dict[str, Any] = {
             "risk_extension": lambda rc: self._eval_risk_extension(series, ind.sma50, rc),
             "risk_atr": lambda rc: self._eval_risk_atr(ind.adr_pct, rc),
-            "risk_rr": lambda rc: self._eval_risk_rr(series, ind.atr14, rc),
+            "risk_rr": lambda rc: self._eval_risk_rr(
+                series, ind.atr14, ind.swing_resistance, rc
+            ),
         }
 
         rule_results: list[RuleResult] = [
@@ -210,8 +213,24 @@ class RiskEngine:
         )
 
     def _eval_risk_rr(
-        self, series: OHLCVSeries, atr14: Decimal | None, rc: RuleConfig | None
+        self,
+        series: OHLCVSeries,
+        atr14: Decimal | None,
+        swing_resistance: Decimal | None,
+        rc: RuleConfig | None,
     ) -> RuleResult:
+        """Risk-reward ratio via :func:`compute_swing_target_plan` (Phase 3.1/3.2).
+
+        Previously reward was ``max(high, last 20 bars) - close``, which always
+        includes the signal bar itself: a stock making a new 20-day high on the
+        signal date -- exactly the breakout population this system selects --
+        had reward collapse to near zero, failing the rule almost by
+        construction. Reward is now the distance to the nearest *confirmed*
+        swing-high pivot above price (Phase 2.3), falling back to an
+        ATR-multiple projection when no such pivot exists (the common case for
+        a genuine breakout at a new high) -- see ``domain.research.swing_targets``
+        for the full rationale and default multiples.
+        """
         rule_id = "risk_rr"
         weight = self._weight(rc, Decimal("1.0"))
         min_rr_ratio = self._param(rc, "min_ratio", Decimal("2.0"))
@@ -230,33 +249,8 @@ class RiskEngine:
                 explanation="Insufficient data: latest bar is None.",
             )
 
-        # Estimate risk-reward using ATR as proxy for stop distance
-        # Reward: distance from close to recent high (20d)
-        # Risk: ATR * 2 (typical stop distance)
-        bars = series.bars
-        if not bars or len(bars) < 20:
-            return RuleResult(
-                rule_id=rule_id,
-                engine_id=self.engine_id,
-                passed=False,
-                raw_value=None,
-                threshold=min_rr_ratio,
-                operator=">=",
-                weight=weight,
-                contribution=Decimal("0"),
-                explanation="Insufficient data for risk-reward calculation.",
-            )
-
-        recent_high = max(b.high for b in bars[-20:])
-        reward = recent_high - latest_bar.close
-
-        # Use ATR if available, otherwise use 2% of close as proxy
-        if atr14 is not None and atr14 > 0:
-            risk = atr14 * Decimal("2")
-        else:
-            risk = latest_bar.close * Decimal("0.02")  # 2% proxy
-
-        if risk <= 0:
+        plan = compute_swing_target_plan(latest_bar.close, atr14, swing_resistance)
+        if plan is None:
             return RuleResult(
                 rule_id=rule_id,
                 engine_id=self.engine_id,
@@ -269,7 +263,7 @@ class RiskEngine:
                 explanation="Risk estimate is zero or negative.",
             )
 
-        rr_ratio = reward / risk
+        rr_ratio = plan.rr_ratio
         passed = rr_ratio >= min_rr_ratio
         # Normalized contribution: clamp(rr / (min_rr * 2), 0, 1)
         normalized = (
@@ -289,6 +283,7 @@ class RiskEngine:
             explanation=(
                 f"Risk-reward ratio {self._s(rr_ratio)}:1 "
                 f"{'>=' if passed else '<'} min {self._s(min_rr_ratio)}:1 "
-                f"({'Favorable' if passed else 'Unfavorable'})."
+                f"(target via {plan.target_basis}; "
+                f"{'Favorable' if passed else 'Unfavorable'})."
             ),
         )

@@ -21,6 +21,9 @@ class ScreeningRunSummary:
     duration_seconds: float = 0.0
     errors: list[str] = field(default_factory=list)
     total_skipped_stale_data: int = 0
+    # Securities excluded by the strategy's declared liquidity floor
+    # (``config.universe``) rather than by data problems (Phase 0.1).
+    total_skipped_ineligible_universe: int = 0
 
 
 class RunDTO(BaseModel):
@@ -40,7 +43,22 @@ class RunDTO(BaseModel):
 
 
 class TriggerRefreshRequest(BaseModel):
-    """Request body for ``POST /runs``."""
+    """Request body for ``POST /runs`` and ``POST /runs/execute``."""
 
     strategy: str = Field(..., description="Strategy name to run.")
-    force: bool = Field(default=False, description="Re-run even if an identical run exists.")
+    force: bool = Field(
+        default=False,
+        description=(
+            "Re-fetch the full historical lookback window instead of only "
+            "sessions since the last ingest (Phase 1.6 incremental fetch)."
+        ),
+    )
+    background: bool = Field(
+        default=True,
+        description=(
+            "POST /runs/execute only. If true (default), returns 202 with a "
+            "PENDING run immediately and executes in the background -- poll "
+            "GET /runs/{id}. If false, blocks and returns the COMPLETED run "
+            "(201), matching the pre-Phase-1.6 behaviour used by tests/CLI."
+        ),
+    )

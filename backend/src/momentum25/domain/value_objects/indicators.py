@@ -7,7 +7,7 @@ Values are quantized to ``Decimal`` at the persistence boundary (ADR-009).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
@@ -35,6 +35,24 @@ class IndicatorSet:
     rs_line_slope: Decimal | None = None
     avg_volume50: Decimal | None = None
     rel_volume: Decimal | None = None
+
+    # ── Trend strength (Phase 2.1) ───────────────────────────────────────
+    adx14: Decimal | None = None
+    plus_di14: Decimal | None = None
+    minus_di14: Decimal | None = None
+
+    # ── MACD(12,26,9) (Phase 2.2) ────────────────────────────────────────
+    macd_line: Decimal | None = None
+    macd_signal: Decimal | None = None
+    macd_histogram: Decimal | None = None
+
+    # ── Swing pivot support/resistance (Phase 2.3) ───────────────────────
+    # Nearest confirmed N-bar fractal swing high/low around the latest close
+    # -- see indicator_pipeline._swing_levels. Exposed as data (not just used
+    # internally by the breakout engine's fixed 20-day range) as a
+    # prerequisite for Phase 3 target/stop-loss logic.
+    swing_resistance: Decimal | None = None
+    swing_support: Decimal | None = None
 
     # ── Multi-timeframe RS fields ────────────────────────────────────────
     rs_raw_1m: Decimal | None = None  # 1-month (22d) raw return

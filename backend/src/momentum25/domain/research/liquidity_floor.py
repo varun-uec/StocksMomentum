@@ -91,6 +91,9 @@ def evaluate_liquidity_eligibility(
     series: str,
     prior_session_count: int,
     trailing_turnovers: Sequence[Decimal | None],
+    min_close: Decimal = MIN_CLOSE,
+    min_avg_turnover: Decimal = MIN_AVG_TURNOVER,
+    min_prior_sessions: int = MIN_PRIOR_SESSIONS,
 ) -> LiquidityDecision:
     """Evaluate the point-in-time liquidity-floor rule for one security/date.
 
@@ -103,6 +106,21 @@ def evaluate_liquidity_eligibility(
             trailing-turnover window).
         trailing_turnovers: The trailing sessions' real ``turnover_value`` up to
             and including ``as_of`` (see :func:`compute_avg_tottrdval50`).
+        min_close: Minimum admissible close. Defaults to the research-fixed
+            :data:`MIN_CLOSE`.
+        min_avg_turnover: Minimum admissible trailing average turnover. Defaults
+            to the research-fixed :data:`MIN_AVG_TURNOVER`.
+        min_prior_sessions: Minimum prior sessions of history. Defaults to the
+            research-fixed :data:`MIN_PRIOR_SESSIONS`.
+
+    The three thresholds are parameters *with the research constants as
+    defaults* (Phase 0.1) so the live daily screening path can supply the values
+    its strategy JSON already declares (``config.universe``, ADR-005
+    strategy-as-config) through this one implementation rather than growing a
+    second, divergent copy of the rule. Every research caller omits them and is
+    therefore bit-identical to the pre-Phase-0 behaviour; the shipped strategy
+    configs declare exactly these same numbers today, so the live path is
+    likewise unchanged in value — only in provenance.
 
     Returns:
         A :class:`LiquidityDecision`. Every gate is evaluated so the eligibility
@@ -113,12 +131,12 @@ def evaluate_liquidity_eligibility(
 
     if series.strip().upper() != EQ_SERIES:
         return LiquidityDecision(False, REASON_SERIES_NOT_EQ, avg)
-    if prior_session_count < MIN_PRIOR_SESSIONS:
+    if prior_session_count < min_prior_sessions:
         return LiquidityDecision(False, REASON_INSUFFICIENT_HISTORY, avg)
     if avg is None:
         return LiquidityDecision(False, REASON_INSUFFICIENT_TURNOVER_DATA, None)
-    if close < MIN_CLOSE:
+    if close < min_close:
         return LiquidityDecision(False, REASON_CLOSE_BELOW_FLOOR, avg)
-    if avg < MIN_AVG_TURNOVER:
+    if avg < min_avg_turnover:
         return LiquidityDecision(False, REASON_BELOW_LIQUIDITY_FLOOR, avg)
     return LiquidityDecision(True, REASON_ELIGIBLE, avg)

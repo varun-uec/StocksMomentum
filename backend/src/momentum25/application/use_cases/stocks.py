@@ -2,17 +2,47 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field, replace
+from datetime import date
 from typing import Any
 
+from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
+from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
+from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
 from momentum25.domain.ports.repositories import (
+    OHLCVRepository,
     ScreeningRunRepository,
     SecurityRepository,
     StrategyRepository,
 )
+from momentum25.domain.research.stop_loss import StopLossSuggestion, suggest_stop_loss
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
+from momentum25.domain.value_objects.indicators import IndicatorSet
+from momentum25.infrastructure.logging.setup import get_logger
 
 _DEFAULT_STRATEGY = "minervini_trend_template"
+_RS_INDETERMINATE_RULE_ID = "tt_rs_rating_min"
+
+_logger = get_logger("live_stock_analysis")
+
+
+def _indicator_snapshot(indicators: IndicatorSet) -> dict[str, Any]:
+    """Render an :class:`IndicatorSet` as a JSON-friendly dict (Decimals as strings).
+
+    Exposes every computed indicator -- including ADX/+DI/-DI, MACD, and swing
+    pivot support/resistance (Phase 2.1/2.2/2.3) -- as data on the live lookup
+    response, rather than only as internal inputs consumed by rule evaluation.
+    """
+    from dataclasses import fields as _dataclass_fields
+
+    snapshot: dict[str, Any] = {}
+    for f in _dataclass_fields(indicators):
+        if f.name == "as_of":
+            continue
+        value = getattr(indicators, f.name)
+        snapshot[f.name] = str(value) if value is not None else None
+    return snapshot
 
 
 class GetStockExplanation:
@@ -133,3 +163,228 @@ class GetStockHistory:
                     break
 
         return {"symbol": symbol, "score_history": points}
+
+
+class RefreshGate:
+    """No-op refresh gate: always allows a refresh, records nothing.
+
+    A live lookup calling out to NSE on every request would make naive
+    per-request scraping trivially detectable and blockable (Phase 1.3).
+    The default here has no cooldown; ``interface/api/dependencies.py``
+    substitutes a Redis-backed gate when Redis is available, and this
+    class is that fallback -- so a Redis outage degrades to "no cooldown",
+    never a 500.
+    """
+
+    async def should_refresh(self, symbol: str) -> bool:
+        """Return whether a refresh is currently allowed for *symbol*."""
+        return True
+
+    async def mark_refreshed(self, symbol: str) -> None:
+        """Record that *symbol* was just refreshed."""
+
+
+@dataclass(frozen=True, slots=True)
+class LiveStockAnalysis:
+    """Result of an on-demand, freshly-evaluated single-symbol lookup."""
+
+    symbol: str
+    verdict: str  # "PASSED" | "FAILED" | "INDETERMINATE" | "INSUFFICIENT_DATA"
+    data_as_of: date
+    refreshed: bool
+    bars_fetched: int
+    data_sufficient: bool
+    explanation: StockExplanation | None = None
+    indeterminate_rules: tuple[str, ...] = field(default_factory=tuple)
+    rs_basis: dict[str, Any] = field(default_factory=dict)
+    indicators: dict[str, Any] = field(default_factory=dict)
+    suggested_stop: StopLossSuggestion | None = None
+
+
+class GetLiveStockAnalysis:
+    """Evaluate one symbol on demand through the real strategy engine.
+
+    Reuses the same :func:`build_evaluation_context` and :class:`StrategyEngine`
+    as the daily orchestrator (Phase 1.1) rather than a second hand-rolled
+    evaluation -- the bug that motivated deleting
+    ``MarketSyncService._evaluate_trend_template``.
+    """
+
+    def __init__(
+        self,
+        securities: SecurityRepository,
+        ohlcv_repo: OHLCVRepository,
+        strategies: StrategyRepository,
+        indicator_pipeline: Any,
+        strategy_engine: Any,
+        explainability_builder: ExplainabilityBuilderImpl,
+        nse_client: Any,
+        refresh_gate: RefreshGate | None = None,
+    ) -> None:
+        """Wire the use case with its collaborators."""
+        self._securities = securities
+        self._ohlcv_repo = ohlcv_repo
+        self._strategies = strategies
+        self._indicator_pipeline = indicator_pipeline
+        self._strategy_engine = strategy_engine
+        self._explainability_builder = explainability_builder
+        self._nse_client = nse_client
+        self._refresh_gate = refresh_gate or RefreshGate()
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        refresh: bool = False,
+        as_of: date | None = None,
+    ) -> LiveStockAnalysis:
+        """Fetch (if requested), compute, and evaluate one symbol on demand."""
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+
+        strategy = await self._strategies.get_active(strategy_name)
+        if strategy is None or strategy.id is None:
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
+
+        reference_date = as_of or date.today()
+        refreshed = False
+        bars_fetched = 0
+
+        if refresh and await self._refresh_gate.should_refresh(symbol):
+            bars_fetched = await self._refresh_bars(symbol, security.id, reference_date)
+            await self._refresh_gate.mark_refreshed(symbol)
+            refreshed = bars_fetched > 0
+
+        indicators = await self._indicator_pipeline.compute(
+            symbol, reference_date, strategy.config.indicators
+        )
+        if indicators.sma200 is None:
+            _logger.info("live_lookup_insufficient_data", symbol=symbol)
+            return LiveStockAnalysis(
+                symbol=symbol,
+                verdict="INSUFFICIENT_DATA",
+                data_as_of=reference_date,
+                refreshed=refreshed,
+                bars_fetched=bars_fetched,
+                data_sufficient=False,
+                indicators=_indicator_snapshot(indicators),
+            )
+
+        rs_rating, rs_basis = await self._resolve_rs_rating(
+            symbol, strategy.config.indicators, reference_date
+        )
+        if rs_rating is not None:
+            object.__setattr__(indicators, "rs_rating", rs_rating)
+
+        ctx = await build_evaluation_context(security, indicators, self._ohlcv_repo, reference_date)
+        score = self._strategy_engine.score_security(ctx, strategy)
+
+        suggested_stop = suggest_stop_loss(
+            entry=ctx.series.bars[-1].close,
+            atr14=indicators.atr14,
+            swing_support=indicators.swing_support,
+        )
+
+        all_rules = [rr for er in score.engine_results for rr in er.rule_results]
+        explanation = self._explainability_builder.build_explanation(score, all_rules)
+
+        indeterminate_rules = tuple(
+            rr.rule_id
+            for rr in all_rules
+            if rr.rule_id == _RS_INDETERMINATE_RULE_ID and rr.raw_value is None
+        )
+
+        if explanation.overall_passed:
+            verdict = "PASSED"
+        elif indeterminate_rules and set(explanation.hard_filter_failures) <= set(
+            indeterminate_rules
+        ):
+            verdict = "INDETERMINATE"
+        else:
+            verdict = "FAILED"
+
+        # RuleResult stays binary (Phase 1.2 decision -- see module docstring
+        # on GetLiveStockAnalysis): the domain engine has no concept of
+        # "insufficient data" distinct from "failed", so an indeterminate rule
+        # is reported as `passed=False` internally. The application boundary
+        # is where "we couldn't measure this" is distinguished from "this
+        # failed" -- surfaced via `verdict`/`indeterminate_rules`, and by
+        # excluding indeterminate rules from the hard-filter-failure list so
+        # a client doesn't render "RS rating failed" for a rating that was
+        # never computed.
+        visible_hard_failures = tuple(
+            r for r in explanation.hard_filter_failures if r not in indeterminate_rules
+        )
+        explanation = replace(
+            explanation, symbol=symbol, hard_filter_failures=visible_hard_failures
+        )
+
+        return LiveStockAnalysis(
+            symbol=symbol,
+            verdict=verdict,
+            data_as_of=reference_date,
+            refreshed=refreshed,
+            bars_fetched=bars_fetched,
+            data_sufficient=True,
+            explanation=explanation,
+            indeterminate_rules=indeterminate_rules,
+            rs_basis=rs_basis,
+            indicators=_indicator_snapshot(indicators),
+            suggested_stop=suggested_stop,
+        )
+
+    async def _refresh_bars(self, symbol: str, security_id: int, reference_date: date) -> int:
+        """Fetch fresh bars from NSE and persist them. Returns bars upserted."""
+        from datetime import timedelta
+
+        start_date = reference_date - timedelta(days=500)
+        try:
+            raw_bars = await self._nse_client.fetch_historical_bars(
+                symbol=symbol, start_date=start_date, end_date=reference_date
+            )
+        except Exception as exc:
+            _logger.warning("live_refresh_fetch_failed", symbol=symbol, error=str(exc))
+            return 0
+
+        if not raw_bars:
+            return 0
+
+        bars = [
+            OHLCVBar(
+                date=b.date,
+                open=b.open,
+                high=b.high,
+                low=b.low,
+                close=b.close,
+                volume=b.volume,
+                prev_close=b.prev_close,
+                turnover_value=b.turnover_value,
+            )
+            for b in raw_bars
+        ]
+        upserted = await self._ohlcv_repo.upsert_bars(security_id, bars)
+        commit = getattr(self._ohlcv_repo, "_session", None)
+        if commit is not None:
+            await commit.commit()
+        return upserted
+
+    async def _resolve_rs_rating(
+        self, symbol: str, indicators_cfg: dict[str, Any], as_of: date
+    ) -> tuple[int | None, dict[str, Any]]:
+        """Rank *symbol* against the persisted active universe as of *as_of*.
+
+        A single symbol has no universe to percentile against on its own
+        (Phase 1.2), so RS is computed the same way the daily orchestrator
+        computes it: against every other active, persisted security.
+        """
+        universe = await self._securities.list_active()
+        ratings = await compute_universe_rs_ratings(
+            universe, self._ohlcv_repo, as_of, indicators_cfg.get("rs_return_weights")
+        )
+        rs_basis = {
+            "universe_size": len(ratings),
+            "as_of": as_of.isoformat(),
+            "symbol_in_universe": symbol in ratings,
+        }
+        return ratings.get(symbol), rs_basis
