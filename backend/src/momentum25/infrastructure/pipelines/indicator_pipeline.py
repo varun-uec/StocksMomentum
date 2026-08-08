@@ -18,7 +18,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from momentum25.domain.value_objects.indicators import IndicatorSet
+from momentum25.domain.value_objects.indicators import IndicatorSeriesSet, IndicatorSet
 from momentum25.infrastructure.logging.setup import get_logger
 from momentum25.infrastructure.persistence.models import (
     LegacyOHLCVDailyModel,
@@ -58,6 +58,11 @@ _QUANT = Decimal("0.0001")
 # ROC): those are purely additive display fields. No pre-existing indicator value
 # changes, and no rule consumes them, so runs stamped 2 before and after remain
 # byte-for-byte comparable. Bump only when an existing value moves.
+#
+# NOT bumped for Phase 9 (per-bar series exposure): ``_rsi_series``/``_atr_series``/
+# ``_adx_series``/``_macd_series`` re-express the exact same formulas element-wise
+# (the scalar functions are now reductions of the series), so every scalar value is
+# bit-for-bit unchanged and runs stamped 2 before and after remain comparable.
 INDICATOR_VERSION = 2
 
 
@@ -70,6 +75,19 @@ def _quantize(value: float | None) -> Decimal | None:
     if value is None:
         return None
     return Decimal(f"{value:.4f}").quantize(_QUANT)
+
+
+def _series_tuple(series: pd.Series) -> tuple[Decimal | None, ...]:
+    """Quantize a per-bar indicator series for the egress boundary (ADR-009).
+
+    Runs every element through the same :func:`_quantize` as the scalar snapshot
+    path (``NaN`` -> ``None``), so the series' last element is bit-for-bit the
+    Decimal the snapshot's latest value would produce.
+    """
+    out: list[Decimal | None] = []
+    for value in series.to_numpy():
+        out.append(_quantize(float(value)) if not pd.isna(value) else None)
+    return tuple(out)
 
 
 def _sma(series: pd.Series, window: int) -> float | None:
@@ -117,6 +135,38 @@ def _wilder_smooth(values: pd.Series, window: int) -> pd.Series:
     return seeded.ewm(alpha=1.0 / window, adjust=False, ignore_na=False).mean()
 
 
+def _rsi_series(close: pd.Series, window: int = 14) -> pd.Series:
+    """Wilder's RSI per bar, aligned to ``close``'s index (NaN where undefined).
+
+    The first bar has no price change; values begin at the ``window``-th change
+    (RSI needs ``window`` deltas for its Wilder seed), so the leading entries are
+    ``NaN``. Every defined element uses the identical formula of the scalar
+    :func:`_rsi`, element-wise — ``RSI = 100 - 100 / (1 + RS)`` with
+    ``RS = avg_gain / avg_loss`` over Wilder-smoothed average gains/losses, and
+    the branch cases (``avg_loss == 0`` -> 100, degenerate flat -> 50,
+    ``avg_gain == 0`` -> 0) applied per element with the same float semantics.
+    """
+    deltas = close.astype("float64").diff().dropna()
+    if len(deltas) < window:
+        return pd.Series([float("nan")] * len(close), index=close.index, dtype="float64")
+    gains = deltas.clip(lower=0.0)
+    losses = (-deltas).clip(lower=0.0)
+    avg_gain = _wilder_smooth(gains, window)
+    avg_loss = _wilder_smooth(losses, window)
+    defined = avg_gain.notna() & avg_loss.notna()
+    with np.errstate(invalid="ignore", divide="ignore"):
+        rs = avg_gain / avg_loss
+        rsi = 100.0 - 100.0 / (1.0 + rs)
+    flat_case = defined & (avg_loss == 0) & (avg_gain == 0)
+    zero_gain = defined & (avg_gain == 0) & (avg_loss != 0)
+    rsi = rsi.mask(flat_case, 50.0)
+    rsi = rsi.mask(zero_gain, 0.0)
+    rsi = rsi.mask(~defined, float("nan"))
+    result = pd.Series([float("nan")] * len(close), index=close.index, dtype="float64")
+    result.iloc[1:] = rsi.to_numpy()
+    return result
+
+
 def _rsi(series: pd.Series, window: int = 14) -> float | None:
     """Wilder's RSI over ``window`` periods.
 
@@ -124,26 +174,12 @@ def _rsi(series: pd.Series, window: int = 14) -> float | None:
     averages use Wilder's smoothing (:func:`_wilder_smooth`), seeded from the first
     ``window`` price changes. Covered by hand-computed golden tests in
     ``tests/unit/test_indicator_formulas.py``.
+
+    Reduces the per-bar :func:`_rsi_series` to its final element, so the scalar
+    and the chart series can never diverge (Phase 9).
     """
-    if len(series) < window + 1:
-        return None
-    deltas = series.astype("float64").diff().dropna()
-    if len(deltas) < window:
-        return None
-    gains = deltas.clip(lower=0.0)
-    losses = (-deltas).clip(lower=0.0)
-    avg_gain = _wilder_smooth(gains, window).iloc[-1]
-    avg_loss = _wilder_smooth(losses, window).iloc[-1]
-    if pd.isna(avg_gain) or pd.isna(avg_loss):
-        return None
-    if avg_loss == 0:
-        # No average downside over the smoothed history: RSI is 100 by definition
-        # (and 50 in the degenerate flat case where there is no movement at all).
-        return 100.0 if avg_gain > 0 else 50.0
-    if avg_gain == 0:
-        return 0.0
-    rs = float(avg_gain) / float(avg_loss)
-    return float(100.0 - 100.0 / (1.0 + rs))
+    value = _rsi_series(series, window).iloc[-1]
+    return float(value) if not pd.isna(value) else None
 
 
 def _true_range(df: pd.DataFrame) -> np.ndarray[Any, np.dtype[np.float64]]:
@@ -164,6 +200,20 @@ def _true_range(df: pd.DataFrame) -> np.ndarray[Any, np.dtype[np.float64]]:
     return result
 
 
+def _atr_series(df: pd.DataFrame, window: int = 14) -> pd.Series:
+    """Wilder's ATR per bar, aligned to ``df``'s index (Phase 9).
+
+    The first bar has no previous close so its true range is undefined and stays
+    ``NaN``; values begin at the ``window``-th true range (the Wilder seed). Every
+    defined element uses the identical formula of the scalar :func:`_atr`.
+    """
+    tr = _true_range(df)
+    smoothed = _wilder_smooth(pd.Series(tr), window)
+    result = pd.Series([float("nan")] * len(df), index=df.index, dtype="float64")
+    result.iloc[1:] = smoothed.to_numpy()
+    return result
+
+
 def _atr(df: pd.DataFrame, window: int = 14) -> float | None:
     """Wilder's Average True Range over ``window`` periods.
 
@@ -172,12 +222,69 @@ def _atr(df: pd.DataFrame, window: int = 14) -> float | None:
     approximated by ``high - low`` — that approximation biases the seed on the very
     window it seeds. Covered by hand-computed golden tests in
     ``tests/unit/test_indicator_formulas.py``.
+
+    Reduces the per-bar :func:`_atr_series` to its final element so the scalar and
+    the chart series can never diverge (Phase 9).
     """
-    if len(df) < window + 1:
-        return None
-    tr = _true_range(df)
-    val = _wilder_smooth(pd.Series(tr), window).iloc[-1]
-    return float(val) if not pd.isna(val) else None
+    value = _atr_series(df, window).iloc[-1]
+    return float(value) if not pd.isna(value) else None
+
+
+def _adx_series(
+    df: pd.DataFrame, window: int = 14
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """(+DI, -DI, ADX) per bar, all aligned to ``df``'s index (Phase 9).
+
+    The first bar has no previous bar to diff against, the first ``window - 1``
+    rows of each Wilder-smoothed quantity are ``NaN``, and ADX needs a second
+    smoothing pass over DX so it additionally warms up ``window`` bars later. Every
+    defined element uses the identical formulas of the scalar :func:`_adx`.
+
+    Returns:
+        ``(plus_di, minus_di, adx)`` — the +DI and -DI series (one smoothing pass
+        each) and the ADX series (DX smoothed a second time). ADX stays ``NaN``
+        through its own seed, i.e. until the first ``window`` real DX values.
+    """
+    plus_di_full = pd.Series([float("nan")] * len(df), index=df.index, dtype="float64")
+    minus_di_full = pd.Series([float("nan")] * len(df), index=df.index, dtype="float64")
+    adx_full = pd.Series([float("nan")] * len(df), index=df.index, dtype="float64")
+
+    if len(df) >= window + 1:
+        high = df["high"].to_numpy(dtype="float64")
+        low = df["low"].to_numpy(dtype="float64")
+        up_move = high[1:] - high[:-1]
+        down_move = low[:-1] - low[1:]
+
+        plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+        minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+        tr = _true_range(df)
+
+        smoothed_plus_dm = _wilder_smooth(pd.Series(plus_dm), window)
+        smoothed_minus_dm = _wilder_smooth(pd.Series(minus_dm), window)
+        smoothed_tr = _wilder_smooth(pd.Series(tr), window)
+
+        with np.errstate(invalid="ignore", divide="ignore"):
+            plus_di = 100.0 * smoothed_plus_dm / smoothed_tr
+            minus_di = 100.0 * smoothed_minus_dm / smoothed_tr
+            di_sum = plus_di + minus_di
+            dx = 100.0 * (plus_di - minus_di).abs() / di_sum
+        dx = dx.where(di_sum != 0, 0.0)
+
+        # ADX re-seeds Wilder's smoothing on the first `window` *real* DX values
+        # (see the scalar `_adx` docstring for why the leading NaNs are dropped
+        # rather than seeded through). The valid DX values start at df row
+        # `window` (tr position `window - 1`), so the ADX result realigns there.
+        dx_valid = dx.dropna().reset_index(drop=True)
+        adx_smoothed = (
+            _wilder_smooth(dx_valid, window) if len(dx_valid) >= window else None
+        )
+
+        plus_di_full.iloc[1:] = plus_di.to_numpy()
+        minus_di_full.iloc[1:] = minus_di.to_numpy()
+        if adx_smoothed is not None:
+            adx_full.iloc[window:] = adx_smoothed.to_numpy()
+
+    return plus_di_full, minus_di_full, adx_full
 
 
 def _adx(df: pd.DataFrame, window: int = 14) -> tuple[float | None, float | None, float | None]:
@@ -198,53 +305,44 @@ def _adx(df: pd.DataFrame, window: int = 14) -> tuple[float | None, float | None
 
     Returns:
         ``(adx, plus_di, minus_di)``, each ``None`` if there isn't enough history.
+        Each is the final element of the matching :func:`_adx_series`, so the
+        scalar and the chart series can never diverge (Phase 9).
     """
-    if len(df) < window + 1:
-        return None, None, None
+    plus_di_series, minus_di_series, adx_series = _adx_series(df, window)
 
-    high = df["high"].to_numpy(dtype="float64")
-    low = df["low"].to_numpy(dtype="float64")
-    up_move = high[1:] - high[:-1]
-    down_move = low[:-1] - low[1:]
-
-    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
-    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
-    tr = _true_range(df)
-
-    smoothed_plus_dm = _wilder_smooth(pd.Series(plus_dm), window)
-    smoothed_minus_dm = _wilder_smooth(pd.Series(minus_dm), window)
-    smoothed_tr = _wilder_smooth(pd.Series(tr), window)
-
-    with np.errstate(invalid="ignore", divide="ignore"):
-        plus_di = 100.0 * smoothed_plus_dm / smoothed_tr
-        minus_di = 100.0 * smoothed_minus_dm / smoothed_tr
-        di_sum = plus_di + minus_di
-        dx = 100.0 * (plus_di - minus_di).abs() / di_sum
-    dx = dx.where(di_sum != 0, 0.0)
-
-    # dx inherits (window - 1) leading NaNs from the first smoothing pass
-    # (smoothed_plus_dm/smoothed_tr are undefined until the DM/TR seed).
-    # _wilder_smooth's own seeding rule -- "average the first `window`
-    # entries" -- must be applied to `window` *real* DX values, the way
-    # Wilder's published ADX seeds itself (a simple average of the first
-    # `window` DX readings). Passing the NaN-prefixed series straight through
-    # would instead seed on a single real value (whatever lands at position
-    # `window - 1`, which is NaN here), silently discarding almost the entire
-    # seed window. Dropping the leading NaNs first re-aligns "the first
-    # `window` entries" with "the first `window` real DX values".
-    dx_valid = dx.dropna().reset_index(drop=True)
-    adx_val = (
-        _wilder_smooth(dx_valid, window).iloc[-1] if len(dx_valid) >= window else float("nan")
-    )
-
-    plus_di_val = plus_di.iloc[-1]
-    minus_di_val = minus_di.iloc[-1]
+    plus_di_val = plus_di_series.iloc[-1]
+    minus_di_val = minus_di_series.iloc[-1]
+    adx_val = adx_series.iloc[-1]
 
     return (
         float(adx_val) if not pd.isna(adx_val) else None,
         float(plus_di_val) if not pd.isna(plus_di_val) else None,
         float(minus_di_val) if not pd.isna(minus_di_val) else None,
     )
+
+
+def _macd_series(
+    close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """MACD(12,26,9) line/signal/histogram, each aligned to ``close``'s index.
+
+    The EMA recursion is causal and defined from the first bar under pandas'
+    ``ewm`` seeding, but a fully absorbed reading needs ``slow + signal`` bars
+    (the signal line's own seeded transient); before that the whole set is ``NaN``
+    and, once the history is long enough, the first ``slow + signal - 1`` bars are
+    withheld as ``NaN`` too -- the series never leaks an un-converged value that
+    the scalar :func:`_macd` would refuse to report. Every emitted element uses
+    the identical formula of the scalar path (Phase 9).
+    """
+    if len(close) < slow + signal:
+        nan_series = pd.Series([float("nan")] * len(close), index=close.index, dtype="float64")
+        return nan_series, nan_series, nan_series
+    macd_line_series = _ema(close, fast) - _ema(close, slow)
+    signal_series = _ema(macd_line_series, signal)
+    histogram_series = macd_line_series - signal_series
+    for series in (macd_line_series, signal_series, histogram_series):
+        series.iloc[: slow + signal - 1] = float("nan")
+    return macd_line_series, signal_series, histogram_series
 
 
 def _macd(
@@ -262,13 +360,13 @@ def _macd(
     absorbed its own seed transient.
 
     Returns:
-        ``(macd_line, signal_line, histogram)``, each ``None`` if insufficient history.
+        ``(macd_line, signal_line, histogram)``, each ``None`` if insufficient
+        history — the final elements of :func:`_macd_series`, so the scalar and
+        the chart series can never diverge (Phase 9).
     """
-    if len(close) < slow + signal:
-        return None, None, None
-    macd_line_series = _ema(close, fast) - _ema(close, slow)
-    signal_series = _ema(macd_line_series, signal)
-    histogram_series = macd_line_series - signal_series
+    macd_line_series, signal_series, histogram_series = _macd_series(
+        close, fast, slow, signal
+    )
 
     macd_val = macd_line_series.iloc[-1]
     signal_val = signal_series.iloc[-1]
@@ -478,11 +576,7 @@ class IndicatorPipelineImpl:
         slope_window = int(config.get("sma200_slope_window", _DEFAULT_SLOPE_WINDOW))
         high_low_window = int(config.get("high_low_window", _DEFAULT_HIGH_LOW_WINDOW))
         avg_volume_window = int(config.get("avg_volume_window", _DEFAULT_AVG_VOLUME_WINDOW))
-        min_bars = (
-            max(sma_windows[-1] + slope_window, high_low_window, avg_volume_window)
-            + _MIN_BARS_BUFFER
-        )
-
+        min_bars = self._required_min_bars(config)
         bars = await self._fetch_bars(symbol, reference_date, min_bars)
         if bars is None or len(bars) < min_bars:
             _logger.warning(
@@ -602,6 +696,71 @@ class IndicatorPipelineImpl:
         if not windows or len(windows) != 3:
             return _DEFAULT_SMA_WINDOWS
         return int(windows[0]), int(windows[1]), int(windows[2])
+
+    def _required_min_bars(self, config: dict[str, Any]) -> int:
+        """Trading days of history needed for every indicator in ``config``.
+
+        Shared by :meth:`compute` (snapshot) and :meth:`compute_series` (per-bar
+        series), so both endpoints always read the same bar window and their
+        latest elements describe the same bar.
+        """
+        sma_windows = self._sma_windows(config)
+        slope_window = int(config.get("sma200_slope_window", _DEFAULT_SLOPE_WINDOW))
+        high_low_window = int(config.get("high_low_window", _DEFAULT_HIGH_LOW_WINDOW))
+        avg_volume_window = int(config.get("avg_volume_window", _DEFAULT_AVG_VOLUME_WINDOW))
+        return (
+            max(sma_windows[-1] + slope_window, high_low_window, avg_volume_window)
+            + _MIN_BARS_BUFFER
+        )
+
+    async def compute_series(
+        self, symbol: str, reference_date: date, config: dict[str, Any]
+    ) -> IndicatorSeriesSet:
+        """Return per-bar indicator series for *symbol* as of *reference_date*.
+
+        Mirrors :meth:`compute`'s bar retrieval (same ``_fetch_bars``/``_to_dataframe``
+        pipeline and the same minimum-history requirement) but, instead of
+        discarding the computed series after taking their last element, returns
+        every per-bar value aligned to its date (Phase 9 — chart sub-panes).
+
+        No indicator formula is computed here that does not already exist: each
+        series is produced by the ``_*_series`` variants of the exact functions
+        :meth:`compute` calls, so the snapshot's latest values are always the
+        series' last elements.
+
+        Returns:
+            An :class:`IndicatorSeriesSet` with equal-length date/value arrays, or
+            one with empty arrays when there is insufficient history.
+        """
+        min_bars = self._required_min_bars(config)
+        bars = await self._fetch_bars(symbol, reference_date, min_bars)
+        if bars is None or len(bars) < min_bars:
+            _logger.warning(
+                "insufficient_history_series",
+                symbol=symbol,
+                date=reference_date.isoformat(),
+                bars=len(bars) if bars is not None else 0,
+                required=min_bars,
+            )
+            return IndicatorSeriesSet(as_of=reference_date)
+
+        df = self._to_dataframe(bars)
+        dates = tuple(d.date() for d in df["date"])
+        rsi14 = _series_tuple(_rsi_series(df["close"], 14))
+        atr14 = _series_tuple(_atr_series(df, 14))
+        _, _, adx14_series = _adx_series(df, 14)
+        adx14 = _series_tuple(adx14_series)
+        macd_line_s, macd_signal_s, macd_histogram_s = _macd_series(df["close"])
+        return IndicatorSeriesSet(
+            as_of=reference_date,
+            dates=dates,
+            rsi14=rsi14,
+            atr14=atr14,
+            adx14=adx14,
+            macd_line=_series_tuple(macd_line_s),
+            macd_signal=_series_tuple(macd_signal_s),
+            macd_histogram=_series_tuple(macd_histogram_s),
+        )
 
     async def _fetch_bars(
         self, symbol: str, reference_date: date, min_bars: int

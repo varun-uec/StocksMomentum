@@ -25,8 +25,14 @@ import pandas as pd
 import pytest
 
 from momentum25.infrastructure.pipelines.indicator_pipeline import (
+    _adx,
+    _adx_series,
     _atr,
+    _atr_series,
+    _macd,
+    _macd_series,
     _rsi,
+    _rsi_series,
     _wilder_smooth,
 )
 
@@ -308,3 +314,120 @@ def test_atr_insufficient_history_returns_none() -> None:
         {"high": [102.0] * 14, "low": [98.0] * 14, "close": [100.0] * 14}
     )
     assert _atr(frame, 14) is None
+
+
+# ── Phase 9: per-bar series vs scalar consistency ──────────────────────────
+
+
+def _series_value_at(series: pd.Series, index: int) -> float | None:
+    """An element of a full series as a plain ``float`` or ``None`` (NaN)."""
+    value = series.iloc[index]
+    return None if pd.isna(value) else float(value)
+
+
+def _random_walk(seed: int, n: int = 220, step: float = 2.0) -> pd.Series:
+    rng = np.random.default_rng(seed)
+    closes = [100.0]
+    for delta in rng.normal(0, step, size=n):
+        closes.append(max(1.0, closes[-1] + float(delta)))
+    return pd.Series(closes)
+
+
+def _ohlcv_frame(closes: pd.Series, seed: int) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    highs = [c + abs(float(rng.uniform(0, 2))) for c in closes]
+    lows = [c - abs(float(rng.uniform(0, 2))) for c in closes]
+    return pd.DataFrame({"high": highs, "low": lows, "close": closes})
+
+
+def test_rsi_series_tail_matches_scalar() -> None:
+    """``_rsi_series.iloc[-1]`` must equal ``_rsi(...)`` on the same closes."""
+    closes = _random_walk(29)
+    assert _rsi(closes, 14) == _series_value_at(_rsi_series(closes, 14), -1)
+
+
+def test_atr_series_tail_matches_scalar() -> None:
+    """``_atr_series.iloc[-1]`` must equal ``_atr(...)`` on the same frame."""
+    frame = _ohlcv_frame(_random_walk(31), seed=41)
+    assert _atr(frame, 14) == _series_value_at(_atr_series(frame, 14), -1)
+
+
+def test_adx_series_tail_matches_scalar() -> None:
+    """ADX/+DI/-DI series tails must equal the scalar tuple on the same frame."""
+    frame = _ohlcv_frame(_random_walk(43), seed=47)
+    adx, plus_di, minus_di = _adx(frame, 14)
+    plus_series, minus_series, adx_series = _adx_series(frame, 14)
+    assert adx == _series_value_at(adx_series, -1)
+    assert plus_di == _series_value_at(plus_series, -1)
+    assert minus_di == _series_value_at(minus_series, -1)
+
+
+def test_macd_series_tail_matches_scalar() -> None:
+    """MACD line/signal/histogram series tails must equal the scalar tuple."""
+    closes = _random_walk(59)
+    macd_line, macd_signal, macd_histogram = _macd(closes)
+    line_series, signal_series, histogram_series = _macd_series(closes)
+    assert macd_line == _series_value_at(line_series, -1)
+    assert macd_signal == _series_value_at(signal_series, -1)
+    assert macd_histogram == _series_value_at(histogram_series, -1)
+
+
+def test_rsi_series_is_causally_consistent_with_scalar() -> None:
+    """Every series element equals the scalar computed over just the prefix.
+
+    The strongest alignment guard: each bar's series value must equal what the
+    scalar indicator would report if history ended at that bar. A misaligned
+    array or a forward-looking term fails this on the very first diverging bar.
+    """
+    closes = _random_walk(71)
+    series = _rsi_series(closes, 14)
+    for i in range(len(closes)):
+        expected = _rsi(closes.iloc[: i + 1], 14)
+        assert _series_value_at(series, i) == expected, f"bar {i}"
+
+    frame = _ohlcv_frame(closes, seed=73)
+    atr_series = _atr_series(frame, 14)
+    for i in range(len(closes)):
+        expected = _atr(frame.iloc[: i + 1], 14)
+        assert _series_value_at(atr_series, i) == expected, f"bar {i}"
+
+    plus_series, minus_series, adx_series = _adx_series(frame, 14)
+    for i in range(len(closes)):
+        expected_adx, expected_plus, expected_minus = _adx(frame.iloc[: i + 1], 14)
+        assert _series_value_at(adx_series, i) == expected_adx, f"bar {i} ADX"
+        assert _series_value_at(plus_series, i) == expected_plus, f"bar {i} +DI"
+        assert _series_value_at(minus_series, i) == expected_minus, f"bar {i} -DI"
+
+
+def test_macd_series_is_causally_consistent_with_scalar() -> None:
+    """MACD series elements equal the scalar computed over each prefix."""
+    closes = _random_walk(79)
+    line_series, signal_series, histogram_series = _macd_series(closes)
+    for i in range(len(closes)):
+        expected_line, expected_signal, expected_hist = _macd(closes.iloc[: i + 1])
+        assert _series_value_at(line_series, i) == expected_line, f"bar {i} line"
+        assert _series_value_at(signal_series, i) == expected_signal, f"bar {i} signal"
+        assert _series_value_at(histogram_series, i) == expected_hist, f"bar {i} hist"
+
+
+def test_series_handle_insufficient_history() -> None:
+    """Series variants must degrade to all-NaN exactly like the scalar gate."""
+    short = pd.Series([1.0] * 10)
+    assert _rsi(short, 14) is None
+    assert _series_value_at(_rsi_series(short, 14), -1) is None
+
+    frame = pd.DataFrame(
+        {"high": [102.0] * 10, "low": [98.0] * 10, "close": [100.0] * 10}
+    )
+    assert _atr(frame, 14) is None
+    assert _series_value_at(_atr_series(frame, 14), -1) is None
+    assert _adx(frame, 14) == (None, None, None)
+    plus_series, minus_series, adx_series = _adx_series(frame, 14)
+    assert _series_value_at(adx_series, -1) is None
+    assert _series_value_at(plus_series, -1) is None
+    assert _series_value_at(minus_series, -1) is None
+    assert _macd(short) == (None, None, None)
+    line_series, signal_series, histogram_series = _macd_series(short)
+    assert _series_value_at(line_series, -1) is None
+    assert _series_value_at(signal_series, -1) is None
+    assert _series_value_at(histogram_series, -1) is None

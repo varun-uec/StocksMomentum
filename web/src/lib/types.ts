@@ -726,6 +726,24 @@ export interface SecurityOHLCVDTO {
   bars: OHLCVBarDTO[];
 }
 
+// ── Phase 9: per-bar indicator series (chart sub-panes) ─────────────────
+
+export interface IndicatorSeriesBarDTO {
+  date: string;
+  /** Decimal-string values from the backend; null when undefined that bar. */
+  rsi14: string | null;
+  atr14: string | null;
+  adx14: string | null;
+  macd_line: string | null;
+  macd_signal: string | null;
+  macd_histogram: string | null;
+}
+
+export interface SecurityIndicatorSeriesDTO {
+  symbol: string;
+  bars: IndicatorSeriesBarDTO[];
+}
+
 export interface WatchlistResponse {
   symbols: string[];
 }
@@ -770,5 +788,45 @@ export interface ElliottWaveAnalysis {
   pivots: ElliottPivot[];
   primary: ElliottWaveCount | null;
   alternative: ElliottWaveCount | null;
+  notes: string[];
+}
+
+// ── Phase 8: chart pattern recognition ─────────────────────────────────
+
+export interface PatternCriterion {
+  label: string;
+  met: boolean;
+  detail: string;
+  required: boolean;
+}
+
+export interface PatternGeometryPoint {
+  bar_date: string;
+  price: string;
+}
+
+export interface PatternGeometryLine {
+  name: string;
+  points: PatternGeometryPoint[];
+}
+
+export interface DetectedPattern {
+  pattern: string;
+  display_name: string;
+  starts_on: string;
+  ends_on: string;
+  /** Share of the pattern's criteria met, 0–100. Not a probability or a verdict. */
+  completion_score: number;
+  criteria: PatternCriterion[];
+  geometry: PatternGeometryLine[];
+}
+
+export interface ChartPatternAnalysis {
+  symbol: string;
+  as_of: string | null;
+  threshold_pct: string;
+  bars_analyzed: number;
+  pivots: ElliottPivot[];
+  patterns: DetectedPattern[];
   notes: string[];
 }

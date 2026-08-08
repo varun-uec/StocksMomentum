@@ -24,3 +24,27 @@ class SecurityOHLCVDTO(BaseModel):
 
     symbol: str
     bars: list[OHLCVBarDTO]
+
+
+class IndicatorBarDTO(BaseModel):
+    """One day's indicator values for the chart sub-panes (Phase 9).
+
+    ``None`` fields mean the indicator was undefined that bar (warm-up or
+    insufficient history). Every value is the same quantized series the
+    snapshot endpoint reports as its latest value.
+    """
+
+    date: date
+    rsi14: Decimal | None = None
+    atr14: Decimal | None = None
+    adx14: Decimal | None = None
+    macd_line: Decimal | None = None
+    macd_signal: Decimal | None = None
+    macd_histogram: Decimal | None = None
+
+
+class SecurityIndicatorSeriesDTO(BaseModel):
+    """A symbol's per-bar indicator series."""
+
+    symbol: str
+    bars: list[IndicatorBarDTO]

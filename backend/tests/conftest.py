@@ -22,6 +22,26 @@ from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import Base
 
 
+_TEST_DATABASE_SUFFIX = "_test"
+
+
+def _require_test_database(engine: AsyncEngine) -> None:
+    """Abort unless the configured database is a dedicated test database.
+
+    The integration fixtures ``TRUNCATE`` every table, so pointing the suite at a
+    development or production database destroys its contents. The database name
+    must therefore end in ``_test``; ``M25_DATABASE_URL`` is the knob that
+    selects it.
+    """
+    name = engine.url.database or ""
+    if not name.endswith(_TEST_DATABASE_SUFFIX):
+        raise pytest.UsageError(
+            f"Refusing to run database tests against {name!r}: these fixtures truncate "
+            f"every table. Point M25_DATABASE_URL at a database whose name ends in "
+            f"{_TEST_DATABASE_SUFFIX!r}."
+        )
+
+
 @pytest.fixture(scope="session")
 async def db_engine() -> AsyncIterator[AsyncEngine]:
     """Session-scoped engine bound to the session event loop; schema created once.
@@ -32,6 +52,7 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
     "Event loop is closed" failures.
     """
     engine = get_database().engine
+    _require_test_database(engine)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine

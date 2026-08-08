@@ -340,3 +340,37 @@ export async function getElliottWave(
   });
   return fetchJson(`${API_BASE}/stocks/${symbol}/elliott-wave?${params}`, { cache: 'no-store' });
 }
+
+/**
+ * Phase 9 — per-bar indicator series for the chart sub-panes (RSI/ATR/ADX/MACD).
+ * The series is produced by the same indicator functions as `/live`, so its last
+ * bar is always the live endpoint's latest values.
+ */
+export async function getIndicatorSeries(
+  symbol: string,
+  strategy = 'minervini_trend_template'
+): Promise<import('./types').SecurityIndicatorSeriesDTO> {
+  const params = new URLSearchParams({ strategy });
+  return fetchJson(`${API_BASE}/stocks/${symbol}/indicators/series?${params}`, {
+    cache: 'no-store',
+  });
+}
+
+/**
+ * Phase 8 — chart-pattern detection. Explicitly user-triggered: this is a POST
+ * that runs only when the user asks for it, never on page load.
+ */
+export async function detectChartPatterns(
+  symbol: string,
+  lookbackDays: number,
+  thresholdPct: number
+): Promise<import('./types').ChartPatternAnalysis> {
+  const params = new URLSearchParams({
+    lookback_days: String(lookbackDays),
+    threshold_pct: String(thresholdPct),
+  });
+  return fetchJson(`${API_BASE}/stocks/${symbol}/chart-patterns?${params}`, {
+    method: 'POST',
+    cache: 'no-store',
+  });
+}

@@ -3,8 +3,9 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useState }  from 'react';
-import { getLiveStockAnalysis, getOhlcv, getStockExplanation, getStockHistory } from '@/lib/api-client';
+import { useEffect, useMemo, useState } from 'react';
+import { useChartPreferences } from '@/lib/chart-preferences';
+import { getIndicatorSeries, getLiveStockAnalysis, getOhlcv, getStockExplanation, getStockHistory } from '@/lib/api-client';
 import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
 import { HORIZONS, DEFAULT_HORIZON } from '@/lib/horizons';
 import type { EngineExplanation, RuleExplanation, StockExplanation } from '@/lib/types';
@@ -154,7 +155,20 @@ export default function StockResearchPage() {
   const horizonLabel = HORIZONS.find((h) => h.strategyName === strategyName)?.label ?? 'default';
   const chartColors = useChartColors();
   const [activeSection, setActiveSection] = useState('overview');
-  const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
+  const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
+  const { preferences, ready: prefsReady, update: updatePreferences } = useChartPreferences(symbol ?? '');
+
+  // Phase 9.5 — apply the persisted timeframe once prefs are loaded; the chart
+  // itself is only rendered after `prefsReady`, so it always mounts with final
+  // values (no defaults-then-sync flash).
+  useEffect(() => {
+    if (prefsReady) setTimeframeState(preferences.timeframe);
+  }, [prefsReady, preferences.timeframe]);
+
+  const setTimeframe = (id: TimeframeId) => {
+    setTimeframeState(id);
+    updatePreferences({ timeframe: id });
+  };
 
   const { data: live, isLoading: liveLoading, error: liveError } = useQuery({
     queryKey: ['stock-live', symbol, strategyName],
@@ -168,6 +182,27 @@ export default function StockResearchPage() {
     enabled: !!symbol,
   });
 
+  const { data: indicatorSeries } = useQuery({
+    queryKey: ['stock-indicator-series', symbol, strategyName],
+    queryFn: () => getIndicatorSeries(symbol, strategyName),
+    enabled: !!symbol,
+  });
+
+  // Decode the backend's decimal-string bars into the chart's number-typed
+  // series (values the backend did not produce are null).
+  const indicatorBars = useMemo(
+    () =>
+      (indicatorSeries?.bars ?? []).map((b) => ({
+        date: b.date,
+        rsi14: b.rsi14 === null ? null : parseFloat(b.rsi14),
+        adx14: b.adx14 === null ? null : parseFloat(b.adx14),
+        macd_line: b.macd_line === null ? null : parseFloat(b.macd_line),
+        macd_signal: b.macd_signal === null ? null : parseFloat(b.macd_signal),
+        macd_histogram: b.macd_histogram === null ? null : parseFloat(b.macd_histogram),
+      })),
+    [indicatorSeries]
+  );
+
   const { data: explanation, isLoading: explLoading, error: explError } = useQuery({
     queryKey: ['stock-explanation', symbol, strategyName],
     queryFn: () => getStockExplanation(symbol, undefined, strategyName),
@@ -180,7 +215,7 @@ export default function StockResearchPage() {
     enabled: !!symbol,
   });
 
-  if (explLoading || histLoading) return <LoadingSpinner text="Loading stock research…" />;
+  if (!prefsReady || explLoading || histLoading) return <LoadingSpinner text="Loading stock research…" />;
   if (explError) {
     return (
       <ErrorMessage
@@ -520,6 +555,14 @@ export default function StockResearchPage() {
                 timeframe={timeframe}
                 onTimeframeChange={setTimeframe}
                 isLoading={ohlcvLoading}
+                indicatorSeries={indicatorBars}
+                activePanes={preferences.activePanes}
+                onActivePanesChange={(panes) => updatePreferences({ activePanes: panes })}
+                initialActiveMas={preferences.activeMas}
+                onActiveMasChange={(mas) => updatePreferences({ activeMas: mas })}
+                drawingsEnabled
+                initialDrawings={preferences.drawings}
+                onDrawingsChange={(drawings) => updatePreferences({ drawings })}
               />
             </Card>
 
@@ -544,7 +587,14 @@ export default function StockResearchPage() {
                   points={live.relative_strength_vs_index ?? []}
                   benchmarkIndex={live.benchmark_index}
                 />
-                <PatternCard explanation={live.explanation} />
+                <PatternCard
+                  explanation={live.explanation}
+                  symbol={symbol}
+                  bars={ohlcv?.bars ?? []}
+                  timeframe={timeframe}
+                  onTimeframeChange={setTimeframe}
+                  lookbackDays={TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? 2000}
+                />
                 <WhyItRanks explanation={live.explanation} />
               </>
             )}

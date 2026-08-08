@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.application.use_cases.chart_patterns import DetectChartPatterns
 from momentum25.application.use_cases.elliott_wave import GetElliottWaveAnalysis
 from momentum25.application.use_cases.market_context import GetMarketContext
 from momentum25.application.use_cases.rankings import GetRankings, GetStockExplanation
@@ -23,6 +24,7 @@ from momentum25.application.use_cases.runs import (
 )
 from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.application.use_cases.stocks import (
+    GetIndicatorSeries,
     GetLiveStockAnalysis,
     GetStockHistory,
     RefreshGate,
@@ -250,6 +252,14 @@ async def get_elliott_wave_analysis(
     yield GetElliottWaveAnalysis(securities=securities, ohlcv=ohlcv)
 
 
+async def get_detect_chart_patterns(
+    securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
+) -> AsyncIterator[DetectChartPatterns]:
+    """Provide a DetectChartPatterns use-case instance."""
+    yield DetectChartPatterns(securities=securities, ohlcv=ohlcv)
+
+
 async def get_get_strategy(
     strategies: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[GetStrategy]:
@@ -359,6 +369,21 @@ async def get_live_stock_analysis() -> AsyncIterator[GetLiveStockAnalysis]:
             nse_client=NSEMarketDataClient(),
             refresh_gate=get_live_refresh_gate(),
             benchmark_repo=SqlBenchmarkIndexRepository(session),
+        )
+
+
+async def get_indicator_series() -> AsyncIterator[GetIndicatorSeries]:
+    """Provide a GetIndicatorSeries use-case instance (Phase 9).
+
+    The indicator series is a read-only convenience over the same
+    :class:`IndicatorPipelineImpl` slice as the live stock analysis, so a chart
+    sub-pane's last bar always matches the live endpoint's latest values.
+    """
+    async with _shared_session() as session:
+        yield GetIndicatorSeries(
+            securities=SqlSecurityRepository(session),
+            strategies=SqlStrategyRepository(session),
+            indicator_pipeline=IndicatorPipelineImpl(session),
         )
 
 

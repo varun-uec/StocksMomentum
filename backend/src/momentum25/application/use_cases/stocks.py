@@ -6,6 +6,10 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any
 
+from momentum25.application.dto.market_data import (
+    IndicatorBarDTO,
+    SecurityIndicatorSeriesDTO,
+)
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
 from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
 from momentum25.domain.analytics.market_context import (
@@ -66,6 +70,7 @@ class GetStockExplanation:
         explainability_builder: ExplainabilityBuilderImpl,
         strategies: StrategyRepository | None = None,
     ) -> None:
+        """Wire the use case with security, run, and explainability collaborators."""
         self._securities = securities
         self._screening_run_repo = screening_run_repo
         self._explainability_builder = explainability_builder
@@ -134,6 +139,7 @@ class GetStockHistory:
         screening_run_repo: ScreeningRunRepository,
         strategies: StrategyRepository | None = None,
     ) -> None:
+        """Wire the use case with security, run, and strategy collaborators."""
         self._securities = securities
         self._screening_run_repo = screening_run_repo
         self._strategies = strategies
@@ -174,6 +180,69 @@ class GetStockHistory:
                     break
 
         return {"symbol": symbol, "score_history": points}
+
+
+class GetIndicatorSeries:
+    """Return a symbol's per-bar indicator series for the chart sub-panes (Phase 9).
+
+    A thin, purely additive read over the same pipeline the live snapshot uses
+    (:meth:`IndicatorPipelineImpl.compute_series` reuses the exact ``_*_series``
+    functions whose final elements produce the snapshot's latest values), so the
+    series' last bar always agrees with ``/stocks/{symbol}/live``. No new
+    indicator math exists here; nothing here is scored or interpreted.
+    """
+
+    def __init__(
+        self,
+        securities: SecurityRepository,
+        strategies: StrategyRepository,
+        indicator_pipeline: Any,
+    ) -> None:
+        """Wire the use case with its collaborators."""
+        self._securities = securities
+        self._strategies = strategies
+        self._indicator_pipeline = indicator_pipeline
+
+    async def execute(
+        self, symbol: str, strategy_name: str = _DEFAULT_STRATEGY
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*."""
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+
+        strategy = await self._strategies.get_active(strategy_name)
+        if strategy is None or strategy.id is None:
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
+
+        series = await self._indicator_pipeline.compute_series(
+            symbol, date.today(), strategy.config.indicators
+        )
+
+        # Strict zipping: compute_series guarantees all arrays equal `dates`'
+        # length, so a mismatch is a pipeline bug and must surface loudly.
+        bars = [
+            IndicatorBarDTO(
+                date=d,
+                rsi14=rsi14,
+                atr14=atr14,
+                adx14=adx14,
+                macd_line=macd_line,
+                macd_signal=macd_signal,
+                macd_histogram=macd_histogram,
+            )
+            for d, rsi14, atr14, adx14, macd_line, macd_signal, macd_histogram in zip(
+                series.dates,
+                series.rsi14,
+                series.atr14,
+                series.adx14,
+                series.macd_line,
+                series.macd_signal,
+                series.macd_histogram,
+                strict=True,
+            )
+        ]
+        return SecurityIndicatorSeriesDTO(symbol=symbol, bars=bars)
 
 
 class RefreshGate:

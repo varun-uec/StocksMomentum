@@ -13,6 +13,31 @@ from decimal import Decimal
 
 
 @dataclass(frozen=True, slots=True)
+class IndicatorSeriesSet:
+    """Per-bar indicator series for one security (Phase 9 — chart sub-panes).
+
+    Pure data, aligned by position: every array has exactly one entry per
+    ``dates`` element, in the same order (bar date, ascending). Each element is
+    ``None`` where that indicator was undefined on that bar (insufficient warm-up
+    or insufficient history), and ``Decimal``-quantized where defined — the same
+    egress quantization as :class:`IndicatorSet` (ADR-009), so the series' last
+    element is always the snapshot's latest value for the same indicator.
+
+    Only the four indicators the chart panes render are exposed (RSI, ATR, ADX,
+    MACD line/signal/histogram). No signal or verdict is attached to any value.
+    """
+
+    as_of: date
+    dates: tuple[date, ...] = ()
+    rsi14: tuple[Decimal | None, ...] = ()
+    atr14: tuple[Decimal | None, ...] = ()
+    adx14: tuple[Decimal | None, ...] = ()
+    macd_line: tuple[Decimal | None, ...] = ()
+    macd_signal: tuple[Decimal | None, ...] = ()
+    macd_histogram: tuple[Decimal | None, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class IndicatorSet:
     """Indicator values for a single security as of a given date."""
 
