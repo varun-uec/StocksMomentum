@@ -1,0 +1,54 @@
+{
+  "name": "benchmark_b_rs_only",
+  "version": 1,
+  "description": "Research Benchmark B: Relative Strength Only. Ranks solely by RS Rating (the same blended multi-period percentile the production strategy uses: 63/126/189/252-day returns weighted 0.4/0.2/0.2/0.2), with only a minimum liquidity floor as a gate. No Trend Template, no pattern/breakout/risk scoring. Research-only; never used for live screening.",
+  "benchmark_index": "NIFTY500",
+  "universe": {
+    "min_price_inr": 20,
+    "min_avg_turnover_inr": 10000000,
+    "min_history_days": 252,
+    "series": ["EQ"]
+  },
+  "indicators": {
+    "sma_windows": [50, 150, 200],
+    "ema_windows": [10, 21],
+    "rsi_window": 14,
+    "atr_window": 14,
+    "adr_window": 20,
+    "high_low_window": 252,
+    "sma200_slope_window": 22,
+    "avg_volume_window": 50,
+    "rs_return_weights": { "63": 0.4, "126": 0.2, "189": 0.2, "252": 0.2 },
+    "rs_line_slope_window": 50
+  },
+  "engines": [
+    {
+      "id": "volume_accumulation",
+      "enabled": true,
+      "gate": false,
+      "weight": 0.0,
+      "rules": [
+        { "id": "vol_liquidity_min", "params": { "min_turnover_inr": 10000000 }, "gate": true, "weight": 1.0 },
+        { "id": "vol_accumulation_days", "params": { "lookback": 25 }, "weight": 0.0 },
+        { "id": "vol_breakout_confirm", "params": { "min_rel_volume": 1.4 }, "weight": 0.0 }
+      ]
+    },
+    {
+      "id": "relative_strength",
+      "enabled": true,
+      "gate": false,
+      "weight": 1.0,
+      "rules": [
+        { "id": "rs_rating", "params": { "norm_min": 1, "norm_max": 99 }, "weight": 1.0 }
+      ]
+    }
+  ],
+  "scoring": {
+    "momentum_weights": { "relative_strength": 1.0 },
+    "buy_setup_weights": { "relative_strength": 1.0 }
+  },
+  "ranking": {
+    "tie_breakers": ["rs_rating", "symbol"],
+    "top_n": 25
+  }
+}

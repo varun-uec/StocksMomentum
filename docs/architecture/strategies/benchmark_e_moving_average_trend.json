@@ -1,0 +1,52 @@
+{
+  "name": "benchmark_e_moving_average_trend",
+  "version": 1,
+  "description": "Research Benchmark E: Moving Average Trend. The simplest possible trend filter -- price above its 150/200-day moving averages, and nothing else (no RS, no 52-week range, no volume, no pattern/breakout gates). Every passer gets the same engine score, ranked deterministically by symbol only. Research-only; never used for live screening.",
+  "benchmark_index": "NIFTY500",
+  "universe": {
+    "min_price_inr": 20,
+    "min_avg_turnover_inr": 10000000,
+    "min_history_days": 252,
+    "series": ["EQ"]
+  },
+  "indicators": {
+    "sma_windows": [50, 150, 200],
+    "ema_windows": [10, 21],
+    "rsi_window": 14,
+    "atr_window": 14,
+    "adr_window": 20,
+    "high_low_window": 252,
+    "sma200_slope_window": 22,
+    "avg_volume_window": 50,
+    "rs_return_weights": { "63": 0.4, "126": 0.2, "189": 0.2, "252": 0.2 },
+    "rs_line_slope_window": 50
+  },
+  "engines": [
+    {
+      "id": "trend_template",
+      "enabled": true,
+      "gate": true,
+      "weight": 1.0,
+      "rules": [
+        { "id": "tt_close_above_sma150_200", "weight": 1.0 }
+      ]
+    },
+    {
+      "id": "volume_accumulation",
+      "enabled": true,
+      "gate": false,
+      "weight": 0.0,
+      "rules": [
+        { "id": "vol_liquidity_min", "params": { "min_turnover_inr": 10000000 }, "gate": true, "weight": 1.0 }
+      ]
+    }
+  ],
+  "scoring": {
+    "momentum_weights": { "trend_template": 1.0 },
+    "buy_setup_weights": { "trend_template": 1.0 }
+  },
+  "ranking": {
+    "tie_breakers": ["symbol"],
+    "top_n": 25
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "name": "benchmark_c_trend_template_only",
+  "version": 1,
+  "description": "Research Benchmark C: Trend Template Only. Requires all 8 Trend Template rules (hard gate) plus the minimum liquidity floor; among stocks that pass, there is no additional scoring differentiation -- every passer gets the same engine score, ranked deterministically by RS rating then symbol as a tie-break only, not as a scoring input. Research-only; never used for live screening.",
+  "benchmark_index": "NIFTY500",
+  "universe": {
+    "min_price_inr": 20,
+    "min_avg_turnover_inr": 10000000,
+    "min_history_days": 252,
+    "series": ["EQ"]
+  },
+  "indicators": {
+    "sma_windows": [50, 150, 200],
+    "ema_windows": [10, 21],
+    "rsi_window": 14,
+    "atr_window": 14,
+    "adr_window": 20,
+    "high_low_window": 252,
+    "sma200_slope_window": 22,
+    "avg_volume_window": 50,
+    "rs_return_weights": { "63": 0.4, "126": 0.2, "189": 0.2, "252": 0.2 },
+    "rs_line_slope_window": 50
+  },
+  "engines": [
+    {
+      "id": "trend_template",
+      "enabled": true,
+      "gate": true,
+      "weight": 1.0,
+      "rules": [
+        { "id": "tt_close_above_sma150_200", "weight": 1.0 },
+        { "id": "tt_sma150_above_sma200", "weight": 1.0 },
+        { "id": "tt_sma200_uptrend", "params": { "min_slope_pct": 0 }, "weight": 1.0 },
+        { "id": "tt_sma_stack", "weight": 1.0 },
+        { "id": "tt_close_above_sma50", "weight": 1.0 },
+        { "id": "tt_above_52w_low", "params": { "min_pct": 30 }, "weight": 1.0 },
+        { "id": "tt_near_52w_high", "params": { "max_pct": 25 }, "weight": 1.0 },
+        { "id": "tt_rs_rating_min", "params": { "min": 70 }, "weight": 1.0 }
+      ]
+    },
+    {
+      "id": "volume_accumulation",
+      "enabled": true,
+      "gate": false,
+      "weight": 0.0,
+      "rules": [
+        { "id": "vol_liquidity_min", "params": { "min_turnover_inr": 10000000 }, "gate": true, "weight": 1.0 },
+        { "id": "vol_accumulation_days", "params": { "lookback": 25 }, "weight": 0.0 },
+        { "id": "vol_breakout_confirm", "params": { "min_rel_volume": 1.4 }, "weight": 0.0 }
+      ]
+    }
+  ],
+  "scoring": {
+    "momentum_weights": { "trend_template": 1.0 },
+    "buy_setup_weights": { "trend_template": 1.0 }
+  },
+  "ranking": {
+    "tie_breakers": ["rs_rating", "symbol"],
+    "top_n": 25
+  }
+}

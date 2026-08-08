@@ -1,0 +1,250 @@
+{
+  "name": "minervini_trend_template_6m",
+  "version": 2,
+  "is_active": false,
+  "description": "Momentum25's 6-Month Horizon: identical methodology and engine weights as the 1-Year default (minervini_trend_template), with all indicator windows scaled to a half-year (0.5x). Identifies established Stage 2 uptrends over a shorter confirmation window than the 1-Year default. Requires at least 155 trading days of history. v2: removed rs_sector_relative, rs_industry_relative, rs_line_uptrend (0% pass rate across 90,657 evaluations spanning 2019-2026, all regimes -- confirmed dead by Research Program 1, no measurable value; sector/industry rules require classification data unavailable from any free NSE source, rs_line_uptrend never fired under current computation).",
+  "benchmark_index": "NIFTY500",
+  "universe": {
+    "min_price_inr": 20,
+    "min_avg_turnover_inr": 10000000,
+    "min_history_days": 155,
+    "series": [
+      "EQ"
+    ]
+  },
+  "indicators": {
+    "sma_windows": [
+      25,
+      75,
+      100
+    ],
+    "ema_windows": [
+      10,
+      21
+    ],
+    "rsi_window": 14,
+    "atr_window": 14,
+    "adr_window": 20,
+    "high_low_window": 126,
+    "sma200_slope_window": 11,
+    "avg_volume_window": 25,
+    "rs_return_weights": {
+      "32": 0.4,
+      "63": 0.2,
+      "95": 0.2,
+      "126": 0.2
+    },
+    "rs_line_slope_window": 25
+  },
+  "engines": [
+    {
+      "id": "trend_template",
+      "enabled": true,
+      "gate": true,
+      "weight": 3.0,
+      "rules": [
+        {
+          "id": "tt_close_above_sma150_200",
+          "weight": 1.0
+        },
+        {
+          "id": "tt_sma150_above_sma200",
+          "weight": 1.0
+        },
+        {
+          "id": "tt_sma200_uptrend",
+          "params": {
+            "min_slope_pct": 0
+          },
+          "weight": 1.0
+        },
+        {
+          "id": "tt_sma_stack",
+          "weight": 1.0
+        },
+        {
+          "id": "tt_close_above_sma50",
+          "weight": 1.0
+        },
+        {
+          "id": "tt_above_52w_low",
+          "params": {
+            "min_pct": 30
+          },
+          "weight": 1.0
+        },
+        {
+          "id": "tt_near_52w_high",
+          "params": {
+            "max_pct": 25
+          },
+          "weight": 1.0
+        },
+        {
+          "id": "tt_rs_rating_min",
+          "params": {
+            "min": 70
+          },
+          "weight": 1.5
+        }
+      ]
+    },
+    {
+      "id": "relative_strength",
+      "enabled": true,
+      "gate": false,
+      "weight": 2.0,
+      "rules": [
+        {
+          "id": "rs_rating",
+          "params": {
+            "norm_min": 70,
+            "norm_max": 99
+          },
+          "weight": 2.0
+        }
+      ]
+    },
+    {
+      "id": "volume_accumulation",
+      "enabled": true,
+      "gate": false,
+      "weight": 1.0,
+      "rules": [
+        {
+          "id": "vol_liquidity_min",
+          "params": {
+            "min_turnover_inr": 10000000
+          },
+          "gate": true,
+          "weight": 1.0
+        },
+        {
+          "id": "vol_accumulation_days",
+          "params": {
+            "lookback": 25
+          },
+          "weight": 1.0
+        },
+        {
+          "id": "vol_breakout_confirm",
+          "params": {
+            "min_rel_volume": 1.4
+          },
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "id": "pattern",
+      "enabled": true,
+      "gate": false,
+      "weight": 1.0,
+      "rules": []
+    },
+    {
+      "id": "breakout",
+      "enabled": true,
+      "gate": false,
+      "weight": 1.5,
+      "rules": [
+        {
+          "id": "bo_pivot_breakout",
+          "weight": 1.5
+        },
+        {
+          "id": "bo_followthrough",
+          "weight": 1.0
+        },
+        {
+          "id": "bo_false_breakout",
+          "weight": 0.5
+        }
+      ]
+    },
+    {
+      "id": "momentum_quality",
+      "enabled": true,
+      "gate": false,
+      "weight": 1.0,
+      "rules": [
+        {
+          "id": "mq_trend_persistence",
+          "params": {
+            "ma": 25,
+            "lookback": 32
+          },
+          "weight": 1.0
+        },
+        {
+          "id": "mq_acceleration",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "id": "risk",
+      "enabled": true,
+      "gate": false,
+      "weight": 0.5,
+      "rules": [
+        {
+          "id": "risk_extension",
+          "params": {
+            "ma": 25,
+            "max_pct": 25
+          },
+          "weight": 1.0
+        },
+        {
+          "id": "risk_atr",
+          "params": {
+            "max_adr_pct": 8
+          },
+          "weight": 0.5
+        },
+        {
+          "id": "risk_rr",
+          "params": {
+            "min_ratio": 2.0
+          },
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "id": "fundamental",
+      "enabled": false,
+      "gate": false,
+      "weight": 0.0,
+      "rules": []
+    }
+  ],
+  "scoring": {
+    "momentum_weights": {
+      "trend_template": 3.0,
+      "relative_strength": 2.0,
+      "volume_accumulation": 1.0,
+      "pattern": 1.0,
+      "breakout": 1.5,
+      "momentum_quality": 1.0,
+      "risk": 0.5
+    },
+    "buy_setup_weights": {
+      "breakout": 3.0,
+      "volume_accumulation": 2.0,
+      "pattern": 1.5,
+      "trend_template": 1.0,
+      "risk": 1.5,
+      "relative_strength": 1.0
+    }
+  },
+  "ranking": {
+    "tie_breakers": [
+      "buy_setup_score",
+      "rs_rating",
+      "symbol"
+    ],
+    "top_n": 25
+  }
+}

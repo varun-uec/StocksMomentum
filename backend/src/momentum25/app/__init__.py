@@ -1,0 +1,1 @@
+"""Application services layer — orchestration of live market data pipelines."""

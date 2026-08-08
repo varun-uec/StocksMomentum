@@ -1,0 +1,54 @@
+{
+  "name": "benchmark_a_pure_momentum",
+  "version": 1,
+  "description": "Research Benchmark A: Pure 52-week Momentum. Ranks solely by trailing 12-month (252-trading-day) return. Only a minimum liquidity floor is enforced as a gate -- no Trend Template, no RS percentile requirement, no pattern/breakout/risk scoring. Used only for quantitative comparison against the production strategy; never used for live screening.",
+  "benchmark_index": "NIFTY500",
+  "universe": {
+    "min_price_inr": 20,
+    "min_avg_turnover_inr": 10000000,
+    "min_history_days": 252,
+    "series": ["EQ"]
+  },
+  "indicators": {
+    "sma_windows": [50, 150, 200],
+    "ema_windows": [10, 21],
+    "rsi_window": 14,
+    "atr_window": 14,
+    "adr_window": 20,
+    "high_low_window": 252,
+    "sma200_slope_window": 22,
+    "avg_volume_window": 50,
+    "rs_return_weights": { "252": 1.0 },
+    "rs_line_slope_window": 50
+  },
+  "engines": [
+    {
+      "id": "volume_accumulation",
+      "enabled": true,
+      "gate": false,
+      "weight": 0.0,
+      "rules": [
+        { "id": "vol_liquidity_min", "params": { "min_turnover_inr": 10000000 }, "gate": true, "weight": 1.0 },
+        { "id": "vol_accumulation_days", "params": { "lookback": 25 }, "weight": 0.0 },
+        { "id": "vol_breakout_confirm", "params": { "min_rel_volume": 1.4 }, "weight": 0.0 }
+      ]
+    },
+    {
+      "id": "relative_strength",
+      "enabled": true,
+      "gate": false,
+      "weight": 1.0,
+      "rules": [
+        { "id": "rs_rating", "params": { "norm_min": 1, "norm_max": 99 }, "weight": 1.0 }
+      ]
+    }
+  ],
+  "scoring": {
+    "momentum_weights": { "relative_strength": 1.0 },
+    "buy_setup_weights": { "relative_strength": 1.0 }
+  },
+  "ranking": {
+    "tie_breakers": ["rs_rating", "symbol"],
+    "top_n": 25
+  }
+}
