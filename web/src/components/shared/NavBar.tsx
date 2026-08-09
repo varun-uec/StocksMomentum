@@ -292,6 +292,8 @@ function NavLink({
       key={item.href}
       href={item.href}
       onClick={onClick}
+      // The visible label is hidden below `lg`, leaving an icon-only link.
+      aria-label={item.label}
       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${focusRing} ${
         isActive
           ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300'

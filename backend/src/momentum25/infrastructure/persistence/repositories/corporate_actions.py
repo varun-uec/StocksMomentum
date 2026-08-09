@@ -28,16 +28,23 @@ class SqlCorporateActionRepository:
         """Insert or update corporate actions for a security; return rows written."""
         if not actions:
             return 0
-        rows = [
-            {
+        # NSE publishes the same (ex_date, type) more than once for a symbol
+        # (e.g. two dividend legs on one ex-date). Postgres rejects a whole
+        # multi-row ON CONFLICT statement containing duplicate conflict keys
+        # ("cannot affect row a second time"), which previously failed the
+        # entire security's refresh -- 2918 of 3235 securities never got their
+        # adjustment factors written. Collapse duplicates here, last wins,
+        # matching the upsert's own last-write-wins semantics.
+        deduped: dict[tuple[object, str], dict[str, object]] = {}
+        for a in actions:
+            deduped[(a.ex_date, a.action_type)] = {
                 "security_id": security_id,
                 "ex_date": a.ex_date,
                 "type": a.action_type,
                 "ratio": a.ratio,
                 "raw": {"subject": a.raw_subject, "symbol": a.symbol},
             }
-            for a in actions
-        ]
+        rows = list(deduped.values())
         stmt = insert(CorporateActionModel).values(rows)
         stmt = stmt.on_conflict_do_update(
             index_elements=[

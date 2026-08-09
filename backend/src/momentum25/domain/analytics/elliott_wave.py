@@ -16,13 +16,13 @@ structure in which wave 4 may overlap wave 1, are **not** implemented here, so
 no overlap exception is granted. Corrective structures are labelled A-B-C using
 the same source's zigzag convention (wave B does not exceed the origin of A).
 
-Guidelines used only for the *projection zone* (Fibonacci relationships from the
-same text, Lesson 21 "Ratio Analysis") are guidelines, not rules: they never
-accept or reject a count, they only produce a range.
+No price projection is produced. Fibonacci extension/retracement zones were
+removed deliberately: a wave-count-derived price objective is a target, and
+targets are confined to the validated swing-target research module.
 
 Everything here is pure and deterministic: same bars in, same labels out. No
-I/O, no clock, no randomness. This module produces labels and a projected range;
-it never produces a buy/sell verdict, a score, or a trade recommendation.
+I/O, no clock, no randomness. This module produces labels only; it never
+produces a price objective, a buy/sell verdict, a score, or a recommendation.
 """
 
 from __future__ import annotations
@@ -70,19 +70,6 @@ class WaveLabel:
 
 
 @dataclass(frozen=True, slots=True)
-class ProjectionZone:
-    """Where the *next* wave would end if a standard Fibonacci ratio holds.
-
-    Always a range, never a point, and always a guideline-derived expectation
-    rather than a forecast the platform stands behind.
-    """
-
-    low: Decimal
-    high: Decimal
-    basis: str
-
-
-@dataclass(frozen=True, slots=True)
 class Subdivision:
     """Finer-degree labelling of the leg ending at ``of_label``."""
 
@@ -105,7 +92,6 @@ class WaveCount:
     # describes the structure now in progress rather than a completed one that
     # later price action has already left behind.
     is_current: bool = True
-    projection: ProjectionZone | None = None
     subdivisions: tuple[Subdivision, ...] = ()
 
 
@@ -136,6 +122,12 @@ def zigzag_pivots(
     away from it. The extreme currently being tracked is therefore *not*
     returned: an unreversed extreme is not yet a turning point, and emitting it
     would mean re-labelling history as each new bar arrives.
+
+    Pivots strictly alternate H/L (the tracking direction flips on every
+    confirmation) and are separated by at least one bar: the opposite extreme is
+    tracked only from bars *after* the confirmed pivot's bar. Without that, a
+    single wide-range bar could confirm a reversal against itself and be emitted
+    as both a swing high and a swing low on the same date.
     """
     if threshold_pct <= 0:
         raise ValueError("threshold_pct must be positive")
@@ -146,35 +138,30 @@ def zigzag_pivots(
     pivots: list[Pivot] = []
     direction = 0  # +1 tracking a high, -1 tracking a low, 0 undecided
     hi_bar, lo_bar = bars[0], bars[0]
+    hi_idx = lo_idx = 0
+    last_pivot_idx = -1  # bar index of the most recent confirmed pivot
 
-    for bar in bars:
-        if direction >= 0 and bar.high >= hi_bar.high:
-            hi_bar = bar
-        if direction <= 0 and bar.low <= lo_bar.low:
-            lo_bar = bar
+    for idx, bar in enumerate(bars):
+        # A tracker sitting on (or before) the confirmed pivot's bar is stale:
+        # restart it from the current bar to guarantee the separation.
+        if direction >= 0 and (hi_idx <= last_pivot_idx or bar.high >= hi_bar.high):
+            hi_bar, hi_idx = bar, idx
+        if direction <= 0 and (lo_idx <= last_pivot_idx or bar.low <= lo_bar.low):
+            lo_bar, lo_idx = bar, idx
 
         down_move = (hi_bar.high - bar.low) / hi_bar.high
         up_move = (bar.high - lo_bar.low) / lo_bar.low
 
-        if direction == 1:
-            if down_move >= threshold:
-                pivots.append(Pivot(hi_bar.date, hi_bar.high, "H"))
-                direction, lo_bar = -1, bar
-        elif direction == -1:
-            if up_move >= threshold:
-                pivots.append(Pivot(lo_bar.date, lo_bar.low, "L"))
-                direction, hi_bar = 1, bar
-        else:
-            reversed_down = down_move >= threshold
-            reversed_up = up_move >= threshold
-            # Both can trigger on the first qualifying bar; the earlier extreme
-            # is the one that actually turned first.
-            if reversed_down and (not reversed_up or hi_bar.date <= lo_bar.date):
-                pivots.append(Pivot(hi_bar.date, hi_bar.high, "H"))
-                direction, lo_bar = -1, bar
-            elif reversed_up:
-                pivots.append(Pivot(lo_bar.date, lo_bar.low, "L"))
-                direction, hi_bar = 1, bar
+        reversed_down = down_move >= threshold and direction >= 0
+        reversed_up = up_move >= threshold and direction <= 0
+        # Both can trigger on the first qualifying bar while undecided; the
+        # earlier extreme is the one that actually turned first.
+        if reversed_down and (not reversed_up or hi_bar.date <= lo_bar.date):
+            pivots.append(Pivot(hi_bar.date, hi_bar.high, "H"))
+            direction, last_pivot_idx = -1, hi_idx
+        elif reversed_up:
+            pivots.append(Pivot(lo_bar.date, lo_bar.low, "L"))
+            direction, last_pivot_idx = 1, lo_idx
 
     return tuple(pivots)
 
@@ -224,53 +211,6 @@ def _valid_impulse(prices: list[Decimal], up: bool) -> bool:
     return True
 
 
-def _impulse_projection(prices: list[Decimal], up: bool) -> ProjectionZone | None:
-    """Fibonacci zone for the wave that follows the last labelled terminal."""
-    sign = _ONE if up else -_ONE
-    n = len(prices) - 1  # waves already labelled
-
-    def zone(anchor: Decimal, length: Decimal, lo: str, hi: str, basis: str) -> ProjectionZone:
-        a = anchor + sign * length * Decimal(lo)
-        b = anchor + sign * length * Decimal(hi)
-        return ProjectionZone(low=min(a, b), high=max(a, b), basis=basis)
-
-    if n == 1:  # wave 2 retraces wave 1
-        w1 = abs(prices[1] - prices[0])
-        return zone(prices[1], -w1, "0.5", "0.618", "wave 2: 0.5-0.618 retracement of wave 1")
-    if n == 2:  # wave 3 extends wave 1
-        w1 = abs(prices[1] - prices[0])
-        return zone(prices[2], w1, "1.618", "2.618", "wave 3: 1.618-2.618 extension of wave 1")
-    if n == 3:  # wave 4 retraces wave 3
-        w3 = abs(prices[3] - prices[2])
-        return zone(prices[3], -w3, "0.236", "0.382", "wave 4: 0.236-0.382 retracement of wave 3")
-    if n == 4:  # wave 5 projected from the wave 4 terminal
-        w1 = abs(prices[1] - prices[0])
-        return zone(prices[4], w1, "0.618", "1.0", "wave 5: 0.618-1.0 of wave 1 from wave 4")
-    if n == 5:  # impulse complete: the A-B-C correction retraces it
-        total = abs(prices[5] - prices[0])
-        return zone(
-            prices[5], -total, "0.382", "0.618", "correction: 0.382-0.618 retracement of waves 1-5"
-        )
-    return None
-
-
-def _correction_projection(prices: list[Decimal], up: bool) -> ProjectionZone | None:
-    """Fibonacci zone for the next leg of an A-B-C correction."""
-    sign = _ONE if up else -_ONE
-    n = len(prices) - 1
-    if n == 1:  # wave B retraces wave A
-        a = abs(prices[1] - prices[0])
-        lo = prices[1] + sign * a * Decimal("0.5")
-        hi = prices[1] + sign * a * Decimal("0.786")
-        return ProjectionZone(min(lo, hi), max(lo, hi), "wave B: 0.5-0.786 retracement of wave A")
-    if n == 2:  # wave C relative to wave A
-        a = abs(prices[1] - prices[0])
-        lo = prices[2] - sign * a * Decimal("1.0")
-        hi = prices[2] - sign * a * Decimal("1.618")
-        return ProjectionZone(min(lo, hi), max(lo, hi), "wave C: 1.0-1.618 of wave A from wave B")
-    return None
-
-
 _IMPULSE_LABELS = ("0", "1", "2", "3", "4", "5")
 _CORRECTION_LABELS = ("0", "A", "B", "C")
 
@@ -284,7 +224,7 @@ def _position(in_progress: str, is_current: bool, ends: date) -> str:
         return in_progress
     return (
         f"{in_progress} as of {ends.isoformat()}; later price action does not extend "
-        "this count, so no projection is offered"
+        "this count"
     )
 
 
@@ -331,7 +271,6 @@ def _counts_at(
                     ),
                     rules_applied=_IMPULSE_RULES,
                     is_current=is_current,
-                    projection=_impulse_projection(prices, up) if is_current else None,
                 )
             )
             break
@@ -363,7 +302,6 @@ def _counts_at(
                     ),
                     rules_applied=_CORRECTION_RULES,
                     is_current=is_current,
-                    projection=_correction_projection(prices, up) if is_current else None,
                 )
             )
             break
@@ -446,7 +384,7 @@ def subdivide(
     """Label one finer degree of structure inside each leg of ``count``.
 
     Purely additive labelling depth -- a subdivision is never a signal and
-    carries no projection zone. Each adjacent label pair ``(a, b)`` bounds a
+    is never a price objective. Each adjacent label pair ``(a, b)`` bounds a
     leg; the bars in ``[a.bar_date, b.bar_date]`` are re-pivoted at a finer
     (``threshold_pct / 3``) reversal size and labelled, and a ``Subdivision``
     is emitted only when the finer structure reaches at least three confirmed
@@ -471,6 +409,17 @@ def subdivide(
     return tuple(subdivisions)
 
 
+def _span_sessions(bars: tuple[OHLCVBar, ...] | list[OHLCVBar], count: WaveCount) -> int:
+    """Sessions the count itself spans, not the sessions loaded.
+
+    Degree describes the labelled structure. Sizing it by the length of the
+    requested history called a three-week count "Primary" purely because 500
+    bars were fetched.
+    """
+    start, end = count.labels[0].bar_date, count.labels[-1].bar_date
+    return sum(1 for bar in bars if start <= bar.date <= end)
+
+
 def analyze_elliott_wave(
     symbol: str,
     bars: tuple[OHLCVBar, ...] | list[OHLCVBar],
@@ -485,9 +434,21 @@ def analyze_elliott_wave(
     alternative_subdivisions = (
         subdivide(bars, alternative, threshold_pct) if alternative else ()
     )
-    primary = replace(primary, subdivisions=primary_subdivisions) if primary else None
+    primary = (
+        replace(
+            primary,
+            subdivisions=primary_subdivisions,
+            degree=_degree(_span_sessions(bars, primary)),
+        )
+        if primary
+        else None
+    )
     alternative = (
-        replace(alternative, subdivisions=alternative_subdivisions)
+        replace(
+            alternative,
+            subdivisions=alternative_subdivisions,
+            degree=_degree(_span_sessions(bars, alternative)),
+        )
         if alternative
         else None
     )
@@ -506,7 +467,7 @@ def analyze_elliott_wave(
     if primary is not None and not primary.is_current:
         notes.append(
             "No count reaching the latest confirmed pivot satisfies the rules; the labelled "
-            "structure ends earlier and no projection is offered."
+            "structure ends earlier."
         )
     if alternative is None and primary is not None:
         notes.append("The pivots support a single valid count; no alternative is asserted.")

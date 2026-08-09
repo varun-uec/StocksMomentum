@@ -16,7 +16,7 @@
  *     values at the hovered date,
  *   • drawing tools rendered by the pane-primitive layer in
  *     `chart-drawings.ts`.
- * None of the pre-Phase-9 props (markers/overlayLine/overlayLines/priceZone)
+ * None of the pre-Phase-9 props (markers/overlayLine/overlayLines)
  * change; Elliott Wave (Phase 7) and pattern geometry (Phase 8) render exactly
  * as before when the new props are omitted.
  */
@@ -32,7 +32,6 @@ import {
   createSeriesMarkers,
   type IChartApi,
   type IPaneApi,
-  type IPriceLine,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type LineWidth,
@@ -154,14 +153,6 @@ export interface ChartMarker {
   shape?: 'circle' | 'square';
 }
 
-/** A horizontal price band drawn as two dashed bounds (Phase 7 — projection zone). */
-export interface ChartPriceZone {
-  low: number;
-  high: number;
-  title: string;
-  color: string;
-}
-
 /** A named polyline overlay (Phase 8 — pattern geometry). */
 export interface ChartOverlayLine {
   points: { date: string; price: number }[];
@@ -193,7 +184,6 @@ export function PriceChart({
   markers,
   overlayLine,
   overlayLines,
-  priceZone,
   indicatorSeries,
   activePanes,
   onActivePanesChange,
@@ -215,7 +205,6 @@ export function PriceChart({
   overlayLine?: { date: string; price: number; color?: string }[];
   /** Several independent polylines, e.g. the two trendlines of a triangle. */
   overlayLines?: ChartOverlayLine[];
-  priceZone?: ChartPriceZone | null;
   // ── Phase 9: indicator sub-panes, crosshair readout, drawing tools ─────
   /** Backend-provided per-bar indicator values (never computed browser-side). */
   indicatorSeries?: IndicatorSeriesBar[];
@@ -241,7 +230,6 @@ export function PriceChart({
   const maSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const overlaySeriesRef = useRef<ISeriesApi<'Line'>[]>([]);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
-  const zoneLinesRef = useRef<IPriceLine[]>([]);
   const paneSeriesRef = useRef<Map<PaneId, PaneRecord>>(new Map());
   const [candlestick, setCandlestick] = useState(true);
   const [activeMas, setActiveMas] = useState<number[]>(initialActiveMas ?? [50, 200]);
@@ -402,7 +390,6 @@ export function PriceChart({
       maSeries.clear();
       overlaySeriesRef.current = [];
       markersRef.current = null;
-      zoneLinesRef.current = [];
       paneSeries.clear();
     };
     // Chart instance is created once; `height` is applied by the effect below
@@ -617,29 +604,6 @@ export function PriceChart({
       markersRef.current = null;
     };
   }, [markers, candlestick, parsed]);
-
-  // Projection zone: dashed upper/lower bounds delimiting a range, never a
-  // single price line — the projection is a range and is drawn as one.
-  useEffect(() => {
-    const series = priceSeriesRef.current;
-    if (!series) return;
-    for (const line of zoneLinesRef.current) series.removePriceLine(line);
-    zoneLinesRef.current = [];
-    if (!priceZone) return;
-    zoneLinesRef.current = [
-      { price: priceZone.high, title: `${priceZone.title} high` },
-      { price: priceZone.low, title: `${priceZone.title} low` },
-    ].map((bound) =>
-      series.createPriceLine({
-        price: bound.price,
-        color: priceZone.color,
-        lineWidth: 2,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: bound.title,
-      })
-    );
-  }, [priceZone, candlestick, parsed]);
 
   // Phase 9 — indicator sub-panes: create/remove panes and refresh their data.
   const activePanesRef = useRef<PaneId[]>(displayedPanes);

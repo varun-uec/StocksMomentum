@@ -112,20 +112,16 @@ def test_wave_3_shortest_is_rejected() -> None:
     assert float(primary.labels[0].price) != 100.0
 
 
-# ── projection zone ──────────────────────────────────────────────────────
+# ── no price projection ──────────────────────────────────────────────────
 
 
-def test_wave_5_projection_is_a_range_off_the_wave_4_low() -> None:
+def test_wave_count_publishes_no_price_projection() -> None:
+    # A wave-count-derived price objective is a target; targets live only in the
+    # validated swing-target module (audit 2026-08-09 section 2.1).
     pivots = _pivots([("L", 100), ("H", 130), ("L", 115), ("H", 180), ("L", 160)])
     primary, _ = label_waves(pivots, span_sessions=300)
     assert primary is not None
-    zone = primary.projection
-    assert zone is not None
-    assert "wave 5" in zone.basis
-    # wave 1 length = 30 -> 0.618x to 1.0x projected from the wave 4 low (160).
-    assert float(zone.low) == 160 + 0.618 * 30
-    assert float(zone.high) == 190.0
-    assert zone.low < zone.high
+    assert not hasattr(primary, "projection")
 
 
 def test_partial_impulse_reports_the_wave_in_progress() -> None:
@@ -133,8 +129,6 @@ def test_partial_impulse_reports_the_wave_in_progress() -> None:
     primary, _ = label_waves(pivots, span_sessions=100)
     assert primary is not None
     assert primary.current_position == "Wave 2 complete, wave 3 in progress"
-    assert primary.projection is not None
-    assert "wave 3" in primary.projection.basis
 
 
 # ── corrective structures ────────────────────────────────────────────────
@@ -254,3 +248,35 @@ def test_no_subdivision_when_legs_lack_finer_structure() -> None:
         "to label a finer degree." in note
         for note in result.notes
     )
+
+
+# ── pivot separation (audit 2026-08-09, U2a) ─────────────────────────────
+
+
+def _wide_bar(day: int, low: float, high: float) -> OHLCVBar:
+    return OHLCVBar(
+        date=_START + timedelta(days=day),
+        open=Decimal(str(high)),
+        high=Decimal(str(high)),
+        low=Decimal(str(low)),
+        close=Decimal(str(low)),
+        volume=1000,
+    )
+
+
+def test_one_wide_range_bar_is_not_both_a_swing_high_and_a_swing_low() -> None:
+    # A single bar spanning more than the reversal threshold used to confirm a
+    # high against itself and then seed the low tracker from the same bar,
+    # emitting an H and an L on the identical date.
+    bars = [
+        _wide_bar(0, 100, 100),
+        _wide_bar(1, 100, 120),  # rally
+        _wide_bar(2, 100, 121),  # wide bar: high 121, low 100 (-17%)
+        _wide_bar(3, 100, 101),
+        _wide_bar(4, 130, 130),  # rally back up, confirming the low
+    ]
+    pivots = zigzag_pivots(bars, Decimal("5"))
+    dates = [p.bar_date for p in pivots]
+    assert len(dates) == len(set(dates))
+    kinds = [p.kind for p in pivots]
+    assert all(a != b for a, b in zip(kinds, kinds[1:], strict=False))

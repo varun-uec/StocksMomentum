@@ -119,15 +119,18 @@ function AnalysisSection({
   );
 }
 
+// Setup quality, not a call to act: the platform publishes no buy/sell verdict.
+const QUALIFIED_LABEL = 'Qualified — all gates passed';
+
 function investmentReadiness(explanation: StockExplanation): { label: string; color: 'emerald' | 'amber' | 'rose' } {
   if (!explanation.overall_passed) {
     return { label: 'Not Qualified', color: 'rose' };
   }
   const buySetup = parseFloat(explanation.buy_setup_score);
   if (buySetup >= 60) {
-    return { label: 'Qualified — Actionable Now', color: 'emerald' };
+    return { label: QUALIFIED_LABEL, color: 'emerald' };
   }
-  return { label: 'Qualified — Not Actionable Yet', color: 'amber' };
+  return { label: 'Qualified — breakout not confirmed', color: 'amber' };
 }
 
 function SectionNav({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
@@ -375,9 +378,9 @@ export default function StockResearchPage() {
                 {num(explanation.momentum_score, 1)} and a Buy Setup Score of{' '}
                 {num(explanation.buy_setup_score, 1)}.{' '}
                 {explanation.overall_passed
-                  ? readiness.label === 'Qualified — Actionable Now'
-                    ? 'Its breakout and volume signals also confirm this as an actionable setup today, not just a qualifying trend.'
-                    : 'However, its breakout/volume signals are not yet confirming a fresh, actionable entry point today.'
+                  ? readiness.label === QUALIFIED_LABEL
+                    ? 'Its breakout and volume conditions are also met at the latest close.'
+                    : 'Its breakout and volume conditions are not met at the latest close.'
                   : `It fails ${explanation.hard_filter_failures.length} of the mandatory Trend Template / liquidity gate condition(s), which is why it is excluded from the ranked universe regardless of its other scores.`}
               </p>
             </Card>

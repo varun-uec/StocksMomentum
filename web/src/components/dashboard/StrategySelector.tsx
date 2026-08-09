@@ -28,31 +28,51 @@ export function StrategySelector() {
     }
   }, [strategies, strategyName, setStrategyName]);
 
+  const singleOption = !!strategies && strategies.length === 1;
+  const { data: allStrategies } = useQuery({
+    queryKey: ['strategies', 'all'],
+    queryFn: () => listStrategies(false),
+    staleTime: 5 * 60_000,
+    enabled: singleOption,
+  });
+
   if (isLoading || !strategies || strategies.length === 0) {
     return null;
   }
 
-  if (!strategies.some((s) => s.name === strategyName)) {
-    setStrategyName(strategies[0].name);
-  }
+  const selected = strategies.some((s) => s.name === strategyName)
+    ? strategyName
+    : strategies[0].name;
 
   return (
-    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-lg p-1">
-      {strategies.map((s) => (
-        <button
-          key={s.name}
-          type="button"
-          title={s.description ?? undefined}
-          onClick={() => setStrategyName(s.name)}
-          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${focusRing} ${
-            strategyName === s.name
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-          }`}
-        >
-          {strategyDisplayName(s.name)}
-        </button>
-      ))}
+    <div className="flex flex-col gap-0.5">
+      <label
+        htmlFor="strategy-selector"
+        className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+      >
+        Strategy
+      </label>
+      <select
+        id="strategy-selector"
+        value={selected}
+        disabled={singleOption}
+        title={strategies.find((s) => s.name === selected)?.description ?? undefined}
+        onChange={(e) => setStrategyName(e.target.value)}
+        className={`rounded-lg border border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 disabled:opacity-70 disabled:cursor-not-allowed ${focusRing}`}
+      >
+        {strategies.map((s) => (
+          <option key={s.name} value={s.name}>
+            {strategyDisplayName(s.name)}
+          </option>
+        ))}
+      </select>
+      {singleOption && (
+        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+          {allStrategies
+            ? `1 of ${allStrategies.length} strategies has a completed run`
+            : 'Only one strategy has a completed run'}
+        </span>
+      )}
     </div>
   );
 }
