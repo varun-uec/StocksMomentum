@@ -13,6 +13,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from momentum25.domain.errors import StrategyNotFoundError
 from momentum25.domain.research.validation_models import (
     AlphaAnalysisReport,
     EngineEffectivenessReport,
@@ -91,7 +92,7 @@ class HistoricalValidationUseCase:
 
         strategy = await self._strategy_repo.get_active(strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         # Get trading calendar from OHLCV data
         latest = await self._ohlcv_repo.latest_date()
@@ -281,7 +282,7 @@ class AlphaMeasurementUseCase:
         """
         strategy = await self._strategy_repo.get_active(strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
@@ -432,7 +433,7 @@ class StrategyScorecardUseCase:
         """
         strategy = await self._strategy_repo.get_active(strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
@@ -593,7 +594,7 @@ class RuleEffectivenessUseCase:
         """
         strategy = await self._strategy_repo.get_active(strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
@@ -684,7 +685,7 @@ class EngineEffectivenessUseCase:
         """
         strategy = await self._strategy_repo.get_active(strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
@@ -801,7 +802,7 @@ class ParameterResearchUseCase:
         """
         strategy = await self._strategy_repo.get_active(base_strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {base_strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {base_strategy_name}")
 
         # Get run dates from existing completed runs
         if not run_dates:

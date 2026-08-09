@@ -12,6 +12,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from momentum25.domain.errors import StrategyNotFoundError
 from momentum25.domain.research.models import (
     HistoricalRunSummary,
     PortfolioPerformance,
@@ -59,11 +60,11 @@ class EvaluateStrategyUseCase:
             A StrategyEvaluationResult with performance metrics.
 
         Raises:
-            ValueError: If the strategy is not found.
+            StrategyNotFoundError: If the strategy is not found.
         """
         strategy = await self._strategy_repo.get_active(strategy_name)
         if strategy is None:
-            raise ValueError(f"Strategy not found: {strategy_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         # Load runs
         runs, _total = await self._screening_run_repo.list_runs(

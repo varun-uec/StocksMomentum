@@ -115,7 +115,7 @@ class GetStockExplanation:
             run_id, security.id, rule_results, ranking
         )
         return StockExplanation(
-            symbol=symbol,
+            symbol=str(security.symbol),
             security_id=explanation.security_id,
             overall_passed=explanation.overall_passed,
             momentum_score=explanation.momentum_score,
@@ -242,7 +242,7 @@ class GetIndicatorSeries:
                 strict=True,
             )
         ]
-        return SecurityIndicatorSeriesDTO(symbol=symbol, bars=bars)
+        return SecurityIndicatorSeriesDTO(symbol=str(security.symbol), bars=bars)
 
 
 class RefreshGate:
@@ -358,7 +358,7 @@ class GetLiveStockAnalysis:
         if indicators.sma200 is None:
             _logger.info("live_lookup_insufficient_data", symbol=symbol)
             return LiveStockAnalysis(
-                symbol=symbol,
+                symbol=str(security.symbol),
                 verdict="INSUFFICIENT_DATA",
                 data_as_of=reference_date,
                 refreshed=refreshed,
@@ -422,11 +422,11 @@ class GetLiveStockAnalysis:
             r for r in explanation.hard_filter_failures if r not in indeterminate_rules
         )
         explanation = replace(
-            explanation, symbol=symbol, hard_filter_failures=visible_hard_failures
+            explanation, symbol=str(security.symbol), hard_filter_failures=visible_hard_failures
         )
 
         return LiveStockAnalysis(
-            symbol=symbol,
+            symbol=str(security.symbol),
             verdict=verdict,
             data_as_of=reference_date,
             refreshed=refreshed,

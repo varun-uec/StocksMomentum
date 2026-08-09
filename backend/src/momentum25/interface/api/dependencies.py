@@ -23,6 +23,7 @@ from momentum25.application.use_cases.runs import (
     TriggerRefresh,
 )
 from momentum25.application.use_cases.screening import ExecuteScreening
+from momentum25.application.use_cases.securities import GetSecurityOHLCV
 from momentum25.application.use_cases.stocks import (
     GetIndicatorSeries,
     GetLiveStockAnalysis,
@@ -131,11 +132,13 @@ async def get_get_rankings(
         SqlScreeningRunRepository, Depends(get_screening_run_repository)
     ],
     security_repo: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    strategy_repo: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[GetRankings]:
     """Provide a GetRankings use-case instance."""
     yield GetRankings(
         screening_run_repo=screening_run_repo,
         security_repo=security_repo,
+        strategy_repo=strategy_repo,
     )
 
 
@@ -258,6 +261,14 @@ async def get_detect_chart_patterns(
 ) -> AsyncIterator[DetectChartPatterns]:
     """Provide a DetectChartPatterns use-case instance."""
     yield DetectChartPatterns(securities=securities, ohlcv=ohlcv)
+
+
+async def get_get_security_ohlcv(
+    securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
+) -> AsyncIterator[GetSecurityOHLCV]:
+    """Provide a GetSecurityOHLCV use-case instance."""
+    yield GetSecurityOHLCV(securities=securities, ohlcv=ohlcv)
 
 
 async def get_get_strategy(

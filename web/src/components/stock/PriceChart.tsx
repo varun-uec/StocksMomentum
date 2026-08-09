@@ -367,6 +367,7 @@ export function PriceChart({
     });
     chartRef.current = chart;
     const maSeries = maSeriesRef.current;
+    const paneSeries = paneSeriesRef.current;
 
     // Phase 9 — the drawings primitive lives on pane 0, so it survives the
     // candlestick/line series rebuilds below untouched.
@@ -380,10 +381,22 @@ export function PriceChart({
       window.removeEventListener('resize', resize);
       drawingsLayerRef.current = null;
       drawingsLayer.detach();
+      // `chart.remove()` tears down every series/pane on it in one call. The
+      // other effects' series refs (overlay lines, markers, price lines,
+      // indicator panes) are otherwise only cleared at the top of their own
+      // next run -- in dev, React's double-invoke can re-run this cleanup and
+      // remount before that happens, leaving those refs pointing at series
+      // that belonged to the now-destroyed chart. Clearing them here too
+      // means the next mount starts from a clean slate instead of trying to
+      // `removeSeries` an object the (new) chart never created.
       chart.remove();
       chartRef.current = null;
       priceSeriesRef.current = null;
       maSeries.clear();
+      overlaySeriesRef.current = [];
+      markersRef.current = null;
+      zoneLinesRef.current = [];
+      paneSeries.clear();
     };
     // Chart instance is created once; `height` is applied by the effect below
     // so a height change never tears down (and blanks) the series.
@@ -561,11 +574,16 @@ export function PriceChart({
         lastValueVisible: false,
         crosshairMarkerVisible: false,
       });
-      series.setData(
-        line.points
-          .map((p) => ({ time: toTime(p.date), value: p.price }))
-          .sort((a, b) => (a.time as number) - (b.time as number))
-      );
+      const sorted = line.points
+        .map((p) => ({ time: toTime(p.date), value: p.price }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
+      // A single volatile bar can produce two pivots (its high and its low)
+      // on the same calendar day, e.g. a wave count's swing labels -- the
+      // chart can only place one point per day, so the later pivot (the
+      // bar's more decisive extreme) wins and the series stays strictly
+      // ascending, which lightweight-charts requires.
+      const deduped = sorted.filter((p, i) => i === sorted.length - 1 || p.time !== sorted[i + 1].time);
+      series.setData(deduped);
       return series;
     });
   }, [overlayLine, overlayLines]);

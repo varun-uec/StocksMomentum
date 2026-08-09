@@ -11,6 +11,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from momentum25.domain.errors import StrategyNotFoundError
 from momentum25.domain.research.models import StrategyComparisonReport
 from momentum25.domain.research.services import compare_strategies
 
@@ -55,15 +56,15 @@ class StrategyComparisonUseCase:
             A StrategyComparisonReport with deterministic diffs.
 
         Raises:
-            ValueError: If either strategy is not found.
+            StrategyNotFoundError: If either strategy is not found.
         """
         strategy_a = await self._strategy_repo.get_active(strategy_a_name)
         strategy_b = await self._strategy_repo.get_active(strategy_b_name)
 
         if strategy_a is None:
-            raise ValueError(f"Strategy not found: {strategy_a_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_a_name}")
         if strategy_b is None:
-            raise ValueError(f"Strategy not found: {strategy_b_name}")
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_b_name}")
 
         # Build snapshots for both strategies
         snapshots_a = await self._build_strategy_snapshots(

@@ -23,3 +23,6 @@ web/.turbo/
 .DS_Store
 .idea/
 .vscode/
+
+# Playwright MCP session output
+.playwright-mcp/

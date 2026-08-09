@@ -125,4 +125,13 @@ class TriggerRefresh:
             trigger=RunTrigger.MANUAL,
             status=RunStatus.PENDING,
         )
-        return await self._runs.create(run)
+        run_id = await self._runs.create(run)
+        # A background task (run_screening_pipeline) picks this row up by id in
+        # its own session immediately after this request returns -- it must be
+        # committed here, not left for the request-scoped session's teardown
+        # (which only closes, per _managed_session), or the row is invisible to
+        # (and rolled back before) that background lookup.
+        session = getattr(self._runs, "_session", None)
+        if session is not None:
+            await session.commit()
+        return run_id

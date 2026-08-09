@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from momentum25.application.dto.rankings import RankingItemDTO, RankingsResponseDTO
+from momentum25.domain.errors import NotFoundError
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
 
 
@@ -15,11 +16,13 @@ class GetRankings:
         self,
         screening_run_repo: Any,
         security_repo: Any,
+        strategy_repo: Any,
         explainability_builder: ExplainabilityBuilderImpl | None = None,
     ) -> None:
-        """Initialize with screening-run and security repositories."""
+        """Initialize with screening-run, security, and strategy repositories."""
         self._screening_run_repo = screening_run_repo
         self._security_repo = security_repo
+        self._strategy_repo = strategy_repo
         self._explainability_builder = explainability_builder or ExplainabilityBuilderImpl()
 
     async def execute(
@@ -33,7 +36,7 @@ class GetRankings:
 
         run = await self._screening_run_repo.get(run_id)
         if run is None:
-            raise ValueError(f"Run {run_id} not found")
+            raise NotFoundError(f"Run {run_id} not found")
 
         rankings, total = await self._screening_run_repo.get_rankings(run_id, limit, offset)
 
@@ -75,12 +78,16 @@ class GetRankings:
                 )
             )
 
+        strategies = await self._strategy_repo.list()
+        strategy_name = next(
+            (s.name for s in strategies if s.id == run.strategy_id), "unknown"
+        )
         run_dto = RunDTO(
             id=run.id,
             status=run.status.value,
             run_date=run.run_date,
             trigger=run.trigger.value,
-            strategy="",
+            strategy=strategy_name,
             data_version=run.data_version,
             config_hash=run.config_hash,
             started_at=run.started_at,

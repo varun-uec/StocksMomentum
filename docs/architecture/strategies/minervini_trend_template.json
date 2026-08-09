@@ -1,7 +1,7 @@
 {
   "name": "minervini_trend_template",
   "version": 3,
-  "is_active": false,
+  "is_active": true,
   "description": "Minervini-inspired momentum strategy: Trend Template gate + Relative Strength + Volume/Accumulation + Pattern Recognition + Breakout + Risk. Fundamentals disabled in MVP. v2 activates the Pattern Recognition engine (VCP/cup-handle/ascending-base/flat-base/high-tight-flag), previously implemented but not wired into scoring. v3: removed rs_sector_relative, rs_industry_relative, rs_line_uptrend (0% pass rate across 90,657 evaluations spanning 2019-2026, all regimes -- confirmed dead by Research Program 1, no measurable value; sector/industry rules require classification data unavailable from any free NSE source, rs_line_uptrend never fired under current computation).",
   "benchmark_index": "NIFTY500",
   "universe": {

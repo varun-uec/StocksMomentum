@@ -12,6 +12,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from momentum25.domain.errors import NotFoundError
 from momentum25.domain.research.models import RunComparisonReport
 from momentum25.domain.research.services import compare_runs
 
@@ -47,16 +48,16 @@ class ValidateRunComparisonUseCase:
             A RunComparisonReport with all diffs.
 
         Raises:
-            ValueError: If either run is not found.
+            NotFoundError: If either run is not found.
         """
         # Load both runs
         run_a = await self._screening_run_repo.get(run_id_a)
         run_b = await self._screening_run_repo.get(run_id_b)
 
         if run_a is None:
-            raise ValueError(f"Run {run_id_a} not found")
+            raise NotFoundError(f"Run {run_id_a} not found")
         if run_b is None:
-            raise ValueError(f"Run {run_id_b} not found")
+            raise NotFoundError(f"Run {run_id_b} not found")
 
         # Load rankings and rule results for both runs
         rankings_a, _ = await self._screening_run_repo.get_rankings(
