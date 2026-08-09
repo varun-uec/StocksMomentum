@@ -4,8 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { useChartPreferences } from '@/lib/chart-preferences';
-import { getIndicatorSeries, getLiveStockAnalysis, getOhlcv, getStockExplanation, getStockHistory } from '@/lib/api-client';
+import { getLiveStockAnalysis, getStockExplanation, getStockHistory } from '@/lib/api-client';
 import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { strategyDisplayName } from '@/lib/format';
@@ -18,7 +17,8 @@ import { TrendTemplateCard } from '@/components/stock/TrendTemplateCard';
 import { EngineContributionBars } from '@/components/stock/EngineContributionBars';
 import { focusRing, chartPalette } from '@/lib/theme';
 import { num } from '@/lib/format';
-import { PriceChart, TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
+import { PriceChart, TIMEFRAMES } from '@/components/stock/PriceChart';
+import { useChartShell } from '@/components/stock/useChartShell';
 import { MomentumOverview } from '@/components/stock/MomentumOverview';
 import { MomentumView } from '@/components/stock/MomentumView';
 import { TechnicalWorkbench } from '@/components/stock/TechnicalWorkbench';
@@ -27,16 +27,7 @@ import { PatternCard } from '@/components/stock/PatternCard';
 import { WhyItRanks } from '@/components/stock/WhyItRanks';
 import { SuggestedStop } from '@/components/stock/SuggestedStop';
 import { RelativeStrengthVsIndex } from '@/components/stock/RelativeStrengthVsIndex';
-import { WatchlistStar } from '@/components/stock/WatchlistStar';
-
-/** ISO date `days` before today, for the chart's `from` query param. */
-function fromDateFor(timeframe: TimeframeId): string | undefined {
-  const days = TIMEFRAMES.find((t) => t.id === timeframe)?.days;
-  if (!days) return undefined;
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - days);
-  return d.toISOString().slice(0, 10);
-}
+import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
 
 
 // ── Rule-level "what would improve this" guidance ──────────────────────
@@ -168,53 +159,20 @@ export default function StockResearchPage() {
   const horizonLabel = strategyDisplayName(strategyName);
   const chartColors = useChartColors();
   const [activeSection, setActiveSection] = useState('overview');
-  const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
-  const { preferences, ready: prefsReady, update: updatePreferences } = useChartPreferences(symbol ?? '');
-
-  // Phase 9.5 — apply the persisted timeframe once prefs are loaded; the chart
-  // itself is only rendered after `prefsReady`, so it always mounts with final
-  // values (no defaults-then-sync flash).
-  useEffect(() => {
-    if (prefsReady) setTimeframeState(preferences.timeframe);
-  }, [prefsReady, preferences.timeframe]);
-
-  const setTimeframe = (id: TimeframeId) => {
-    setTimeframeState(id);
-    updatePreferences({ timeframe: id });
-  };
+  // Shared with the Elliott Wave route so panes, MAs and drawings carry across.
+  const {
+    timeframe,
+    ready: prefsReady,
+    bars,
+    chartProps,
+  } = useChartShell(symbol ?? '', strategyName);
+  const setTimeframe = chartProps.onTimeframeChange;
 
   const { data: live, isLoading: liveLoading, error: liveError } = useQuery({
     queryKey: ['stock-live', symbol, strategyName],
     queryFn: () => getLiveStockAnalysis(symbol, false, strategyName),
     enabled: !!symbol,
   });
-
-  const { data: ohlcv, isLoading: ohlcvLoading } = useQuery({
-    queryKey: ['stock-ohlcv', symbol, timeframe],
-    queryFn: () => getOhlcv(symbol, fromDateFor(timeframe)),
-    enabled: !!symbol,
-  });
-
-  const { data: indicatorSeries } = useQuery({
-    queryKey: ['stock-indicator-series', symbol, strategyName],
-    queryFn: () => getIndicatorSeries(symbol, strategyName),
-    enabled: !!symbol,
-  });
-
-  // Decode the backend's decimal-string bars into the chart's number-typed
-  // series (values the backend did not produce are null).
-  const indicatorBars = useMemo(
-    () =>
-      (indicatorSeries?.bars ?? []).map((b) => ({
-        date: b.date,
-        rsi14: b.rsi14 === null ? null : parseFloat(b.rsi14),
-        adx14: b.adx14 === null ? null : parseFloat(b.adx14),
-        macd_line: b.macd_line === null ? null : parseFloat(b.macd_line),
-        macd_signal: b.macd_signal === null ? null : parseFloat(b.macd_signal),
-        macd_histogram: b.macd_histogram === null ? null : parseFloat(b.macd_histogram),
-      })),
-    [indicatorSeries]
-  );
 
   const { data: runExplanation, isLoading: explLoading } = useQuery({
     queryKey: ['stock-explanation', symbol, strategyName],
@@ -308,13 +266,7 @@ export default function StockResearchPage() {
           Trend Template {explanation.overall_passed ? 'PASS' : 'FAIL'}
         </Badge>
         <Badge color={readiness.color}>{readiness.label}</Badge>
-        <Link
-          href={`/stock/${symbol}/elliott-wave?strategy=${strategyName}`}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
-        >
-          Elliott Wave Analysis →
-        </Link>
-        <WatchlistStar symbol={symbol} />
+        <SymbolActionBar symbol={symbol} strategyName={strategyName} current="chart" />
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
@@ -394,20 +346,7 @@ export default function StockResearchPage() {
               under the overview rather than at the foot of the page. */}
           <section id="chart" className="scroll-mt-32">
             <Card title="Price history">
-              <PriceChart
-                bars={ohlcv?.bars ?? []}
-                timeframe={timeframe}
-                onTimeframeChange={setTimeframe}
-                isLoading={ohlcvLoading}
-                indicatorSeries={indicatorBars}
-                activePanes={preferences.activePanes}
-                onActivePanesChange={(panes) => updatePreferences({ activePanes: panes })}
-                initialActiveMas={preferences.activeMas}
-                onActiveMasChange={(mas) => updatePreferences({ activeMas: mas })}
-                drawingsEnabled
-                initialDrawings={preferences.drawings}
-                onDrawingsChange={(drawings) => updatePreferences({ drawings })}
-              />
+              <PriceChart {...chartProps} />
             </Card>
           </section>
 
@@ -642,7 +581,7 @@ export default function StockResearchPage() {
               )}
             </Card>
 
-            {live && <MomentumOverview live={live} bars={ohlcv?.bars ?? []} />}
+            {live && <MomentumOverview live={live} bars={bars} />}
 
             {live?.explanation && (
               <>
@@ -657,7 +596,7 @@ export default function StockResearchPage() {
                     stop={live.suggested_stop}
                     trailingStop={live.trailing_stop}
                     latestClose={
-                      ohlcv?.bars.length ? parseFloat(ohlcv.bars[ohlcv.bars.length - 1].close) : null
+                      bars.length ? parseFloat(bars[bars.length - 1].close) : null
                     }
                   />
                 </div>
@@ -665,14 +604,16 @@ export default function StockResearchPage() {
                   points={live.relative_strength_vs_index ?? []}
                   benchmarkIndex={live.benchmark_index}
                 />
-                <PatternCard
-                  explanation={live.explanation}
-                  symbol={symbol}
-                  bars={ohlcv?.bars ?? []}
-                  timeframe={timeframe}
-                  onTimeframeChange={setTimeframe}
-                  lookbackDays={TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? 2000}
-                />
+                <div id="patterns" className="scroll-mt-32">
+                  <PatternCard
+                    explanation={live.explanation}
+                    symbol={symbol}
+                    bars={bars}
+                    timeframe={timeframe}
+                    onTimeframeChange={setTimeframe}
+                    lookbackDays={TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? 2000}
+                  />
+                </div>
                 <WhyItRanks explanation={live.explanation} />
               </>
             )}

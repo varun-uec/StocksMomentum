@@ -107,7 +107,17 @@ function RiskBadge({ bucket }: { bucket: string | null }) {
 }
 
 function RankChange({ change }: { change: number | null }) {
-  if (change === null || change === 0) return <span className="text-slate-400 dark:text-slate-600">—</span>;
+  // A missing delta and an unchanged rank are different facts (audit U6).
+  if (change === null)
+    return (
+      <span
+        className="text-[10px] font-medium text-slate-500"
+        title="No rank in the previous run to compare against."
+      >
+        new
+      </span>
+    );
+  if (change === 0) return <span className="text-xs tabular-nums text-slate-500">0</span>;
   const isUp = change < 0; // negative delta = rank improved
   return (
     <span

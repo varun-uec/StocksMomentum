@@ -143,7 +143,7 @@ class GetStockHistory:
         self,
         securities: SecurityRepository,
         screening_run_repo: ScreeningRunRepository,
-        strategies: StrategyRepository | None = None,
+        strategies: StrategyRepository,
     ) -> None:
         """Wire the use case with security, run, and strategy collaborators."""
         self._securities = securities
@@ -151,40 +151,33 @@ class GetStockHistory:
         self._strategies = strategies
 
     async def execute(self, symbol: str, strategy_name: str, limit: int) -> dict[str, Any]:
-        """Return history points for a symbol, scoped to one strategy (e.g. a Momentum Horizon)."""
+        """Return history points for a symbol, scoped to one strategy (e.g. a Momentum Horizon).
+
+        One query, not one per run: the previous implementation listed every
+        completed run and pulled up to 10,000 rankings from each just to find a
+        single security.
+        """
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
 
-        strategy_id: int | None = None
-        if self._strategies is not None:
-            strategy = await self._strategies.get_active(strategy_name)
-            if strategy is None or strategy.id is None:
-                raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-            strategy_id = strategy.id
+        strategy = await self._strategies.get_active(strategy_name)
+        if strategy is None or strategy.id is None:
+            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
-        runs, _ = await self._screening_run_repo.list_runs(
-            status="COMPLETED", limit=limit, offset=0, strategy_id=strategy_id
+        history = await self._screening_run_repo.score_history(
+            strategy_id=strategy.id, security_id=security.id, limit=limit
         )
-
-        points = []
-        for run in runs:
-            if run.id is None:
-                continue
-            rankings, _ = await self._screening_run_repo.get_rankings(
-                run.id, limit=10000, offset=0
-            )
-            for r in rankings:
-                if r.security_id == security.id:
-                    points.append({
-                        "run_date": run.run_date.isoformat(),
-                        "security_id": security.id,
-                        "rank": r.rank,
-                        "momentum_score": str(r.momentum_score),
-                        "buy_setup_score": str(r.buy_setup_score),
-                    })
-                    break
-
+        points = [
+            {
+                "run_date": point.run_date.isoformat(),
+                "security_id": security.id,
+                "rank": point.rank,
+                "momentum_score": str(point.momentum_score),
+                "buy_setup_score": str(point.buy_setup_score),
+            }
+            for point in history
+        ]
         return {"symbol": symbol, "score_history": points}
 
 

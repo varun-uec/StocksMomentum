@@ -404,6 +404,9 @@ class SqlScreeningRunRepository:
             .join(ScreeningResultModel, ScreeningRunModel.id == ScreeningResultModel.run_id)
             .where(
                 ScreeningRunModel.strategy_id == strategy_id,
+                # Only completed runs: a failed run's partial results are not a
+                # point in the security's history.
+                ScreeningRunModel.status == "COMPLETED",
                 ScreeningResultModel.security_id == security_id,
             )
             .order_by(ScreeningRunModel.run_date.desc())

@@ -13,16 +13,17 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { LineStyle } from 'lightweight-charts';
-import { getElliottWave, getOhlcv } from '@/lib/api-client';
+import { getElliottWave } from '@/lib/api-client';
 import { Card, Badge, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
 import {
   PriceChart,
-  TIMEFRAMES,
   type ChartMarker,
   type ChartOverlayLine,
-  type TimeframeId,
 } from '@/components/stock/PriceChart';
+import { lookbackDaysFor, useChartShell } from '@/components/stock/useChartShell';
 import { focusRing } from '@/lib/theme';
+import { DEFAULT_STRATEGY } from '@/app/strategy-context';
+import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
 import type { ElliottWaveCount } from '@/lib/types';
 
 const MAX_LOOKBACK_DAYS = 2000;
@@ -32,18 +33,6 @@ const ALTERNATIVE_COLOR = '#0ea5e9';
 // one finer degree deeper than the primary count at a glance.
 const PRIMARY_SUBDIVISION_COLOR = 'rgba(168, 85, 247, 0.45)';
 const ALTERNATIVE_SUBDIVISION_COLOR = 'rgba(14, 165, 233, 0.45)';
-
-function lookbackDaysFor(timeframe: TimeframeId): number {
-  return TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? MAX_LOOKBACK_DAYS;
-}
-
-function fromDateFor(timeframe: TimeframeId): string | undefined {
-  const days = TIMEFRAMES.find((t) => t.id === timeframe)?.days;
-  if (!days) return undefined;
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - days);
-  return d.toISOString().slice(0, 10);
-}
 
 function CountSummary({
   count,
@@ -111,16 +100,15 @@ export default function ElliottWavePage() {
   const { symbol } = useParams<{ symbol: string }>();
   const searchParams = useSearchParams();
   const strategyQuery = searchParams.get('strategy');
-  const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
   const [thresholdPct, setThresholdPct] = useState(5);
   const [showAlternative, setShowAlternative] = useState(false);
   const [showSubwaves, setShowSubwaves] = useState(false);
-
-  const { data: ohlcv, isLoading: ohlcvLoading } = useQuery({
-    queryKey: ['stock-ohlcv', symbol, timeframe],
-    queryFn: () => getOhlcv(symbol, fromDateFor(timeframe)),
-    enabled: !!symbol,
-  });
+  // Same chart shell as /stock/[symbol]: indicator panes, moving averages and
+  // drawing tools all carry across, persisted per symbol.
+  const { timeframe, ready: chartReady, chartProps } = useChartShell(
+    symbol ?? '',
+    strategyQuery ?? DEFAULT_STRATEGY
+  );
 
   const {
     data: analysis,
@@ -128,7 +116,8 @@ export default function ElliottWavePage() {
     error: waveError,
   } = useQuery({
     queryKey: ['elliott-wave', symbol, timeframe, thresholdPct],
-    queryFn: () => getElliottWave(symbol, lookbackDaysFor(timeframe), thresholdPct),
+    queryFn: () =>
+      getElliottWave(symbol, lookbackDaysFor(timeframe, MAX_LOOKBACK_DAYS), thresholdPct),
     enabled: !!symbol,
   });
 
@@ -195,6 +184,7 @@ export default function ElliottWavePage() {
         {analysis?.primary && (
           <Badge color="indigo">{analysis.primary.degree} degree</Badge>
         )}
+        <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="elliott-wave" />
         <Link
           href={backHref}
           className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
@@ -250,11 +240,9 @@ export default function ElliottWavePage() {
         </div>
 
         <Card>
+          {chartReady && (
           <PriceChart
-            bars={ohlcv?.bars ?? []}
-            timeframe={timeframe}
-            onTimeframeChange={setTimeframe}
-            isLoading={ohlcvLoading}
+            {...chartProps}
             height={620}
             markers={markers}
             overlayLine={overlayLine}
@@ -265,6 +253,7 @@ export default function ElliottWavePage() {
                 : `${analysis?.pivots.length ?? 0} confirmed pivots at a ${thresholdPct}% reversal threshold.`
             }
           />
+          )}
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -67,7 +67,24 @@ function WatchlistRow({
       </Cell>
       <Cell className="tabular-nums text-right">{num(item.momentum_score, 1)}</Cell>
       <Cell className="tabular-nums text-right">{item.rs_rating ?? '—'}</Cell>
-      <Cell className="tabular-nums text-right">{item.rank != null ? `#${item.rank}` : '—'}</Cell>
+      <Cell className="tabular-nums text-right">
+        {/* "—" alone cannot say whether the stock was evaluated and failed the
+            gates or was never in the run at all (audit U6). */}
+        {item.rank != null ? (
+          `#${item.rank}`
+        ) : item.in_latest_run ? (
+          <span
+            className="text-[10px] font-medium text-amber-600 dark:text-amber-400"
+            title="Evaluated in the latest run but did not pass every gate, so it is unranked."
+          >
+            not qualified
+          </span>
+        ) : (
+          <span className="text-slate-400 dark:text-slate-600" title="Not part of the latest screening run.">
+            —
+          </span>
+        )}
+      </Cell>
       <Cell
         className={`tabular-nums text-right ${
           rankChange === null || rankChange === undefined
@@ -79,7 +96,17 @@ function WatchlistRow({
                 : 'text-slate-500'
         }`}
       >
-        {rankChange == null ? '—' : rankChange === 0 ? '0' : `${rankChange > 0 ? '+' : ''}${rankChange}`}
+        {item.rank == null ? (
+          <span className="text-slate-400 dark:text-slate-600">—</span>
+        ) : rankChange == null ? (
+          <span className="text-[10px] font-medium" title="No rank in the previous run to compare against.">
+            new
+          </span>
+        ) : rankChange === 0 ? (
+          '0'
+        ) : (
+          `${rankChange > 0 ? '+' : ''}${rankChange}`
+        )}
       </Cell>
       <Cell className="tabular-nums text-right">
         {item.pct_below_high_52w !== null ? `${num(item.pct_below_high_52w)}%` : '—'}

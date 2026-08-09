@@ -47,34 +47,43 @@ patterns; risk-only features (stop-loss) isolated from reward/target logic.
 | Health / ops | `health`, `/live`, `/ready`, `/startup`, `/data-freshness`, `/metrics` | freshness badge |
 | Learn | — | 6 static `/learn/*` pages |
 
-## Preliminary findings (static pass, to confirm live)
+## Preliminary findings — resolved (see `docs/audit-findings-2026-08-09.md`)
 
-1. **`securities.py:34` — `from` param silently returns empty.** `lookback_days`
-   is hardcoded to 500 and `from_` only post-filters the returned window, so any
-   request for a range older than 500 sessions returns `bars: []` with HTTP 200
-   instead of the data or a clear error. Fix: derive the lookback from `from_`
-   (or push the range into `get_series`).
-2. **`securities.py` bypasses the application layer.** It is the only router
-   importing concrete `SqlOHLCVRepository` / `SqlSecurityRepository` directly;
-   every other router depends on a use case. Violates the inward-dependency rule
-   in CLAUDE.md. Fix: introduce a `GetSecurityOHLCV` use case alongside the
-   existing `GetIndicatorSeries`.
-3. **`stocks.py:506` — private-attribute reach-through.**
-   `getattr(self._ohlcv_repo, "_session", None)` to commit from the application
-   layer. Fix: commit via the repository port / unit-of-work, not `_session`.
-4. **Inconsistent symbol normalization.** `GetStockExplanation` echoes the raw
-   path segment (`/stocks/tcs` → `"tcs"`), Elliott/patterns return
-   `symbol.upper()`, `securities` returns the canonical `security.symbol`.
-   Fix: return the canonical symbol everywhere.
-5. **`GetStockHistory` N+1.** Loops runs and pulls `limit=10000` rankings per run
-   (up to 500 runs) to find one security. Fix: a single targeted query.
+1. ~~`securities.py:34` — `from` param silently returns empty.~~ **Fixed.**
+   `from`/`to` are honoured end to end (`?from=2020-01-01&to=2020-06-01` returns
+   2020 bars).
+2. ~~`securities.py` bypasses the application layer.~~ **Fixed.** The router now
+   routes through `GetSecurityOHLCV` / `SearchSecurities`.
+3. **`stocks.py` — private-attribute reach-through. Still stands, accepted debt.**
+   `getattr(self._ohlcv_repo, "_session", None)` is not dead — it is the commit
+   path, and it is used identically at 12 call sites across the application
+   layer. Replacing it properly needs a unit-of-work port on the repository
+   protocols; a local `hasattr` swap would move the reach-through, not remove
+   it. Behaviour is correct today, so this is recorded as architectural debt
+   rather than a defect. (The per-security commit in
+   `RefreshCorporateActions` uses the same path and is load-bearing — see the
+   data-loss note in that use case.)
+4. ~~Inconsistent symbol normalization.~~ **Fixed.** `/stocks/reliance` →
+   `"RELIANCE"` everywhere.
+5. ~~`GetStockHistory` N+1.~~ **Fixed.** The use case now calls the already-existing
+   `ScreeningRunRepository.score_history(strategy_id, security_id, limit)` — one
+   indexed query, instead of listing every completed run and pulling up to
+   10,000 rankings from each to find one security. `score_history` also filters
+   to `COMPLETED` runs, preserving the previous semantics.
 
-Ruled out during the static pass: frontend `status=completed` vs backend
-`"COMPLETED"` is safe (`screening_run.py:104` applies `.upper()`); the
-`POST` verb on chart-patterns is deliberate and documented; the three product
-constraints hold at the domain layer (`stop_loss.py` is explicitly isolated,
-`chart_patterns.py` and `elliott_wave.py` docstrings forbid verdicts/targets,
-and `verdict` in `stocks.py` is trend-template PASS/FAIL, not Buy/Sell).
+`legacy_ohlcv_daily_bak` (1,731,889 rows) is a pre-backfill snapshot;
+`legacy_ohlcv_daily` is empty. Nothing in the codebase reads either table —
+the only reference is a comment in `backend/scripts/reingest_history.py`
+stating the re-ingest deliberately does *not* recover from the `_bak` table.
+It is therefore unused by the application, but it is the only surviving copy of
+the pre-backfill history, so **no table has been dropped**; removal is an
+operator decision, not an engineering one.
+
+Ruled out during the static pass, and re-checked live: frontend
+`status=completed` vs backend `"COMPLETED"` is safe on the dashboard
+(`screening_run.py:104` applies `.upper()`) but **was not** safe on
+`/analytics`, which read `statusCounts['completed']` — fixed at the API-client
+boundary. The `POST` verb on chart-patterns is deliberate and documented.
 
 ## Execution
 
