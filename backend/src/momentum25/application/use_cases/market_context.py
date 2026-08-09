@@ -35,6 +35,13 @@ from momentum25.domain.ports.repositories import (
 # gap in ingestion without ever truncating a real 52-week window.
 _CALENDAR_LOOKBACK_DAYS = 500
 
+# Why the sector panel is empty. The endpoint reports this rather than letting
+# the client infer it: SectorStrengthTable used to blame missing benchmark
+# history while benchmark_index_daily held 2858 rows and the real cause was
+# securities.sector being NULL for all 3235 rows (2026-08-09 audit §1.2.8).
+NO_SECTOR_CLASSIFICATION = "no_sector_classification"
+NO_BENCHMARK_HISTORY = "no_benchmark_history"
+
 
 @dataclass(frozen=True, slots=True)
 class MarketContext:
@@ -44,6 +51,7 @@ class MarketContext:
     benchmark_index: str | None
     breadth: MarketBreadth
     sectors: tuple[SectorRelativeStrength, ...] = field(default_factory=tuple)
+    sectors_unavailable_reason: str | None = None
 
 
 class GetMarketContext:
@@ -69,9 +77,22 @@ class GetMarketContext:
         panel honest on weekends, holidays and during an ingestion outage: it
         reports the last session actually measured instead of an empty one.
         """
-        reference_date = as_of or await self._ohlcv_repo.latest_date()
-        if reference_date is None:
+        latest = await self._ohlcv_repo.latest_date()
+        if latest is None:
             raise NotFoundError("No price history has been ingested yet.")
+
+        # A date before the first stored bar produced HTTP 200 with
+        # `evaluated: 0`, which reads as a real zero rather than "we have no
+        # data for that day" (2026-08-09 audit §1.2.12). The rest of the API
+        # returns a crisp 404 in this situation; so does this now.
+        if as_of is not None:
+            earliest = await self._ohlcv_repo.earliest_date()
+            if earliest is not None and as_of < earliest:
+                raise NotFoundError(
+                    f"No price history on or before {as_of.isoformat()}; "
+                    f"the earliest stored bar is {earliest.isoformat()}."
+                )
+        reference_date = as_of or latest
 
         universe = await self._securities.list_active()
         symbol_by_id = {s.id: str(s.symbol) for s in universe if s.id is not None}
@@ -97,7 +118,8 @@ class GetMarketContext:
 
         index_closes = await self._benchmark_repo.get_close_series(self._benchmark_index)
         sectors: tuple[SectorRelativeStrength, ...] = ()
-        if index_closes:
+        has_sector_classification = any(v for v in sector_by_symbol.values())
+        if index_closes and has_sector_classification:
             excess_by_symbol = {
                 symbol: {
                     point.period: point.excess_return_pct
@@ -107,9 +129,19 @@ class GetMarketContext:
             }
             sectors = compute_sector_relative_strength(excess_by_symbol, sector_by_symbol)
 
+        # Benchmark history is checked second because sector classification is
+        # the binding constraint in practice: it is unavailable from any free
+        # NSE source, so the panel stays empty even with a full index history.
+        reason: str | None = None
+        if not sectors:
+            reason = (
+                NO_BENCHMARK_HISTORY if not index_closes else NO_SECTOR_CLASSIFICATION
+            )
+
         return MarketContext(
             as_of=reference_date,
             benchmark_index=self._benchmark_index if index_closes else None,
             breadth=breadth,
             sectors=sectors,
+            sectors_unavailable_reason=reason,
         )

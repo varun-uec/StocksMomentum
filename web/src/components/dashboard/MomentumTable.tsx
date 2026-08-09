@@ -283,6 +283,13 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
 
   const data = useMemo(() => items, [items]);
 
+  // Sector classification is unavailable from any free NSE source, so
+  // `securities.sector` is null for the whole universe and the column rendered
+  // "—" on every row while the search box advertised searching by it
+  // (2026-08-09 audit §1.2.9 / U9). Driven off the data rather than deleted, so
+  // the column returns by itself the day a classification is ingested.
+  const hasSector = useMemo(() => items.some((i) => Boolean(i.sector)), [items]);
+
   const table = useReactTable({
     data,
     columns,
@@ -290,6 +297,7 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
       sorting,
       globalFilter,
       pagination,
+      columnVisibility: { sector: hasSector },
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
@@ -301,7 +309,7 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
     globalFilterFn: (row, _columnId, filterValue) => {
       const symbol: string = row.getValue('symbol');
       const name: string = row.getValue('name') ?? '';
-      const sector: string = row.getValue('sector') ?? '';
+      const sector: string = (hasSector && row.getValue('sector')) || '';
       const query = filterValue.toLowerCase();
       return (
         symbol.toLowerCase().includes(query) ||
@@ -337,7 +345,7 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
             </svg>
             <input
               type="text"
-              placeholder="Search symbol, name, sector…"
+              placeholder={hasSector ? 'Search symbol, name, sector…' : 'Search symbol or name…'}
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               className={`pl-9 pr-3 py-2 w-full sm:w-72 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm ${focusRing}`}

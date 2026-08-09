@@ -737,6 +737,8 @@ export interface MarketContext {
   benchmark_index: string | null;
   breadth: MarketBreadth;
   sectors: SectorRelativeStrength[];
+  /** Why `sectors` is empty: "no_sector_classification" | "no_benchmark_history" | null. */
+  sectors_unavailable_reason: string | null;
 }
 
 export interface OHLCVBarDTO {

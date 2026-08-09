@@ -40,6 +40,7 @@ export default function MarketPage() {
             <SectorStrengthTable
               sectors={data.sectors}
               benchmarkIndex={data.benchmark_index}
+              unavailableReason={data.sectors_unavailable_reason}
             />
           </>
         )}

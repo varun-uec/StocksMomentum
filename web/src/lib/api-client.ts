@@ -36,18 +36,38 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 
 // ── Runs ──────────────────────────────────────────────────────────────
 
+/**
+ * The API emits run status uppercase ("COMPLETED"), and every consumer must
+ * agree on that. /analytics keyed off `statusCounts['completed']` and rendered
+ * a permanent "Completed Runs 0" directly above a pie chart reading
+ * "COMPLETED: 2" (2026-08-09 audit §1.2.7). Normalising once here, at the only
+ * boundary the API crosses, means no page has to remember the convention.
+ */
+function normalizeRun<T extends { status: string }>(run: T): T {
+  return { ...run, status: run.status.toUpperCase() };
+}
+
+function normalizeRunPage(page: { items: RunDTO[]; total: number }): {
+  items: RunDTO[];
+  total: number;
+} {
+  return { ...page, items: page.items.map(normalizeRun) };
+}
+
 export async function getLatestCompletedRun(): Promise<RunDTO | null> {
   const data = await fetchJson<{ items: RunDTO[]; total: number }>(
     `${API_BASE}/runs?status=completed&limit=1`,
     { cache: 'no-store' }
   );
-  return data.items.length > 0 ? data.items[0] : null;
+  return data.items.length > 0 ? normalizeRun(data.items[0]) : null;
 }
 
 export async function getLatestRunForStrategy(strategy: string): Promise<RunDTO | null> {
-  return fetchJson(`${API_BASE}/runs/latest?strategy=${encodeURIComponent(strategy)}`, {
-    cache: 'no-store',
-  });
+  const run = await fetchJson<RunDTO | null>(
+    `${API_BASE}/runs/latest?strategy=${encodeURIComponent(strategy)}`,
+    { cache: 'no-store' }
+  );
+  return run ? normalizeRun(run) : null;
 }
 
 export async function getDataFreshness(): Promise<DataFreshnessDTO> {
@@ -63,11 +83,15 @@ export async function getRuns(
   if (status) params.set('status', status);
   params.set('limit', String(limit));
   params.set('offset', String(offset));
-  return fetchJson(`${API_BASE}/runs?${params}`, { cache: 'no-store' });
+  return normalizeRunPage(
+    await fetchJson<{ items: RunDTO[]; total: number }>(`${API_BASE}/runs?${params}`, {
+      cache: 'no-store',
+    })
+  );
 }
 
 export async function getRun(runId: number): Promise<RunDTO> {
-  return fetchJson(`${API_BASE}/runs/${runId}`, { cache: 'no-store' });
+  return normalizeRun(await fetchJson<RunDTO>(`${API_BASE}/runs/${runId}`, { cache: 'no-store' }));
 }
 
 export async function executeScreening(

@@ -81,8 +81,8 @@ export default function ResearchAnalyticsPage() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <MetricCard label="Total Runs" value={String(runs.length)} />
-              <MetricCard label="Completed Runs" value={String(statusCounts['completed'] ?? 0)} color="text-emerald-400" />
-              <MetricCard label="Failed Runs" value={String(statusCounts['failed'] ?? 0)} color="text-rose-400" />
+              <MetricCard label="Completed Runs" value={String(statusCounts.COMPLETED ?? 0)} color="text-emerald-400" />
+              <MetricCard label="Failed Runs" value={String(statusCounts.FAILED ?? 0)} color="text-rose-400" />
               <MetricCard
                 label="Avg Pass Rate"
                 value={

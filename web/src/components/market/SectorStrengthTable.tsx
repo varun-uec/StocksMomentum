@@ -44,12 +44,25 @@ function Cell({ value }: { value: string | null | undefined }) {
   );
 }
 
+// Why the panel is empty, as reported by the API. The component used to assert
+// "No benchmark-index history is available" while benchmark_index_daily held
+// 2858 rows — the real cause was securities.sector being NULL for every row
+// (2026-08-09 audit §1.2.8). The endpoint now says which it is.
+const UNAVAILABLE_COPY: Record<string, string> = {
+  no_sector_classification:
+    'Sector classification is not available for this universe, so constituents cannot be grouped. No free NSE source publishes it, so this panel stays empty until a classification is ingested.',
+  no_benchmark_history:
+    'No benchmark-index history is available, so sector excess returns cannot be measured.',
+};
+
 export function SectorStrengthTable({
   sectors,
   benchmarkIndex,
+  unavailableReason,
 }: {
   sectors: SectorRelativeStrength[];
   benchmarkIndex: string | null;
+  unavailableReason?: string | null;
 }) {
   const [sortBy, setSortBy] = useState<Period>('3m');
 
@@ -57,7 +70,7 @@ export function SectorStrengthTable({
     return (
       <Card title="Sector relative strength">
         <p className="text-xs text-slate-500 italic">
-          No benchmark-index history is available, so sector excess returns cannot be measured.
+          {UNAVAILABLE_COPY[unavailableReason ?? ''] ?? UNAVAILABLE_COPY.no_sector_classification}
         </p>
       </Card>
     );

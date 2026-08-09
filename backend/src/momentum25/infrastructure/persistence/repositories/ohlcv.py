@@ -166,6 +166,11 @@ class SqlOHLCVRepository:
         result = await self._session.execute(select(func.max(OHLCVDailyModel.date)))
         return result.scalar_one_or_none()
 
+    async def earliest_date(self) -> date | None:
+        """Return the oldest stored bar date, or ``None``."""
+        result = await self._session.execute(select(func.min(OHLCVDailyModel.date)))
+        return result.scalar_one_or_none()
+
     async def list_distinct_dates(self, start: date, end: date) -> list[date]:
         """Return every distinct bar date in ``[start, end]``, ascending."""
         result = await self._session.execute(

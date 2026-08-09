@@ -77,6 +77,10 @@ class OHLCVRepository(Protocol):
         """Return the most recent stored bar date, or ``None``."""
         ...
 
+    async def earliest_date(self) -> date | None:
+        """Return the oldest stored bar date, or ``None``."""
+        ...
+
     async def list_distinct_dates(self, start: date, end: date) -> list[date]:
         """Return every distinct bar date in ``[start, end]``, ascending.
 
