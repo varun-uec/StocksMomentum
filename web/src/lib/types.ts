@@ -817,6 +817,12 @@ export interface ElliottWaveLabel {
   price: string;
 }
 
+export interface ElliottProjectionZone {
+  low: string;
+  high: string;
+  basis: string;
+}
+
 export interface ElliottSubdivision {
   of_label: string;
   degree: string;
@@ -832,6 +838,9 @@ export interface ElliottWaveCount {
   rules_applied: string[];
   /** False when the count ends before the latest confirmed pivot. */
   is_current: boolean;
+  /** Elliott Wave analytical projection; not part of the Momentum25 score or
+   *  ranking. Null when the count is not current or no Fibonacci ratio applies. */
+  projection: ElliottProjectionZone | null;
   subdivisions: ElliottSubdivision[];
 }
 

@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * Phase 7 — Elliott Wave Analysis screen.
+ * Phase 7 — Elliott Wave Analysis screen (separate research surface).
  *
- * Every label and pivot comes from `GET /stocks/{symbol}/elliott-wave`; nothing
- * is computed or inferred here. This screen annotates a chart. It produces no
- * buy/sell verdict, no price objective and no score.
+ * Every label, pivot and projection bound comes from
+ * `GET /stocks/{symbol}/elliott-wave`; nothing is computed or inferred here.
+ * This screen annotates a chart and shows the count's Fibonacci projection
+ * zone as analysis only. It produces no buy/sell verdict and no score, and its
+ * projection is never an input to the Momentum25 score, ranking or gates.
  */
 
 import { useMemo, useState } from 'react';
@@ -78,9 +80,25 @@ function CountSummary({
       )}
       {!count.is_current && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
-          This structure ended before the latest confirmed pivot, so it describes history
-          rather than the structure now in progress.
+          This structure ended before the latest confirmed pivot, so no completion zone is
+          projected.
         </p>
+      )}
+      {count.projection && (
+        <div>
+          <div className="text-xs uppercase tracking-wider text-slate-500">
+            Projected completion zone
+          </div>
+          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
+            {parseFloat(count.projection.low).toFixed(2)} –{' '}
+            {parseFloat(count.projection.high).toFixed(2)}
+          </div>
+          <div className="text-xs text-slate-500">{count.projection.basis}</div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+            Elliott Wave analytical projection; not part of the Momentum25 score or
+            ranking.
+          </p>
+        </div>
       )}
       <div>
         <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Rules applied</div>
@@ -174,6 +192,19 @@ export default function ElliottWavePage() {
     }));
   }, [shownCount, subdivisionColor, showSubwaves]);
 
+  const priceZone = useMemo(
+    () =>
+      shownCount?.projection
+        ? {
+            low: parseFloat(shownCount.projection.low),
+            high: parseFloat(shownCount.projection.high),
+            title: 'Projected zone',
+            color,
+          }
+        : null,
+    [shownCount, color]
+  );
+
   if (!symbol) return <ErrorMessage message="No symbol supplied." />;
 
   const backHref = `/stock/${symbol}${strategyQuery ? `?strategy=${strategyQuery}` : ''}`;
@@ -247,9 +278,10 @@ export default function ElliottWavePage() {
             markers={markers}
             overlayLine={overlayLine}
             overlayLines={overlayLines}
+            priceZone={priceZone}
             footnote={
               shownCount
-                ? `${showAlternative ? 'Alternative' : 'Primary'} count spans ${shownCount.labels[0].bar_date} to ${shownCount.labels[shownCount.labels.length - 1].bar_date} (${shownCount.degree} degree), within ${analysis?.bars_analyzed ?? 0} bars analysed; ${analysis?.pivots.length ?? 0} confirmed pivots at a ${thresholdPct}% reversal threshold.`
+                ? `${showAlternative ? 'Alternative' : 'Primary'} count spans ${shownCount.labels[0].bar_date} to ${shownCount.labels[shownCount.labels.length - 1].bar_date} (${shownCount.degree} degree), within ${analysis?.bars_analyzed ?? 0} bars analysed; ${analysis?.pivots.length ?? 0} confirmed pivots at a ${thresholdPct}% reversal threshold. Dashed bounds mark the projected completion zone.`
                 : `${analysis?.pivots.length ?? 0} confirmed pivots at a ${thresholdPct}% reversal threshold.`
             }
           />

@@ -329,6 +329,14 @@ as neutral geometry (a Fibonacci grid drawn like any other drawing tool, with no
 "projected completion" framing and no default-on rendering). Also drop the zone from the
 `ElliottWaveAnalysis` response so it cannot leak to a future consumer.
 
+> **SUPERSEDED (2026-08-09, decision).** The projected-completion zone was subsequently
+> restored as an explicitly separate Elliott Wave research surface, with this decision:
+> the projection lives only on `/stock/[symbol]/elliott-wave` (card + dashed chart
+> overlay), carries the disclosure "Elliott Wave analytical projection; not part of the
+> Momentum25 score or ranking", and is never an input to the Momentum25 score, ranking,
+> screening gates, stop-loss or any production decision. The core `/stock/[symbol]` page
+> does **not** expose it and continues to link to the wave screen via the SymbolActionBar.
+
 ## 2.2 VIOLATION — reward/target logic sits inside the risk gate and reaches the main UI
 
 `risk_rr` produces, on `/stock/[symbol]` in three places (rule matrix, Weaknesses,

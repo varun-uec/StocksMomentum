@@ -112,16 +112,20 @@ def test_wave_3_shortest_is_rejected() -> None:
     assert float(primary.labels[0].price) != 100.0
 
 
-# ── no price projection ──────────────────────────────────────────────────
+# ── projection zone ──────────────────────────────────────────────────────
 
 
-def test_wave_count_publishes_no_price_projection() -> None:
-    # A wave-count-derived price objective is a target; targets live only in the
-    # validated swing-target module (audit 2026-08-09 section 2.1).
+def test_wave_5_projection_is_a_range_off_the_wave_4_low() -> None:
     pivots = _pivots([("L", 100), ("H", 130), ("L", 115), ("H", 180), ("L", 160)])
     primary, _ = label_waves(pivots, span_sessions=300)
     assert primary is not None
-    assert not hasattr(primary, "projection")
+    zone = primary.projection
+    assert zone is not None
+    assert "wave 5" in zone.basis
+    # wave 1 length = 30 -> 0.618x to 1.0x projected from the wave 4 low (160).
+    assert float(zone.low) == 160 + 0.618 * 30
+    assert float(zone.high) == 190.0
+    assert zone.low < zone.high
 
 
 def test_partial_impulse_reports_the_wave_in_progress() -> None:
@@ -129,6 +133,20 @@ def test_partial_impulse_reports_the_wave_in_progress() -> None:
     primary, _ = label_waves(pivots, span_sessions=100)
     assert primary is not None
     assert primary.current_position == "Wave 2 complete, wave 3 in progress"
+    assert primary.projection is not None
+    assert "wave 3" in primary.projection.basis
+
+
+def test_impulse_projection_is_transported_end_to_end() -> None:
+    analysis = analyze_elliott_wave(
+        "TEST", _path([100, 130, 115, 180, 160, 200, 170]), Decimal("5")
+    )
+    assert analysis.primary is not None and analysis.primary.is_current
+    zone = analysis.primary.projection
+    # Five waves labelled: the next leg is the A-B-C correction retracement.
+    assert zone is not None
+    assert "correction" in zone.basis
+    assert zone.low < zone.high
 
 
 # ── corrective structures ────────────────────────────────────────────────
