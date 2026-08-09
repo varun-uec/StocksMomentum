@@ -25,21 +25,39 @@ class SqlOHLCVRepository:
         """Insert or update bars; return the number written."""
         if not bars:
             return 0
-        rows = [
-            {
-                "security_id": security_id,
-                "date": b.date,
-                "open": b.open,
-                "high": b.high,
-                "low": b.low,
-                "close": b.close,
-                "volume": b.volume,
-                "adj_close": b.adj_close,
-                "prev_close": b.prev_close,
-                "turnover_value": b.turnover_value,
-            }
-            for b in bars
-        ]
+        return await self.upsert_bars_batch({security_id: bars})
+
+    async def upsert_bars_batch(
+        self, bars_by_security: dict[int, list[OHLCVBar]]
+    ) -> int:
+        """Insert or update bars for many securities in one statement.
+
+        The re-ingest recovery path replays ~1,700 sessions of ~2,400 symbols;
+        calling :meth:`upsert_bars` per (session, security) would be millions of
+        round trips. This method flattens everything into a single ``INSERT …
+        ON CONFLICT DO UPDATE`` statement with identical conflict semantics
+        (``adj_close`` re-derived from the incoming raw close and the stored
+        ``adj_factor``, never from the incoming ``adj_close``).
+        """
+        rows: list[dict[str, object]] = []
+        for security_id, bars in bars_by_security.items():
+            rows.extend(
+                {
+                    "security_id": security_id,
+                    "date": b.date,
+                    "open": b.open,
+                    "high": b.high,
+                    "low": b.low,
+                    "close": b.close,
+                    "volume": b.volume,
+                    "adj_close": b.adj_close,
+                    "prev_close": b.prev_close,
+                    "turnover_value": b.turnover_value,
+                }
+                for b in bars
+            )
+        if not rows:
+            return 0
         stmt = insert(OHLCVDailyModel).values(rows)
         stmt = stmt.on_conflict_do_update(
             index_elements=[OHLCVDailyModel.security_id, OHLCVDailyModel.date],

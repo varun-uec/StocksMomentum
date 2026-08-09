@@ -166,6 +166,85 @@ async def test_update_adjustment_factors_persists_and_recomputes_adj_close(
 
 
 @pytest.mark.asyncio
+async def test_upsert_bars_batch_writes_across_securities_and_updates(
+    db_session: AsyncSession,
+) -> None:
+    """A single batch upsert must persist many securities and be idempotent."""
+    from momentum25.domain.entities.market_data import OHLCVBar
+    from momentum25.infrastructure.persistence.models import OHLCVDailyModel
+    from momentum25.infrastructure.persistence.repositories.ohlcv import SqlOHLCVRepository
+
+    security_a = await _seed_security_id(db_session, "RELIANCE")
+    security_b = await _seed_security_id(db_session, "TCS")
+    repo = SqlOHLCVRepository(db_session)
+
+    def _bar(close: str, volume: int, bar_date: date) -> OHLCVBar:
+        return OHLCVBar(
+            date=bar_date,
+            open=Decimal(close),
+            high=Decimal(close),
+            low=Decimal(close),
+            close=Decimal(close),
+            volume=volume,
+        )
+
+    written = await repo.upsert_bars_batch(
+        {
+            security_a: [
+                _bar("100", 1000, date(2026, 2, 1)),
+                _bar("200", 2000, date(2026, 2, 2)),
+            ],
+            security_b: [_bar("300", 3000, date(2026, 2, 1))],
+        }
+    )
+    await db_session.commit()
+    assert written == 3
+
+    total = (
+        await db_session.execute(select(OHLCVDailyModel))
+    ).scalars().all()
+    assert len(total) == 3
+    assert {r.security_id for r in total} == {security_a, security_b}
+
+    # Re-write with a changed close: ON CONFLICT must update, not duplicate.
+    await repo.upsert_bars_batch({security_a: [_bar("150", 1500, date(2026, 2, 1))]})
+    await db_session.commit()
+    rows = (
+        await db_session.execute(
+            select(OHLCVDailyModel)
+            .execution_options(populate_existing=True)
+            .where(OHLCVDailyModel.security_id == security_a)
+        )
+    ).scalars().all()
+    assert len(rows) == 2
+    assert {float(r.close) for r in rows} == {150.0, 200.0}
+
+
+@pytest.mark.asyncio
+async def test_upsert_bars_equivalent_to_batch_single(
+    db_session: AsyncSession,
+) -> None:
+    """The per-security method must behave exactly like a one-key batch call."""
+    from momentum25.domain.entities.market_data import OHLCVBar
+    from momentum25.infrastructure.persistence.repositories.ohlcv import SqlOHLCVRepository
+
+    security_id = await _seed_security_id(db_session, "INFY")
+    repo = SqlOHLCVRepository(db_session)
+    bar = OHLCVBar(
+        date=date(2026, 2, 1),
+        open=Decimal("100"),
+        high=Decimal("105"),
+        low=Decimal("95"),
+        close=Decimal("100"),
+        volume=1000,
+    )
+    assert await repo.upsert_bars(security_id, [bar]) == 1
+    await db_session.commit()
+    assert await repo.upsert_bars_batch({security_id: [bar]}) == 1
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
 async def test_corporate_action_repository_upsert_is_idempotent(
     db_session: AsyncSession,
 ) -> None:
