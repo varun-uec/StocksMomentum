@@ -10,6 +10,7 @@
 
 import { Badge, Card, StatusDot } from '@/components/shared/Card';
 import type { StockExplanation } from '@/lib/types';
+import { num } from '@/lib/format';
 
 export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
   const contributors = explanation.rule_explanations
@@ -37,7 +38,7 @@ export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
             <div key={r.rule_id} className="flex items-start gap-2 text-xs">
               <StatusDot passed />
               <span className="flex-1 text-slate-700 dark:text-slate-300">{r.explanation}</span>
-              <span className="shrink-0 tabular-nums text-slate-500">{r.contribution}</span>
+              <span className="shrink-0 tabular-nums text-slate-500">{num(r.contribution)}</span>
             </div>
           ))}
           {contributors.length === 0 && (

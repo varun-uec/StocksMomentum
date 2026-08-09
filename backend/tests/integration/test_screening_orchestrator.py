@@ -134,6 +134,7 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
     pass_sec = await _seed_security(db_session, "PASSER", "Passing Trend")
     fail_sec = await _seed_security(db_session, "FAILER", "Failing Trend")
     ipo_sec = await _seed_security(db_session, "NEWIPO", "Recent IPO")
+    stale_sec = await _seed_security(db_session, "STALER", "Stale Data")
 
     # Seed 300 bars for PASSER (uptrend) and FAILER (descending)
     await _seed_bars(db_session, pass_sec.id, _make_uptrend_bars(300, start_date, 100.0))
@@ -143,6 +144,11 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
     # 10 bars for IPO
     await _seed_bars(
         db_session, ipo_sec.id, _make_uptrend_bars(10, target_date - timedelta(days=9))
+    )
+    # Enough history to be scoreable, but ingestion stopped long before
+    # target_date -- exercises the stale_data skip bucket.
+    await _seed_bars(
+        db_session, stale_sec.id, _make_uptrend_bars(300, start_date - timedelta(days=120), 100.0)
     )
 
     # Wire collaborators
@@ -185,14 +191,17 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
     summary = await orchestrator.run_daily_screening(target_date)
 
     assert summary.run_date == target_date
-    assert summary.total_evaluated == 3
-    # Expect 1 pass (PASSER), 1 fail (FAILER fails gate), 1 skipped (IPO insufficient data)
+    assert summary.total_evaluated == 4
+    # 1 pass (PASSER), 1 fail (FAILER fails gate), 1 insufficient (IPO), 1 stale (STALER)
     assert (
         summary.total_passed
         + summary.total_skipped_insufficient_data
         + summary.total_failed
-        == 3
+        + summary.total_skipped_stale_data
+        + summary.total_skipped_ineligible_universe
+        == 4
     )
+    assert summary.total_skipped_stale_data == 1
 
     # Verify exactly one ScreeningRun row was persisted
     count_row = await db_session.execute(
@@ -200,3 +209,18 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
     )
     run_count = count_row.scalar_one()
     assert run_count == 1, f"Expected 1 ScreeningRun row, got {run_count}"
+
+    # The persisted stats must account for every evaluated symbol. Without this,
+    # an all-skipped run reads as "evaluated N, passed 0, failed 0" with symbols
+    # silently unaccounted for, and duration renders as 0.00s.
+    run_row = (await db_session.execute(select(ScreeningRunModel))).scalars().one()
+    stats = run_row.stats
+    accounted = (
+        stats["total_passed"]
+        + stats["total_failed"]
+        + stats["total_skipped"]
+        + stats["total_skipped_stale_data"]
+        + stats["total_skipped_ineligible_universe"]
+    )
+    assert accounted == stats["total_evaluated"], f"unaccounted symbols in {stats}"
+    assert stats["duration_seconds"] > 0

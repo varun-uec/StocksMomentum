@@ -726,6 +726,12 @@ export interface SecurityOHLCVDTO {
   bars: OHLCVBarDTO[];
 }
 
+export interface SecuritySearchResult {
+  symbol: string;
+  name: string;
+  sector: string | null;
+}
+
 // ── Phase 9: per-bar indicator series (chart sub-panes) ─────────────────
 
 export interface IndicatorSeriesBarDTO {

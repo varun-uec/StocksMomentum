@@ -21,6 +21,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Card, StatusDot } from '@/components/shared/Card';
 import { detectChartPatterns } from '@/lib/api-client';
 import { focusRing } from '@/lib/theme';
+import { num } from '@/lib/format';
 import type {
   ChartPatternAnalysis,
   DetectedPattern,
@@ -44,7 +45,7 @@ function PatternRow({ rule }: { rule: RuleExplanation }) {
       <div className="flex items-center gap-2 text-xs">
         <StatusDot passed={rule.passed} />
         <span className="flex-1 text-slate-700 dark:text-slate-300">{rule.explanation}</span>
-        <span className="shrink-0 tabular-nums text-slate-500">{rule.contribution}</span>
+        <span className="shrink-0 tabular-nums text-slate-500">{num(rule.contribution)}</span>
       </div>
       <div className="mt-1.5 h-1 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
         <div

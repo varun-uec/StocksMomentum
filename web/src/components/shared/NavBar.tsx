@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
+import { searchSecurities } from '@/lib/api-client';
 import { focusRing } from '@/lib/theme';
+import type { SecuritySearchResult } from '@/lib/types';
 
 // Minimal SVG icons — no emoji, consistent 20×20 viewBox.
 const Icons = {
@@ -123,6 +125,144 @@ function ThemeToggle() {
   );
 }
 
+/**
+ * Direct symbol lookup. Without this the only route to a stock's research page
+ * is finding it in a ranked list, which is impossible for any symbol that did
+ * not qualify in the latest run.
+ */
+function SymbolSearch({ className = '' }: { className?: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState('');
+  const [results, setResults] = useState<SecuritySearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const [searching, setSearching] = useState(false);
+
+  const query = value.trim();
+
+  // Debounced so a fast typist issues one request per pause, not per keystroke;
+  // the abort controller drops responses for queries the user has moved past,
+  // which would otherwise land out of order and show stale suggestions.
+  useEffect(() => {
+    if (query.length < 1) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    const controller = new AbortController();
+    setSearching(true);
+    const timer = setTimeout(() => {
+      searchSecurities(query, 8, controller.signal)
+        .then((r) => {
+          setResults(r);
+          setActive(-1);
+        })
+        .catch(() => {
+          /* aborted or offline — leave the last suggestions in place */
+        })
+        .finally(() => setSearching(false));
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+
+  const go = (symbol: string) => {
+    setValue('');
+    setResults([]);
+    setOpen(false);
+    router.push(`/stock/${encodeURIComponent(symbol.toUpperCase())}`);
+  };
+
+  return (
+    <div className={`relative ${className}`}>
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          // Enter takes the highlighted suggestion, else the best match, else
+          // whatever was typed — so a known-good symbol never needs the list.
+          const chosen = results[active] ?? results[0];
+          const symbol = chosen ? chosen.symbol : query.toUpperCase();
+          if (symbol) go(symbol);
+        }}
+      >
+        <label htmlFor="symbol-search" className="sr-only">
+          Look up a symbol
+        </label>
+        <input
+          id="symbol-search"
+          name="symbol"
+          type="search"
+          role="combobox"
+          aria-expanded={open && results.length > 0}
+          aria-controls="symbol-search-results"
+          aria-autocomplete="list"
+          autoComplete="off"
+          spellCheck={false}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(e) => {
+            if (!results.length) return;
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setActive((i) => (i + 1) % results.length);
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setActive((i) => (i <= 0 ? results.length - 1 : i - 1));
+            } else if (e.key === 'Escape') {
+              setOpen(false);
+            }
+          }}
+          placeholder="Symbol or company…"
+          title="Search by NSE symbol or company name"
+          className={`w-28 lg:w-44 px-2.5 py-1.5 rounded-md text-xs uppercase tracking-wide bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 ${focusRing}`}
+        />
+      </form>
+
+      {open && query.length > 0 && (
+        <ul
+          id="symbol-search-results"
+          role="listbox"
+          className="absolute right-0 mt-1 w-72 max-h-80 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 z-50"
+        >
+          {results.map((r, i) => (
+            <li key={r.symbol} role="option" aria-selected={i === active}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => go(r.symbol)}
+                onMouseEnter={() => setActive(i)}
+                className={`w-full text-left px-3 py-1.5 ${
+                  i === active ? 'bg-indigo-50 dark:bg-indigo-600/20' : ''
+                }`}
+              >
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {r.symbol}
+                </span>
+                <span className="block text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {r.name}
+                </span>
+              </button>
+            </li>
+          ))}
+          {!results.length && (
+            <li className="px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400">
+              {searching ? 'Searching…' : `No listed security matches “${query}”.`}
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function NavLink({
   item,
   pathname,
@@ -181,6 +321,7 @@ export function NavBar() {
           <div className="flex-1" />
 
           <div className="flex items-center gap-3">
+            <SymbolSearch className="hidden sm:block" />
             <ThemeToggle />
             <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-600 font-medium">v0.2.0</span>
 
@@ -201,6 +342,7 @@ export function NavBar() {
       {/* Mobile Nav */}
       {mobileOpen && (
         <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
+          <SymbolSearch className="sm:hidden pb-2" />
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
           ))}

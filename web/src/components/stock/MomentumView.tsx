@@ -9,6 +9,7 @@
 
 import { Card, StatusDot } from '@/components/shared/Card';
 import type { StockExplanation } from '@/lib/types';
+import { num } from '@/lib/format';
 
 export function MomentumView({ explanation }: { explanation: StockExplanation }) {
   const trendRules = explanation.rule_explanations.filter(
@@ -59,7 +60,7 @@ export function MomentumView({ explanation }: { explanation: StockExplanation })
                 </span>
               </div>
               <div className="text-xs tabular-nums text-slate-600 dark:text-slate-400 shrink-0">
-                score {engine.score} · contribution {engine.contribution}
+                score {num(engine.score)} · contribution {num(engine.contribution)}
               </div>
             </div>
           ))}

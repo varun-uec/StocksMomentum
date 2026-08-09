@@ -22,6 +22,61 @@ _TREND_TEMPLATE_CHECKLIST_MAP: dict[str, str] = {
     "tt_rs_rating_min": "rs_rating_gte_70",
 }
 
+# Plain-English label for each rule id, for prose meant to be read by a human.
+# The rule ids themselves are stable identifiers for the structured payload and
+# must not leak into rationale copy.
+_RULE_LABELS: dict[str, str] = {
+    "tt_close_above_sma150_200": "close above the 150- and 200-day averages",
+    "tt_close_above_sma50": "close above the 50-day average",
+    "tt_above_52w_low": "well clear of the 52-week low",
+    "tt_near_52w_high": "close to the 52-week high",
+    "tt_sma150_above_sma200": "150-day average above the 200-day",
+    "tt_sma200_uptrend": "200-day average trending up",
+    "tt_sma_stack": "50-day average above the 150- and 200-day",
+    "tt_rs_rating_min": "relative-strength rating above the minimum",
+    "rs_rating": "relative-strength rating",
+    "rs_trend": "relative strength improving",
+    "rs_line_slope": "relative-strength line sloping up",
+    "rs_line_uptrend": "relative-strength line in an uptrend",
+    "rs_sector_relative": "outperforming its sector",
+    "rs_industry_relative": "outperforming its industry",
+    "bo_pivot_breakout": "breaking out of its recent range",
+    "bo_followthrough": "follow-through after the breakout",
+    "bo_false_breakout": "no false-breakout reversal",
+    "vol_liquidity_min": "minimum traded liquidity",
+    "vol_accumulation_days": "volume accumulation days",
+    "vol_breakout_confirm": "volume confirming the breakout",
+    "risk_extension": "not overextended from its average",
+    "risk_atr": "volatility within range",
+    "risk_rr": "acceptable risk profile",
+}
+
+# How many failed conditions to name before summarising the remainder.
+_MAX_NAMED_FAILURES = 3
+
+
+def _rule_label(rule_id: str) -> str:
+    """Return the human label for *rule_id*, falling back to a readable form."""
+    return _RULE_LABELS.get(rule_id, rule_id.split("_", 1)[-1].replace("_", " "))
+
+
+def _join(labels: list[str]) -> str:
+    """Join labels as an English list ("a", "a and b", "a, b and c")."""
+    if len(labels) == 1:
+        return labels[0]
+    return f"{', '.join(labels[:-1])} and {labels[-1]}"
+
+
+def _summarise(results: list[RuleResult]) -> str:
+    """Name the first few failed conditions in English and count the rest."""
+    named = [_rule_label(r.rule_id) for r in results[:_MAX_NAMED_FAILURES]]
+    remainder = len(results) - len(named)
+    text = _join(named)
+    if remainder:
+        text += f", plus {remainder} other{'s' if remainder > 1 else ''}"
+    return text
+
+
 # risk engine: bucket by count of failed risk rules (risk_extension, risk_atr, risk_rr).
 _RISK_BUCKET_BY_FAILURES = {0: "Low", 1: "Medium"}
 
@@ -80,26 +135,39 @@ class ExplainabilityBuilderImpl:
     """Builds deterministic, structured explanations from screening results."""
 
     def build_rationale(self, stock_score: StockScore, rule_results: list[RuleResult]) -> str:
-        """Build a concise human-readable rationale for a stock."""
-        parts: list[str] = []
+        """Build a concise human-readable rationale for a stock.
 
-        parts.append(
-            f"Stock scored momentum {stock_score.momentum_score}, "
-            f"buy-setup {stock_score.buy_setup_score}."
-        )
+        This is prose shown to a person, so it carries plain-English condition
+        names and one-decimal scores -- never raw rule ids or full-precision
+        Decimals. The structured ``rule_explanations`` payload remains the place
+        to read exact identifiers and values from.
+        """
+        momentum = stock_score.momentum_score.quantize(Decimal("0.1"))
+        buy_setup = stock_score.buy_setup_score.quantize(Decimal("0.1"))
+        parts: list[str] = [
+            f"Momentum scores {momentum} and buy-setup {buy_setup} out of 100."
+        ]
 
         passed = [r for r in rule_results if r.passed]
         failed = [r for r in rule_results if not r.passed]
+        total = len(rule_results)
+        if total:
+            parts.append(f"{len(passed)} of {total} conditions met.")
 
-        if passed:
-            parts.append(f"{len(passed)} rules passed.")
-        if failed:
-            parts.append(f"{len(failed)} rules failed: {', '.join(r.rule_id for r in failed)}.")
+        # Gate failures are the reason it does not qualify, so they lead and the
+        # remaining failures are reported separately rather than twice over.
+        blocking = [r for r in failed if self._is_hard_filter(r)]
+        other = [r for r in failed if r not in blocking]
 
-        if stock_score.hard_filters_passed:
-            parts.append("All hard filters satisfied.")
+        if blocking:
+            parts.append(f"It is blocked by the hard gate on {_summarise(blocking)}.")
+        elif stock_score.hard_filters_passed:
+            parts.append("It clears every hard gate.")
         else:
-            parts.append("Failed hard filters.")
+            parts.append("It does not clear the hard gates.")
+
+        if other:
+            parts.append(f"Also unmet: {_summarise(other)}.")
 
         return " ".join(parts)
 

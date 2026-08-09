@@ -4,11 +4,33 @@ from __future__ import annotations
 
 from datetime import date
 
-from momentum25.application.dto.market_data import OHLCVBarDTO, SecurityOHLCVDTO
+from momentum25.application.dto.market_data import (
+    OHLCVBarDTO,
+    SecurityOHLCVDTO,
+    SecuritySearchResultDTO,
+)
 from momentum25.domain.errors import NotFoundError
 from momentum25.domain.ports.repositories import OHLCVRepository, SecurityRepository
 
 DEFAULT_LOOKBACK_DAYS = 500
+
+
+class SearchSecurities:
+    """Return symbol suggestions for a partial query (typeahead)."""
+
+    def __init__(self, securities: SecurityRepository) -> None:
+        """Wire the use case with its collaborators."""
+        self._securities = securities
+
+    async def execute(self, query: str, limit: int) -> list[SecuritySearchResultDTO]:
+        """Return up to *limit* matches for *query*, best match first."""
+        matches = await self._securities.search(query, limit)
+        return [
+            SecuritySearchResultDTO(
+                symbol=str(s.symbol), name=s.name, sector=s.sector
+            )
+            for s in matches
+        ]
 
 
 class GetSecurityOHLCV:

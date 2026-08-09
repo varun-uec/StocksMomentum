@@ -13,8 +13,10 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { useChartColors } from '@/lib/useChartColors';
 import { ScoreGauge } from '@/components/shared/ScoreGauge';
 import { RulePassMatrix } from '@/components/stock/RulePassMatrix';
+import { TrendTemplateCard } from '@/components/stock/TrendTemplateCard';
 import { EngineContributionBars } from '@/components/stock/EngineContributionBars';
 import { focusRing, chartPalette } from '@/lib/theme';
+import { num } from '@/lib/format';
 import { PriceChart, TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
 import { MomentumOverview } from '@/components/stock/MomentumOverview';
 import { MomentumView } from '@/components/stock/MomentumView';
@@ -61,9 +63,11 @@ const IMPROVEMENT_HINTS: Record<string, string> = {
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'scores', label: 'Scores' },
+  { id: 'chart', label: 'Chart' },
+  { id: 'trend', label: 'Trend Template' },
   { id: 'engines', label: 'Engines' },
   { id: 'rules', label: 'Rules' },
+  { id: 'scores', label: 'Scores' },
   { id: 'history', label: 'History' },
   { id: 'live', label: 'Live Analysis' },
 ];
@@ -95,7 +99,7 @@ function AnalysisSection({
   return (
     <Card
       title={title}
-      subtitle={engine ? `${engine.rules_passed}/${engine.rule_count} rules passed · score ${engine.score}` : undefined}
+      subtitle={engine ? `${engine.rules_passed}/${engine.rule_count} rules passed · score ${num(engine.score)}` : undefined}
     >
       <div className="space-y-2">
         {rules.map((rule) => (
@@ -126,6 +130,10 @@ function investmentReadiness(explanation: StockExplanation): { label: string; co
 }
 
 function SectionNav({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
+  const go = (id: string) => {
+    onSelect(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return (
     <div className="sticky top-[4.5rem] z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md -mx-6 px-6 py-2 mb-6">
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
@@ -133,7 +141,8 @@ function SectionNav({ active, onSelect }: { active: string; onSelect: (id: strin
           <button
             key={s.id}
             type="button"
-            onClick={() => onSelect(s.id)}
+            onClick={() => go(s.id)}
+            aria-current={active === s.id ? 'true' : undefined}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${focusRing} ${
               active === s.id
                 ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300'
@@ -203,10 +212,13 @@ export default function StockResearchPage() {
     [indicatorSeries]
   );
 
-  const { data: explanation, isLoading: explLoading, error: explError } = useQuery({
+  const { data: runExplanation, isLoading: explLoading } = useQuery({
     queryKey: ['stock-explanation', symbol, strategyName],
     queryFn: () => getStockExplanation(symbol, undefined, strategyName),
     enabled: !!symbol,
+    // A symbol absent from the latest run is an expected 404, not a transient
+    // failure — retrying it only delays the on-demand fallback.
+    retry: false,
   });
 
   const { data: history, isLoading: histLoading } = useQuery({
@@ -215,15 +227,43 @@ export default function StockResearchPage() {
     enabled: !!symbol,
   });
 
-  if (!prefsReady || explLoading || histLoading) return <LoadingSpinner text="Loading stock research…" />;
-  if (explError) {
+  // Keep the section tabs in sync with what is actually on screen.
+  const sectionsReady = prefsReady && !explLoading && !histLoading && !liveLoading;
+  useEffect(() => {
+    if (!sectionsReady) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length === 0) return;
+        visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: '-140px 0px -55% 0px' }
+    );
+    for (const s of SECTIONS) {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [sectionsReady]);
+
+  // A symbol that was not in the latest run (not evaluated, or evaluated but
+  // not persisted) still has a full on-demand evaluation available. Fall back
+  // to it rather than blanking the whole page: everything below is identical
+  // apart from rank/percentile, which only a ranked run can provide.
+  const explanation = runExplanation ?? live?.explanation ?? undefined;
+  const usingLiveFallback = !runExplanation && !!explanation;
+
+  if (!prefsReady || explLoading || histLoading || (!runExplanation && liveLoading)) {
+    return <LoadingSpinner text="Loading stock research…" />;
+  }
+  if (!explanation) {
     return (
       <ErrorMessage
-        message={`No ${horizonLabel} screening data available for ${symbol}. It may not have been evaluated in the most recent run for this horizon (e.g. insufficient price history), or it may not exist.`}
+        message={`No ${horizonLabel} analysis available for ${symbol}. It was not in the most recent screening run and could not be evaluated on demand either — it may have insufficient price history, or the symbol may not exist.`}
       />
     );
   }
-  if (!explanation) return <ErrorMessage message="No data available for this stock." />;
 
   const chartData = (history?.score_history ?? []).map((p) => ({
     date: p.run_date.slice(0, 10),
@@ -260,6 +300,9 @@ export default function StockResearchPage() {
         subtitle={`${horizonLabel} horizon · ${explanation.overall_passed ? 'Passes' : 'Fails'} the Trend Template gate`}
       >
         {explanation.rank && <Badge color="indigo">Rank #{explanation.rank}</Badge>}
+        <Badge color={explanation.overall_passed ? 'emerald' : 'rose'}>
+          Trend Template {explanation.overall_passed ? 'PASS' : 'FAIL'}
+        </Badge>
         <Badge color={readiness.color}>{readiness.label}</Badge>
         <Link
           href={`/stock/${symbol}/elliott-wave?strategy=${strategyName}`}
@@ -273,6 +316,14 @@ export default function StockResearchPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <SectionNav active={activeSection} onSelect={setActiveSection} />
 
+        {usingLiveFallback && (
+          <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-800 dark:text-amber-300">
+            {symbol} was not part of the latest {horizonLabel} screening run, so there is no rank,
+            percentile or score history for it. Everything below was evaluated on demand just now
+            using the same rules, against data as of {live?.data_as_of ?? '—'}.
+          </div>
+        )}
+
         <div className="space-y-6">
           {/* Overview */}
           <section id="overview" className="scroll-mt-32 space-y-6">
@@ -285,18 +336,22 @@ export default function StockResearchPage() {
                 <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
                   Rule Pass Matrix
                 </div>
-                <RulePassMatrix rules={explanation.rule_explanations} />
+                <RulePassMatrix
+                  rules={explanation.rule_explanations}
+                  gateFailures={explanation.hard_filter_failures}
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <MetricCard
                 label="Momentum Score"
-                value={explanation.momentum_score}
+                value={num(explanation.momentum_score, 1)}
                 color={parseFloat(explanation.momentum_score) >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}
               />
-              <MetricCard label="Buy Setup Score" value={explanation.buy_setup_score} />
-              <MetricCard label="Composite Score" value={explanation.composite_score} />
+              <MetricCard label="Buy Setup Score" value={num(explanation.buy_setup_score, 1)} />
+              <MetricCard label="Composite Score" value={num(explanation.composite_score, 1)} />
+              <MetricCard label="RS Rating" value={num(live?.indicators.rs_rating, 0)} />
               <MetricCard label="Rank" value={explanation.rank ? `#${explanation.rank}` : '—'} />
               <MetricCard label="Percentile" value={explanation.percentile ? `${explanation.percentile}%` : '—'} />
               <MetricCard
@@ -304,13 +359,20 @@ export default function StockResearchPage() {
                 value={`${explanation.hard_filter_failures.length} failures`}
                 color={explanation.overall_passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
               />
+              {/* Risk-only. Deliberately carries no reward/target counterpart. */}
+              <MetricCard
+                label="Suggested Stop (risk only)"
+                value={num(live?.suggested_stop?.level, 2)}
+                changeLabel={live?.suggested_stop?.method}
+              />
             </div>
 
             <Card title="Executive Summary">
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                 {symbol} {explanation.overall_passed ? 'currently qualifies' : 'does not currently qualify'} as
                 a Stage 2 momentum candidate under the {horizonLabel} methodology, with a Momentum Score of{' '}
-                {explanation.momentum_score} and a Buy Setup Score of {explanation.buy_setup_score}.{' '}
+                {num(explanation.momentum_score, 1)} and a Buy Setup Score of{' '}
+                {num(explanation.buy_setup_score, 1)}.{' '}
                 {explanation.overall_passed
                   ? readiness.label === 'Qualified — Actionable Now'
                     ? 'Its breakout and volume signals also confirm this as an actionable setup today, not just a qualifying trend.'
@@ -322,6 +384,36 @@ export default function StockResearchPage() {
             <Card title="Momentum Thesis">
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{explanation.overall_rationale}</p>
             </Card>
+          </section>
+
+          {/* Chart — the analyst's primary working surface, so it sits directly
+              under the overview rather than at the foot of the page. */}
+          <section id="chart" className="scroll-mt-32">
+            <Card title="Price history">
+              <PriceChart
+                bars={ohlcv?.bars ?? []}
+                timeframe={timeframe}
+                onTimeframeChange={setTimeframe}
+                isLoading={ohlcvLoading}
+                indicatorSeries={indicatorBars}
+                activePanes={preferences.activePanes}
+                onActivePanesChange={(panes) => updatePreferences({ activePanes: panes })}
+                initialActiveMas={preferences.activeMas}
+                onActiveMasChange={(mas) => updatePreferences({ activeMas: mas })}
+                drawingsEnabled
+                initialDrawings={preferences.drawings}
+                onDrawingsChange={(drawings) => updatePreferences({ drawings })}
+              />
+            </Card>
+          </section>
+
+          {/* Trend Template — the hard gate, grouped by what each rule asks. */}
+          <section id="trend" className="scroll-mt-32">
+            <TrendTemplateCard
+              rules={engineRules(explanation, 'trend_template')}
+              strategyName={strategyName}
+              hints={IMPROVEMENT_HINTS}
+            />
           </section>
 
           {/* Scores */}
@@ -355,7 +447,6 @@ export default function StockResearchPage() {
           {/* Engines */}
           <section id="engines" className="scroll-mt-32 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AnalysisSection title="Trend Analysis" engine={trendEngine} rules={engineRules(explanation, 'trend_template')} />
               <AnalysisSection title="Relative Strength Analysis" engine={rsEngine} rules={engineRules(explanation, 'relative_strength')} />
               <AnalysisSection title="Pattern Analysis" engine={patternEngine} rules={engineRules(explanation, 'pattern')} />
               <AnalysisSection title="Breakout Readiness" engine={breakoutEngine} rules={engineRules(explanation, 'breakout')} />
@@ -389,7 +480,7 @@ export default function StockResearchPage() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tabular-nums">{engine.score}</div>
+                      <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tabular-nums">{num(engine.score)}</div>
                       <div className="text-xs text-slate-500">score</div>
                     </div>
                   </div>
@@ -453,12 +544,12 @@ export default function StockResearchPage() {
                       <div className="min-w-0">
                         <div className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{rule.explanation}</div>
                         <div className="text-xs text-slate-500 truncate">
-                          {rule.engine_name} · {rule.actual_value ?? '—'} {rule.threshold ? `(≥ ${rule.threshold})` : ''}
+                          {rule.engine_name} · {num(rule.actual_value, 2)} {rule.threshold ? `(threshold ${num(rule.threshold, 2)})` : ''}
                         </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">{rule.contribution}</div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">{num(rule.contribution)}</div>
                       <div className="text-xs text-slate-500">contrib</div>
                     </div>
                   </div>
@@ -548,23 +639,6 @@ export default function StockResearchPage() {
             </Card>
 
             {live && <MomentumOverview live={live} bars={ohlcv?.bars ?? []} />}
-
-            <Card title="Price history">
-              <PriceChart
-                bars={ohlcv?.bars ?? []}
-                timeframe={timeframe}
-                onTimeframeChange={setTimeframe}
-                isLoading={ohlcvLoading}
-                indicatorSeries={indicatorBars}
-                activePanes={preferences.activePanes}
-                onActivePanesChange={(panes) => updatePreferences({ activePanes: panes })}
-                initialActiveMas={preferences.activeMas}
-                onActiveMasChange={(mas) => updatePreferences({ activeMas: mas })}
-                drawingsEnabled
-                initialDrawings={preferences.drawings}
-                onDrawingsChange={(drawings) => updatePreferences({ drawings })}
-              />
-            </Card>
 
             {live?.explanation && (
               <>

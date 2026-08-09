@@ -7,7 +7,16 @@ import type { RuleExplanation } from '@/lib/types';
  * the full pass/fail picture can be scanned in under a second instead of
  * reading a long list top to bottom.
  */
-export function RulePassMatrix({ rules }: { rules: RuleExplanation[] }) {
+export function RulePassMatrix({
+  rules,
+  gateFailures = [],
+}: {
+  rules: RuleExplanation[];
+  /** Rule ids that failed a hard gate — flagged so a blocking failure is not
+   *  visually indistinguishable from an ordinary scoring miss. */
+  gateFailures?: string[];
+}) {
+  const gate = new Set(gateFailures);
   const byEngine = new Map<string, RuleExplanation[]>();
   for (const rule of rules) {
     const list = byEngine.get(rule.engine_name) ?? [];
@@ -17,6 +26,18 @@ export function RulePassMatrix({ rules }: { rules: RuleExplanation[] }) {
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500 pb-1">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-400" /> passed
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-rose-300 dark:bg-rose-900/70" /> failed
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-rose-300 dark:bg-rose-900/70 ring-2 ring-rose-500" /> blocks
+          qualification
+        </span>
+      </div>
       {Array.from(byEngine.entries()).map(([engine, engineRules]) => {
         const passed = engineRules.filter((r) => r.passed).length;
         return (
@@ -29,13 +50,17 @@ export function RulePassMatrix({ rules }: { rules: RuleExplanation[] }) {
                 <div
                   key={rule.rule_id}
                   role="img"
-                  aria-label={`${rule.rule_id}: ${rule.passed ? 'passed' : 'failed'}`}
-                  title={`${rule.rule_id}: ${rule.passed ? 'passed' : 'failed'} — ${rule.explanation}`}
+                  aria-label={`${rule.rule_id}: ${rule.passed ? 'passed' : 'failed'}${
+                    gate.has(rule.rule_id) ? ', blocks qualification' : ''
+                  }`}
+                  title={`${rule.rule_id}: ${rule.passed ? 'passed' : 'failed'}${
+                    gate.has(rule.rule_id) ? ' (blocks qualification)' : ''
+                  } — ${rule.explanation}`}
                   className={`w-4 h-4 rounded-sm ${
                     rule.passed
                       ? 'bg-emerald-500 dark:bg-emerald-400'
                       : 'bg-rose-300 dark:bg-rose-900/70'
-                  }`}
+                  } ${gate.has(rule.rule_id) ? 'ring-2 ring-rose-500' : ''}`}
                 />
               ))}
             </div>

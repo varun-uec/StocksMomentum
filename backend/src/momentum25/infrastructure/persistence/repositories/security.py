@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, func, select, text, update
+from sqlalchemy import CursorResult, case, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -208,3 +208,33 @@ class SqlSecurityRepository:
         )
         row = result.scalar_one_or_none()
         return _to_domain(row) if row else None
+
+    async def search(self, query: str, limit: int) -> list[Security]:
+        """Return active securities matching *query* on symbol or name.
+
+        Ordered so a typeahead surfaces the obvious answer first: exact symbol,
+        then symbol prefix, then anything else containing the term. Ties break on
+        symbol so the result is deterministic for a given query.
+        """
+        term = query.strip().upper()
+        if not term:
+            return []
+        like = f"%{term}%"
+        rank = case(
+            (SecurityModel.symbol == term, 0),
+            (SecurityModel.symbol.like(f"{term}%"), 1),
+            else_=2,
+        )
+        result = await self._session.execute(
+            select(SecurityModel)
+            .where(
+                SecurityModel.is_active.is_(True),
+                or_(
+                    SecurityModel.symbol.like(like),
+                    func.upper(SecurityModel.name).like(like),
+                ),
+            )
+            .order_by(rank, SecurityModel.symbol)
+            .limit(limit)
+        )
+        return [_to_domain(row) for row in result.scalars()]

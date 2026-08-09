@@ -10,6 +10,7 @@
 
 import { Card, StatusDot } from '@/components/shared/Card';
 import type { IndicatorSnapshot, StockExplanation } from '@/lib/types';
+import { num } from '@/lib/format';
 
 function fmtInt(value: string | null): string {
   if (value === null) return '—';
@@ -36,7 +37,7 @@ export function VolumeAccumulation({
       title="Volume & accumulation"
       subtitle={
         engine
-          ? `${engine.rules_passed}/${engine.rule_count} rules passed · score ${engine.score}`
+          ? `${engine.rules_passed}/${engine.rule_count} rules passed · score ${num(engine.score)}`
           : undefined
       }
     >
@@ -64,7 +65,7 @@ export function VolumeAccumulation({
               <StatusDot passed={rule.passed} />
             </div>
             <div className="flex-1 text-slate-700 dark:text-slate-300">{rule.explanation}</div>
-            <div className="shrink-0 tabular-nums text-slate-500">{rule.contribution}</div>
+            <div className="shrink-0 tabular-nums text-slate-500">{num(rule.contribution)}</div>
           </div>
         ))}
         {rules.length === 0 && (

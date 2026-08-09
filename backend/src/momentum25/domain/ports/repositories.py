@@ -50,6 +50,10 @@ class SecurityRepository(Protocol):
         """Return a security by symbol, or ``None``."""
         ...
 
+    async def search(self, query: str, limit: int) -> list[Security]:
+        """Return active securities matching *query* on symbol or name."""
+        ...
+
     async def deactivate_symbols(self, symbols: list[str]) -> int:
         """Mark the given symbols inactive; return the number of rows updated."""
         ...

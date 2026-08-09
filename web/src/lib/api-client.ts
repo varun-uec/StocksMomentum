@@ -303,6 +303,16 @@ export async function getOhlcv(
   return fetchJson(`${API_BASE}/securities/${symbol}/ohlcv?${params}`, { cache: 'no-store' });
 }
 
+/** Symbol/company-name typeahead for the nav lookup. */
+export async function searchSecurities(
+  q: string,
+  limit = 8,
+  signal?: AbortSignal
+): Promise<import('./types').SecuritySearchResult[]> {
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  return fetchJson(`${API_BASE}/securities?${params}`, { cache: 'no-store', signal });
+}
+
 /** Universe-level breadth and sector relative strength (Phase 6.6/6.7). */
 export async function getMarketContext(
   asOf?: string

@@ -7,11 +7,24 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from momentum25.application.dto.market_data import SecurityOHLCVDTO
-from momentum25.application.use_cases.securities import GetSecurityOHLCV
-from momentum25.interface.api.dependencies import get_get_security_ohlcv
+from momentum25.application.dto.market_data import SecurityOHLCVDTO, SecuritySearchResultDTO
+from momentum25.application.use_cases.securities import GetSecurityOHLCV, SearchSecurities
+from momentum25.interface.api.dependencies import (
+    get_get_security_ohlcv,
+    get_search_securities,
+)
 
 router = APIRouter(prefix="/securities", tags=["securities"])
+
+
+@router.get("", response_model=list[SecuritySearchResultDTO])
+async def search_securities(
+    use_case: Annotated[SearchSecurities, Depends(get_search_securities)],
+    q: Annotated[str, Query(min_length=1, max_length=64)],
+    limit: Annotated[int, Query(ge=1, le=25)] = 10,
+) -> list[SecuritySearchResultDTO]:
+    """Return symbol suggestions matching *q* on symbol or company name."""
+    return await use_case.execute(q, limit)
 
 
 @router.get("/{symbol}/ohlcv", response_model=SecurityOHLCVDTO)

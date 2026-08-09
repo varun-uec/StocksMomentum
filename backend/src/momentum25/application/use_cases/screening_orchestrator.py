@@ -170,11 +170,18 @@ class ScreeningOrchestrator:
             # 8. Mark run completed
             run.status = RunStatus.COMPLETED
             run.finished_at = datetime.now(UTC)
+            summary.duration_seconds = round(time.perf_counter() - start, 3)
+            # Every skip bucket must be persisted: with only the insufficient-data
+            # and ineligible-universe counts, an all-skipped run reads as
+            # "evaluated 3235, passed 0, failed 0" with hundreds of symbols
+            # unaccounted for and no way to tell why from the run row.
             run.stats = {
                 "total_evaluated": summary.total_evaluated,
                 "total_passed": summary.total_passed,
                 "total_skipped": summary.total_skipped_insufficient_data,
                 "total_failed": summary.total_failed,
+                "total_skipped_stale_data": summary.total_skipped_stale_data,
+                "duration_seconds": summary.duration_seconds,
                 "git_commit": get_git_commit(),
                 "indicator_version": INDICATOR_VERSION,
                 "universe_source": "declared_liquidity_floor",
@@ -194,7 +201,6 @@ class ScreeningOrchestrator:
             await self._commit()
             raise
 
-        summary.duration_seconds = round(time.perf_counter() - start, 3)
         _logger.info(
             "screening_completed",
             date=trading_date.isoformat(),

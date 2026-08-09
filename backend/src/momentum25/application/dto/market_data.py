@@ -26,6 +26,14 @@ class SecurityOHLCVDTO(BaseModel):
     bars: list[OHLCVBarDTO]
 
 
+class SecuritySearchResultDTO(BaseModel):
+    """One typeahead suggestion for the symbol lookup."""
+
+    symbol: str
+    name: str
+    sector: str | None = None
+
+
 class IndicatorBarDTO(BaseModel):
     """One day's indicator values for the chart sub-panes (Phase 9).
 
