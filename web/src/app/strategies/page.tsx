@@ -16,7 +16,7 @@ export default function StrategyResearchPage() {
 
   const { data: strategies, isLoading: strategiesLoading } = useQuery({
     queryKey: ['strategies'],
-    queryFn: listStrategies,
+    queryFn: () => listStrategies(),
   });
 
   const { data: evaluation, isLoading: evalLoading } = useQuery({

@@ -4,17 +4,20 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
+from momentum25.application.dto.watchlist import WatchlistDetailResponseDTO
 from momentum25.application.use_cases.watchlist import (
     AddToWatchlist,
     GetWatchlist,
+    GetWatchlistDetail,
     RemoveFromWatchlist,
 )
 from momentum25.interface.api.dependencies import (
     get_add_to_watchlist,
     get_get_watchlist,
+    get_get_watchlist_detail,
     get_remove_from_watchlist,
 )
 
@@ -33,6 +36,20 @@ async def read_watchlist(
 ) -> WatchlistResponse:
     """Return every watchlisted symbol, oldest addition first."""
     return WatchlistResponse(symbols=await use_case.execute())
+
+
+@router.get("/detail", response_model=WatchlistDetailResponseDTO)
+async def read_watchlist_detail(
+    use_case: Annotated[GetWatchlistDetail, Depends(get_get_watchlist_detail)],
+    strategy: Annotated[str, Query()] = "minervini_trend_template",
+) -> WatchlistDetailResponseDTO:
+    """Return the watchlist enriched with momentum/rank/RS for *strategy*.
+
+    Symbols outside the strategy's latest completed run are evaluated live,
+    server-side, in this single request -- the client never fans out
+    per-row calls.
+    """
+    return await use_case.execute(strategy)
 
 
 @router.post("/{symbol}", response_model=WatchlistResponse)

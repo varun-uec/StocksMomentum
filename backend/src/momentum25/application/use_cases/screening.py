@@ -164,8 +164,17 @@ class ExecuteScreening:
             # 5. Persist historical OHLCV data
             await self._persist_bars(all_bars, symbol_to_security)
 
-        # 6. Run the screening pipeline via ScreeningOrchestrator
-        run_id = await self._run_via_orchestrator(strategy, reference_date, existing_run_id)
+        # 6. Run the screening pipeline via ScreeningOrchestrator.
+        #
+        # Screen the latest session that actually has data, not the wall-clock
+        # date: on a weekend, holiday, or before the bhavcopy publishes,
+        # reference_date matches no bar and the orchestrator's admission gate
+        # (bars[-1].date != trading_date) drops every security as
+        # no_bar_on_trading_date -- the universe collapses to zero scored,
+        # zero passed, zero failed with no error surfaced.
+        latest_bar_date = await self._ohlcv_repo.latest_date()
+        screening_date = latest_bar_date or reference_date
+        run_id = await self._run_via_orchestrator(strategy, screening_date, existing_run_id)
 
         _logger.info("execute_screening_completed", run_id=run_id)
         return run_id

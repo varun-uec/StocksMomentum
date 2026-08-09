@@ -75,6 +75,7 @@ export interface RuleExplanation {
   threshold: string | null;
   actual_value: string | null;
   contribution: string;
+  weight: string;
 }
 
 export interface EngineExplanation {
@@ -351,10 +352,12 @@ export interface DataFreshnessDTO {
 }
 
 export interface StrategySummary {
+  id: number;
   name: string;
-  description: string;
-  version: string;
+  description: string | null;
+  version: number;
   is_active: boolean;
+  config_hash: string;
 }
 
 export interface RuleConfigDTO {
@@ -752,6 +755,26 @@ export interface SecurityIndicatorSeriesDTO {
 
 export interface WatchlistResponse {
   symbols: string[];
+}
+
+/** One watchlisted symbol's momentum snapshot (GET /watchlist/detail). */
+export interface WatchlistItemDTO {
+  symbol: string;
+  in_latest_run: boolean;
+  momentum_score: string | null;
+  buy_setup_score: string | null;
+  rank: number | null;
+  rank_change: number | null;
+  rs_rating: number | null;
+  pct_below_high_52w: string | null;
+  close: string | null;
+  change_pct: string | null;
+}
+
+export interface WatchlistDetailResponse {
+  strategy: string;
+  run_id: number | null;
+  items: WatchlistItemDTO[];
 }
 
 // ── Phase 7: Elliott Wave labelling ────────────────────────────────────

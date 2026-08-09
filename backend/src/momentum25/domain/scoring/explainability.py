@@ -96,6 +96,7 @@ class RuleExplanation:
     threshold: str | None = None
     actual_value: str | None = None
     contribution: Decimal = Decimal("0")
+    weight: Decimal = Decimal("0")
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +211,7 @@ class ExplainabilityBuilderImpl:
                 threshold=str(r.threshold) if r.threshold is not None else None,
                 actual_value=str(r.raw_value) if r.raw_value is not None else None,
                 contribution=r.contribution,
+                weight=r.weight,
             )
             for r in rule_results
         )

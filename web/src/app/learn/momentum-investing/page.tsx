@@ -100,10 +100,10 @@ export default function MomentumInvestingPage() {
         </table>
       </div>
       <MethodologyNote kind="implementation">
-        See <span className="italic">Momentum Horizons</span> on the dashboard to run the same
-        deterministic methodology across each of these lookback windows independently &mdash; each
-        horizon reuses the identical scoring engine with horizon-appropriate indicator windows, so
-        results stay directly comparable across horizons.
+        The dashboard&apos;s strategy selector runs the same deterministic methodology across each of
+        these lookback windows as an independent strategy &mdash; each reuses the identical scoring
+        engine with horizon-appropriate indicator windows, so results stay directly comparable
+        across horizons. Only horizons with a completed screening run appear in the selector.
       </MethodologyNote>
 
       <SectionHeading>Momentum is not the same as volatility or speculation</SectionHeading>

@@ -160,6 +160,22 @@ class ScreeningOrchestrator:
             # 5. Concurrent processing with throttled semaphore
             scores, memberships = await self._evaluate_universe(securities, trading_date, summary)
 
+            # A run where every evaluated security was dropped as
+            # no_bar_on_trading_date is a pipeline failure, not a legitimate
+            # empty result: it means trading_date matched no persisted bar at
+            # all (see run #5, 2026-08-09, a Sunday) -- a caller bug, unlike a
+            # liquidity-floor exclusion, which is a normal daily occurrence
+            # even for a universe of one security. Zero *passed* is a valid
+            # COMPLETED outcome; a universe entirely unable to find its own
+            # trading date is not.
+            if summary.total_evaluated > 0 and not scores:
+                dominant_reason, dominant_count = self._dominant_skip_reason(memberships)
+                if dominant_reason == "no_bar_on_trading_date":
+                    raise RuntimeError(
+                        f"Zero securities admitted out of {summary.total_evaluated} evaluated "
+                        f"(dominant reason: {dominant_reason}, {dominant_count} symbols)"
+                    )
+
             # 6. Rank the scored universe
             rankings = self._strategy_engine.rank(scores, self._strategy)
 
@@ -211,6 +227,18 @@ class ScreeningOrchestrator:
             duration=summary.duration_seconds,
         )
         return summary
+
+    @staticmethod
+    def _dominant_skip_reason(memberships: list[UniverseMembership]) -> tuple[str, int]:
+        """Return the most common non-eligible reason, for a diagnostic error message."""
+        counts: dict[str, int] = {}
+        for m in memberships:
+            if not m.eligible and m.reason:
+                counts[m.reason] = counts.get(m.reason, 0) + 1
+        if not counts:
+            return "unknown", 0
+        reason, count = max(counts.items(), key=lambda kv: kv[1])
+        return reason, count
 
     async def _ensure_strategy_id(self) -> int:
         """Return a persisted strategy id, creating one if necessary."""

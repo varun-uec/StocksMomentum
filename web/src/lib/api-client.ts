@@ -108,8 +108,9 @@ export async function getStockHistory(
 
 // ── Strategies ────────────────────────────────────────────────────────
 
-export async function listStrategies(): Promise<StrategySummary[]> {
-  return fetchJson(`${API_BASE}/strategies`, { cache: 'no-store' });
+export async function listStrategies(withRuns = false): Promise<StrategySummary[]> {
+  const params = withRuns ? '?with_runs=true' : '';
+  return fetchJson(`${API_BASE}/strategies${params}`, { cache: 'no-store' });
 }
 
 export async function getStrategyDetail(
@@ -324,6 +325,17 @@ export async function getMarketContext(
 
 export async function getWatchlist(): Promise<import('./types').WatchlistResponse> {
   return fetchJson(`${API_BASE}/watchlist`, { cache: 'no-store' });
+}
+
+/**
+ * Enriched watchlist rows for one strategy, evaluated server-side in a
+ * single request (no per-row client fan-out).
+ */
+export async function getWatchlistDetail(
+  strategy: string
+): Promise<import('./types').WatchlistDetailResponse> {
+  const params = new URLSearchParams({ strategy });
+  return fetchJson(`${API_BASE}/watchlist/detail?${params}`, { cache: 'no-store' });
 }
 
 export async function addToWatchlist(

@@ -142,6 +142,10 @@ class StrategyRepository(Protocol):
         """Return all strategies."""
         ...
 
+    async def list_with_completed_runs(self) -> list[Strategy]:
+        """Return strategies that have at least one completed live run."""
+        ...
+
 
 @runtime_checkable
 class ScreeningRunRepository(Protocol):

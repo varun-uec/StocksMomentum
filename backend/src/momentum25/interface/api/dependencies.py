@@ -37,6 +37,7 @@ from momentum25.application.use_cases.strategies import GetStrategy, ListStrateg
 from momentum25.application.use_cases.watchlist import (
     AddToWatchlist,
     GetWatchlist,
+    GetWatchlistDetail,
     RemoveFromWatchlist,
 )
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl
@@ -245,6 +246,35 @@ async def get_remove_from_watchlist(
 ) -> AsyncIterator[RemoveFromWatchlist]:
     """Provide a RemoveFromWatchlist use-case instance."""
     yield RemoveFromWatchlist(securities=securities, watchlist=watchlist)
+
+
+async def get_get_watchlist_detail() -> AsyncIterator[GetWatchlistDetail]:
+    """Provide a GetWatchlistDetail use-case instance.
+
+    Assembles the same engines/indicator-pipeline slice as
+    :func:`get_live_stock_analysis` for the out-of-run live evaluation path,
+    plus a Redis-backed RS-rating cache (degrades to "no cache" on a Redis
+    outage, matching :class:`RedisRefreshGate`).
+    """
+    from momentum25.infrastructure.redis.rs_rating_cache import RedisRsRatingCache
+
+    register_builtin_engines()
+    async with _shared_session() as session:
+        scoring_engine = ScoringEngineImpl()
+        ranking_engine = RankingEngineImpl()
+        strategy_engine = StrategyEngine(
+            engines=engine_registry, scoring=scoring_engine, ranking=ranking_engine
+        )
+        yield GetWatchlistDetail(
+            watchlist=SqlWatchlistRepository(session),
+            securities=SqlSecurityRepository(session),
+            screening_run_repo=SqlScreeningRunRepository(session),
+            strategies=SqlStrategyRepository(session),
+            ohlcv_repo=SqlOHLCVRepository(session),
+            indicator_pipeline=IndicatorPipelineImpl(session),
+            strategy_engine=strategy_engine,
+            rs_rating_cache=RedisRsRatingCache(get_redis_provider().client),
+        )
 
 
 async def get_elliott_wave_analysis(

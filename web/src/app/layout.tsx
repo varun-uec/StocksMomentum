@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { NavBar } from "@/components/shared/NavBar";
 import { ThemeInitScript, ThemeProvider } from "./theme-provider";
+import { StrategyProvider } from "./strategy-context";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,8 +26,10 @@ export default function RootLayout({
       <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
         <ThemeProvider>
           <Providers>
-            <NavBar />
-            {children}
+            <StrategyProvider>
+              <NavBar />
+              {children}
+            </StrategyProvider>
           </Providers>
         </ThemeProvider>
       </body>

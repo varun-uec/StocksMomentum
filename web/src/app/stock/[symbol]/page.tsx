@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useChartPreferences } from '@/lib/chart-preferences';
 import { getIndicatorSeries, getLiveStockAnalysis, getOhlcv, getStockExplanation, getStockHistory } from '@/lib/api-client';
 import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
-import { HORIZONS, DEFAULT_HORIZON } from '@/lib/horizons';
+import { DEFAULT_STRATEGY } from '@/app/strategy-context';
+import { strategyDisplayName } from '@/lib/format';
 import type { EngineExplanation, RuleExplanation, StockExplanation } from '@/lib/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { useChartColors } from '@/lib/useChartColors';
@@ -160,8 +161,8 @@ function SectionNav({ active, onSelect }: { active: string; onSelect: (id: strin
 export default function StockResearchPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const searchParams = useSearchParams();
-  const strategyName = searchParams.get('strategy') || DEFAULT_HORIZON.strategyName;
-  const horizonLabel = HORIZONS.find((h) => h.strategyName === strategyName)?.label ?? 'default';
+  const strategyName = searchParams.get('strategy') || DEFAULT_STRATEGY;
+  const horizonLabel = strategyDisplayName(strategyName);
   const chartColors = useChartColors();
   const [activeSection, setActiveSection] = useState('overview');
   const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');

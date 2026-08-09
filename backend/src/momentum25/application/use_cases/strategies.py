@@ -27,9 +27,19 @@ class ListStrategies:
         """Wire the use case with the strategy repository."""
         self._strategies = strategies
 
-    async def execute(self) -> list[StrategySummaryDTO]:
-        """Return strategy summaries."""
-        return [_summary(s) for s in await self._strategies.list()]
+    async def execute(self, with_runs: bool = False) -> list[StrategySummaryDTO]:
+        """Return strategy summaries.
+
+        ``with_runs=True`` restricts the list to strategies with at least one
+        completed live run -- the set that can back a strategy selector
+        without ever presenting an option that renders an empty dashboard.
+        """
+        strategies = (
+            await self._strategies.list_with_completed_runs()
+            if with_runs
+            else await self._strategies.list()
+        )
+        return [_summary(s) for s in strategies]
 
 
 class GetStrategy:

@@ -20,7 +20,7 @@ export default function ExperimentLaboratoryPage() {
 
   const { data: strategies } = useQuery({
     queryKey: ['strategies'],
-    queryFn: listStrategies,
+    queryFn: () => listStrategies(),
   });
 
   const addOverride = () => {

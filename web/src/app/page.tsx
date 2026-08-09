@@ -2,12 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
+import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import { getLatestRunForStrategy, getRankings, getDataFreshness } from '@/lib/api-client';
 import { Badge, PageHeader, EmptyState, LoadingSpinner, ErrorMessage } from '@/components/shared/Card';
-import { HORIZONS, DEFAULT_HORIZON, type Horizon } from '@/lib/horizons';
+import { useStrategy } from '@/app/strategy-context';
 import type { RankingsResponse, ScreeningRunSummary, DataFreshnessDTO } from '@/lib/types';
 import { focusRing } from '@/lib/theme';
 
@@ -51,46 +51,19 @@ function buildSummary(data: RankingsResponse): ScreeningRunSummary {
   const stats = data.run?.stats ?? {};
   return {
     total_evaluated: (stats.total_evaluated as number) ?? data.total,
-    passed_count: (stats.passed_count as number) ?? 0,
-    failed_count: (stats.failed_count as number) ?? 0,
+    passed_count: (stats.total_passed as number) ?? 0,
+    failed_count: (stats.total_failed as number) ?? 0,
     execution_duration_seconds: (stats.duration_seconds as number) ?? 0,
   };
 }
 
-function HorizonSelector({
-  selected,
-  onSelect,
-}: {
-  selected: Horizon;
-  onSelect: (h: Horizon) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-lg p-1">
-      {HORIZONS.map((h) => (
-        <button
-          key={h.strategyName}
-          type="button"
-          onClick={() => onSelect(h)}
-          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${focusRing} ${
-            selected.strategyName === h.strategyName
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-          }`}
-        >
-          {h.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function Home() {
   const router = useRouter();
-  const [horizon, setHorizon] = useState<Horizon>(DEFAULT_HORIZON);
+  const { strategyName } = useStrategy();
 
   const { data: run, isLoading: runIdLoading, refetch: refetchRun, isFetching: runFetching } = useQuery({
-    queryKey: ['latest-run', horizon.strategyName],
-    queryFn: () => getLatestRunForStrategy(horizon.strategyName),
+    queryKey: ['latest-run', strategyName],
+    queryFn: () => getLatestRunForStrategy(strategyName),
     refetchInterval: 60_000,
   });
 
@@ -118,7 +91,7 @@ export default function Home() {
   };
 
   const handleSymbolClick = (symbol: string) => {
-    router.push(`/stock/${symbol}?strategy=${horizon.strategyName}`);
+    router.push(`/stock/${symbol}?strategy=${strategyName}`);
   };
 
   return (
@@ -128,7 +101,7 @@ export default function Home() {
         subtitle="Top-ranked stocks based on deterministic momentum screening"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-          <HorizonSelector selected={horizon} onSelect={setHorizon} />
+          <StrategySelector />
           {run && (
             <div className="flex items-center gap-3 text-xs text-slate-500">
               <Badge color="indigo">Run #{run.id}</Badge>
@@ -183,20 +156,20 @@ export default function Home() {
 
             {rankings.items.length === 0 ? (
               <EmptyState
-                message={`No stocks currently satisfy the ${horizon.label} methodology. This is expected behavior, not an error — Momentum25 never lowers its screening bar to populate a list. Check back after the next session, or try a different horizon.`}
+                message={`No stocks currently satisfy the ${strategyName} methodology. This is expected behavior, not an error — Momentum25 never lowers its screening bar to populate a list. Check back after the next session, or try a different strategy.`}
               />
             ) : (
               <MomentumTable
                 items={rankings.items}
                 onSymbolClick={handleSymbolClick}
-                title={`Ranked Universe — ${horizon.label}`}
+                title="Ranked Universe"
               />
             )}
           </>
         )}
 
         {!isLoading && !rankings && !rankingsError && (
-          <EmptyState message={`No completed screening runs found for the ${horizon.label} horizon. Trigger a run from the API.`} />
+          <EmptyState message="No completed screening runs found for this strategy. Trigger a run from the API." />
         )}
       </div>
     </main>

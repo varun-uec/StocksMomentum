@@ -7,8 +7,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.value_objects.types import RunStatus
 from momentum25.infrastructure.config.strategy_loader import config_from_raw, raw_from_config
-from momentum25.infrastructure.persistence.models import StrategyModel
+from momentum25.infrastructure.persistence.models import ScreeningRunModel, StrategyModel
 
 
 def _to_domain(row: StrategyModel) -> Strategy:
@@ -63,4 +64,26 @@ class SqlStrategyRepository:
     async def list(self) -> list[Strategy]:
         """Return all strategies."""
         result = await self._session.execute(select(StrategyModel).order_by(StrategyModel.name))
+        return [_to_domain(row) for row in result.scalars().all()]
+
+    async def list_with_completed_runs(self) -> list[Strategy]:
+        """Return strategies that have at least one completed live run.
+
+        Excludes historical backfill and research/walk-forward runs, mirroring
+        :meth:`SqlScreeningRunRepository.latest_completed` -- the same set the
+        Live Dashboard resolves "latest run" against. Used to build a strategy
+        selector that can never present an option with nothing to show.
+        """
+        result = await self._session.execute(
+            select(StrategyModel)
+            .join(ScreeningRunModel, ScreeningRunModel.strategy_id == StrategyModel.id)
+            .where(
+                ScreeningRunModel.status == RunStatus.COMPLETED.value,
+                ~ScreeningRunModel.data_version.like("historical:%"),
+                ~ScreeningRunModel.data_version.like("%:research:%"),
+                ~ScreeningRunModel.data_version.like("%:icv2:%"),
+            )
+            .distinct()
+            .order_by(StrategyModel.name)
+        )
         return [_to_domain(row) for row in result.scalars().all()]

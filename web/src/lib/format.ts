@@ -13,3 +13,11 @@ export function num(value: string | number | null | undefined, dp = 2): string {
   const n = typeof value === 'number' ? value : parseFloat(value);
   return Number.isFinite(n) ? n.toFixed(dp) : String(value);
 }
+
+/** "minervini_trend_template" -> "Minervini Trend Template". */
+export function strategyDisplayName(name: string): string {
+  return name
+    .split('_')
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
+}

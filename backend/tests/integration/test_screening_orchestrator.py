@@ -21,6 +21,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.infrastructure.persistence.models import (
+    ScreeningResultModel,
     ScreeningRunModel,
     SecurityModel,
 )
@@ -224,3 +225,74 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
     )
     assert accounted == stats["total_evaluated"], f"unaccounted symbols in {stats}"
     assert stats["duration_seconds"] > 0
+
+    # Pins the exact keys the dashboard reads (web/src/app/page.tsx) -- a
+    # rename here without updating the frontend silently renders "passed 0 /
+    # failed 0" for every run, healthy or not.
+    assert set(stats) >= {"total_evaluated", "total_passed", "total_failed", "duration_seconds"}
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_screening_date_with_no_bar_fails_run(
+    db_session: AsyncSession,
+) -> None:
+    """A trading_date with no matching bar for any security must FAIL the run.
+
+    Reproduces run #5 (2026-08-09, a Sunday): ExecuteScreening previously
+    passed date.today() straight through as trading_date, and the universe
+    admission gate (bars[-1].date != trading_date) dropped every security as
+    no_bar_on_trading_date -- the run still completed with total_evaluated=3235,
+    total_passed=0, total_failed=0, and zero screening_results rows. This must
+    now surface as a FAILED run rather than a silently empty COMPLETED one.
+    """
+    start_date = date(2024, 1, 1)
+    last_bar_date = start_date + timedelta(days=299)
+    no_bar_date = last_bar_date + timedelta(days=5)  # no security has a bar here
+
+    pass_sec = await _seed_security(db_session, "PASSER", "Passing Trend")
+    await _seed_bars(db_session, pass_sec.id, _make_uptrend_bars(300, start_date, 100.0))
+
+    security_repo = SqlSecurityRepository(db_session)
+    ohlcv_repo = SqlOHLCVRepository(db_session)
+    screening_run_repo = SqlScreeningRunRepository(db_session)
+    strategy_repo = SqlStrategyRepository(db_session)
+    indicator_pipeline = IndicatorPipelineImpl(db_session)
+
+    from momentum25.domain.engines.trend_template import TrendTemplateEngine
+
+    registry = EngineRegistry()
+    registry.register(TrendTemplateEngine())
+    strategy_engine = StrategyEngine(
+        engines=registry, scoring=ScoringEngineImpl(), ranking=RankingEngineImpl()
+    )
+    strategy = Strategy(
+        name="test_strategy_no_bar",
+        version=1,
+        config_hash="abc",
+        config=StrategyConfig(
+            name="test_strategy_no_bar",
+            version=1,
+            engines=(EngineConfig(id="trend_template", enabled=True, weight=Decimal("1")),),
+        ),
+    )
+
+    orchestrator = ScreeningOrchestrator(
+        security_repo=security_repo,
+        ohlcv_repo=ohlcv_repo,
+        screening_run_repo=screening_run_repo,
+        indicator_pipeline=indicator_pipeline,
+        strategy_engine=strategy_engine,
+        strategy=strategy,
+        strategy_repo=strategy_repo,
+    )
+
+    with pytest.raises(Exception):
+        await orchestrator.run_daily_screening(no_bar_date)
+
+    run_row = (await db_session.execute(select(ScreeningRunModel))).scalars().one()
+    assert run_row.status == "FAILED"
+
+    results_count = await db_session.execute(
+        select(func.count()).select_from(ScreeningResultModel)
+    )
+    assert results_count.scalar_one() == 0

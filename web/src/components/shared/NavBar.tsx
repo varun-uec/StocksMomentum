@@ -82,15 +82,23 @@ const Icons = {
   ),
 };
 
+// The primary surface: today's momentum dashboard and the watchlist. Every
+// other screen (historical replay, strategy comparison, the experiment lab,
+// research validation, analytics, market breadth, the learn hub) is a tool
+// for building or auditing a strategy, not for daily use, so it lives behind
+// the "Research Tools" dropdown instead of competing for top-level space.
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: Icons.dashboard },
+  { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
+];
+
+const RESEARCH_TOOLS = [
   { href: '/historical', label: 'Historical', icon: Icons.historical },
   { href: '/strategies', label: 'Strategies', icon: Icons.strategies },
   { href: '/experiment', label: 'Lab', icon: Icons.lab },
   { href: '/validation', label: 'Research', icon: Icons.research },
   { href: '/analytics', label: 'Analytics', icon: Icons.analytics },
   { href: '/market', label: 'Market', icon: Icons.market },
-  { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
   { href: '/learn', label: 'Learn', icon: Icons.learn },
 ];
 
@@ -263,12 +271,18 @@ function SymbolSearch({ className = '' }: { className?: string }) {
   );
 }
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
 function NavLink({
   item,
   pathname,
   onClick,
 }: {
-  item: (typeof NAV_ITEMS)[number];
+  item: NavItem;
   pathname: string;
   onClick?: () => void;
 }) {
@@ -289,6 +303,56 @@ function NavLink({
       </span>
       {item.label}
     </Link>
+  );
+}
+
+function ResearchToolsMenu() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const isActive = RESEARCH_TOOLS.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  );
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${focusRing} ${
+          isActive
+            ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+        }`}
+      >
+        Research Tools
+        <svg viewBox="0 0 20 20" fill="currentColor" className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}>
+          <path fillRule="evenodd" clipRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
+        </svg>
+      </button>
+      {open && (
+        <ul
+          role="menu"
+          className="absolute left-0 mt-1 w-48 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 z-50"
+        >
+          {RESEARCH_TOOLS.map((item) => (
+            <li key={item.href} role="none">
+              <Link
+                href={item.href}
+                role="menuitem"
+                onMouseDown={(e) => e.preventDefault()}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <span className="text-slate-400 dark:text-slate-500">{item.icon}</span>
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -316,6 +380,7 @@ export function NavBar() {
             {NAV_ITEMS.map((item) => (
               <NavLink key={item.href} item={item} pathname={pathname} />
             ))}
+            <ResearchToolsMenu />
           </div>
 
           <div className="flex-1" />
@@ -346,6 +411,14 @@ export function NavBar() {
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
           ))}
+          <div className="pt-2 mt-1 border-t border-slate-200 dark:border-slate-800">
+            <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-600">
+              Research Tools
+            </div>
+            {RESEARCH_TOOLS.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
+            ))}
+          </div>
         </div>
       )}
     </nav>
