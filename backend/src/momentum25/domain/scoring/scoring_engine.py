@@ -26,6 +26,12 @@ class ScoringEngineImpl:
 
     The per-engine ``engine_score`` is already computed by each evaluation engine;
     this class only combines them into the final momentum / buy-setup scores.
+
+    Gate engines (``EngineConfig.gate``, e.g. the Trend Template) are excluded
+    from both weighted scores: among qualifiers a gate engine's score is 1.0 by
+    construction (``passed_gate`` requires every rule to pass), so it has zero
+    cross-sectional variance and contributes nothing but a constant offset.
+    Dropping it is provably rank-neutral and removes an artificial score floor.
     """
 
     def score(
@@ -105,21 +111,31 @@ class ScoringEngineImpl:
 
         If ``weights`` is empty, fall back to the engine's configured weight so
         that a minimal single-engine strategy still produces a meaningful score.
+        Gate engines are excluded (see class docstring).
         """
+        ranked_results = [
+            er
+            for er in engine_results
+            if not engine_cfg_by_id[er.engine_id].gate
+        ]
+
         if weights:
-            total_weight = sum(weights.values(), Decimal("0"))
+            total_weight = sum(
+                (weights.get(er.engine_id, Decimal("0")) for er in ranked_results),
+                Decimal("0"),
+            )
             weighted_sum = sum(
                 weights.get(er.engine_id, Decimal("0")) * er.engine_score
-                for er in engine_results
+                for er in ranked_results
             )
         else:
             total_weight = sum(
-                (engine_cfg_by_id[er.engine_id].weight for er in engine_results),
+                (engine_cfg_by_id[er.engine_id].weight for er in ranked_results),
                 Decimal("0"),
             )
             weighted_sum = sum(
                 engine_cfg_by_id[er.engine_id].weight * er.engine_score
-                for er in engine_results
+                for er in ranked_results
             )
 
         if total_weight == 0:

@@ -39,7 +39,9 @@ class TrendTemplateEngine:
         1. tt_close_above_sma150_200: close > sma150 AND close > sma200
         2. tt_sma150_above_sma200: sma150 > sma200
         3. tt_sma200_uptrend: sma200_slope_pct > params.min_slope_pct (default 0)
-        4. tt_sma_stack: sma50 > sma150 AND sma50 > sma200 (simplified stack)
+        4. tt_sma_stack: sma50 > sma150 AND sma50 > sma200. Equivalent to the
+           full chain sma50 > sma150 > sma200 only jointly with rule 2
+           (tt_sma150_above_sma200) — enforced below when both are configured.
         5. tt_close_above_sma50: close > sma50
         6. tt_above_52w_low: pct_above_low_52w >= params.min_pct (default 30)
         7. tt_near_52w_high: pct_below_high_52w <= params.max_pct (default 25)
@@ -51,6 +53,13 @@ class TrendTemplateEngine:
 
         def included(rule_id: str) -> bool:
             return not cfg.rules or rule_id in rule_cfg
+
+        if included("tt_sma_stack") and not included("tt_sma150_above_sma200"):
+            raise ValueError(
+                "tt_sma_stack requires tt_sma150_above_sma200 to also be configured: "
+                "its 'full SMA stack' equivalence (sma50 > sma150 > sma200) holds only "
+                "as their conjunction, not for tt_sma_stack alone."
+            )
 
         evaluators: dict[str, Any] = {
             "tt_close_above_sma150_200": lambda rc: self._eval_tt_close_above_sma150_200(
