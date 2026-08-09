@@ -1,5 +1,6 @@
 {
   "name": "benchmark_a_pure_momentum",
+  "kind": "research",
   "version": 1,
   "description": "Research Benchmark A: Pure 52-week Momentum. Ranks solely by trailing 12-month (252-trading-day) return. Only a minimum liquidity floor is enforced as a gate -- no Trend Template, no RS percentile requirement, no pattern/breakout/risk scoring. Used only for quantitative comparison against the production strategy; never used for live screening.",
   "benchmark_index": "NIFTY500",

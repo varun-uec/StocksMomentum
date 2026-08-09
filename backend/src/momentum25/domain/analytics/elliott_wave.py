@@ -27,7 +27,7 @@ it never produces a buy/sell verdict, a score, or a trade recommendation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 
@@ -83,6 +83,15 @@ class ProjectionZone:
 
 
 @dataclass(frozen=True, slots=True)
+class Subdivision:
+    """Finer-degree labelling of the leg ending at ``of_label``."""
+
+    of_label: str  # the primary label this leg terminates at, e.g. "3"
+    degree: str
+    labels: tuple[WaveLabel, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class WaveCount:
     """One internally consistent labelling of the pivot sequence."""
 
@@ -97,6 +106,7 @@ class WaveCount:
     # later price action has already left behind.
     is_current: bool = True
     projection: ProjectionZone | None = None
+    subdivisions: tuple[Subdivision, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -428,6 +438,39 @@ def label_waves(
     return primary, alternative
 
 
+def subdivide(
+    bars: tuple[OHLCVBar, ...] | list[OHLCVBar],
+    count: WaveCount,
+    threshold_pct: Decimal = DEFAULT_ZIGZAG_THRESHOLD_PCT,
+) -> tuple[Subdivision, ...]:
+    """Label one finer degree of structure inside each leg of ``count``.
+
+    Purely additive labelling depth -- a subdivision is never a signal and
+    carries no projection zone. Each adjacent label pair ``(a, b)`` bounds a
+    leg; the bars in ``[a.bar_date, b.bar_date]`` are re-pivoted at a finer
+    (``threshold_pct / 3``) reversal size and labelled, and a ``Subdivision``
+    is emitted only when the finer structure reaches at least three confirmed
+    labels (two waves is not a structure worth drawing). Subdivisions are never
+    themselves subdivided.
+    """
+    finer = max(threshold_pct / Decimal(3), _ONE)
+    subdivisions: list[Subdivision] = []
+    for a, b in zip(count.labels, count.labels[1:], strict=False):
+        segment = [bar for bar in bars if a.bar_date <= bar.date <= b.bar_date]
+        sub_pivots = zigzag_pivots(segment, finer)
+        sub_primary, _ = label_waves(sub_pivots, len(segment))
+        if sub_primary is None or len(sub_primary.labels) < 3:
+            continue
+        subdivisions.append(
+            Subdivision(
+                of_label=b.label,
+                degree=sub_primary.degree,
+                labels=sub_primary.labels,
+            )
+        )
+    return tuple(subdivisions)
+
+
 def analyze_elliott_wave(
     symbol: str,
     bars: tuple[OHLCVBar, ...] | list[OHLCVBar],
@@ -437,6 +480,17 @@ def analyze_elliott_wave(
     pivots = zigzag_pivots(bars, threshold_pct)
     as_of = bars[-1].date if bars else None
     primary, alternative = label_waves(pivots, len(bars))
+
+    primary_subdivisions = subdivide(bars, primary, threshold_pct) if primary else ()
+    alternative_subdivisions = (
+        subdivide(bars, alternative, threshold_pct) if alternative else ()
+    )
+    primary = replace(primary, subdivisions=primary_subdivisions) if primary else None
+    alternative = (
+        replace(alternative, subdivisions=alternative_subdivisions)
+        if alternative
+        else None
+    )
 
     notes: list[str] = []
     if len(pivots) < 2:
@@ -456,6 +510,13 @@ def analyze_elliott_wave(
         )
     if alternative is None and primary is not None:
         notes.append("The pivots support a single valid count; no alternative is asserted.")
+    if any(
+        count is not None and not count.subdivisions
+        for count in (primary, alternative)
+    ):
+        notes.append(
+            "No leg of this count contains enough confirmed pivots to label a finer degree."
+        )
 
     return ElliottWaveAnalysis(
         symbol=symbol,

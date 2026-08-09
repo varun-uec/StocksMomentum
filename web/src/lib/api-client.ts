@@ -70,6 +70,16 @@ export async function getRun(runId: number): Promise<RunDTO> {
   return fetchJson(`${API_BASE}/runs/${runId}`, { cache: 'no-store' });
 }
 
+export async function executeScreening(
+  strategy: string,
+  force = false
+): Promise<RunDTO> {
+  return fetchJson(`${API_BASE}/runs/execute`, {
+    method: 'POST',
+    body: JSON.stringify({ strategy, force, background: true }),
+  });
+}
+
 // ── Rankings ──────────────────────────────────────────────────────────
 
 export async function getRankings(

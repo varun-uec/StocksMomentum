@@ -65,7 +65,9 @@ async def _run_daily_screening_job() -> None:
 
         async with get_database().session() as session:
             strategy_repo = SqlStrategyRepository(session)
-            strategies = [s for s in await strategy_repo.list() if s.is_active]
+            strategies = [
+                s for s in await strategy_repo.list() if s.is_active and s.kind == "production"
+            ]
 
         _logger.info("daily_screening_job_started", strategies=[s.name for s in strategies])
         for strategy in strategies:
@@ -83,6 +85,11 @@ async def _run_daily_screening_job() -> None:
 async def _sync_strategies(settings: Settings) -> int:
     """Load strategy JSON files from disk into the database (idempotent upsert).
 
+    Disk is the permanent source of truth: after upserting, every DB strategy
+    whose name is not on disk is pruned -- but only when it has no rows in
+    ``screening_runs`` (run history is append-only; a strategy with stored runs
+    is logged as ``strategy_orphaned_with_runs`` and left alone).
+
     Returns:
         The number of strategies synced.
     """
@@ -95,6 +102,16 @@ async def _sync_strategies(settings: Settings) -> int:
         repo = SqlStrategyRepository(session)
         for strategy in strategies:
             await repo.upsert(strategy)
+        deleted = await repo.delete_orphans([s.name for s in strategies])
+        if deleted:
+            _logger.info("strategy_orphans_deleted", names=deleted)
+        retained = [
+            s.name
+            for s in await repo.list()
+            if s.name not in {strategy.name for strategy in strategies}
+        ]
+        if retained:
+            _logger.warning("strategy_orphaned_with_runs", names=retained)
     _logger.info("strategies_synced", count=len(strategies))
     return len(strategies)
 

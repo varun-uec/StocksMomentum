@@ -1,5 +1,6 @@
 {
   "name": "benchmark_b_rs_only",
+  "kind": "research",
   "version": 1,
   "description": "Research Benchmark B: Relative Strength Only. Ranks solely by RS Rating (the same blended multi-period percentile the production strategy uses: 63/126/189/252-day returns weighted 0.4/0.2/0.2/0.2), with only a minimum liquidity floor as a gate. No Trend Template, no pattern/breakout/risk scoring. Research-only; never used for live screening.",
   "benchmark_index": "NIFTY500",

@@ -15,6 +15,7 @@ def _summary(s: Strategy) -> StrategySummaryDTO:
         name=s.name,
         version=s.version,
         is_active=s.is_active,
+        kind=s.kind,
         config_hash=s.config_hash,
         description=s.config.description,
     )

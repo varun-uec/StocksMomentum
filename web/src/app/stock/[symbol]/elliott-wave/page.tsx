@@ -12,12 +12,14 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { LineStyle } from 'lightweight-charts';
 import { getElliottWave, getOhlcv } from '@/lib/api-client';
 import { Card, Badge, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
 import {
   PriceChart,
   TIMEFRAMES,
   type ChartMarker,
+  type ChartOverlayLine,
   type TimeframeId,
 } from '@/components/stock/PriceChart';
 import { focusRing } from '@/lib/theme';
@@ -26,6 +28,10 @@ import type { ElliottWaveCount } from '@/lib/types';
 const MAX_LOOKBACK_DAYS = 2000;
 const PRIMARY_COLOR = '#a855f7';
 const ALTERNATIVE_COLOR = '#0ea5e9';
+// Lower-opacity variants of the active count colour, so subdivisions read as
+// one finer degree deeper than the primary count at a glance.
+const PRIMARY_SUBDIVISION_COLOR = 'rgba(168, 85, 247, 0.45)';
+const ALTERNATIVE_SUBDIVISION_COLOR = 'rgba(14, 165, 233, 0.45)';
 
 function lookbackDaysFor(timeframe: TimeframeId): number {
   return TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? MAX_LOOKBACK_DAYS;
@@ -39,7 +45,15 @@ function fromDateFor(timeframe: TimeframeId): string | undefined {
   return d.toISOString().slice(0, 10);
 }
 
-function CountSummary({ count, color }: { count: ElliottWaveCount; color: string }) {
+function CountSummary({
+  count,
+  color,
+  showSubwaves,
+}: {
+  count: ElliottWaveCount;
+  color: string;
+  showSubwaves: boolean;
+}) {
   return (
     <div className="space-y-3">
       <div>
@@ -52,6 +66,27 @@ function CountSummary({ count, color }: { count: ElliottWaveCount; color: string
           {count.direction === 'up' ? 'upward' : 'downward'} · {count.degree} degree
         </div>
       </div>
+      {showSubwaves && count.subdivisions.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
+            Finer-degree structure (parenthesised on the chart)
+          </div>
+          <ul className="space-y-1">
+            {count.subdivisions.map((subdivision) => (
+              <li key={subdivision.of_label} className="ml-3 text-xs text-slate-600 dark:text-slate-400">
+                <span style={{ color }}>
+                  Wave {subdivision.of_label}
+                </span>{' '}
+                · {subdivision.degree} degree ·{' '}
+                {subdivision.labels
+                  .filter((l) => l.label !== '0')
+                  .map((l) => `(${l.label})`)
+                  .join(' ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {!count.is_current && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
           This structure ended before the latest confirmed pivot, so no completion zone is
@@ -91,6 +126,7 @@ export default function ElliottWavePage() {
   const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
   const [thresholdPct, setThresholdPct] = useState(5);
   const [showAlternative, setShowAlternative] = useState(false);
+  const [showSubwaves, setShowSubwaves] = useState(false);
 
   const { data: ohlcv, isLoading: ohlcvLoading } = useQuery({
     queryKey: ['stock-ohlcv', symbol, timeframe],
@@ -110,19 +146,33 @@ export default function ElliottWavePage() {
 
   const shownCount = showAlternative ? (analysis?.alternative ?? null) : (analysis?.primary ?? null);
   const color = showAlternative ? ALTERNATIVE_COLOR : PRIMARY_COLOR;
+  const subdivisionColor = showAlternative
+    ? ALTERNATIVE_SUBDIVISION_COLOR
+    : PRIMARY_SUBDIVISION_COLOR;
 
-  const markers = useMemo<ChartMarker[]>(
-    () =>
-      (shownCount?.labels ?? [])
+  const markers = useMemo<ChartMarker[]>(() => {
+    const parentMarkers: ChartMarker[] = (shownCount?.labels ?? [])
+      .filter((l) => l.label !== '0')
+      .map((l) => ({
+        date: l.bar_date,
+        text: l.label,
+        position: shownCount?.direction === 'up' ? 'aboveBar' : 'belowBar',
+        color,
+      }));
+    if (!showSubwaves || !shownCount) return parentMarkers;
+    const subdivisionMarkers: ChartMarker[] = shownCount.subdivisions.flatMap((subdivision) =>
+      subdivision.labels
         .filter((l) => l.label !== '0')
         .map((l) => ({
           date: l.bar_date,
-          text: l.label,
-          position: shownCount?.direction === 'up' ? 'aboveBar' : 'belowBar',
-          color,
-        })),
-    [shownCount, color]
-  );
+          text: `(${l.label})`,
+          position: shownCount.direction === 'up' ? 'aboveBar' : 'belowBar',
+          color: subdivisionColor,
+          size: 0.7,
+        }))
+    );
+    return [...parentMarkers, ...subdivisionMarkers];
+  }, [shownCount, color, subdivisionColor, showSubwaves]);
 
   const overlayLine = useMemo(
     () =>
@@ -133,6 +183,19 @@ export default function ElliottWavePage() {
       })),
     [shownCount, color]
   );
+
+  const overlayLines = useMemo<ChartOverlayLine[]>(() => {
+    if (!showSubwaves || !shownCount) return [];
+    return shownCount.subdivisions.map((subdivision) => ({
+      points: subdivision.labels.map((l) => ({
+        date: l.bar_date,
+        price: parseFloat(l.price),
+      })),
+      color: subdivisionColor,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+    }));
+  }, [shownCount, subdivisionColor, showSubwaves]);
 
   const priceZone = useMemo(
     () =>
@@ -166,6 +229,10 @@ export default function ElliottWavePage() {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <p className="text-xs text-slate-500">
+          Chart annotation only — this view produces no buy/sell verdict and no score.
+        </p>
+
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
             Pivot reversal threshold
@@ -190,6 +257,21 @@ export default function ElliottWavePage() {
               {showAlternative ? 'Show primary count' : 'Show alternative count'}
             </button>
           )}
+          {shownCount && (
+            <button
+              type="button"
+              onClick={() => setShowSubwaves((v) => !v)}
+              disabled={shownCount.subdivisions.length === 0}
+              title={
+                shownCount.subdivisions.length === 0
+                  ? 'No leg of this count contains enough confirmed pivots to label a finer degree.'
+                  : undefined
+              }
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed ${focusRing}`}
+            >
+              {showSubwaves ? 'Hide subwaves' : 'Show subwaves'}
+            </button>
+          )}
         </div>
 
         <Card>
@@ -201,6 +283,7 @@ export default function ElliottWavePage() {
             height={620}
             markers={markers}
             overlayLine={overlayLine}
+            overlayLines={overlayLines}
             priceZone={priceZone}
             footnote={
               shownCount
@@ -228,7 +311,9 @@ export default function ElliottWavePage() {
                 No count is asserted at this threshold.
               </p>
             )}
-            {shownCount && <CountSummary count={shownCount} color={color} />}
+            {shownCount && (
+              <CountSummary count={shownCount} color={color} showSubwaves={showSubwaves} />
+            )}
           </Card>
 
           <Card title="Pivots and notes">

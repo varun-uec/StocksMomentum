@@ -14,6 +14,7 @@ class StrategySummaryDTO(BaseModel):
     name: str
     version: int
     is_active: bool
+    kind: str
     config_hash: str
     description: str | None = None
 

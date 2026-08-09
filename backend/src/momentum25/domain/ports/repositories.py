@@ -25,6 +25,8 @@ from momentum25.domain.value_objects.results import (
     UniverseMembership,
 )
 
+_BuiltinList = list
+
 
 @runtime_checkable
 class SecurityRepository(Protocol):
@@ -142,8 +144,16 @@ class StrategyRepository(Protocol):
         """Return all strategies."""
         ...
 
-    async def list_with_completed_runs(self) -> list[Strategy]:
+    async def list_with_completed_runs(self) -> _BuiltinList[Strategy]:
         """Return strategies that have at least one completed live run."""
+        ...
+
+    async def delete_orphans(self, names_on_disk: _BuiltinList[str]) -> _BuiltinList[str]:
+        """Delete strategies absent from disk, but only those with no stored runs.
+
+        Returns the names of the deleted strategies. Strategies that own run
+        history are left untouched (run rows are append-only).
+        """
         ...
 
 

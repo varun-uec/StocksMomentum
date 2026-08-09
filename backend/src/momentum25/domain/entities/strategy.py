@@ -63,3 +63,4 @@ class Strategy:
     config_hash: str
     id: int | None = None
     is_active: bool = True
+    kind: str = "production"

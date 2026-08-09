@@ -27,7 +27,7 @@ Source: capability audit (Opus 5), run against the existing codebase. Each item 
 | 1.1 | Wire `MarketSyncService` + `NSEMarketDataClient.fetch_historical_bars` into a new `GET /stocks/{symbol}/live?refresh=true` endpoint | This is the actual "type a stock, get current analysis" feature you want | `market_sync.py`, `nse_client.py:28` |
 | 1.2 | Handle single-symbol RS-rating gap explicitly (no universe to percentile against) | Must not silently fail or fake `tt_rs_rating_min` | `trend_template.py` |
 | 1.3 | Add rate limiting + Redis caching | NSE will block naive per-request scraping | `redis/cache.py` (available, unused here) |
-| 1.4 | Turn on the scheduler — `register_daily_job` has no caller, `scheduler_enabled` defaults false | Currently nothing refreshes automatically at all | `main.py:89`, `settings.py:52-53` |
+| 1.4 | Turn on the scheduler — `register_daily_job` had no caller, `scheduler_enabled` defaulted false | Currently nothing refreshes automatically at all | ~~`main.py:89`, `settings.py:52-53`~~ **Done 2026-08-09:** flag now ships `true` in `.env`/`.env.example`; the manual Refresh button on the dashboard (`POST /runs/execute?background=true` + polling) provides in-app recovery when the API process was down at cron time |
 | 1.5 | Add NSE trading-holiday calendar + staleness banner in UI | Prevents misreading a holiday as "no data" | — |
 | 1.6 | Make `/runs/execute` incremental + background task | Currently 345 sequential synchronous fetches inside one HTTP request — will time out | `screening.py:143-151` |
 

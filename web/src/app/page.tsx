@@ -1,11 +1,18 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
-import { getLatestRunForStrategy, getRankings, getDataFreshness } from '@/lib/api-client';
+import {
+  executeScreening,
+  getLatestRunForStrategy,
+  getRankings,
+  getDataFreshness,
+  getRun,
+} from '@/lib/api-client';
 import { Badge, PageHeader, EmptyState, LoadingSpinner, ErrorMessage } from '@/components/shared/Card';
 import { useStrategy } from '@/app/strategy-context';
 import type { RankingsResponse, ScreeningRunSummary, DataFreshnessDTO } from '@/lib/types';
@@ -59,15 +66,18 @@ function buildSummary(data: RankingsResponse): ScreeningRunSummary {
 
 export default function Home() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { strategyName } = useStrategy();
+  const [activeRunId, setActiveRunId] = useState<number | null>(null);
+  const [screeningError, setScreeningError] = useState<string | null>(null);
 
-  const { data: run, isLoading: runIdLoading, refetch: refetchRun, isFetching: runFetching } = useQuery({
+  const { data: run, isLoading: runIdLoading, isFetching: runFetching } = useQuery({
     queryKey: ['latest-run', strategyName],
     queryFn: () => getLatestRunForStrategy(strategyName),
     refetchInterval: 60_000,
   });
 
-  const { data: rankings, isLoading: rankingsLoading, error: rankingsError, refetch: refetchRankings, isFetching: rankingsFetching } = useQuery({
+  const { data: rankings, isLoading: rankingsLoading, error: rankingsError, isFetching: rankingsFetching } = useQuery({
     queryKey: ['rankings', run?.id],
     queryFn: () => getRankings(run!.id, 100, 0),
     enabled: run !== null && run !== undefined,
@@ -80,15 +90,44 @@ export default function Home() {
     refetchInterval: 60_000,
   });
 
-  const isLoading = runIdLoading || rankingsLoading;
-  const isRefreshing = runFetching || rankingsFetching;
+  // Start an on-demand screening run. The button is the manual fallback for
+  // the scheduler: the API runs the pipeline in the background, this page
+  // polls the new run's status until it finishes, then swaps the dashboard
+  // to the fresh snapshot.
+  const refreshMutation = useMutation({
+    mutationFn: () => executeScreening(strategyName),
+    onSuccess: (created) => {
+      setScreeningError(null);
+      setActiveRunId(created.id);
+    },
+    onError: (err) => setScreeningError(err instanceof Error ? err.message : 'Screening failed to start.'),
+  });
 
-  // Re-fetch the latest completed live run (and its rankings) on demand. If a
-  // newer run exists, react-query swaps in the new run id and the displayed
-  // "Latest screening" timestamp updates accordingly.
-  const handleRefresh = () => {
-    void refetchRun().then(() => refetchRankings());
-  };
+  const { data: activeRun } = useQuery({
+    queryKey: ['active-run', activeRunId],
+    queryFn: () => getRun(activeRunId!),
+    enabled: activeRunId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'PENDING' || status === 'RUNNING' ? 5000 : false;
+    },
+  });
+
+  useEffect(() => {
+    if (!activeRun) return;
+    if (activeRun.status === 'COMPLETED') {
+      queryClient.invalidateQueries({ queryKey: ['latest-run', strategyName] });
+      queryClient.invalidateQueries({ queryKey: ['data-freshness'] });
+      setActiveRunId(null);
+    } else if (activeRun.status === 'FAILED') {
+      setScreeningError(activeRun.error ?? 'Screening run failed.');
+      setActiveRunId(null);
+    }
+  }, [activeRun, strategyName, queryClient]);
+
+  const isLoading = runIdLoading || rankingsLoading;
+  const isScreening = refreshMutation.isPending || activeRunId !== null;
+  const isRefreshing = runFetching || rankingsFetching || isScreening;
 
   const handleSymbolClick = (symbol: string) => {
     router.push(`/stock/${symbol}?strategy=${strategyName}`);
@@ -102,7 +141,12 @@ export default function Home() {
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           <StrategySelector />
-          {run && (
+          {run && isScreening && activeRun && (
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <Badge color="amber">Run #{activeRun.id} screening in progress</Badge>
+            </div>
+          )}
+          {run && !isScreening && (
             <div className="flex items-center gap-3 text-xs text-slate-500">
               <Badge color="indigo">Run #{run.id}</Badge>
               <span className="tabular-nums">
@@ -117,14 +161,19 @@ export default function Home() {
               </span>
             </div>
           )}
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 disabled:opacity-50 transition-colors ${focusRing}`}
-          >
-            {isRefreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
+          <div className="flex flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={() => refreshMutation.mutate()}
+              disabled={isRefreshing}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 disabled:opacity-50 transition-colors ${focusRing}`}
+            >
+              {isScreening ? 'Screening…' : 'Refresh'}
+            </button>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+              This re-evaluates the universe; it usually takes a few minutes.
+            </span>
+          </div>
         </div>
       </PageHeader>
 
@@ -133,8 +182,10 @@ export default function Home() {
 
         {isLoading && <LoadingSpinner text="Loading screening data…" />}
 
-        {rankingsError && !isLoading && (
-          <ErrorMessage message="Failed to load screening results. Is the backend running?" />
+        {(rankingsError || screeningError) && !isLoading && (
+          <ErrorMessage
+            message={screeningError ?? 'Failed to load screening results. Is the backend running?'}
+          />
         )}
 
         {rankings && !isLoading && (

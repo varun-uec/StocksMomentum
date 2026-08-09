@@ -131,11 +131,13 @@ def compute_config_hash(config: StrategyConfig) -> str:
 def load_strategy_file(path: Path) -> Strategy:
     """Load, validate, and hash a strategy JSON file into a :class:`Strategy`."""
     raw = json.loads(path.read_text(encoding="utf-8"))
-    # ``is_active`` is a deployment/lifecycle flag, not part of the scored config
-    # (and thus excluded from ``config_hash``). Pop it before config validation so
-    # it does not trip the config schema's extra-field guard. Absent flag = active,
-    # preserving prior behaviour for every strategy file that omits it.
+    # ``is_active`` and ``kind`` are deployment/lifecycle flags, not part of the
+    # scored config (and thus excluded from ``config_hash``). Pop them before
+    # config validation so they do not trip the config schema's extra-field
+    # guard. Absent flag = active / production, preserving prior behaviour for
+    # every strategy file that omits them.
     is_active = bool(raw.pop("is_active", True))
+    kind = str(raw.pop("kind", "production"))
     config = config_from_raw(raw)
     return Strategy(
         name=config.name,
@@ -143,6 +145,7 @@ def load_strategy_file(path: Path) -> Strategy:
         config=config,
         config_hash=compute_config_hash(config),
         is_active=is_active,
+        kind=kind,
     )
 
 

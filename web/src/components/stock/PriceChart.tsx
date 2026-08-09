@@ -35,6 +35,7 @@ import {
   type IPriceLine,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
+  type LineWidth,
   type MouseEventParams,
   type Time,
   type UTCTimestamp,
@@ -148,6 +149,9 @@ export interface ChartMarker {
   text: string;
   position: 'aboveBar' | 'belowBar';
   color: string;
+  /** Marker radius relative to the default (subwave markers are smaller). */
+  size?: number;
+  shape?: 'circle' | 'square';
 }
 
 /** A horizontal price band drawn as two dashed bounds (Phase 7 — projection zone). */
@@ -162,6 +166,9 @@ export interface ChartPriceZone {
 export interface ChartOverlayLine {
   points: { date: string; price: number }[];
   color?: string;
+  /** Overrides the default 2px overlay stroke (subwave lines are thinner). */
+  lineWidth?: LineWidth;
+  lineStyle?: LineStyle;
 }
 
 interface PaneRecord {
@@ -569,7 +576,8 @@ export function PriceChart({
     overlaySeriesRef.current = lines.map((line) => {
       const series = chart.addSeries(LineSeries, {
         color: line.color ?? '#a855f7',
-        lineWidth: 2,
+        lineWidth: line.lineWidth ?? 2,
+        lineStyle: line.lineStyle ?? LineStyle.Solid,
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
@@ -599,7 +607,8 @@ export function PriceChart({
         time: toTime(m.date),
         position: m.position,
         color: m.color,
-        shape: 'circle' as const,
+        shape: m.shape ?? 'circle' as const,
+        size: m.size ?? 1,
         text: m.text,
       }))
     );

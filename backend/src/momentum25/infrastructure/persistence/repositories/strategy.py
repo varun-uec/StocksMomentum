@@ -11,6 +11,8 @@ from momentum25.domain.value_objects.types import RunStatus
 from momentum25.infrastructure.config.strategy_loader import config_from_raw, raw_from_config
 from momentum25.infrastructure.persistence.models import ScreeningRunModel, StrategyModel
 
+_BuiltinList = list
+
 
 def _to_domain(row: StrategyModel) -> Strategy:
     """Map an ORM row to a domain :class:`Strategy`."""
@@ -19,6 +21,7 @@ def _to_domain(row: StrategyModel) -> Strategy:
         name=row.name,
         version=row.version,
         is_active=row.is_active,
+        kind=row.kind,
         config=config_from_raw(row.config),
         config_hash=row.config_hash,
     )
@@ -37,6 +40,7 @@ class SqlStrategyRepository:
             name=strategy.name,
             version=strategy.version,
             is_active=strategy.is_active,
+            kind=strategy.kind,
             config=raw_from_config(strategy.config),
             config_hash=strategy.config_hash,
         )
@@ -44,6 +48,7 @@ class SqlStrategyRepository:
             index_elements=[StrategyModel.name, StrategyModel.version],
             set_={
                 "is_active": stmt.excluded.is_active,
+                "kind": stmt.excluded.kind,
                 "config": stmt.excluded.config,
                 "config_hash": stmt.excluded.config_hash,
             },
@@ -66,7 +71,7 @@ class SqlStrategyRepository:
         result = await self._session.execute(select(StrategyModel).order_by(StrategyModel.name))
         return [_to_domain(row) for row in result.scalars().all()]
 
-    async def list_with_completed_runs(self) -> list[Strategy]:
+    async def list_with_completed_runs(self) -> _BuiltinList[Strategy]:
         """Return strategies that have at least one completed live run.
 
         Excludes historical backfill and research/walk-forward runs, mirroring
@@ -78,6 +83,7 @@ class SqlStrategyRepository:
             select(StrategyModel)
             .join(ScreeningRunModel, ScreeningRunModel.strategy_id == StrategyModel.id)
             .where(
+                StrategyModel.kind == "production",
                 ScreeningRunModel.status == RunStatus.COMPLETED.value,
                 ~ScreeningRunModel.data_version.like("historical:%"),
                 ~ScreeningRunModel.data_version.like("%:research:%"),
@@ -87,3 +93,28 @@ class SqlStrategyRepository:
             .order_by(StrategyModel.name)
         )
         return [_to_domain(row) for row in result.scalars().all()]
+
+    async def delete_orphans(self, names_on_disk: _BuiltinList[str]) -> _BuiltinList[str]:
+        """Delete strategies not present on disk, but only those with no runs.
+
+        Disk is the permanent source of truth for strategy definitions; removing
+        a JSON file must eventually remove the row. Run history is append-only
+        (ADR-006), so a strategy with stored runs is left alone.
+        """
+        result = await self._session.execute(
+            select(StrategyModel)
+            .outerjoin(ScreeningRunModel, ScreeningRunModel.strategy_id == StrategyModel.id)
+            .where(
+                ~StrategyModel.name.in_(names_on_disk),
+                ScreeningRunModel.id.is_(None),
+            )
+        )
+        orphans = list(result.scalars().all())
+        if orphans:
+            for row in orphans:
+                await self._session.delete(row)
+            # The caller re-lists strategies (to find run-bearing orphans) in the
+            # same transaction; pending deletes would otherwise still be visible
+            # to that SELECT.
+            await self._session.flush()
+        return [row.name for row in orphans]

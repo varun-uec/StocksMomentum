@@ -1,5 +1,6 @@
 {
   "name": "benchmark_e_moving_average_trend",
+  "kind": "research",
   "version": 1,
   "description": "Research Benchmark E: Moving Average Trend. The simplest possible trend filter -- price above its 150/200-day moving averages, and nothing else (no RS, no 52-week range, no volume, no pattern/breakout gates). Every passer gets the same engine score, ranked deterministically by symbol only. Research-only; never used for live screening.",
   "benchmark_index": "NIFTY500",

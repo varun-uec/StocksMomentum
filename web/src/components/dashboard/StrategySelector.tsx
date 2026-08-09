@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listStrategies } from '@/lib/api-client';
 import { useStrategy } from '@/app/strategy-context';
@@ -19,8 +20,20 @@ export function StrategySelector() {
     staleTime: 5 * 60_000,
   });
 
+  useEffect(() => {
+    // A stale localStorage selection (e.g. a removed strategy) would otherwise
+    // render a permanently empty dashboard. Fall back to the first option.
+    if (strategies && strategies.length > 0 && !strategies.some((s) => s.name === strategyName)) {
+      setStrategyName(strategies[0].name);
+    }
+  }, [strategies, strategyName, setStrategyName]);
+
   if (isLoading || !strategies || strategies.length === 0) {
     return null;
+  }
+
+  if (!strategies.some((s) => s.name === strategyName)) {
+    setStrategyName(strategies[0].name);
   }
 
   return (

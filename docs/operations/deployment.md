@@ -32,7 +32,7 @@ All configuration is via environment variables prefixed with `M25_`.
 |---|---|---|
 | `M25_LOG_LEVEL` | `INFO` | Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `M25_LOG_JSON` | `true` | Structured JSON logging |
-| `M25_SCHEDULER_ENABLED` | `false` | Enable daily screening scheduler |
+| `M25_SCHEDULER_ENABLED` | `true` | Enable daily screening scheduler (on by default in the shipped env; disable in dev/laptop runs or CI, where the automatic job must not spawn) |
 | `M25_SCHEDULE_CRON` | `30 18 * * 1-5` | Cron expression for daily run |
 | `M25_DB_POOL_SIZE` | `10` | Database connection pool size |
 | `M25_DB_MAX_OVERFLOW` | `5` | Database connection pool overflow |

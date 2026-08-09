@@ -357,6 +357,7 @@ export interface StrategySummary {
   description: string | null;
   version: number;
   is_active: boolean;
+  kind: string;
   config_hash: string;
 }
 
@@ -380,6 +381,7 @@ export interface StrategyDetailDTO {
   name: string;
   version: number;
   is_active: boolean;
+  kind: string;
   config_hash: string;
   description: string | null;
   config: {
@@ -797,6 +799,12 @@ export interface ElliottProjectionZone {
   basis: string;
 }
 
+export interface ElliottSubdivision {
+  of_label: string;
+  degree: string;
+  labels: ElliottWaveLabel[];
+}
+
 export interface ElliottWaveCount {
   pattern: 'impulse' | 'correction';
   direction: 'up' | 'down';
@@ -807,6 +815,7 @@ export interface ElliottWaveCount {
   /** False when the count ends before the latest confirmed pivot (no projection). */
   is_current: boolean;
   projection: ElliottProjectionZone | null;
+  subdivisions: ElliottSubdivision[];
 }
 
 export interface ElliottWaveAnalysis {

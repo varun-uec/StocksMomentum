@@ -1,5 +1,6 @@
 {
   "name": "experimental_rs80",
+  "kind": "research",
   "version": 1,
   "description": "Alpha Discovery Program threshold-sensitivity experiment: identical to production v3 except tt_rs_rating_min.min=80 (vs production 70). Research-only.",
   "benchmark_index": "NIFTY500",

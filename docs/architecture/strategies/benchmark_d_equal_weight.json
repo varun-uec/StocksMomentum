@@ -1,5 +1,6 @@
 {
   "name": "benchmark_d_equal_weight",
+  "kind": "research",
   "version": 2,
   "description": "Research Benchmark D: Equal-Weight Composite. Same eligibility gates as the production strategy (Trend Template + liquidity floor), but every engine (Trend Template, Relative Strength, Volume & Accumulation, Pattern, Breakout, Momentum Quality, Risk) contributes equally to the score, rather than the production strategy's weighted scheme (Trend Template 3.0, RS 2.0, Breakout 1.5, Volume/Pattern/Momentum Quality 1.0, Risk 0.5). Isolates whether the production weighting scheme itself adds value over naive equal weighting. Research-only; never used for live screening. v2: removed rs_sector_relative, rs_industry_relative, rs_line_uptrend (0% pass rate across 90,657 evaluations spanning 2019-2026, all regimes -- confirmed dead by Research Program 1, no measurable value; sector/industry rules require classification data unavailable from any free NSE source, rs_line_uptrend never fired under current computation).",
   "benchmark_index": "NIFTY500",

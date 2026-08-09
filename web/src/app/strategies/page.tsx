@@ -67,13 +67,18 @@ export default function StrategyResearchPage() {
                   key={s.name}
                   type="button"
                   onClick={() => setSelectedStrategy(s.name)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border inline-flex items-center gap-2 ${
                     selectedStrategy === s.name
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-600'
                   } ${focusRing}`}
                 >
                   {s.name}
+                  {s.kind === 'research' && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+                      Research
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

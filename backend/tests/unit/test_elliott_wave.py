@@ -176,3 +176,81 @@ def test_analyze_is_deterministic_end_to_end() -> None:
     assert a == b
     assert a.symbol == "TEST"
     assert a.bars_analyzed == len(bars)
+
+
+# ── finer-degree subdivisions ────────────────────────────────────────────
+
+
+def _wave3_with_substructure() -> list[OHLCVBar]:
+    """Five-wave impulse whose wave-3 leg hides a clean finer-degree impulse.
+
+    Sub-legs are 2-5% reversals: too small to disturb the parent zigzag at the
+    ``threshold_pct``=5% level, large enough to confirm pivots at the finer
+    ``max(5/3, 1)%`` level used by ``subdivide``.
+    """
+    return _path(
+        [
+            100,  # wave 0 origin
+            130,  # wave 1
+            115,  # wave 2
+            # wave 3 leg carries a nested impulse: 115 -> 124 -> 119 -> 127 ->
+            # 124.6 (above wave-1 sub top 124, so rule 3 holds) -> then the leg
+            # continues to 180
+            124,
+            119,
+            127,
+            124.6,
+            130,
+            180,  # wave 3
+            160,  # wave 4
+            200,  # wave 5
+            140,  # reversal confirming the wave 5 top
+        ]
+    )
+
+
+def test_wave_3_contains_one_finer_degree_subdivision() -> None:
+    bars = _wave3_with_substructure()
+    result = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    assert result.primary is not None
+    assert result.primary.pattern == "impulse"
+    assert [w.label for w in result.primary.labels] == ["0", "1", "2", "3", "4", "5"]
+    subdivs = result.primary.subdivisions
+    assert len(subdivs) == 1
+    assert subdivs[0].of_label == "3"
+    assert len(subdivs[0].labels) >= 3
+    assert [w.label for w in subdivs[0].labels] == ["0", "1", "2", "3", "4"]
+
+
+def test_subdivision_labels_stay_inside_their_parent_leg() -> None:
+    bars = _wave3_with_substructure()
+    result = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    assert result.primary is not None
+    parent = result.primary.labels
+    for subdiv in result.primary.subdivisions:
+        idx = next(i for i, w in enumerate(parent) if w.label == subdiv.of_label)
+        lo = parent[idx - 1]
+        hi = parent[idx]
+        assert lo.bar_date <= subdiv.labels[0].bar_date
+        assert subdiv.labels[-1].bar_date <= hi.bar_date
+
+
+def test_subdivisions_are_deterministic() -> None:
+    bars = _wave3_with_substructure()
+    a = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    b = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    assert a == b
+    assert a.primary is not None and b.primary is not None
+    assert a.primary.subdivisions == b.primary.subdivisions
+
+
+def test_no_subdivision_when_legs_lack_finer_structure() -> None:
+    bars = _path([100, 130, 115, 180, 160, 200, 170])
+    result = analyze_elliott_wave("TEST", bars, Decimal("5"))
+    assert result.primary is not None
+    assert result.primary.subdivisions == ()
+    assert any(
+        "No leg of this count contains enough confirmed pivots "
+        "to label a finer degree." in note
+        for note in result.notes
+    )

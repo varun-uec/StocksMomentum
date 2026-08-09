@@ -1,5 +1,6 @@
 {
   "name": "benchmark_c_trend_template_only",
+  "kind": "research",
   "version": 1,
   "description": "Research Benchmark C: Trend Template Only. Requires all 8 Trend Template rules (hard gate) plus the minimum liquidity floor; among stocks that pass, there is no additional scoring differentiation -- every passer gets the same engine score, ranked deterministically by RS rating then symbol as a tie-break only, not as a scoring input. Research-only; never used for live screening.",
   "benchmark_index": "NIFTY500",

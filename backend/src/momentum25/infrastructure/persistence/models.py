@@ -224,6 +224,7 @@ class StrategyModel(Base):
     name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    kind: Mapped[str] = mapped_column(String, nullable=False, server_default="production")
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     config_hash: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
