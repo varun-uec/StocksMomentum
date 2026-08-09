@@ -170,7 +170,7 @@ export default function MinerviniMethodologyPage() {
       <MethodologyNote kind="implementation">
         Momentum25&rsquo;s Risk engine evaluates extension above the 50-day average (flagging
         stocks that have already run too far to offer a favourable entry), average daily
-        volatility via ADR%, and a minimum 2:1 reward-to-risk ratio estimate. Momentum25 is a
+        volatility via ADR%, and a ceiling on how far below price a protective stop must sit. Momentum25 computes no price targets outside its swing-target research module. Momentum25 is a
         research and screening tool: it does not place trades, size positions, or manage
         stop-losses &mdash; those remain the user&rsquo;s responsibility.
       </MethodologyNote>

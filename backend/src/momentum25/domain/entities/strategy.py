@@ -52,6 +52,29 @@ class StrategyConfig:
         """Return enabled engines in a deterministic (config) order."""
         return tuple(e for e in self.engines if e.enabled)
 
+    def gate_rule_ids(self) -> frozenset[str]:
+        """Return every rule id whose failure blocks qualification.
+
+        The single source of truth for gate membership, shared by
+        ``ScoringEngineImpl._compute_hard_filters_passed`` (which decides
+        ``hard_filters_passed``) and the explainability layer (which reports
+        *why* it failed). A rule gates either because its parent engine is a
+        gate engine (``EngineConfig.gate``, e.g. the Trend Template, whose
+        ``passed_gate`` is "all rules passed") or because the rule itself is
+        marked ``RuleConfig.gate`` (e.g. ``vol_liquidity_min``).
+
+        When no gate is configured at all, the scoring engine falls back to
+        "every engine must pass its own gate"; the equivalent fallback here is
+        every rule of every enabled engine.
+        """
+        engines = self.enabled_engines()
+        any_gate = any(e.gate for e in engines) or any(r.gate for e in engines for r in e.rules)
+        if not any_gate:
+            return frozenset(r.id for e in engines for r in e.rules)
+        return frozenset(
+            r.id for e in engines for r in e.rules if e.gate or r.gate
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class Strategy:

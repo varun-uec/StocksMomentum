@@ -11,6 +11,20 @@ from decimal import Decimal
 
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl
 from momentum25.domain.value_objects.results import RuleResult, StockScore
+# Gate composition is per-strategy and is bound at construction; these are the
+# production strategy's trend-template gate rules.
+_TT_GATES = frozenset(
+    {
+        "tt_close_above_sma150_200",
+        "tt_sma150_above_sma200",
+        "tt_sma200_uptrend",
+        "tt_sma_stack",
+        "tt_close_above_sma50",
+        "tt_above_52w_low",
+        "tt_near_52w_high",
+        "tt_rs_rating_min",
+    }
+)
 
 
 def _rule(rule_id: str, *, passed: bool, engine_id: str = "trend_template") -> RuleResult:
@@ -51,7 +65,7 @@ def test_rationale_has_no_rule_ids_or_raw_decimals() -> None:
         _rule("tt_close_above_sma50", passed=True)
     ]
 
-    text = ExplainabilityBuilderImpl().build_rationale(_score(), rules)
+    text = ExplainabilityBuilderImpl(_TT_GATES).build_rationale(_score(), rules)
 
     for rule_id in failing:
         assert rule_id not in text, f"raw rule id {rule_id} leaked into rationale: {text}"
@@ -66,7 +80,7 @@ def test_rationale_has_no_rule_ids_or_raw_decimals() -> None:
 
 def test_rationale_when_all_gates_clear() -> None:
     rules = [_rule("tt_close_above_sma50", passed=True)]
-    text = ExplainabilityBuilderImpl().build_rationale(
+    text = ExplainabilityBuilderImpl(_TT_GATES).build_rationale(
         _score(hard_filters_passed=True), rules
     )
     assert "clears every hard gate" in text

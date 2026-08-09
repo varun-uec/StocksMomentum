@@ -11,6 +11,7 @@ from momentum25.application.dto.market_data import (
     SecurityIndicatorSeriesDTO,
 )
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
+from momentum25.application.use_cases.rankings import bind_builder_to_run, qualified_count
 from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
 from momentum25.domain.analytics.market_context import (
     RS_PERIODS,
@@ -101,6 +102,8 @@ class GetStockExplanation:
             if run is None or run.id is None:
                 raise NotFoundError(f"No completed runs found for strategy {strategy_name}.")
             run_id = run.id
+        else:
+            run = await self._screening_run_repo.get(run_id)
 
         rule_results = await self._screening_run_repo.get_rule_results(
             run_id, security.id
@@ -111,8 +114,11 @@ class GetStockExplanation:
             )
 
         ranking = await self._screening_run_repo.get_screening_result(run_id, security.id)
-        explanation = self._explainability_builder.build_historical_explanation(
-            run_id, security.id, rule_results, ranking
+        builder = await bind_builder_to_run(
+            self._explainability_builder, self._strategies, run
+        )
+        explanation = builder.build_historical_explanation(
+            run_id, security.id, rule_results, ranking, qualified_count(run)
         )
         return StockExplanation(
             symbol=str(security.symbol),
@@ -392,7 +398,9 @@ class GetLiveStockAnalysis:
         )
 
         all_rules = [rr for er in score.engine_results for rr in er.rule_results]
-        explanation = self._explainability_builder.build_explanation(score, all_rules)
+        explanation = self._explainability_builder.for_strategy(
+            strategy.config
+        ).build_explanation(score, all_rules)
 
         indeterminate_rules = tuple(
             rr.rule_id

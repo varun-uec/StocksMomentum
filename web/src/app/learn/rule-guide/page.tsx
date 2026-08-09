@@ -137,7 +137,7 @@ const RULE_META: Record<string, RuleMeta> = {
   },
   risk_extension: {
     purpose: 'Measures how far price has run above its 50-day average.',
-    rationale: 'A stock extended too far above its average offers a poor risk/reward entry even if the trend is genuine.',
+    rationale: 'A stock extended too far above its average has more room to fall back to it, even when the trend is genuine.',
     passExample: 'Price 8% above SMA50 → passes (within range).',
     failExample: 'Price 35% above SMA50 → fails (over-extended).',
   },
@@ -148,10 +148,10 @@ const RULE_META: Record<string, RuleMeta> = {
     failExample: 'ADR% of 11% → fails (too volatile to size safely).',
   },
   risk_rr: {
-    purpose: 'Estimates a reward-to-risk ratio from current structure.',
-    rationale: 'A favourable reward-to-risk ratio is what makes a losing trade acceptable within a disciplined system.',
-    passExample: 'Estimated ratio 2.8:1 → passes.',
-    failExample: 'Estimated ratio 0.9:1 → fails (risk exceeds reward).',
+    purpose: 'Measures how far below price a protective stop must sit, as a percentage of price. Downside only — it estimates no target and no reward.',
+    rationale: 'A stop that has to sit a long way below price means a large loss if the trend fails, regardless of how the stock behaves afterwards.',
+    passExample: 'Stop 9% below price → passes (contained downside).',
+    failExample: 'Stop 22% below price → fails (wide downside).',
   },
 };
 

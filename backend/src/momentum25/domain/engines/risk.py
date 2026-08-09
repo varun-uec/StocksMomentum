@@ -1,9 +1,9 @@
-"""Risk Assessment engine (ATR, extension, stop quality, risk-reward).
+"""Risk Assessment engine (ATR, extension, downside stop distance).
 
 Evaluates risk and position-characteristic rules deterministically:
   risk_extension:   Price extension from key moving average (overbought check)
   risk_atr:         Volatility check via ADR% (Average Daily Range)
-  risk_rr:          Risk-reward ratio estimate
+  risk_rr:          Downside stop-distance as a percentage of price (no reward term)
 
 Rule inclusion, weight, and params come from ``cfg.rules`` (ADR-005
 strategy-as-config), matched by rule id rather than list position: a rule
@@ -19,8 +19,24 @@ from typing import Any
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.strategy import EngineConfig, RuleConfig
-from momentum25.domain.research.swing_targets import compute_swing_target_plan
+from momentum25.domain.research.swing_targets import (
+    DEFAULT_ATR_STOP_MULTIPLE,
+    DEFAULT_FALLBACK_RISK_PCT,
+)
 from momentum25.domain.value_objects.results import EngineResult, RuleResult
+
+# Stop-distance ceiling for ``risk_rr``, in percent of price. Derived, not
+# invented: the protective stop is ``2 x ATR14`` (``DEFAULT_ATR_STOP_MULTIPLE``,
+# the platform's existing stop convention) and ``risk_atr`` already caps daily
+# range at ``max_adr_pct`` = 8%, so 2 x 8 = 16% is the widest stop a security
+# passing the neighbouring volatility rule can imply. It is therefore a
+# consistency floor rather than a new selectivity threshold.
+#
+# NOTE FOR RESEARCH: this rule's *predictive* threshold has never been
+# walk-forward validated in this form. 16% is chosen to be non-binding relative
+# to risk_atr, deliberately avoiding a silent tightening of selection. Any
+# tightening is a methodology change requiring the standing evidence bar.
+DEFAULT_MAX_RISK_PCT = Decimal("16")
 
 
 class RiskEngine:
@@ -34,7 +50,7 @@ class RiskEngine:
         Uses IndicatorSet and OHLCV series to compute:
         1. risk_extension: How far price has extended above SMA(50) — overbought check.
         2. risk_atr: Volatility check via ADR% (Average Daily Range %).
-        3. risk_rr: Risk-reward ratio estimate using ATR-based stop.
+        3. risk_rr: ATR-based protective-stop distance as a % of price (downside only).
         """
         ind = ctx.indicators
         series = ctx.series
@@ -46,9 +62,7 @@ class RiskEngine:
         evaluators: dict[str, Any] = {
             "risk_extension": lambda rc: self._eval_risk_extension(series, ind.sma50, rc),
             "risk_atr": lambda rc: self._eval_risk_atr(ind.adr_pct, rc),
-            "risk_rr": lambda rc: self._eval_risk_rr(
-                series, ind.atr14, ind.swing_resistance, rc
-            ),
+            "risk_rr": lambda rc: self._eval_risk_rr(series, ind.atr14, rc),
         }
 
         rule_results: list[RuleResult] = [
@@ -216,24 +230,32 @@ class RiskEngine:
         self,
         series: OHLCVSeries,
         atr14: Decimal | None,
-        swing_resistance: Decimal | None,
         rc: RuleConfig | None,
     ) -> RuleResult:
-        """Risk-reward ratio via :func:`compute_swing_target_plan` (Phase 3.1/3.2).
+        """Downside-risk rule: protective-stop distance as a percentage of price.
 
-        Previously reward was ``max(high, last 20 bars) - close``, which always
-        includes the signal bar itself: a stock making a new 20-day high on the
-        signal date -- exactly the breakout population this system selects --
-        had reward collapse to near zero, failing the rule almost by
-        construction. Reward is now the distance to the nearest *confirmed*
-        swing-high pivot above price (Phase 2.3), falling back to an
-        ATR-multiple projection when no such pivot exists (the common case for
-        a genuine breakout at a new high) -- see ``domain.research.swing_targets``
-        for the full rationale and default multiples.
+        **Pure downside measure — carries no reward, target or profit term.**
+
+        Prior to the 2026-08-09 audit this rule computed a risk-*reward* ratio
+        via :func:`compute_swing_target_plan`, deriving an upside target (a
+        confirmed swing high, or an ATR-multiple projection) inside the risk
+        engine and publishing "target via atr_multiple" on the stock page. That
+        breached the standing product constraint that risk-only features stay
+        isolated from reward/target logic: price targets belong exclusively to
+        the validated swing-target research module
+        (``domain.research.swing_targets``), which remains untouched and is
+        still used by the swing-target backtest.
+
+        What is measured now is only the *risk leg* of that same plan: an
+        ATR-based protective stop ``atr14 * DEFAULT_ATR_STOP_MULTIPLE`` below
+        the last close, expressed as a percentage of that close. Smaller is
+        better; the rule passes when the stop can be placed within
+        ``max_risk_pct`` of price. Nothing about where the stock might go is
+        computed or reported.
         """
         rule_id = "risk_rr"
         weight = self._weight(rc, Decimal("1.0"))
-        min_rr_ratio = self._param(rc, "min_ratio", Decimal("2.0"))
+        max_risk_pct = self._param(rc, "max_risk_pct", DEFAULT_MAX_RISK_PCT)
 
         latest_bar = series.latest
         if latest_bar is None:
@@ -242,48 +264,54 @@ class RiskEngine:
                 engine_id=self.engine_id,
                 passed=False,
                 raw_value=None,
-                threshold=min_rr_ratio,
-                operator=">=",
+                threshold=max_risk_pct,
+                operator="<=",
                 weight=weight,
                 contribution=Decimal("0"),
                 explanation="Insufficient data: latest bar is None.",
             )
 
-        plan = compute_swing_target_plan(latest_bar.close, atr14, swing_resistance)
-        if plan is None:
+        entry = latest_bar.close
+        risk_amount = (
+            atr14 * DEFAULT_ATR_STOP_MULTIPLE
+            if atr14 is not None and atr14 > 0
+            else entry * DEFAULT_FALLBACK_RISK_PCT
+        )
+        if entry <= 0 or risk_amount <= 0:
             return RuleResult(
                 rule_id=rule_id,
                 engine_id=self.engine_id,
                 passed=False,
-                raw_value=Decimal("0"),
-                threshold=min_rr_ratio,
-                operator=">=",
+                raw_value=None,
+                threshold=max_risk_pct,
+                operator="<=",
                 weight=weight,
                 contribution=Decimal("0"),
-                explanation="Risk estimate is zero or negative.",
+                explanation="Risk estimate unavailable: price or stop distance is not positive.",
             )
 
-        rr_ratio = plan.rr_ratio
-        passed = rr_ratio >= min_rr_ratio
-        # Normalized contribution: clamp(rr / (min_rr * 2), 0, 1)
+        risk_pct = (risk_amount / entry) * Decimal("100")
+        passed = risk_pct <= max_risk_pct
+        # Normalized contribution: 1 - (risk / max_risk) clamped to [0, 1] --
+        # the same shape risk_extension and risk_atr already use for a
+        # "lower is better" measure (IMPLEMENTATION_SPEC §10).
         normalized = (
-            min(rr_ratio / (min_rr_ratio * Decimal("2")), Decimal("1"))
-            if min_rr_ratio > 0
+            max(Decimal("0"), Decimal("1") - (risk_pct / max_risk_pct))
+            if max_risk_pct > 0
             else Decimal("0")
         )
         return RuleResult(
             rule_id=rule_id,
             engine_id=self.engine_id,
             passed=passed,
-            raw_value=rr_ratio,
-            threshold=min_rr_ratio,
-            operator=">=",
+            raw_value=risk_pct,
+            threshold=max_risk_pct,
+            operator="<=",
             weight=weight,
             contribution=weight * normalized,
             explanation=(
-                f"Risk-reward ratio {self._s(rr_ratio)}:1 "
-                f"{'>=' if passed else '<'} min {self._s(min_rr_ratio)}:1 "
-                f"(target via {plan.target_basis}; "
-                f"{'Favorable' if passed else 'Unfavorable'})."
+                f"Protective stop sits {self._s(risk_pct)}% below price "
+                f"({'<=' if passed else '>'} max {self._s(max_risk_pct)}%): "
+                f"{'Contained downside' if passed else 'Wide downside'}."
             ),
         )

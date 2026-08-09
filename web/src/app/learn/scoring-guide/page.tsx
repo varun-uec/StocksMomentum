@@ -53,10 +53,10 @@ const ENGINE_GUIDE: Record<
   },
   risk: {
     label: 'Risk',
-    measures: 'How extended the stock is above its 50-day average, its volatility (ADR%), and an estimated reward-to-risk ratio.',
+    measures: 'How extended the stock is above its 50-day average, its volatility (ADR%), and how far below price a protective stop must sit.',
     matters: 'Even a genuine Stage 2 leader can be a poor entry if it has already run too far or has become too volatile to size safely.',
-    improves: 'Trading close to its 50-day average (not extended), moderate daily volatility, and a favourable estimated reward-to-risk ratio.',
-    reduces: 'Being extended more than 25% above the 50-day average, high ADR%, or an unfavourable reward-to-risk estimate.',
+    improves: 'Trading close to its 50-day average (not extended), moderate daily volatility, and a protective stop that can sit close beneath price.',
+    reduces: 'Being extended more than 25% above the 50-day average, high ADR%, or a protective stop that must sit far below price.',
   },
   fundamental: {
     label: 'Fundamentals',

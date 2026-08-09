@@ -831,51 +831,60 @@ def test_risk_atr_excessive() -> None:
     assert atr_rule.passed is False
 
 
-def test_risk_rr_favorable_via_confirmed_swing_resistance() -> None:
-    """A confirmed swing high well above price gives a favorable, real reward.
+def test_risk_rr_contained_downside_passes() -> None:
+    """A tight ATR keeps the protective stop close beneath price.
 
-    Phase 3.2: reward is no longer ``max(20d high) - close`` (which always
-    includes the signal bar and so collapses for exactly this system's
-    breakout picks) -- it's the distance to a confirmed pivot (Phase 2.3).
+    2026-08-09 audit / S3: ``risk_rr`` no longer computes a reward or target.
+    It measures ``2 x ATR14`` as a percentage of price -- pure downside.
+    Here 2 x 1 = 2 on a ~102 close is ~2%, well within the 16% ceiling.
     """
     engine = RiskEngine()
     closes = [Decimal("100") + Decimal("0.1") * i for i in range(25)]
-    ctx = _make_context(
-        closes=closes, atr14=Decimal("1"), swing_resistance=Decimal("150")
-    )
+    ctx = _make_context(closes=closes, atr14=Decimal("1"))
     cfg = _make_config("risk")
     result = engine.evaluate(ctx, cfg)
     rr_rule = next(r for r in result.rule_results if r.rule_id == "risk_rr")
-    assert rr_rule.passed is True, f"Expected favorable RR, got: {rr_rule.explanation}"
+    assert rr_rule.passed is True, rr_rule.explanation
+    assert rr_rule.raw_value is not None and rr_rule.raw_value < Decimal("3")
 
 
-def test_risk_rr_unfavorable_when_no_confirmed_resistance() -> None:
-    """No confirmed resistance above price falls back to a real but modest reward.
+def test_risk_rr_wide_downside_fails() -> None:
+    """A wide ATR pushes the stop far below price and fails the rule."""
+    engine = RiskEngine()
+    closes = [Decimal("100") + Decimal("0.1") * i for i in range(25)]
+    ctx = _make_context(closes=closes, atr14=Decimal("15"))
+    cfg = _make_config("risk")
+    result = engine.evaluate(ctx, cfg)
+    rr_rule = next(r for r in result.rule_results if r.rule_id == "risk_rr")
+    assert rr_rule.passed is False, rr_rule.explanation
 
-    Phase 3.2's ATR-multiple fallback (3x target vs 2x stop, ~1.5:1) is
-    deliberately below the strategy's default 2.0 min-ratio threshold: absent
-    evidence of open room to run, the plan should not pass by construction.
+
+def test_risk_rr_is_independent_of_swing_resistance() -> None:
+    """Product constraint: no reward/target term may influence this rule.
+
+    Swing resistance is the input the old reward leg read. Varying it -- or
+    removing it entirely -- must not move the result by so much as a digit.
     """
     engine = RiskEngine()
     closes = [Decimal("100") + Decimal("0.1") * i for i in range(25)]
-    ctx = _make_context(closes=closes, atr14=Decimal("5"), swing_resistance=None)
     cfg = _make_config("risk")
-    result = engine.evaluate(ctx, cfg)
-    rr_rule = next(r for r in result.rule_results if r.rule_id == "risk_rr")
-    assert rr_rule.passed is False, f"Expected unfavorable RR, got: {rr_rule.explanation}"
 
+    results = [
+        next(
+            r
+            for r in engine.evaluate(
+                _make_context(closes=closes, atr14=Decimal("4"), swing_resistance=res),
+                cfg,
+            ).rule_results
+            if r.rule_id == "risk_rr"
+        )
+        for res in (None, Decimal("90"), Decimal("150"), Decimal("1000"))
+    ]
 
-def test_risk_rr_stale_resistance_below_price_falls_back_not_favorable() -> None:
-    """A resistance level at or below current price is stale and must be ignored."""
-    engine = RiskEngine()
-    closes = [Decimal("100") + Decimal("0.1") * i for i in range(25)]
-    ctx = _make_context(
-        closes=closes, atr14=Decimal("5"), swing_resistance=Decimal("90")
-    )
-    cfg = _make_config("risk")
-    result = engine.evaluate(ctx, cfg)
-    rr_rule = next(r for r in result.rule_results if r.rule_id == "risk_rr")
-    assert rr_rule.passed is False
+    assert len({(r.passed, r.raw_value, r.contribution) for r in results}) == 1
+    for r in results:
+        assert "target" not in r.explanation.lower()
+        assert "reward" not in r.explanation.lower()
 
 
 def test_risk_missing_data() -> None:

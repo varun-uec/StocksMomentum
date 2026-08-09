@@ -206,7 +206,7 @@
         {
           "id": "risk_rr",
           "params": {
-            "min_ratio": 2.0
+            "max_risk_pct": 16
           },
           "weight": 1.0
         }

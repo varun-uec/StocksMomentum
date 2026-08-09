@@ -133,23 +133,30 @@ class MomentumQualityEngine:
                 ),
             )
 
-        # Days where close > SMA(ma) over the lookback window
+        # Days where close > SMA(ma) over the lookback window.
+        #
+        # Numerator and denominator must count the *same* population. Slicing
+        # `lookback + ma_period` bars leaves `lookback + 1` bars with a full SMA
+        # window while the denominator caps at `lookback`, which reported ratios
+        # above 1 (observed: "64/63 days (101.6%)") and inflated `contribution`
+        # for every partially-passing security. The window is now the final
+        # `valid_days` bars, taken identically on both sides.
         lookback_closes = closes[-lookback - ma_period:]
+        valid_days = min(lookback, len(lookback_closes) - ma_period + 1)
         persistence_count = 0
-        for i in range(ma_period - 1, len(lookback_closes)):
-            slice_ = lookback_closes[max(0, i - ma_period + 1):i + 1]
-            if len(slice_) < ma_period:
-                continue
-            sma = sum(slice_) / ma_period
+        for i in range(len(lookback_closes) - valid_days, len(lookback_closes)):
+            sma = sum(lookback_closes[i - ma_period + 1:i + 1]) / ma_period
             if lookback_closes[i] > sma:
                 persistence_count += 1
 
-        # The count excludes the first `ma_period - 1` bars where SMA isn't fully computed
-        valid_days = min(lookback, len(lookback_closes) - ma_period + 1)
         ratio = (
             Decimal(str(persistence_count)) / Decimal(str(valid_days))
             if valid_days > 0
             else Decimal("0")
+        )
+        assert Decimal("0") <= ratio <= Decimal("1"), (
+            f"mq_trend_persistence ratio out of range: "
+            f"{persistence_count}/{valid_days} = {ratio}"
         )
 
         # Pass if price is above the MA at least 60% of days

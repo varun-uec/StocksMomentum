@@ -472,6 +472,16 @@ stocks failing gates: rank = NULL, still scored & explained
 ```
 All sums use Decimal in sorted order; quantize `momentum_score`/`buy_setup_score` to 4 dp.
 
+**Partial credit on failed rules is intentional** (confirmed 2026-08-09, audit item S5). A
+numeric rule's `normalized_value` is a continuous function of its measured value and is
+deliberately *independent of its own pass/fail boolean*: a `mq_trend_persistence` of 49%
+fails the 60% threshold yet still contributes `0.49 * weight`, because a stock above its
+SMA50 on half the lookback is genuinely stronger than one that is never above it, and the
+Momentum Score is a quality measure, not a rule tally. Only **gates** are binary in effect —
+failing one sets `rank = NULL` and removes the security from the ranked set entirely
+(`StrategyConfig.gate_rule_ids`). This is not score leakage and must not be "fixed"; see
+`tests/unit/test_score_space_semantics_golden.py`.
+
 ## 11. Workflows (sequence & state)
 
 ### Ingestion sequence

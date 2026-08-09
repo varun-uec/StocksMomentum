@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
+from momentum25.domain.entities.strategy import StrategyConfig
 from momentum25.domain.value_objects.results import EngineResult, Ranking, RuleResult, StockScore
 
 # Maps the 8 real TrendTemplateEngine rule ids to the dashboard's checklist slots.
@@ -48,11 +49,27 @@ _RULE_LABELS: dict[str, str] = {
     "vol_breakout_confirm": "volume confirming the breakout",
     "risk_extension": "not overextended from its average",
     "risk_atr": "volatility within range",
-    "risk_rr": "acceptable risk profile",
+    "risk_rr": "a protective stop close beneath price",
 }
 
 # How many failed conditions to name before summarising the remainder.
 _MAX_NAMED_FAILURES = 3
+
+
+def _percentile(rank: int, qualified_count: int | None) -> int | None:
+    """Return the rank's percentile within the qualified set, or ``None``.
+
+    Presentation-only derivation: rank 1 of N is the 100th percentile, rank N
+    the lowest. Returns ``None`` when the qualified-set size is unknown or the
+    rank falls outside it, rather than inventing a number.
+    """
+    if qualified_count is None or qualified_count <= 0 or not 1 <= rank <= qualified_count:
+        return None
+    if qualified_count == 1:
+        return 100
+    return int(
+        (Decimal(100) * (1 - Decimal(rank - 1) / Decimal(qualified_count))).to_integral_value()
+    )
 
 
 def _rule_label(rule_id: str) -> str:
@@ -133,7 +150,24 @@ class StockExplanation:
 
 
 class ExplainabilityBuilderImpl:
-    """Builds deterministic, structured explanations from screening results."""
+    """Builds deterministic, structured explanations from screening results.
+
+    ``gate_rule_ids`` is the strategy's gate composition, obtained from
+    :meth:`StrategyConfig.gate_rule_ids` — the same authority
+    ``ScoringEngineImpl._compute_hard_filters_passed`` reads. Binding it at
+    construction (see :meth:`for_strategy`) keeps ``hard_filter_failures``
+    and ``overall_passed`` derived from one definition instead of two.
+    An empty set means "no gate composition supplied", in which case no rule
+    is reported as blocking.
+    """
+
+    def __init__(self, gate_rule_ids: frozenset[str] = frozenset()) -> None:
+        """Bind the strategy's gate rule ids (empty = none supplied)."""
+        self._gate_rule_ids = gate_rule_ids
+
+    def for_strategy(self, config: StrategyConfig) -> ExplainabilityBuilderImpl:
+        """Return a builder bound to *config*'s gate composition."""
+        return ExplainabilityBuilderImpl(config.gate_rule_ids())
 
     def build_rationale(self, stock_score: StockScore, rule_results: list[RuleResult]) -> str:
         """Build a concise human-readable rationale for a stock.
@@ -256,10 +290,9 @@ class ExplainabilityBuilderImpl:
             )
         return tuple(explanations)
 
-    @staticmethod
-    def _is_hard_filter(rule_result: RuleResult) -> bool:
-        """Determine if a rule is a hard filter (blocking) based on metadata."""
-        return rule_result.engine_id in {"trend_template", "risk"} and not rule_result.passed
+    def _is_hard_filter(self, rule_result: RuleResult) -> bool:
+        """Return whether *rule_result* is a failing configured gate rule."""
+        return rule_result.rule_id in self._gate_rule_ids and not rule_result.passed
 
     def build_historical_explanation(
         self,
@@ -267,6 +300,7 @@ class ExplainabilityBuilderImpl:
         security_id: int,
         rule_results: list[RuleResult],
         ranking: Ranking | None = None,
+        qualified_count: int | None = None,
     ) -> StockExplanation:
         """Build immutable explanation for a historical run snapshot.
 
@@ -284,6 +318,9 @@ class ExplainabilityBuilderImpl:
                 unweighted sum of engine scores and rank is unavailable --
                 callers that have the persisted ranking should always pass it
                 so the explanation matches the number the user is looking at.
+            qualified_count: Size of the run's qualified set, used only to
+                derive ``percentile`` from ``rank``. ``None`` leaves
+                ``percentile`` unset rather than guessing at a denominator.
         """
         from momentum25.domain.value_objects.results import StockScore as DomainStockScore
 
@@ -322,7 +359,11 @@ class ExplainabilityBuilderImpl:
 
         explanation = self.build_explanation(stock_score, rule_results)
         if ranking is not None and ranking.rank is not None:
-            explanation = replace(explanation, rank=ranking.rank)
+            explanation = replace(
+                explanation,
+                rank=ranking.rank,
+                percentile=_percentile(ranking.rank, qualified_count),
+            )
         return explanation
 
     def build_dashboard_summary(self, rule_results: list[RuleResult]) -> dict[str, object]:

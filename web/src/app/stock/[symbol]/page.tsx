@@ -58,8 +58,8 @@ const IMPROVEMENT_HINTS: Record<string, string> = {
   mq_trend_persistence: 'Needs more consistent time spent above its 50-day average.',
   mq_acceleration: 'Its move has decelerated — needs fresh momentum, not just an intact trend.',
   risk_extension: 'Is extended too far above its 50-day average — a pullback toward that average would improve the entry.',
-  risk_atr: 'Is too volatile day-to-day for a favourable risk/reward setup at this size.',
-  risk_rr: 'Needs a better estimated reward-to-risk ratio before this is an attractive entry.',
+  risk_atr: 'Is too volatile day-to-day for reliable stop placement and position sizing.',
+  risk_rr: 'Would need a protective stop placed unusually far below price, so a failed trend costs more.',
 };
 
 const SECTIONS = [

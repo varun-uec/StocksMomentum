@@ -9,6 +9,32 @@ from momentum25.domain.errors import NotFoundError
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
 
 
+def qualified_count(run: Any | None) -> int | None:
+    """Return a run's qualified-set size from its persisted stats, if recorded."""
+    stats = getattr(run, "stats", None) or {}
+    total_passed = stats.get("total_passed")
+    return int(total_passed) if isinstance(total_passed, int | float | str) else None
+
+
+async def bind_builder_to_run(
+    builder: ExplainabilityBuilderImpl, strategy_repo: Any | None, run: Any | None
+) -> ExplainabilityBuilderImpl:
+    """Bind *builder* to the gate composition of the strategy that produced *run*.
+
+    Gate membership is a per-strategy property, so the process-wide injected
+    builder cannot know it; without the strategy the builder reports no
+    blocking rules rather than guessing at one.
+    """
+    if strategy_repo is None or run is None or getattr(run, "strategy_id", None) is None:
+        return builder
+    strategy = next(
+        (s for s in await strategy_repo.list() if s.id == run.strategy_id), None
+    )
+    if strategy is None:
+        return builder
+    return builder.for_strategy(strategy.config)
+
+
 class GetRankings:
     """Retrieve paginated rankings for a completed screening run."""
 
@@ -105,17 +131,25 @@ class GetStockExplanation:
     """Retrieve explainability for a single stock in a run."""
 
     def __init__(
-        self, screening_run_repo: Any, explainability_builder: ExplainabilityBuilderImpl
+        self,
+        screening_run_repo: Any,
+        explainability_builder: ExplainabilityBuilderImpl,
+        strategy_repo: Any | None = None,
     ) -> None:
         """Initialize with screening-run repository and explainability builder."""
         self._screening_run_repo = screening_run_repo
         self._explainability_builder = explainability_builder
+        self._strategy_repo = strategy_repo
 
     async def execute(self, run_id: int, security_id: int) -> StockExplanation:
         """Return the full explanation for one stock in a run."""
         rule_results = await self._screening_run_repo.get_rule_results(run_id, security_id)
         ranking = await self._screening_run_repo.get_screening_result(run_id, security_id)
-        historical = self._explainability_builder.build_historical_explanation(
-            run_id, security_id, rule_results, ranking
+        run = await self._screening_run_repo.get(run_id)
+        builder = await bind_builder_to_run(
+            self._explainability_builder, self._strategy_repo, run
+        )
+        historical = builder.build_historical_explanation(
+            run_id, security_id, rule_results, ranking, qualified_count(run)
         )
         return historical

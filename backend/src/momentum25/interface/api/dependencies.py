@@ -147,11 +147,13 @@ async def get_get_stock_explanation(
     screening_run_repo: Annotated[
         SqlScreeningRunRepository, Depends(get_screening_run_repository)
     ],
+    strategies: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[GetStockExplanation]:
     """Provide a run/security-scoped GetStockExplanation use-case instance."""
     yield GetStockExplanation(
         screening_run_repo=screening_run_repo,
         explainability_builder=ExplainabilityBuilderImpl(),
+        strategy_repo=strategies,
     )
 
 
