@@ -384,15 +384,23 @@ export async function removeFromWatchlist(
   return fetchJson(`${API_BASE}/watchlist/${symbol}`, { method: 'DELETE' });
 }
 
-/** Phase 7 — Elliott Wave labelling of the stored price history. */
+/**
+ * Elliott Wave labelling of the stored price history.
+ *
+ * `thresholdPct` is the finest degree to label; the backend coarsens the top
+ * degree away from it. `strategy` selects whose indicator configuration the
+ * wave-personality checks read, matching the chart's indicator panes.
+ */
 export async function getElliottWave(
   symbol: string,
   lookbackDays: number,
-  thresholdPct: number
+  thresholdPct: number,
+  strategy: string
 ): Promise<import('./types').ElliottWaveAnalysis> {
   const params = new URLSearchParams({
     lookback_days: String(lookbackDays),
     threshold_pct: String(thresholdPct),
+    strategy,
   });
   return fetchJson(`${API_BASE}/stocks/${symbol}/elliott-wave?${params}`, { cache: 'no-store' });
 }

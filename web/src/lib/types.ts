@@ -823,19 +823,87 @@ export interface ElliottProjectionZone {
   basis: string;
 }
 
+/** Every Elliott structure the backend models (Frost & Prechter). */
+export type ElliottPattern =
+  | 'impulse'
+  | 'diagonal'
+  | 'zigzag'
+  | 'flat'
+  | 'triangle'
+  | 'double three'
+  | 'triple three';
+
+/** An evidence verdict: guidelines and personality checks share this vocabulary. */
+export type ElliottEvidenceStatus = 'supporting' | 'contradicting' | 'not measurable';
+
+/** One measured Elliott guideline — never accepts or rejects a count. */
+export interface ElliottGuidelineCheck {
+  name: string;
+  status: ElliottEvidenceStatus;
+  detail: string;
+}
+
+/** A wave position's textbook behaviour tested against volume/RSI/ADX. */
+export interface ElliottPersonalityCheck {
+  wave: string;
+  expectation: string;
+  status: ElliottEvidenceStatus;
+  detail: string;
+}
+
+/** A price or duration ratio between two waves of the same count. */
+export interface ElliottFibonacciRelationship {
+  kind: 'price' | 'time';
+  name: string;
+  observed: string;
+  nearest: string;
+  /** 0-1; 1.0 is an exact hit on the nearest canonical ratio. */
+  proximity: string;
+  detail: string;
+}
+
+/** One weighted component of the labelling-confidence score. */
+export interface ElliottConfidenceComponent {
+  name: string;
+  weight: string;
+  score: string;
+  points: string;
+  detail: string;
+}
+
+/** A finer degree nested inside one leg of its parent — recursive. */
 export interface ElliottSubdivision {
   of_label: string;
   degree: string;
+  pattern: ElliottPattern;
+  variant: string | null;
   labels: ElliottWaveLabel[];
+  position_fit: ElliottGuidelineCheck;
+  subdivisions: ElliottSubdivision[];
 }
 
 export interface ElliottWaveCount {
-  pattern: 'impulse' | 'correction';
+  pattern: ElliottPattern;
+  family: 'motive' | 'corrective';
+  /** e.g. "wave 3 extension", "expanded", "contracting"; null when plain. */
+  variant: string | null;
   direction: 'up' | 'down';
   degree: string;
   labels: ElliottWaveLabel[];
   current_position: string;
   rules_applied: string[];
+  /** Judgment calls the labelling needed; rule-legal, but interpretive. */
+  allowances: string[];
+  guideline_checks: ElliottGuidelineCheck[];
+  personality: ElliottPersonalityCheck[];
+  price_relationships: ElliottFibonacciRelationship[];
+  time_relationships: ElliottFibonacciRelationship[];
+  /** 0-100 measure of how cleanly the price action fits this labelling.
+   *  Not a forecast, not a probability of profit, and not wired into the
+   *  Momentum25 score, ranking or gates. */
+  labelling_confidence: string;
+  labelling_confidence_basis: string;
+  confidence_components: ElliottConfidenceComponent[];
   /** False when the count ends before the latest confirmed pivot. */
   is_current: boolean;
   /** Elliott Wave analytical projection; not part of the Momentum25 score or
@@ -847,11 +915,18 @@ export interface ElliottWaveCount {
 export interface ElliottWaveAnalysis {
   symbol: string;
   as_of: string | null;
+  /** The finest reversal size requested — the deepest degree labelled. */
   threshold_pct: string;
+  /** The reversal size the top degree was labelled at: `threshold_pct`
+   *  coarsened until the pivots describe one large structure. */
+  top_degree_threshold_pct: string;
   bars_analyzed: number;
   pivots: ElliottPivot[];
-  primary: ElliottWaveCount | null;
-  alternative: ElliottWaveCount | null;
+  /** Competing counts, best-ranked first; at most three. */
+  candidates: ElliottWaveCount[];
+  /** One line per candidate explaining its place in the ranking. */
+  ranking_rationale: string[];
+  ranking_method: string;
   notes: string[];
 }
 

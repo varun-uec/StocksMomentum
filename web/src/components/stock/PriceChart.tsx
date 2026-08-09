@@ -194,6 +194,7 @@ export function PriceChart({
   overlayLine,
   overlayLines,
   priceZone,
+  visibleRange,
   indicatorSeries,
   activePanes,
   onActivePanesChange,
@@ -217,6 +218,11 @@ export function PriceChart({
   overlayLines?: ChartOverlayLine[];
   /** Dashed bounds delimiting a projected range (Elliott Wave research only). */
   priceZone?: ChartPriceZone | null;
+  /**
+   * Date window to scroll the chart to, e.g. the span of one selected wave.
+   * Setting it back to `null` returns the chart to the full loaded range.
+   */
+  visibleRange?: { from: string; to: string } | null;
   // ── Phase 9: indicator sub-panes, crosshair readout, drawing tools ─────
   /** Backend-provided per-bar indicator values (never computed browser-side). */
   indicatorSeries?: IndicatorSeriesBar[];
@@ -641,6 +647,21 @@ export function PriceChart({
       })
     );
   }, [priceZone, candlestick, parsed]);
+
+  // Scroll to a requested date window (a selected wave's span), or back to the
+  // whole loaded range when the caller clears it.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !parsed.length) return;
+    if (!visibleRange) {
+      chart.timeScale().fitContent();
+      return;
+    }
+    chart.timeScale().setVisibleRange({
+      from: toTime(visibleRange.from),
+      to: toTime(visibleRange.to),
+    });
+  }, [visibleRange, parsed]);
 
   // Phase 9 — indicator sub-panes: create/remove panes and refresh their data.
   const activePanesRef = useRef<PaneId[]>(displayedPanes);

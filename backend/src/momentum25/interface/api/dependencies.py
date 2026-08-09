@@ -283,8 +283,19 @@ async def get_elliott_wave_analysis(
     securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
     ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
 ) -> AsyncIterator[GetElliottWaveAnalysis]:
-    """Provide a GetElliottWaveAnalysis use-case instance."""
-    yield GetElliottWaveAnalysis(securities=securities, ohlcv=ohlcv)
+    """Provide a GetElliottWaveAnalysis use-case instance.
+
+    The indicator pipeline supplies the per-bar RSI/ADX the wave-personality
+    checks read; it is the same pipeline the chart sub-panes use, so the two can
+    never disagree about a bar's indicator value.
+    """
+    async with _managed_session() as session:
+        yield GetElliottWaveAnalysis(
+            securities=securities,
+            ohlcv=ohlcv,
+            strategies=SqlStrategyRepository(session),
+            indicator_pipeline=IndicatorPipelineImpl(session),
+        )
 
 
 async def get_detect_chart_patterns(
