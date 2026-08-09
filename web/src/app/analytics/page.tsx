@@ -246,17 +246,33 @@ export default function ResearchAnalyticsPage() {
 
               <Card title="Score Statistics" subtitle="Momentum & Buy Setup scores">
                 {evaluation?.performance ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <StatBox label="Momentum Volatility" value={evaluation.performance.momentum_score_volatility} />
-                    <StatBox label="Buy Setup Volatility" value={evaluation.performance.buy_setup_score_volatility} />
-                    <StatBox label="Max Drawdown" value={`${evaluation.performance.max_drawdown_pct}%`} accent="rose" />
-                    <StatBox label="Profit Factor" value={evaluation.performance.profit_factor} accent="emerald" />
-                    <StatBox
-                      label="Sharpe Ratio"
-                      value={evaluation.performance.sharpe_ratio}
-                      accent={parseFloat(evaluation.performance.sharpe_ratio) >= 1 ? 'emerald' : 'amber'}
-                    />
-                    <StatBox label="Sortino Ratio" value={evaluation.performance.sortino_ratio} />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <StatBox label="Momentum Volatility" value={evaluation.performance.momentum_score_volatility} />
+                      <StatBox label="Buy Setup Volatility" value={evaluation.performance.buy_setup_score_volatility} />
+                      <StatBox
+                        label="Max Score Drawdown"
+                        value={evaluation.performance.max_momentum_score_drawdown}
+                      />
+                      <StatBox
+                        label="Score Gain/Loss Ratio"
+                        value={evaluation.performance.momentum_score_gain_loss_ratio}
+                      />
+                      <StatBox label="Score Stability" value={evaluation.performance.momentum_score_stability} />
+                      <StatBox
+                        label="Score Downside Stability"
+                        value={evaluation.performance.momentum_score_downside_stability}
+                      />
+                    </div>
+                    {/* These are shaped like Sharpe/Sortino/profit factor but are
+                        computed over the momentum SCORE, not over returns. Shown
+                        without % or profit colouring so they cannot read as a
+                        profit claim (2026-08-09 audit §2.3). */}
+                    <p className="text-xs text-slate-500">
+                      Computed from the momentum-score series, not from returns. These describe how
+                      steady the universe&apos;s setup quality has been — they are not profit,
+                      return or drawdown figures.
+                    </p>
                   </div>
                 ) : (
                   <EmptyState message="No evaluation data available" />

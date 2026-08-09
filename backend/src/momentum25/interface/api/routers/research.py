@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -111,7 +111,7 @@ async def historical_screen(
 async def refresh_corporate_actions(
     use_case: Annotated[RefreshCorporateActions, Depends(get_refresh_corporate_actions)],
     as_of: Annotated[date | None, Query()] = None,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """Refresh adjustment factors for every active security."""
     return await use_case.execute(as_of)
 
@@ -267,12 +267,12 @@ async def evaluate_strategy(
             buy_setup_score_volatility=p.buy_setup_score_volatility,
             max_momentum_score=p.max_momentum_score,
             min_momentum_score=p.min_momentum_score,
-            max_drawdown_pct=p.max_drawdown_pct,
+            max_momentum_score_drawdown=p.max_momentum_score_drawdown,
             avg_pass_rate=p.avg_pass_rate,
             avg_top_rank_stability=p.avg_top_rank_stability,
-            sharpe_ratio=p.sharpe_ratio,
-            sortino_ratio=p.sortino_ratio,
-            profit_factor=p.profit_factor,
+            momentum_score_stability=p.momentum_score_stability,
+            momentum_score_downside_stability=p.momentum_score_downside_stability,
+            momentum_score_gain_loss_ratio=p.momentum_score_gain_loss_ratio,
         ),
         run_summaries=[
             HistoricalRunSummaryDTO(
@@ -340,6 +340,7 @@ async def contribution_analysis(
     return ContributionAnalysisResponse(
         strategy_name=result.strategy_name,
         run_count=result.run_count,
+        security_count=result.security_count,
         date_range=(
             f"{result.date_range[0].isoformat()} to {result.date_range[1].isoformat()}"
             if result.date_range else None

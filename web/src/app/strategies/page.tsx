@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listStrategies, evaluateStrategy, getContributionAnalysis, compareStrategies } from '@/lib/api-client';
@@ -98,15 +99,28 @@ export default function StrategyResearchPage() {
                 <MetricCard label="Median Momentum" value={perf.median_momentum_score} />
                 <MetricCard label="Avg Buy Setup" value={perf.avg_buy_setup_score} />
                 <MetricCard label="Volatility" value={perf.momentum_score_volatility} />
-                <MetricCard label="Max Drawdown" value={`${perf.max_drawdown_pct}%`} color="text-rose-400" />
+                <MetricCard label="Max Score Drawdown" value={perf.max_momentum_score_drawdown} />
                 <MetricCard label="Avg Pass Rate" value={`${(parseFloat(perf.avg_pass_rate) * 100).toFixed(1)}%`} color="text-emerald-400" />
-                <MetricCard label="Sharpe Ratio" value={perf.sharpe_ratio} color={parseFloat(perf.sharpe_ratio) >= 1 ? 'text-emerald-400' : 'text-amber-400'} />
-                <MetricCard label="Sortino Ratio" value={perf.sortino_ratio} />
-                <MetricCard label="Profit Factor" value={perf.profit_factor} color={parseFloat(perf.profit_factor) >= 1.5 ? 'text-emerald-400' : 'text-slate-800 dark:text-slate-200'} />
+                <MetricCard label="Score Stability" value={perf.momentum_score_stability} />
+                <MetricCard label="Score Downside Stability" value={perf.momentum_score_downside_stability} />
+                <MetricCard label="Score Gain/Loss Ratio" value={perf.momentum_score_gain_loss_ratio} />
                 <MetricCard label="Rank Stability" value={`${(parseFloat(perf.avg_top_rank_stability) * 100).toFixed(0)}%`} />
                 <MetricCard label="Max Score" value={perf.max_momentum_score} color="text-emerald-400" />
                 <MetricCard label="Min Score" value={perf.min_momentum_score} />
               </div>
+              {/* U7 / §2.3: every figure above is derived from the momentum
+                  SCORE series or run counts. None is a return, and none is
+                  rendered with a % of profit or profit/loss colouring. */}
+              <p className="mt-3 text-xs text-slate-500">
+                All figures are derived from the momentum-score series and run counts — a
+                setup-quality rating, not a return. Score Stability, Score Downside Stability and
+                Score Gain/Loss Ratio are shaped like Sharpe, Sortino and profit factor but carry
+                no profit or return meaning. Realised performance metrics live on the{' '}
+                <Link href="/validation" className="underline hover:text-slate-700 dark:hover:text-slate-300">
+                  Validation
+                </Link>{' '}
+                page and require ingested forward returns.
+              </p>
             </Card>
 
             <Card title="Recent Runs" subtitle={`${evaluation?.run_summaries.length ?? 0} runs`}>

@@ -12,12 +12,16 @@ from decimal import Decimal
 from typing import Any
 
 from momentum25.domain.research.validation_models import (
+    MEASURABLE,
+    NO_FORWARD_RETURNS,
+    NO_RUNS,
     AlphaAnalysisReport,
     BenchmarkComparison,
     EngineEffectiveness,
     EngineEffectivenessReport,
     HistoricalValidationReport,
     HistoricalValidationResult,
+    Measurability,
     ParameterExperimentReport,
     ParameterExperimentResult,
     RuleEffectiveness,
@@ -28,6 +32,22 @@ from momentum25.domain.research.validation_models import (
 
 _QUANT = Decimal("0.0001")
 _TRADING_DAYS_PER_YEAR = Decimal("252")
+
+
+def _mean_or_none(values: list[Decimal]) -> Decimal | None:
+    """Return the mean of *values*, or ``None`` when there is nothing to average.
+
+    ``None`` rather than ``0``: an empty sample is an absence of measurement,
+    not a measurement of zero.
+    """
+    if not values:
+        return None
+    return sum(values, Decimal("0")) / Decimal(str(len(values)))
+
+
+def _quant_or_none(value: Decimal | None) -> Decimal | None:
+    """Quantize *value*, preserving ``None`` instead of collapsing it to 0."""
+    return None if value is None else value.quantize(_QUANT)
 
 
 def _quant(value: Decimal | None) -> Decimal:
@@ -316,6 +336,74 @@ def compute_alpha_analysis(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _screening_metrics(
+    run_summaries: list[dict[str, Any]], period_returns: list[Decimal]
+) -> dict[str, Decimal | None]:
+    """Screening-side scorecard metrics, shared by the measured and unmeasured paths.
+
+    Pass rates and average scores come from run stats and are always
+    computable. The false-positive/negative rates are return-derived and are
+    ``None`` when no forward return exists.
+    """
+    n = len(period_returns)
+    if not run_summaries:
+        return {
+            "avg_pass_rate": Decimal("0"),
+            "avg_momentum_score": Decimal("0"),
+            "avg_buy_setup_score": Decimal("0"),
+            "false_positive_rate": None,
+            "false_negative_rate": None,
+        }
+
+    total_evaluated = sum(s.get("total_evaluated", 0) for s in run_summaries)
+    total_passed = sum(s.get("total_passed", 0) for s in run_summaries)
+    avg_pass_rate = _safe_div(
+        Decimal(str(total_passed)),
+        Decimal(str(total_evaluated)) if total_evaluated > 0 else Decimal("1"),
+    )
+
+    momentum_scores = [
+        s["avg_momentum_score"]
+        for s in run_summaries
+        if s.get("avg_momentum_score") is not None
+    ]
+    buy_scores = [
+        s["avg_buy_setup_score"]
+        for s in run_summaries
+        if s.get("avg_buy_setup_score") is not None
+    ]
+
+    if n == 0:
+        false_positive_rate = false_negative_rate = None
+    else:
+        # FP: run qualified securities but the period return was negative.
+        # FN: run qualified nothing yet the period return was positive.
+        fp_count = sum(
+            1
+            for i, r in enumerate(period_returns)
+            if i < len(run_summaries)
+            and run_summaries[i].get("total_passed", 0) > 0
+            and r < 0
+        )
+        fn_count = sum(
+            1
+            for i, r in enumerate(period_returns)
+            if i < len(run_summaries)
+            and run_summaries[i].get("total_passed", 0) == 0
+            and r > 0
+        )
+        false_positive_rate = _safe_div(Decimal(str(fp_count)), Decimal(str(n)))
+        false_negative_rate = _safe_div(Decimal(str(fn_count)), Decimal(str(n)))
+
+    return {
+        "avg_pass_rate": avg_pass_rate,
+        "avg_momentum_score": _mean_or_none(momentum_scores) or Decimal("0"),
+        "avg_buy_setup_score": _mean_or_none(buy_scores) or Decimal("0"),
+        "false_positive_rate": false_positive_rate,
+        "false_negative_rate": false_negative_rate,
+    }
+
+
 def compute_scorecard(
     strategy_name: str,
     strategy_id: int,
@@ -343,6 +431,11 @@ def compute_scorecard(
     """
     n = len(period_returns)
     if n == 0:
+        # No matured forward return for any analysed run. Every return-derived
+        # metric is null with an explicit reason, so a reader can tell "never
+        # measured" from "measured, and it earned nothing". Screening-side
+        # metrics come from run stats and stay populated.
+        screening = _screening_metrics(run_summaries, period_returns)
         return StrategyScorecard(
             strategy_name=strategy_name,
             strategy_id=strategy_id,
@@ -350,36 +443,40 @@ def compute_scorecard(
             start_date=start_date,
             end_date=end_date,
             total_trading_days=0,
-            total_runs=0,
-            cagr=Decimal("0"),
-            annual_return=Decimal("0"),
-            cumulative_return=Decimal("0"),
-            avg_holding_return=Decimal("0"),
-            best_return=Decimal("0"),
-            worst_return=Decimal("0"),
-            win_rate=Decimal("0"),
-            avg_winner=Decimal("0"),
-            avg_loser=Decimal("0"),
-            total_wins=0,
-            total_losses=0,
-            profit_factor=Decimal("0"),
-            max_drawdown=Decimal("0"),
-            max_drawdown_duration=0,
-            volatility=Decimal("0"),
-            downside_volatility=Decimal("0"),
-            sharpe_ratio=Decimal("0"),
-            sortino_ratio=Decimal("0"),
-            calmar_ratio=Decimal("0"),
-            information_ratio=Decimal("0"),
-            alpha=Decimal("0"),
-            beta=Decimal("0"),
-            r_squared=Decimal("0"),
-            avg_pass_rate=Decimal("0"),
+            total_runs=len(run_summaries),
+            cagr=None,
+            annual_return=None,
+            cumulative_return=None,
+            avg_holding_return=None,
+            best_return=None,
+            worst_return=None,
+            win_rate=None,
+            avg_winner=None,
+            avg_loser=None,
+            total_wins=None,
+            total_losses=None,
+            profit_factor=None,
+            max_drawdown=None,
+            max_drawdown_duration=None,
+            volatility=None,
+            downside_volatility=None,
+            sharpe_ratio=None,
+            sortino_ratio=None,
+            calmar_ratio=None,
+            information_ratio=None,
+            alpha=None,
+            beta=None,
+            r_squared=None,
+            avg_pass_rate=screening["avg_pass_rate"],
             avg_top_rank_stability=Decimal("0"),
-            avg_momentum_score=Decimal("0"),
-            avg_buy_setup_score=Decimal("0"),
-            false_positive_rate=Decimal("0"),
-            false_negative_rate=Decimal("0"),
+            avg_momentum_score=screening["avg_momentum_score"],
+            avg_buy_setup_score=screening["avg_buy_setup_score"],
+            false_positive_rate=None,
+            false_negative_rate=None,
+            measurability=Measurability(
+                forward_returns_available=False,
+                reason=NO_RUNS if not run_summaries else NO_FORWARD_RETURNS,
+            ),
         )
 
     # ── Return metrics ────────────────────────────────────────────────────
@@ -516,49 +613,13 @@ def compute_scorecard(
                 information_ratio = _safe_div(excess_mean * _TRADING_DAYS_PER_YEAR, tracking_error)
 
     # ── Screening-specific metrics ────────────────────────────────────────
-    avg_pass_rate = Decimal("0")
+    screening = _screening_metrics(run_summaries, period_returns)
+    avg_pass_rate = screening["avg_pass_rate"]
     avg_top_rank_stability = Decimal("0")
-    avg_momentum_score = Decimal("0")
-    avg_buy_setup_score = Decimal("0")
-    false_positive_rate = Decimal("0")
-    false_negative_rate = Decimal("0")
-
-    if run_summaries:
-        total_evaluated = sum(s.get("total_evaluated", 0) for s in run_summaries)
-        total_passed = sum(s.get("total_passed", 0) for s in run_summaries)
-        avg_pass_rate = _safe_div(
-            Decimal(str(total_passed)),
-            Decimal(str(total_evaluated)) if total_evaluated > 0 else Decimal("1"),
-        )
-
-        momentum_scores = [
-            s.get("avg_momentum_score", Decimal("0"))
-            for s in run_summaries
-            if s.get("avg_momentum_score") is not None
-        ]
-        buy_scores = [
-            s.get("avg_buy_setup_score", Decimal("0"))
-            for s in run_summaries
-            if s.get("avg_buy_setup_score") is not None
-        ]
-        if momentum_scores:
-            avg_momentum_score = _safe_div(sum(momentum_scores, Decimal("0")), Decimal(str(len(momentum_scores))))
-        if buy_scores:
-            avg_buy_setup_score = _safe_div(sum(buy_scores, Decimal("0")), Decimal(str(len(buy_scores))))
-
-        # False positive/negative rates (simplified)
-        # FP: passed hard filters but had negative return
-        # FN: failed hard filters but had positive return
-        fp_count = sum(
-            1 for i, r in enumerate(period_returns)
-            if i < len(run_summaries) and run_summaries[i].get("total_passed", 0) > 0 and r < 0
-        )
-        fn_count = sum(
-            1 for i, r in enumerate(period_returns)
-            if i < len(run_summaries) and run_summaries[i].get("total_passed", 0) == 0 and r > 0
-        )
-        false_positive_rate = _safe_div(Decimal(str(fp_count)), Decimal(str(n)))
-        false_negative_rate = _safe_div(Decimal(str(fn_count)), Decimal(str(n)))
+    avg_momentum_score = screening["avg_momentum_score"]
+    avg_buy_setup_score = screening["avg_buy_setup_score"]
+    false_positive_rate = screening["false_positive_rate"]
+    false_negative_rate = screening["false_negative_rate"]
 
     # ── Monthly/yearly returns ────────────────────────────────────────────
     monthly_returns = _compute_period_returns(period_returns, 21)  # ~21 trading days/month
@@ -644,22 +705,48 @@ def _compute_period_returns(
 
 def analyze_rule_effectiveness(
     rule_evaluations: list[dict[str, Any]],
-    period_returns: list[Decimal],
+    run_count: int,
     strategy_name: str,
     strategy_id: int,
 ) -> RuleEffectivenessReport:
     """Analyze the effectiveness of every rule across historical runs.
 
+    Each evaluation must already carry its own realised forward return, joined
+    upstream on ``(run_id, security_id)``. Two defects motivated that shape
+    (2026-08-09 audit, §1.2.4):
+
+    * the "return" was the run's *average momentum score* -- a 0-100 setup
+      quality rating -- published as ``avg_return_when_passes``; and
+    * it was matched to evaluations by **list index**, while
+      ``period_returns`` held one entry per run and ``evals`` one per
+      (rule x security x run). With one run, exactly one of 25 evaluations per
+      rule received a value and the other 24 were silently dropped.
+
+    When no evaluation carries a forward return, every return-derived field
+    and every classification (``is_weak`` / ``is_redundant`` /
+    ``is_high_value``) is ``None`` and ``measurability`` says why. Nothing is
+    reported as zero that was never measured.
+
     Args:
-        rule_evaluations: List of dicts with rule_id, engine_id, passed,
-            contribution, raw_value, run_date for each evaluation.
-        period_returns: List of period returns aligned with run dates.
+        rule_evaluations: Dicts with rule_id, engine_id, passed, contribution,
+            raw_value, run_date, and ``forward_return`` (``Decimal | None``).
+        run_count: Number of distinct runs the evaluations came from.
         strategy_name: Name of the strategy.
         strategy_id: ID of the strategy.
 
     Returns:
         A RuleEffectivenessReport with per-rule statistics.
     """
+    measurable = any(ev.get("forward_return") is not None for ev in rule_evaluations)
+    measurability = (
+        MEASURABLE
+        if measurable
+        else Measurability(
+            forward_returns_available=False,
+            reason=NO_RUNS if not rule_evaluations else NO_FORWARD_RETURNS,
+        )
+    )
+
     # Group evaluations by rule
     rule_groups: dict[str, list[dict[str, Any]]] = {}
     for ev in rule_evaluations:
@@ -676,58 +763,55 @@ def analyze_rule_effectiveness(
         fail_count = n - pass_count
         pass_rate = _safe_div(Decimal(str(pass_count)), Decimal(str(n)))
 
-        # Contribution analysis
-        contributions = [e.get("contribution", Decimal("0")) for e in evals]
-        avg_contrib = _safe_div(sum(contributions, Decimal("0")), Decimal(str(n)))
+        # Per-evaluation returns, joined on (run_id, security_id) by the caller.
+        with_return = [e for e in evals if e.get("forward_return") is not None]
+        returns_when_passes = [
+            e["forward_return"] for e in with_return if e.get("passed", False)
+        ]
+        returns_when_fails = [
+            e["forward_return"] for e in with_return if not e.get("passed", False)
+        ]
 
-        # Map evaluations to returns (by index alignment)
-        returns_when_passes: list[Decimal] = []
-        returns_when_fails: list[Decimal] = []
-        for i, e in enumerate(evals):
-            if i < len(period_returns):
-                if e.get("passed", False):
-                    returns_when_passes.append(period_returns[i])
-                else:
-                    returns_when_fails.append(period_returns[i])
+        avg_return_pass = _mean_or_none(returns_when_passes)
+        avg_return_fail = _mean_or_none(returns_when_fails)
 
-        avg_return_pass = (
-            _safe_div(sum(returns_when_passes, Decimal("0")), Decimal(str(len(returns_when_passes))))
-            if returns_when_passes else Decimal("0")
-        )
-        avg_return_fail = (
-            _safe_div(sum(returns_when_fails, Decimal("0")), Decimal(str(len(returns_when_fails))))
-            if returns_when_fails else Decimal("0")
-        )
+        # Contribution to profitable vs unprofitable outcomes, on the same join.
+        contrib_success = [
+            e.get("contribution", Decimal("0"))
+            for e in with_return
+            if e["forward_return"] > 0
+        ]
+        contrib_unsuccess = [
+            e.get("contribution", Decimal("0"))
+            for e in with_return
+            if e["forward_return"] <= 0
+        ]
+        avg_contrib_success = _mean_or_none(contrib_success)
+        avg_contrib_unsuccess = _mean_or_none(contrib_unsuccess)
 
-        # Contribution to successful vs unsuccessful trades
-        contrib_success = Decimal("0")
-        contrib_unsuccess = Decimal("0")
-        success_count = 0
-        unsuccess_count = 0
-        for i, e in enumerate(evals):
-            if i < len(period_returns):
-                if period_returns[i] > 0:
-                    contrib_success += e.get("contribution", Decimal("0"))
-                    success_count += 1
-                else:
-                    contrib_unsuccess += e.get("contribution", Decimal("0"))
-                    unsuccess_count += 1
-
-        avg_contrib_success = _safe_div(contrib_success, Decimal(str(success_count))) if success_count else Decimal("0")
-        avg_contrib_unsuccess = _safe_div(contrib_unsuccess, Decimal(str(unsuccess_count))) if unsuccess_count else Decimal("0")
-
-        # Return delta and significance
-        return_delta = avg_return_pass - avg_return_fail
-        # Simplified significance: based on return_delta magnitude and consistency
-        significance = min(
-            Decimal("1"),
-            abs(return_delta) * Decimal("10") * Decimal(str(n ** 0.5)) / Decimal("100"),
-        )
-
-        # Classification
-        is_weak = pass_rate < Decimal("0.3") and abs(return_delta) < Decimal("0.01")
-        is_redundant = pass_rate > Decimal("0.95")
-        is_high_value = return_delta > Decimal("0.02") and pass_rate >= Decimal("0.3") and pass_rate <= Decimal("0.95")
+        if avg_return_pass is not None and avg_return_fail is not None:
+            return_delta = avg_return_pass - avg_return_fail
+            significance = min(
+                Decimal("1"),
+                abs(return_delta)
+                * Decimal("10")
+                * Decimal(str(len(with_return) ** 0.5))
+                / Decimal("100"),
+            )
+            is_weak = pass_rate < Decimal("0.3") and abs(return_delta) < Decimal("0.01")
+            is_redundant = pass_rate > Decimal("0.95")
+            is_high_value = (
+                return_delta > Decimal("0.02")
+                and Decimal("0.3") <= pass_rate <= Decimal("0.95")
+            )
+        else:
+            # A rule evaluated on only one side of its own pass/fail split, or
+            # with no matured returns at all, has no measurable delta. It is
+            # not "weak" -- it is unmeasured. S6: no rule may be added,
+            # removed or reweighted on the strength of a null.
+            return_delta = None
+            significance = None
+            is_weak = is_redundant = is_high_value = None
 
         rules.append(
             RuleEffectiveness(
@@ -738,26 +822,31 @@ def analyze_rule_effectiveness(
                 pass_count=pass_count,
                 fail_count=fail_count,
                 pass_rate=_quant(pass_rate),
-                contribution_to_successful=_quant(avg_contrib_success),
-                contribution_to_unsuccessful=_quant(avg_contrib_unsuccess),
-                avg_return_when_passes=_quant(avg_return_pass),
-                avg_return_when_fails=_quant(avg_return_fail),
-                return_delta=_quant(return_delta),
-                significance_score=_quant(significance),
+                contribution_to_successful=_quant_or_none(avg_contrib_success),
+                contribution_to_unsuccessful=_quant_or_none(avg_contrib_unsuccess),
+                avg_return_when_passes=_quant_or_none(avg_return_pass),
+                avg_return_when_fails=_quant_or_none(avg_return_fail),
+                return_delta=_quant_or_none(return_delta),
+                significance_score=_quant_or_none(significance),
                 is_weak=is_weak,
                 is_redundant=is_redundant,
                 is_high_value=is_high_value,
             )
         )
 
-        # Collect dates
         for e in evals:
             rd = e.get("run_date")
             if isinstance(rd, date):
                 dates.append(rd)
 
-    # Sort rules by significance
-    rules.sort(key=lambda r: -r.significance_score)
+    # Most significant first; unmeasured rules sort last rather than as zeros.
+    rules.sort(
+        key=lambda r: (
+            r.significance_score is None,
+            -(r.significance_score or Decimal("0")),
+            r.rule_id,
+        )
+    )
 
     weak_rules = tuple(r for r in rules if r.is_weak)
     redundant_rules = tuple(r for r in rules if r.is_redundant)
@@ -765,66 +854,102 @@ def analyze_rule_effectiveness(
 
     date_range = (min(dates), max(dates)) if len(dates) >= 2 else None
 
-    # Generate summary
-    summary_parts = []
-    if high_value_rules:
-        summary_parts.append(
-            f"Found {len(high_value_rules)} high-value rules that consistently "
-            f"contribute to positive outcomes."
+    if not measurable:
+        summary = (
+            "Rule effectiveness is not measurable: no matured forward returns "
+            "exist for these runs. Pass rates and contributions are shown; "
+            "return-based verdicts are withheld."
         )
-    if redundant_rules:
-        summary_parts.append(
-            f"Found {len(redundant_rules)} redundant rules (pass rate > 95%) "
-            f"that rarely fail and may be candidates for removal."
+    else:
+        summary_parts = []
+        if high_value_rules:
+            summary_parts.append(
+                f"Found {len(high_value_rules)} high-value rules that consistently "
+                f"contribute to positive outcomes."
+            )
+        if redundant_rules:
+            summary_parts.append(
+                f"Found {len(redundant_rules)} redundant rules (pass rate > 95%) "
+                f"that rarely fail and may be candidates for removal."
+            )
+        if weak_rules:
+            summary_parts.append(
+                f"Found {len(weak_rules)} weak rules with low pass rate and "
+                f"minimal return impact."
+            )
+        summary = (
+            " ".join(summary_parts)
+            if summary_parts
+            else "All rules show meaningful contribution."
         )
-    if weak_rules:
-        summary_parts.append(
-            f"Found {len(weak_rules)} weak rules with low pass rate and "
-            f"minimal return impact."
-        )
-    summary = " ".join(summary_parts) if summary_parts else "All rules show meaningful contribution."
 
     return RuleEffectivenessReport(
         strategy_name=strategy_name,
         strategy_id=strategy_id,
-        total_runs_analyzed=len(period_returns),
+        total_runs_analyzed=run_count,
         date_range=date_range,
         rules=tuple(rules),
         weak_rules=weak_rules,
         redundant_rules=redundant_rules,
         high_value_rules=high_value_rules,
         summary=summary,
+        measurability=measurability,
     )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Priority 5 — Engine Effectiveness
+# Priority 5 — Engine Effectiveness Analysis
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 def analyze_engine_effectiveness(
     engine_evaluations: list[dict[str, Any]],
-    period_returns: list[Decimal],
+    run_count: int,
     strategy_name: str,
     strategy_id: int,
 ) -> EngineEffectivenessReport:
     """Analyze the effectiveness of every engine across historical runs.
 
+    Same contract as :func:`analyze_rule_effectiveness`: each evaluation
+    carries its own realised forward return, joined upstream on
+    ``(run_id, security_id)``. The former ``standalone_performance`` field --
+    which reported the run's average momentum *score* as if it were a return
+    (2026-08-09 audit §1.2.4/§2.3) -- is replaced by
+    ``avg_forward_return_when_engine_scores_high``, which is either a real
+    return or ``None``.
+
     Args:
-        engine_evaluations: List of dicts with engine_id, score, passed_gate,
-            rules_passed, rules_failed, run_date for each evaluation.
-        period_returns: List of period returns aligned with run dates.
+        engine_evaluations: Dicts with engine_id, score, passed_gate,
+            rules_passed, rules_failed, run_date, contribution_to_final and
+            ``forward_return`` (``Decimal | None``).
+        run_count: Number of distinct runs the evaluations came from.
         strategy_name: Name of the strategy.
         strategy_id: ID of the strategy.
 
     Returns:
         An EngineEffectivenessReport with per-engine statistics.
     """
-    # Group by engine
+    measurable = any(ev.get("forward_return") is not None for ev in engine_evaluations)
+    measurability = (
+        MEASURABLE
+        if measurable
+        else Measurability(
+            forward_returns_available=False,
+            reason=NO_RUNS if not engine_evaluations else NO_FORWARD_RETURNS,
+        )
+    )
+
     engine_groups: dict[str, list[dict[str, Any]]] = {}
     for ev in engine_evaluations:
         eid = ev.get("engine_id", "")
         engine_groups.setdefault(eid, []).append(ev)
+
+    all_returns = [
+        ev["forward_return"]
+        for ev in engine_evaluations
+        if ev.get("forward_return") is not None
+    ]
+    overall_avg_return = _mean_or_none(all_returns)
 
     engines: list[EngineEffectiveness] = []
     for engine_id, evals in engine_groups.items():
@@ -832,55 +957,52 @@ def analyze_engine_effectiveness(
         scores = [e.get("score", Decimal("0")) for e in evals]
         avg_score = _safe_div(sum(scores, Decimal("0")), Decimal(str(n)))
 
-        rules_passed = [e.get("rules_passed", 0) for e in evals]
-        rules_failed = [e.get("rules_failed", 0) for e in evals]
         avg_passed = _safe_div(
-            Decimal(str(sum(rules_passed))), Decimal(str(n))
-        ) if n > 0 else Decimal("0")
+            Decimal(str(sum(e.get("rules_passed", 0) for e in evals))), Decimal(str(n))
+        )
         avg_failed = _safe_div(
-            Decimal(str(sum(rules_failed))), Decimal(str(n))
-        ) if n > 0 else Decimal("0")
+            Decimal(str(sum(e.get("rules_failed", 0) for e in evals))), Decimal(str(n))
+        )
 
         pass_rates = []
         for e in evals:
-            rp = e.get("rules_passed", 0)
-            rf = e.get("rules_failed", 0)
-            total = rp + rf
+            total = e.get("rules_passed", 0) + e.get("rules_failed", 0)
             if total > 0:
-                pass_rates.append(Decimal(str(rp)) / Decimal(str(total)))
-        avg_pass_rate = _safe_div(sum(pass_rates, Decimal("0")), Decimal(str(len(pass_rates)))) if pass_rates else Decimal("0")
+                pass_rates.append(Decimal(str(e.get("rules_passed", 0))) / Decimal(str(total)))
+        avg_pass_rate = _mean_or_none(pass_rates) or Decimal("0")
 
-        # Contribution to final score
         final_contributions = [e.get("contribution_to_final", Decimal("0")) for e in evals]
-        avg_contrib = _safe_div(
-            sum(final_contributions, Decimal("0")), Decimal(str(len(final_contributions)))
-        ) if final_contributions else Decimal("0")
+        avg_contrib = _mean_or_none(final_contributions) or Decimal("0")
 
-        # Correlation with outcome (simplified)
-        correlated = 0
-        for i, e in enumerate(evals):
-            if i < len(period_returns):
-                score = e.get("score", Decimal("0"))
-                ret = period_returns[i]
-                if (score > 0 and ret > 0) or (score <= 0 and ret <= 0):
-                    correlated += 1
-        correlation = _safe_div(Decimal(str(correlated)), Decimal(str(min(n, len(period_returns)))))
+        with_return = [e for e in evals if e.get("forward_return") is not None]
 
-        # Standalone performance: average return when this engine's score is positive
-        standalone_returns = [
-            period_returns[i] for i, e in enumerate(evals)
-            if i < len(period_returns) and e.get("score", Decimal("0")) > 0
-        ]
-        standalone_perf = (
-            _safe_div(sum(standalone_returns, Decimal("0")), Decimal(str(len(standalone_returns))))
-            if standalone_returns else Decimal("0")
-        )
-
-        # Does this engine improve performance?
-        overall_avg_return = _safe_div(
-            sum(period_returns, Decimal("0")), Decimal(str(len(period_returns)))
-        ) if period_returns else Decimal("0")
-        improves = standalone_perf > overall_avg_return
+        # Directional agreement between this engine's score and the realised
+        # return of the security it scored -- a genuine per-security join now,
+        # not a run-indexed one.
+        if with_return:
+            correlated = sum(
+                1
+                for e in with_return
+                if (e.get("score", Decimal("0")) > 0) == (e["forward_return"] > 0)
+            )
+            correlation = _safe_div(
+                Decimal(str(correlated)), Decimal(str(len(with_return)))
+            )
+            high_score_returns = [
+                e["forward_return"]
+                for e in with_return
+                if e.get("score", Decimal("0")) > 0
+            ]
+            avg_return_high = _mean_or_none(high_score_returns)
+            improves = (
+                avg_return_high > overall_avg_return
+                if avg_return_high is not None and overall_avg_return is not None
+                else None
+            )
+        else:
+            correlation = None
+            avg_return_high = None
+            improves = None
 
         engines.append(
             EngineEffectiveness(
@@ -892,43 +1014,59 @@ def analyze_engine_effectiveness(
                 avg_rules_failed=_quant(avg_failed),
                 avg_pass_rate=_quant(avg_pass_rate),
                 contribution_to_final_score=_quant(avg_contrib),
-                correlation_with_outcome=_quant(correlation),
+                correlation_with_outcome=_quant_or_none(correlation),
                 improves_performance=improves,
-                standalone_performance=_quant(standalone_perf),
+                avg_forward_return_when_engine_scores_high=_quant_or_none(avg_return_high),
             )
         )
 
-    # Sort by standalone performance
-    engines.sort(key=lambda e: -e.standalone_performance)
-
-    best_engine = engines[0].engine_id if engines else ""
-    worst_engine = engines[-1].engine_id if engines else ""
-    recommended_exclusions = tuple(
-        e.engine_id for e in engines if not e.improves_performance
+    # Best/worst are return-based verdicts, so they exist only when measured.
+    ranked = sorted(
+        (e for e in engines if e.avg_forward_return_when_engine_scores_high is not None),
+        key=lambda e: -(e.avg_forward_return_when_engine_scores_high or Decimal("0")),
     )
+    best_engine = ranked[0].engine_id if ranked else ""
+    worst_engine = ranked[-1].engine_id if ranked else ""
+    recommended_exclusions = tuple(
+        e.engine_id for e in engines if e.improves_performance is False
+    )
+    engines.sort(key=lambda e: e.engine_id)
 
-    summary_parts = []
-    if best_engine:
-        summary_parts.append(
-            f"Best performing engine: {best_engine} "
-            f"(standalone return: {engines[0].standalone_performance})."
+    if not measurable:
+        summary = (
+            "Engine effectiveness is not measurable: no matured forward returns "
+            "exist for these runs. Scores and pass rates are shown; "
+            "return-based verdicts are withheld."
         )
-    if recommended_exclusions:
-        summary_parts.append(
-            f"Recommended exclusions: {', '.join(recommended_exclusions)} "
-            f"(these engines do not measurably improve performance)."
+    else:
+        summary_parts = []
+        if best_engine:
+            summary_parts.append(
+                f"Best performing engine: {best_engine} (avg forward return when "
+                f"it scores above zero: "
+                f"{ranked[0].avg_forward_return_when_engine_scores_high})."
+            )
+        if recommended_exclusions:
+            summary_parts.append(
+                f"Recommended exclusions: {', '.join(recommended_exclusions)} "
+                f"(these engines do not measurably improve performance)."
+            )
+        summary = (
+            " ".join(summary_parts)
+            if summary_parts
+            else "All engines contribute positively."
         )
-    summary = " ".join(summary_parts) if summary_parts else "All engines contribute positively."
 
     return EngineEffectivenessReport(
         strategy_name=strategy_name,
         strategy_id=strategy_id,
-        total_runs_analyzed=len(period_returns),
+        total_runs_analyzed=run_count,
         engines=tuple(engines),
         best_engine=best_engine,
         worst_engine=worst_engine,
         recommended_exclusions=recommended_exclusions,
         summary=summary,
+        measurability=measurability,
     )
 
 

@@ -56,6 +56,18 @@ class HistoricalValidationResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+class MeasurabilityDTO(BaseModel):
+    """Whether return-derived metrics on this response could be computed at all.
+
+    ``forward_returns_available: false`` means every ``null`` metric below is
+    *unmeasured*, not *measured as zero*. ``reason`` is a stable identifier
+    (``"no_forward_returns"``, ``"no_runs"``) the UI keys its copy off.
+    """
+
+    forward_returns_available: bool
+    reason: str | None = None
+
+
 class BenchmarkComparisonDTO(BaseModel):
     """Comparison against a single benchmark."""
 
@@ -82,9 +94,10 @@ class AlphaAnalysisResponse(BaseModel):
     start_date: date
     end_date: date
     comparisons: list[BenchmarkComparisonDTO]
-    best_alpha: Decimal
-    worst_alpha: Decimal
-    avg_alpha: Decimal
+    best_alpha: Decimal | None = None
+    worst_alpha: Decimal | None = None
+    avg_alpha: Decimal | None = None
+    measurability: MeasurabilityDTO
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -103,45 +116,48 @@ class StrategyScorecardDTO(BaseModel):
     total_trading_days: int
     total_runs: int
 
-    # Return metrics
-    cagr: Decimal = Decimal("0")
-    annual_return: Decimal = Decimal("0")
-    cumulative_return: Decimal = Decimal("0")
-    avg_holding_return: Decimal = Decimal("0")
-    best_return: Decimal = Decimal("0")
-    worst_return: Decimal = Decimal("0")
+    # Return-derived metrics. ``None`` = not measurable; see ``measurability``.
+    # Never 0 as a stand-in for unmeasured (2026-08-09 audit §1.2.3).
+    cagr: Decimal | None = None
+    annual_return: Decimal | None = None
+    cumulative_return: Decimal | None = None
+    avg_holding_return: Decimal | None = None
+    best_return: Decimal | None = None
+    worst_return: Decimal | None = None
 
     # Win/loss metrics
-    win_rate: Decimal = Decimal("0")
-    avg_winner: Decimal = Decimal("0")
-    avg_loser: Decimal = Decimal("0")
-    total_wins: int = 0
-    total_losses: int = 0
-    profit_factor: Decimal = Decimal("0")
+    win_rate: Decimal | None = None
+    avg_winner: Decimal | None = None
+    avg_loser: Decimal | None = None
+    total_wins: int | None = None
+    total_losses: int | None = None
+    profit_factor: Decimal | None = None
 
     # Risk metrics
-    max_drawdown: Decimal = Decimal("0")
-    max_drawdown_duration: int = 0
-    volatility: Decimal = Decimal("0")
-    downside_volatility: Decimal = Decimal("0")
+    max_drawdown: Decimal | None = None
+    max_drawdown_duration: int | None = None
+    volatility: Decimal | None = None
+    downside_volatility: Decimal | None = None
 
     # Risk-adjusted return metrics
-    sharpe_ratio: Decimal = Decimal("0")
-    sortino_ratio: Decimal = Decimal("0")
-    calmar_ratio: Decimal = Decimal("0")
-    information_ratio: Decimal = Decimal("0")
+    sharpe_ratio: Decimal | None = None
+    sortino_ratio: Decimal | None = None
+    calmar_ratio: Decimal | None = None
+    information_ratio: Decimal | None = None
 
     # Market-relative metrics
-    alpha: Decimal = Decimal("0")
-    beta: Decimal = Decimal("0")
-    r_squared: Decimal = Decimal("0")
+    alpha: Decimal | None = None
+    beta: Decimal | None = None
+    r_squared: Decimal | None = None
 
-    # Screening-specific metrics
+    # Screening-specific metrics (derived from run stats, always measurable)
     avg_pass_rate: Decimal = Decimal("0")
     avg_momentum_score: Decimal = Decimal("0")
     avg_buy_setup_score: Decimal = Decimal("0")
-    false_positive_rate: Decimal = Decimal("0")
-    false_negative_rate: Decimal = Decimal("0")
+    false_positive_rate: Decimal | None = None
+    false_negative_rate: Decimal | None = None
+
+    measurability: MeasurabilityDTO
 
     # Distribution
     monthly_returns: list[dict[str, Any]] = Field(default_factory=list)
@@ -164,15 +180,15 @@ class RuleEffectivenessDTO(BaseModel):
     pass_count: int
     fail_count: int
     pass_rate: Decimal
-    contribution_to_successful: Decimal
-    contribution_to_unsuccessful: Decimal
-    avg_return_when_passes: Decimal
-    avg_return_when_fails: Decimal
-    return_delta: Decimal
-    significance_score: Decimal
-    is_weak: bool = False
-    is_redundant: bool = False
-    is_high_value: bool = False
+    contribution_to_successful: Decimal | None = None
+    contribution_to_unsuccessful: Decimal | None = None
+    avg_return_when_passes: Decimal | None = None
+    avg_return_when_fails: Decimal | None = None
+    return_delta: Decimal | None = None
+    significance_score: Decimal | None = None
+    is_weak: bool | None = None
+    is_redundant: bool | None = None
+    is_high_value: bool | None = None
 
 
 class RuleEffectivenessResponse(BaseModel):
@@ -187,6 +203,7 @@ class RuleEffectivenessResponse(BaseModel):
     redundant_rules: list[RuleEffectivenessDTO]
     high_value_rules: list[RuleEffectivenessDTO]
     summary: str
+    measurability: MeasurabilityDTO
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -205,9 +222,11 @@ class EngineEffectivenessDTO(BaseModel):
     avg_rules_failed: Decimal
     avg_pass_rate: Decimal
     contribution_to_final_score: Decimal
-    correlation_with_outcome: Decimal
-    improves_performance: bool = False
-    standalone_performance: Decimal
+    correlation_with_outcome: Decimal | None = None
+    improves_performance: bool | None = None
+    # Replaces ``standalone_performance``, which reported the run's average
+    # momentum *score* as if it were a return (2026-08-09 audit §1.2.4/§2.3).
+    avg_forward_return_when_engine_scores_high: Decimal | None = None
 
 
 class EngineEffectivenessResponse(BaseModel):

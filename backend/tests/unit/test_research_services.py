@@ -33,9 +33,9 @@ from momentum25.domain.research.models import (
 )
 from momentum25.domain.research.services import (
     _compute_max_drawdown,
-    _compute_profit_factor,
-    _compute_sharpe,
-    _compute_sortino,
+    _compute_score_gain_loss_ratio,
+    _compute_score_stability,
+    _compute_score_downside_stability,
     _safe_div,
     _variance,
     analyze_contribution,
@@ -98,33 +98,33 @@ class TestHelperFunctions:
         assert result == Decimal("0.3")
 
     def test_compute_sharpe_empty(self) -> None:
-        """_compute_sharpe returns 0 for empty list."""
-        assert _compute_sharpe([]) == Decimal("0")
+        """_compute_score_stability returns 0 for empty list."""
+        assert _compute_score_stability([]) == Decimal("0")
 
     def test_compute_sharpe_single(self) -> None:
-        """_compute_sharpe returns 0 for single value."""
-        assert _compute_sharpe([Decimal("10")]) == Decimal("0")
+        """_compute_score_stability returns 0 for single value."""
+        assert _compute_score_stability([Decimal("10")]) == Decimal("0")
 
     def test_compute_sortino_empty(self) -> None:
-        """_compute_sortino returns 0 for empty list."""
-        assert _compute_sortino([]) == Decimal("0")
+        """_compute_score_downside_stability returns 0 for empty list."""
+        assert _compute_score_downside_stability([]) == Decimal("0")
 
     def test_compute_profit_factor_empty(self) -> None:
-        """_compute_profit_factor returns 0 for empty list."""
-        assert _compute_profit_factor([]) == Decimal("0")
+        """_compute_score_gain_loss_ratio returns 0 for empty list."""
+        assert _compute_score_gain_loss_ratio([]) == Decimal("0")
 
     def test_compute_profit_factor_no_losses(self) -> None:
-        """_compute_profit_factor returns high value when no losses."""
+        """_compute_score_gain_loss_ratio returns high value when no losses."""
         scores = [Decimal("10"), Decimal("12"), Decimal("14")]
-        result = _compute_profit_factor(scores)
+        result = _compute_score_gain_loss_ratio(scores)
         assert result > Decimal("100")
 
     def test_compute_profit_factor_mixed(self) -> None:
-        """_compute_profit_factor computes correctly."""
+        """_compute_score_gain_loss_ratio computes correctly."""
         scores = [Decimal("100"), Decimal("110"), Decimal("90"), Decimal("120")]
         # Gains: 10 + 30 = 40, Losses: 20
         # Profit factor = 40/20 = 2
-        result = _compute_profit_factor(scores)
+        result = _compute_score_gain_loss_ratio(scores)
         assert abs(result - Decimal("2")) < Decimal("0.01")
 
 
@@ -722,15 +722,15 @@ class TestDomainModels:
             buy_setup_score_volatility=Decimal("4.0"),
             max_momentum_score=Decimal("90.0"),
             min_momentum_score=Decimal("50.0"),
-            max_drawdown_pct=Decimal("0.15"),
+            max_momentum_score_drawdown=Decimal("0.15"),
             avg_pass_rate=Decimal("0.20"),
             avg_top_rank_stability=Decimal("0.75"),
-            sharpe_ratio=Decimal("1.5"),
-            sortino_ratio=Decimal("2.0"),
-            profit_factor=Decimal("2.5"),
+            momentum_score_stability=Decimal("1.5"),
+            momentum_score_downside_stability=Decimal("2.0"),
+            momentum_score_gain_loss_ratio=Decimal("2.5"),
         )
         assert perf.run_count == 10
-        assert perf.sharpe_ratio == Decimal("1.5")
+        assert perf.momentum_score_stability == Decimal("1.5")
 
     def test_engine_contribution_stats_pass_rate(self) -> None:
         """EngineContributionStats.avg_pass_rate computes correctly."""
@@ -825,6 +825,7 @@ class TestDomainModels:
             strategy_name="minervini",
             strategy_id=1,
             run_count=0,
+            security_count=0,
             date_range=None,
             engine_stats=(),
             top_rules=(),

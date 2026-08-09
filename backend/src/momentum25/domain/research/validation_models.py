@@ -14,6 +14,36 @@ from typing import Any
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Measurability — "not measured" is not the same claim as "measured zero"
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Reasons a performance metric cannot be computed. Stable identifiers: the UI
+# keys copy off them.
+NO_FORWARD_RETURNS = "no_forward_returns"
+NO_RUNS = "no_runs"
+
+
+@dataclass(frozen=True, slots=True)
+class Measurability:
+    """Whether a report's return-derived metrics could be computed at all.
+
+    Every performance metric on this platform is a function of realised
+    forward returns. When ``forward_returns`` holds no matured row for the
+    analysed runs, those metrics are ``None`` and this block says why —
+    rather than emitting ``0`` and letting a reader mistake "never measured"
+    for "measured, and it earned nothing". Follows the ``"no_returns"``
+    convention ``/validation/alpha`` already used.
+    """
+
+    forward_returns_available: bool
+    reason: str | None = None
+
+
+MEASURABLE = Measurability(forward_returns_available=True)
+_MEASURABLE = MEASURABLE  # module-internal alias for default field values
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Priority 1 — Historical Validation
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -90,9 +120,10 @@ class AlphaAnalysisReport:
     start_date: date
     end_date: date
     comparisons: tuple[BenchmarkComparison, ...]
-    best_alpha: Decimal
-    worst_alpha: Decimal
-    avg_alpha: Decimal
+    best_alpha: Decimal | None
+    worst_alpha: Decimal | None
+    avg_alpha: Decimal | None
+    measurability: Measurability = _MEASURABLE
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -115,46 +146,50 @@ class StrategyScorecard:
     total_trading_days: int
     total_runs: int
 
-    # Return metrics
-    cagr: Decimal  # Compound Annual Growth Rate
-    annual_return: Decimal
-    cumulative_return: Decimal
-    avg_holding_return: Decimal
-    best_return: Decimal
-    worst_return: Decimal
+    # Return-derived metrics. ``None`` means "not measurable" -- see
+    # ``measurability`` for why. Never 0 as a stand-in for unmeasured.
+    cagr: Decimal | None  # Compound Annual Growth Rate
+    annual_return: Decimal | None
+    cumulative_return: Decimal | None
+    avg_holding_return: Decimal | None
+    best_return: Decimal | None
+    worst_return: Decimal | None
 
     # Win/loss metrics
-    win_rate: Decimal  # fraction of positive-return periods
-    avg_winner: Decimal  # average return of winning periods
-    avg_loser: Decimal  # average return of losing periods
-    total_wins: int
-    total_losses: int
-    profit_factor: Decimal  # sum(gains) / abs(sum(losses))
+    win_rate: Decimal | None  # fraction of positive-return periods
+    avg_winner: Decimal | None  # average return of winning periods
+    avg_loser: Decimal | None  # average return of losing periods
+    total_wins: int | None
+    total_losses: int | None
+    profit_factor: Decimal | None  # sum(gains) / abs(sum(losses))
 
     # Risk metrics
-    max_drawdown: Decimal  # largest peak-to-trough decline
-    max_drawdown_duration: int  # days to recover from max drawdown
-    volatility: Decimal  # annualized standard deviation of returns
-    downside_volatility: Decimal  # annualized downside deviation
+    max_drawdown: Decimal | None  # largest peak-to-trough decline
+    max_drawdown_duration: int | None  # days to recover from max drawdown
+    volatility: Decimal | None  # annualized standard deviation of returns
+    downside_volatility: Decimal | None  # annualized downside deviation
 
     # Risk-adjusted return metrics
-    sharpe_ratio: Decimal  # risk-free rate assumed 0
-    sortino_ratio: Decimal
-    calmar_ratio: Decimal  # CAGR / max_drawdown
-    information_ratio: Decimal  # excess return / tracking error
+    sharpe_ratio: Decimal | None  # risk-free rate assumed 0
+    sortino_ratio: Decimal | None
+    calmar_ratio: Decimal | None  # CAGR / max_drawdown
+    information_ratio: Decimal | None  # excess return / tracking error
 
     # Market-relative metrics
-    alpha: Decimal  # excess return over risk-free / benchmark
-    beta: Decimal  # sensitivity to benchmark
-    r_squared: Decimal  # goodness of fit to benchmark
+    alpha: Decimal | None  # excess return over risk-free / benchmark
+    beta: Decimal | None  # sensitivity to benchmark
+    r_squared: Decimal | None  # goodness of fit to benchmark
 
-    # Screening-specific metrics
+    # Screening-specific metrics. These are derived from run *stats*, not from
+    # returns, so they stay measurable even with no forward returns at all.
     avg_pass_rate: Decimal
     avg_top_rank_stability: Decimal
     avg_momentum_score: Decimal
     avg_buy_setup_score: Decimal
-    false_positive_rate: Decimal  # passed but underperformed
-    false_negative_rate: Decimal  # failed but outperformed
+    false_positive_rate: Decimal | None  # passed but underperformed
+    false_negative_rate: Decimal | None  # failed but outperformed
+
+    measurability: Measurability = _MEASURABLE
 
     # Distribution
     monthly_returns: tuple[dict[str, Any], ...] = field(default_factory=tuple)
@@ -183,17 +218,21 @@ class RuleEffectiveness:
     # Contribution to outcomes
     contribution_to_successful: Decimal  # avg contribution when trade was successful
     contribution_to_unsuccessful: Decimal  # avg contribution when trade was unsuccessful
-    avg_return_when_passes: Decimal  # average return when rule passes
-    avg_return_when_fails: Decimal  # average return when rule fails
+    # ``None`` when no matured forward return exists for the (run, security)
+    # pairs this rule was evaluated on. Never a momentum score standing in for
+    # a return -- that conflation was the 2026-08-09 audit's finding 1.2.4.
+    avg_return_when_passes: Decimal | None  # average return when rule passes
+    avg_return_when_fails: Decimal | None  # average return when rule fails
 
     # Statistical significance (simplified)
-    return_delta: Decimal  # avg_return_when_passes - avg_return_when_fails
-    significance_score: Decimal  # 0-1, higher = more statistically significant
+    return_delta: Decimal | None  # avg_return_when_passes - avg_return_when_fails
+    significance_score: Decimal | None  # 0-1, higher = more statistically significant
 
-    # Classification
-    is_weak: bool  # low pass_rate AND low return_delta
-    is_redundant: bool  # pass_rate > 0.95 (rarely fails)
-    is_high_value: bool  # high return_delta AND reasonable pass_rate
+    # Classification. All three are return-derived, so all three are ``None``
+    # when returns are unavailable: an unmeasured rule is not a "weak" rule.
+    is_weak: bool | None  # low pass_rate AND low return_delta
+    is_redundant: bool | None  # pass_rate > 0.95 (rarely fails)
+    is_high_value: bool | None  # high return_delta AND reasonable pass_rate
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,6 +248,7 @@ class RuleEffectivenessReport:
     redundant_rules: tuple[RuleEffectiveness, ...]
     high_value_rules: tuple[RuleEffectiveness, ...]
     summary: str
+    measurability: Measurability = _MEASURABLE
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -227,9 +267,10 @@ class EngineEffectiveness:
     avg_rules_failed: Decimal
     avg_pass_rate: Decimal
     contribution_to_final_score: Decimal  # avg contribution to final momentum score
-    correlation_with_outcome: Decimal  # correlation between engine score and final rank
-    improves_performance: bool  # does enabling this engine improve overall results?
-    standalone_performance: Decimal  # performance if this engine were the only one
+    # Return-derived; ``None`` when no matured forward returns exist.
+    correlation_with_outcome: Decimal | None  # correlation of engine score with outcome
+    improves_performance: bool | None  # does enabling this engine improve results?
+    avg_forward_return_when_engine_scores_high: Decimal | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,10 +281,11 @@ class EngineEffectivenessReport:
     strategy_id: int
     total_runs_analyzed: int
     engines: tuple[EngineEffectiveness, ...]
-    best_engine: str  # engine_id with highest standalone_performance
-    worst_engine: str  # engine_id with lowest standalone_performance
+    best_engine: str  # engine_id with the highest measured forward return
+    worst_engine: str  # engine_id with the lowest measured forward return
     recommended_exclusions: tuple[str, ...]  # engines that don't improve performance
     summary: str
+    measurability: Measurability = _MEASURABLE
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -216,12 +216,14 @@ export interface PortfolioPerformance {
   buy_setup_score_volatility: string;
   max_momentum_score: string;
   min_momentum_score: string;
-  max_drawdown_pct: string;
+  // Diagnostics over the momentum-SCORE series, not over returns. They carry
+  // no profit meaning and must never be rendered with a % or profit colouring.
+  max_momentum_score_drawdown: string;
   avg_pass_rate: string;
   avg_top_rank_stability: string;
-  sharpe_ratio: string;
-  sortino_ratio: string;
-  profit_factor: string;
+  momentum_score_stability: string;
+  momentum_score_downside_stability: string;
+  momentum_score_gain_loss_ratio: string;
 }
 
 export interface ScoreDataPoint {
@@ -262,6 +264,7 @@ export interface EngineContributionStats {
 export interface ContributionAnalysisResponse {
   strategy_name: string;
   run_count: number;
+  security_count: number;
   date_range: string | null;
   engine_stats: EngineContributionStats[];
   top_rules: RuleContributionStats[];
@@ -444,6 +447,16 @@ export interface BenchmarkComparison {
   rolling_returns: Record<string, unknown>[];
 }
 
+/**
+ * Whether a response's return-derived metrics could be computed at all.
+ * `forward_returns_available: false` means every `null` metric on that
+ * response is *unmeasured*, not *measured as zero*.
+ */
+export interface Measurability {
+  forward_returns_available: boolean;
+  reason: string | null;
+}
+
 export interface AlphaAnalysisResponse {
   strategy_name: string;
   strategy_id: number;
@@ -451,9 +464,10 @@ export interface AlphaAnalysisResponse {
   start_date: string;
   end_date: string;
   comparisons: BenchmarkComparison[];
-  best_alpha: string;
-  worst_alpha: string;
-  avg_alpha: string;
+  best_alpha: string | null;
+  worst_alpha: string | null;
+  avg_alpha: string | null;
+  measurability: Measurability;
 }
 
 export interface StrategyScorecard {
@@ -464,34 +478,36 @@ export interface StrategyScorecard {
   end_date: string | null;
   total_trading_days: number;
   total_runs: number;
-  cagr: string;
-  annual_return: string;
-  cumulative_return: string;
-  avg_holding_return: string;
-  best_return: string;
-  worst_return: string;
-  win_rate: string;
-  avg_winner: string;
-  avg_loser: string;
-  total_wins: number;
-  total_losses: number;
-  profit_factor: string;
-  max_drawdown: string;
-  max_drawdown_duration: number;
-  volatility: string;
-  downside_volatility: string;
-  sharpe_ratio: string;
-  sortino_ratio: string;
-  calmar_ratio: string;
-  information_ratio: string;
-  alpha: string;
-  beta: string;
-  r_squared: string;
+  // `null` = not measurable; see `measurability`. Never 0 as a stand-in.
+  cagr: string | null;
+  annual_return: string | null;
+  cumulative_return: string | null;
+  avg_holding_return: string | null;
+  best_return: string | null;
+  worst_return: string | null;
+  win_rate: string | null;
+  avg_winner: string | null;
+  avg_loser: string | null;
+  total_wins: number | null;
+  total_losses: number | null;
+  profit_factor: string | null;
+  max_drawdown: string | null;
+  max_drawdown_duration: number | null;
+  volatility: string | null;
+  downside_volatility: string | null;
+  sharpe_ratio: string | null;
+  sortino_ratio: string | null;
+  calmar_ratio: string | null;
+  information_ratio: string | null;
+  alpha: string | null;
+  beta: string | null;
+  r_squared: string | null;
   avg_pass_rate: string;
   avg_momentum_score: string;
   avg_buy_setup_score: string;
-  false_positive_rate: string;
-  false_negative_rate: string;
+  false_positive_rate: string | null;
+  false_negative_rate: string | null;
+  measurability: Measurability;
   monthly_returns: Record<string, unknown>[];
   yearly_returns: Record<string, unknown>[];
   rolling_sharpe: Record<string, unknown>[];
@@ -505,15 +521,17 @@ export interface RuleEffectiveness {
   pass_count: number;
   fail_count: number;
   pass_rate: string;
-  contribution_to_successful: string;
-  contribution_to_unsuccessful: string;
-  avg_return_when_passes: string;
-  avg_return_when_fails: string;
-  return_delta: string;
-  significance_score: string;
-  is_weak: boolean;
-  is_redundant: boolean;
-  is_high_value: boolean;
+  contribution_to_successful: string | null;
+  contribution_to_unsuccessful: string | null;
+  avg_return_when_passes: string | null;
+  avg_return_when_fails: string | null;
+  return_delta: string | null;
+  significance_score: string | null;
+  // Return-derived verdicts. `null` = unmeasured, which is not the same as
+  // `false` and must never drive a rule change (2026-08-09 audit S6).
+  is_weak: boolean | null;
+  is_redundant: boolean | null;
+  is_high_value: boolean | null;
 }
 
 export interface RuleEffectivenessResponse {
@@ -526,6 +544,7 @@ export interface RuleEffectivenessResponse {
   redundant_rules: RuleEffectiveness[];
   high_value_rules: RuleEffectiveness[];
   summary: string;
+  measurability: Measurability;
 }
 
 export interface EngineEffectiveness {
@@ -537,9 +556,11 @@ export interface EngineEffectiveness {
   avg_rules_failed: string;
   avg_pass_rate: string;
   contribution_to_final_score: string;
-  correlation_with_outcome: string;
-  improves_performance: boolean;
-  standalone_performance: string;
+  correlation_with_outcome: string | null;
+  improves_performance: boolean | null;
+  // Replaces `standalone_performance`, which published the run's average
+  // momentum *score* as if it were a return (2026-08-09 audit §1.2.4/§2.3).
+  avg_forward_return_when_engine_scores_high: string | null;
 }
 
 export interface EngineEffectivenessResponse {
@@ -551,6 +572,7 @@ export interface EngineEffectivenessResponse {
   worst_engine: string;
   recommended_exclusions: string[];
   summary: string;
+  measurability: Measurability;
 }
 
 // Note: ParameterOverride for Phase 5 experiments uses { parameter_path, value }
@@ -609,8 +631,8 @@ export interface ResearchDashboardResponse {
   engine_effectiveness: EngineEffectivenessResponse | null;
   historical_validation: HistoricalValidationResponse | null;
   ranking_stability: string;
-  false_positive_rate: string;
-  false_negative_rate: string;
+  false_positive_rate: string | null;
+  false_negative_rate: string | null;
 }
 
 // ── Phase 6: Live on-demand analysis, price series, watchlist ──────────

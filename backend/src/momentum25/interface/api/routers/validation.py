@@ -14,27 +14,23 @@ Exposes all validation and research capabilities through versioned APIs:
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 
 from momentum25.application.dto.validation import (
     AlphaAnalysisResponse,
     BenchmarkComparisonDTO,
     EngineEffectivenessDTO,
     EngineEffectivenessResponse,
-    HistoricalReplayDetailResponse,
     HistoricalValidationResponse,
     HistoricalValidationResultDTO,
+    MeasurabilityDTO,
     ParameterExperimentRequest,
     ParameterExperimentResponse,
     ParameterExperimentResultDTO,
     ResearchDashboardRequest,
     ResearchDashboardResponse,
-    ReplayEngineScoreDTO,
-    ReplayIndicatorDTO,
-    ReplayRuleEvaluationDTO,
-    ReplaySecurityResultDTO,
     RuleEffectivenessDTO,
     RuleEffectivenessResponse,
     StrategyScorecardDTO,
@@ -56,6 +52,166 @@ from momentum25.interface.api.dependencies_validation import (
     get_rule_effectiveness_use_case,
     get_scorecard_use_case,
 )
+
+
+def _measurability(report: Any) -> MeasurabilityDTO:
+    """Map a domain report's measurability block to its DTO."""
+    return MeasurabilityDTO(
+        forward_returns_available=report.measurability.forward_returns_available,
+        reason=report.measurability.reason,
+    )
+
+
+def _rule_dto(r: Any) -> RuleEffectivenessDTO:
+    """Map one domain RuleEffectiveness to its DTO, preserving nulls."""
+    return RuleEffectivenessDTO(
+        rule_id=r.rule_id,
+        engine_id=r.engine_id,
+        rule_name=r.rule_name,
+        total_evaluations=r.total_evaluations,
+        pass_count=r.pass_count,
+        fail_count=r.fail_count,
+        pass_rate=r.pass_rate,
+        contribution_to_successful=r.contribution_to_successful,
+        contribution_to_unsuccessful=r.contribution_to_unsuccessful,
+        avg_return_when_passes=r.avg_return_when_passes,
+        avg_return_when_fails=r.avg_return_when_fails,
+        return_delta=r.return_delta,
+        significance_score=r.significance_score,
+        is_weak=r.is_weak,
+        is_redundant=r.is_redundant,
+        is_high_value=r.is_high_value,
+    )
+
+
+def _scorecard_dto(sc: Any) -> StrategyScorecardDTO:
+    """Map a domain StrategyScorecard to its DTO, preserving nulls."""
+    return StrategyScorecardDTO(
+        strategy_name=sc.strategy_name,
+        strategy_id=sc.strategy_id,
+        period_label=sc.period_label,
+        start_date=sc.start_date,
+        end_date=sc.end_date,
+        total_trading_days=sc.total_trading_days,
+        total_runs=sc.total_runs,
+        cagr=sc.cagr,
+        annual_return=sc.annual_return,
+        cumulative_return=sc.cumulative_return,
+        avg_holding_return=sc.avg_holding_return,
+        best_return=sc.best_return,
+        worst_return=sc.worst_return,
+        win_rate=sc.win_rate,
+        avg_winner=sc.avg_winner,
+        avg_loser=sc.avg_loser,
+        total_wins=sc.total_wins,
+        total_losses=sc.total_losses,
+        profit_factor=sc.profit_factor,
+        max_drawdown=sc.max_drawdown,
+        max_drawdown_duration=sc.max_drawdown_duration,
+        volatility=sc.volatility,
+        downside_volatility=sc.downside_volatility,
+        sharpe_ratio=sc.sharpe_ratio,
+        sortino_ratio=sc.sortino_ratio,
+        calmar_ratio=sc.calmar_ratio,
+        information_ratio=sc.information_ratio,
+        alpha=sc.alpha,
+        beta=sc.beta,
+        r_squared=sc.r_squared,
+        avg_pass_rate=sc.avg_pass_rate,
+        avg_momentum_score=sc.avg_momentum_score,
+        avg_buy_setup_score=sc.avg_buy_setup_score,
+        false_positive_rate=sc.false_positive_rate,
+        false_negative_rate=sc.false_negative_rate,
+        measurability=_measurability(sc),
+        monthly_returns=list(sc.monthly_returns),
+        yearly_returns=list(sc.yearly_returns),
+        rolling_sharpe=list(sc.rolling_sharpe),
+    )
+
+
+def _alpha_dto(a: Any) -> AlphaAnalysisResponse:
+    """Map a domain AlphaAnalysisReport to its DTO."""
+    return AlphaAnalysisResponse(
+        strategy_name=a.strategy_name,
+        strategy_id=a.strategy_id,
+        period_label=a.period_label,
+        start_date=a.start_date,
+        end_date=a.end_date,
+        comparisons=[
+            BenchmarkComparisonDTO(
+                benchmark_code=c.benchmark_code,
+                benchmark_name=c.benchmark_name,
+                strategy_return=c.strategy_return,
+                benchmark_return=c.benchmark_return,
+                alpha=c.alpha,
+                excess_return=c.excess_return,
+                relative_performance=c.relative_performance,
+                annualized_return=c.annualized_return,
+                benchmark_annualized_return=c.benchmark_annualized_return,
+                cagr=c.cagr,
+                benchmark_cagr=c.benchmark_cagr,
+                rolling_returns=list(c.rolling_returns),
+            )
+            for c in a.comparisons
+        ],
+        best_alpha=a.best_alpha,
+        worst_alpha=a.worst_alpha,
+        avg_alpha=a.avg_alpha,
+        measurability=_measurability(a),
+    )
+
+
+def _rules_dto(rules: Any) -> RuleEffectivenessResponse:
+    """Map a domain RuleEffectivenessReport to its DTO."""
+    return RuleEffectivenessResponse(
+        strategy_name=rules.strategy_name,
+        strategy_id=rules.strategy_id,
+        total_runs_analyzed=rules.total_runs_analyzed,
+        date_range=(
+            f"{rules.date_range[0].isoformat()} to {rules.date_range[1].isoformat()}"
+            if rules.date_range
+            else None
+        ),
+        rules=[_rule_dto(r) for r in rules.rules],
+        weak_rules=[_rule_dto(r) for r in rules.weak_rules],
+        redundant_rules=[_rule_dto(r) for r in rules.redundant_rules],
+        high_value_rules=[_rule_dto(r) for r in rules.high_value_rules],
+        summary=rules.summary,
+        measurability=_measurability(rules),
+    )
+
+
+def _engines_dto(engines: Any) -> EngineEffectivenessResponse:
+    """Map a domain EngineEffectivenessReport to its DTO."""
+    return EngineEffectivenessResponse(
+        strategy_name=engines.strategy_name,
+        strategy_id=engines.strategy_id,
+        total_runs_analyzed=engines.total_runs_analyzed,
+        engines=[
+            EngineEffectivenessDTO(
+                engine_id=e.engine_id,
+                engine_name=e.engine_name,
+                total_evaluations=e.total_evaluations,
+                avg_score=e.avg_score,
+                avg_rules_passed=e.avg_rules_passed,
+                avg_rules_failed=e.avg_rules_failed,
+                avg_pass_rate=e.avg_pass_rate,
+                contribution_to_final_score=e.contribution_to_final_score,
+                correlation_with_outcome=e.correlation_with_outcome,
+                improves_performance=e.improves_performance,
+                avg_forward_return_when_engine_scores_high=(
+                    e.avg_forward_return_when_engine_scores_high
+                ),
+            )
+            for e in engines.engines
+        ],
+        best_engine=engines.best_engine,
+        worst_engine=engines.worst_engine,
+        recommended_exclusions=list(engines.recommended_exclusions),
+        summary=engines.summary,
+        measurability=_measurability(engines),
+    )
+
 
 router = APIRouter(prefix="/validation", tags=["validation"])
 
@@ -125,33 +281,7 @@ async def alpha_measurement(
     """Compute alpha analysis for a strategy."""
     result = await use_case.execute(strategy_name, max_runs)
 
-    return AlphaAnalysisResponse(
-        strategy_name=result.strategy_name,
-        strategy_id=result.strategy_id,
-        period_label=result.period_label,
-        start_date=result.start_date,
-        end_date=result.end_date,
-        comparisons=[
-            BenchmarkComparisonDTO(
-                benchmark_code=c.benchmark_code,
-                benchmark_name=c.benchmark_name,
-                strategy_return=c.strategy_return,
-                benchmark_return=c.benchmark_return,
-                alpha=c.alpha,
-                excess_return=c.excess_return,
-                relative_performance=c.relative_performance,
-                annualized_return=c.annualized_return,
-                benchmark_annualized_return=c.benchmark_annualized_return,
-                cagr=c.cagr,
-                benchmark_cagr=c.benchmark_cagr,
-                rolling_returns=list(c.rolling_returns),
-            )
-            for c in result.comparisons
-        ],
-        best_alpha=result.best_alpha,
-        worst_alpha=result.worst_alpha,
-        avg_alpha=result.avg_alpha,
-    )
+    return _alpha_dto(result)
 
 
 # ── Priority 3: Strategy Scorecard ────────────────────────────────────────
@@ -175,46 +305,7 @@ async def strategy_scorecard(
     """Compute strategy scorecard."""
     result = await use_case.execute(strategy_name, max_runs, date_from, date_to)
 
-    return StrategyScorecardDTO(
-        strategy_name=result.strategy_name,
-        strategy_id=result.strategy_id,
-        period_label=result.period_label,
-        start_date=result.start_date,
-        end_date=result.end_date,
-        total_trading_days=result.total_trading_days,
-        total_runs=result.total_runs,
-        cagr=result.cagr,
-        annual_return=result.annual_return,
-        cumulative_return=result.cumulative_return,
-        avg_holding_return=result.avg_holding_return,
-        best_return=result.best_return,
-        worst_return=result.worst_return,
-        win_rate=result.win_rate,
-        avg_winner=result.avg_winner,
-        avg_loser=result.avg_loser,
-        total_wins=result.total_wins,
-        total_losses=result.total_losses,
-        profit_factor=result.profit_factor,
-        max_drawdown=result.max_drawdown,
-        max_drawdown_duration=result.max_drawdown_duration,
-        volatility=result.volatility,
-        downside_volatility=result.downside_volatility,
-        sharpe_ratio=result.sharpe_ratio,
-        sortino_ratio=result.sortino_ratio,
-        calmar_ratio=result.calmar_ratio,
-        information_ratio=result.information_ratio,
-        alpha=result.alpha,
-        beta=result.beta,
-        r_squared=result.r_squared,
-        avg_pass_rate=result.avg_pass_rate,
-        avg_momentum_score=result.avg_momentum_score,
-        avg_buy_setup_score=result.avg_buy_setup_score,
-        false_positive_rate=result.false_positive_rate,
-        false_negative_rate=result.false_negative_rate,
-        monthly_returns=list(result.monthly_returns),
-        yearly_returns=list(result.yearly_returns),
-        rolling_sharpe=list(result.rolling_sharpe),
-    )
+    return _scorecard_dto(result)
 
 
 # ── Priority 4: Rule Effectiveness ────────────────────────────────────────
@@ -236,100 +327,7 @@ async def rule_effectiveness(
     """Analyze rule effectiveness."""
     result = await use_case.execute(strategy_name, max_runs)
 
-    return RuleEffectivenessResponse(
-        strategy_name=result.strategy_name,
-        strategy_id=result.strategy_id,
-        total_runs_analyzed=result.total_runs_analyzed,
-        date_range=(
-            f"{result.date_range[0].isoformat()} to {result.date_range[1].isoformat()}"
-            if result.date_range else None
-        ),
-        rules=[
-            RuleEffectivenessDTO(
-                rule_id=r.rule_id,
-                engine_id=r.engine_id,
-                rule_name=r.rule_name,
-                total_evaluations=r.total_evaluations,
-                pass_count=r.pass_count,
-                fail_count=r.fail_count,
-                pass_rate=r.pass_rate,
-                contribution_to_successful=r.contribution_to_successful,
-                contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                avg_return_when_passes=r.avg_return_when_passes,
-                avg_return_when_fails=r.avg_return_when_fails,
-                return_delta=r.return_delta,
-                significance_score=r.significance_score,
-                is_weak=r.is_weak,
-                is_redundant=r.is_redundant,
-                is_high_value=r.is_high_value,
-            )
-            for r in result.rules
-        ],
-        weak_rules=[
-            RuleEffectivenessDTO(
-                rule_id=r.rule_id,
-                engine_id=r.engine_id,
-                rule_name=r.rule_name,
-                total_evaluations=r.total_evaluations,
-                pass_count=r.pass_count,
-                fail_count=r.fail_count,
-                pass_rate=r.pass_rate,
-                contribution_to_successful=r.contribution_to_successful,
-                contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                avg_return_when_passes=r.avg_return_when_passes,
-                avg_return_when_fails=r.avg_return_when_fails,
-                return_delta=r.return_delta,
-                significance_score=r.significance_score,
-                is_weak=r.is_weak,
-                is_redundant=r.is_redundant,
-                is_high_value=r.is_high_value,
-            )
-            for r in result.weak_rules
-        ],
-        redundant_rules=[
-            RuleEffectivenessDTO(
-                rule_id=r.rule_id,
-                engine_id=r.engine_id,
-                rule_name=r.rule_name,
-                total_evaluations=r.total_evaluations,
-                pass_count=r.pass_count,
-                fail_count=r.fail_count,
-                pass_rate=r.pass_rate,
-                contribution_to_successful=r.contribution_to_successful,
-                contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                avg_return_when_passes=r.avg_return_when_passes,
-                avg_return_when_fails=r.avg_return_when_fails,
-                return_delta=r.return_delta,
-                significance_score=r.significance_score,
-                is_weak=r.is_weak,
-                is_redundant=r.is_redundant,
-                is_high_value=r.is_high_value,
-            )
-            for r in result.redundant_rules
-        ],
-        high_value_rules=[
-            RuleEffectivenessDTO(
-                rule_id=r.rule_id,
-                engine_id=r.engine_id,
-                rule_name=r.rule_name,
-                total_evaluations=r.total_evaluations,
-                pass_count=r.pass_count,
-                fail_count=r.fail_count,
-                pass_rate=r.pass_rate,
-                contribution_to_successful=r.contribution_to_successful,
-                contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                avg_return_when_passes=r.avg_return_when_passes,
-                avg_return_when_fails=r.avg_return_when_fails,
-                return_delta=r.return_delta,
-                significance_score=r.significance_score,
-                is_weak=r.is_weak,
-                is_redundant=r.is_redundant,
-                is_high_value=r.is_high_value,
-            )
-            for r in result.high_value_rules
-        ],
-        summary=result.summary,
-    )
+    return _rules_dto(result)
 
 
 # ── Priority 5: Engine Effectiveness ──────────────────────────────────────
@@ -351,31 +349,7 @@ async def engine_effectiveness(
     """Analyze engine effectiveness."""
     result = await use_case.execute(strategy_name, max_runs)
 
-    return EngineEffectivenessResponse(
-        strategy_name=result.strategy_name,
-        strategy_id=result.strategy_id,
-        total_runs_analyzed=result.total_runs_analyzed,
-        engines=[
-            EngineEffectivenessDTO(
-                engine_id=e.engine_id,
-                engine_name=e.engine_name,
-                total_evaluations=e.total_evaluations,
-                avg_score=e.avg_score,
-                avg_rules_passed=e.avg_rules_passed,
-                avg_rules_failed=e.avg_rules_failed,
-                avg_pass_rate=e.avg_pass_rate,
-                contribution_to_final_score=e.contribution_to_final_score,
-                correlation_with_outcome=e.correlation_with_outcome,
-                improves_performance=e.improves_performance,
-                standalone_performance=e.standalone_performance,
-            )
-            for e in result.engines
-        ],
-        best_engine=result.best_engine,
-        worst_engine=result.worst_engine,
-        recommended_exclusions=list(result.recommended_exclusions),
-        summary=result.summary,
-    )
+    return _engines_dto(result)
 
 
 # ── Priority 6: Parameter Research ────────────────────────────────────────
@@ -480,171 +454,10 @@ async def research_dashboard(
     return ResearchDashboardResponse(
         strategy_name=body.strategy_name,
         strategy_id=scorecard.strategy_id,
-        scorecard=StrategyScorecardDTO(
-            strategy_name=scorecard.strategy_name,
-            strategy_id=scorecard.strategy_id,
-            period_label=scorecard.period_label,
-            start_date=scorecard.start_date,
-            end_date=scorecard.end_date,
-            total_trading_days=scorecard.total_trading_days,
-            total_runs=scorecard.total_runs,
-            cagr=scorecard.cagr,
-            annual_return=scorecard.annual_return,
-            cumulative_return=scorecard.cumulative_return,
-            avg_holding_return=scorecard.avg_holding_return,
-            best_return=scorecard.best_return,
-            worst_return=scorecard.worst_return,
-            win_rate=scorecard.win_rate,
-            avg_winner=scorecard.avg_winner,
-            avg_loser=scorecard.avg_loser,
-            total_wins=scorecard.total_wins,
-            total_losses=scorecard.total_losses,
-            profit_factor=scorecard.profit_factor,
-            max_drawdown=scorecard.max_drawdown,
-            max_drawdown_duration=scorecard.max_drawdown_duration,
-            volatility=scorecard.volatility,
-            downside_volatility=scorecard.downside_volatility,
-            sharpe_ratio=scorecard.sharpe_ratio,
-            sortino_ratio=scorecard.sortino_ratio,
-            calmar_ratio=scorecard.calmar_ratio,
-            information_ratio=scorecard.information_ratio,
-            alpha=scorecard.alpha,
-            beta=scorecard.beta,
-            r_squared=scorecard.r_squared,
-            avg_pass_rate=scorecard.avg_pass_rate,
-            avg_momentum_score=scorecard.avg_momentum_score,
-            avg_buy_setup_score=scorecard.avg_buy_setup_score,
-            false_positive_rate=scorecard.false_positive_rate,
-            false_negative_rate=scorecard.false_negative_rate,
-            monthly_returns=list(scorecard.monthly_returns),
-            yearly_returns=list(scorecard.yearly_returns),
-            rolling_sharpe=list(scorecard.rolling_sharpe),
-        ),
-        alpha_analysis=AlphaAnalysisResponse(
-            strategy_name=alpha.strategy_name,
-            strategy_id=alpha.strategy_id,
-            period_label=alpha.period_label,
-            start_date=alpha.start_date,
-            end_date=alpha.end_date,
-            comparisons=[
-                BenchmarkComparisonDTO(
-                    benchmark_code=c.benchmark_code,
-                    benchmark_name=c.benchmark_name,
-                    strategy_return=c.strategy_return,
-                    benchmark_return=c.benchmark_return,
-                    alpha=c.alpha,
-                    excess_return=c.excess_return,
-                    relative_performance=c.relative_performance,
-                    annualized_return=c.annualized_return,
-                    benchmark_annualized_return=c.benchmark_annualized_return,
-                    cagr=c.cagr,
-                    benchmark_cagr=c.benchmark_cagr,
-                    rolling_returns=list(c.rolling_returns),
-                )
-                for c in alpha.comparisons
-            ],
-            best_alpha=alpha.best_alpha,
-            worst_alpha=alpha.worst_alpha,
-            avg_alpha=alpha.avg_alpha,
-        ),
-        rule_effectiveness=RuleEffectivenessResponse(
-            strategy_name=rules.strategy_name,
-            strategy_id=rules.strategy_id,
-            total_runs_analyzed=rules.total_runs_analyzed,
-            date_range=(
-                f"{rules.date_range[0].isoformat()} to {rules.date_range[1].isoformat()}"
-                if rules.date_range else None
-            ),
-            rules=[
-                RuleEffectivenessDTO(
-                    rule_id=r.rule_id,
-                    engine_id=r.engine_id,
-                    rule_name=r.rule_name,
-                    total_evaluations=r.total_evaluations,
-                    pass_count=r.pass_count,
-                    fail_count=r.fail_count,
-                    pass_rate=r.pass_rate,
-                    contribution_to_successful=r.contribution_to_successful,
-                    contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                    avg_return_when_passes=r.avg_return_when_passes,
-                    avg_return_when_fails=r.avg_return_when_fails,
-                    return_delta=r.return_delta,
-                    significance_score=r.significance_score,
-                    is_weak=r.is_weak,
-                    is_redundant=r.is_redundant,
-                    is_high_value=r.is_high_value,
-                )
-                for r in rules.rules
-            ],
-            weak_rules=[
-                RuleEffectivenessDTO(
-                    rule_id=r.rule_id, engine_id=r.engine_id, rule_name=r.rule_name,
-                    total_evaluations=r.total_evaluations, pass_count=r.pass_count,
-                    fail_count=r.fail_count, pass_rate=r.pass_rate,
-                    contribution_to_successful=r.contribution_to_successful,
-                    contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                    avg_return_when_passes=r.avg_return_when_passes,
-                    avg_return_when_fails=r.avg_return_when_fails,
-                    return_delta=r.return_delta, significance_score=r.significance_score,
-                    is_weak=True, is_redundant=r.is_redundant, is_high_value=False,
-                )
-                for r in rules.weak_rules
-            ],
-            redundant_rules=[
-                RuleEffectivenessDTO(
-                    rule_id=r.rule_id, engine_id=r.engine_id, rule_name=r.rule_name,
-                    total_evaluations=r.total_evaluations, pass_count=r.pass_count,
-                    fail_count=r.fail_count, pass_rate=r.pass_rate,
-                    contribution_to_successful=r.contribution_to_successful,
-                    contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                    avg_return_when_passes=r.avg_return_when_passes,
-                    avg_return_when_fails=r.avg_return_when_fails,
-                    return_delta=r.return_delta, significance_score=r.significance_score,
-                    is_weak=False, is_redundant=True, is_high_value=False,
-                )
-                for r in rules.redundant_rules
-            ],
-            high_value_rules=[
-                RuleEffectivenessDTO(
-                    rule_id=r.rule_id, engine_id=r.engine_id, rule_name=r.rule_name,
-                    total_evaluations=r.total_evaluations, pass_count=r.pass_count,
-                    fail_count=r.fail_count, pass_rate=r.pass_rate,
-                    contribution_to_successful=r.contribution_to_successful,
-                    contribution_to_unsuccessful=r.contribution_to_unsuccessful,
-                    avg_return_when_passes=r.avg_return_when_passes,
-                    avg_return_when_fails=r.avg_return_when_fails,
-                    return_delta=r.return_delta, significance_score=r.significance_score,
-                    is_weak=False, is_redundant=False, is_high_value=True,
-                )
-                for r in rules.high_value_rules
-            ],
-            summary=rules.summary,
-        ),
-        engine_effectiveness=EngineEffectivenessResponse(
-            strategy_name=engines.strategy_name,
-            strategy_id=engines.strategy_id,
-            total_runs_analyzed=engines.total_runs_analyzed,
-            engines=[
-                EngineEffectivenessDTO(
-                    engine_id=e.engine_id,
-                    engine_name=e.engine_name,
-                    total_evaluations=e.total_evaluations,
-                    avg_score=e.avg_score,
-                    avg_rules_passed=e.avg_rules_passed,
-                    avg_rules_failed=e.avg_rules_failed,
-                    avg_pass_rate=e.avg_pass_rate,
-                    contribution_to_final_score=e.contribution_to_final_score,
-                    correlation_with_outcome=e.correlation_with_outcome,
-                    improves_performance=e.improves_performance,
-                    standalone_performance=e.standalone_performance,
-                )
-                for e in engines.engines
-            ],
-            best_engine=engines.best_engine,
-            worst_engine=engines.worst_engine,
-            recommended_exclusions=list(engines.recommended_exclusions),
-            summary=engines.summary,
-        ),
+        scorecard=_scorecard_dto(scorecard),
+        alpha_analysis=_alpha_dto(alpha),
+        rule_effectiveness=_rules_dto(rules),
+        engine_effectiveness=_engines_dto(engines),
         historical_validation=HistoricalValidationResponse(
             strategy_name=validation.strategy_name,
             strategy_id=validation.strategy_id,

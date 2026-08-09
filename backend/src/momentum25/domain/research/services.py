@@ -235,12 +235,12 @@ def compute_performance(
             buy_setup_score_volatility=Decimal("0"),
             max_momentum_score=Decimal("0"),
             min_momentum_score=Decimal("0"),
-            max_drawdown_pct=Decimal("0"),
+            max_momentum_score_drawdown=Decimal("0"),
             avg_pass_rate=Decimal("0"),
             avg_top_rank_stability=Decimal("0"),
-            sharpe_ratio=Decimal("0"),
-            sortino_ratio=Decimal("0"),
-            profit_factor=Decimal("0"),
+            momentum_score_stability=Decimal("0"),
+            momentum_score_downside_stability=Decimal("0"),
+            momentum_score_gain_loss_ratio=Decimal("0"),
         )
 
     dates = [s["run_date"] for s in run_summaries if s.get("run_date")]
@@ -296,12 +296,12 @@ def compute_performance(
     # Top rank stability (fraction of top-10 that stayed in top-10)
     stability = _compute_rank_stability(run_summaries)
 
-    # Sharpe and Sortino from score time series
-    sharpe = _compute_sharpe(momentum_scores)
-    sortino = _compute_sortino(momentum_scores)
+    # Stability diagnostics over the momentum-SCORE series (not returns).
+    score_stability = _compute_score_stability(momentum_scores)
+    score_downside_stability = _compute_score_downside_stability(momentum_scores)
 
-    # Profit factor: sum of positive changes / abs(sum of negative changes)
-    profit_factor = _compute_profit_factor(momentum_scores)
+    # Ratio of run-over-run score gains to score losses (not profit/loss).
+    score_gain_loss_ratio = _compute_score_gain_loss_ratio(momentum_scores)
 
     return PortfolioPerformance(
         strategy_id=strategy_id,
@@ -317,12 +317,12 @@ def compute_performance(
         buy_setup_score_volatility=buy_vol,
         max_momentum_score=max_momentum.quantize(_QUANT),
         min_momentum_score=min_momentum.quantize(_QUANT),
-        max_drawdown_pct=max_dd.quantize(_QUANT),
+        max_momentum_score_drawdown=max_dd.quantize(_QUANT),
         avg_pass_rate=avg_pass_rate.quantize(_QUANT),
         avg_top_rank_stability=stability.quantize(_QUANT),
-        sharpe_ratio=sharpe,
-        sortino_ratio=sortino,
-        profit_factor=profit_factor,
+        momentum_score_stability=score_stability,
+        momentum_score_downside_stability=score_downside_stability,
+        momentum_score_gain_loss_ratio=score_gain_loss_ratio,
     )
 
 
@@ -364,8 +364,16 @@ def _compute_rank_stability(run_summaries: list[dict[str, Any]]) -> Decimal:
     return Decimal("0").quantize(_QUANT)
 
 
-def _compute_sharpe(scores: list[Decimal]) -> Decimal:
-    """Compute Sharpe-like ratio from score series: mean / std, annualised."""
+def _compute_score_stability(scores: list[Decimal]) -> Decimal:
+    """Mean / standard deviation of the momentum-score series, annualised.
+
+    Shaped like a Sharpe ratio but computed over the **momentum score**, a
+    0-100 setup-quality rating -- not over returns. It says how steady the
+    universe's average score has been, and carries no profit claim
+    whatsoever. Named accordingly (2026-08-09 audit §2.3): a score-derived
+    diagnostic must never be published under a return metric's name, rendered
+    with a % sign, or coloured as profit and loss.
+    """
     if len(scores) < 2:
         return Decimal("0")
     mean = sum(scores, Decimal("0")) / len(scores)
@@ -379,8 +387,11 @@ def _compute_sharpe(scores: list[Decimal]) -> Decimal:
     return result.quantize(_QUANT)
 
 
-def _compute_sortino(scores: list[Decimal]) -> Decimal:
-    """Compute Sortino-like ratio: mean / downside_std, annualised."""
+def _compute_score_downside_stability(scores: list[Decimal]) -> Decimal:
+    """Mean / below-mean deviation of the momentum-score series, annualised.
+
+    Score-derived, not return-derived. See :func:`_compute_score_stability`.
+    """
     if len(scores) < 2:
         return Decimal("0")
     mean = sum(scores, Decimal("0")) / len(scores)
@@ -396,8 +407,11 @@ def _compute_sortino(scores: list[Decimal]) -> Decimal:
     return result.quantize(_QUANT)
 
 
-def _compute_profit_factor(scores: list[Decimal]) -> Decimal:
-    """Compute profit factor: sum(gains) / abs(sum(losses)) from consecutive changes."""
+def _compute_score_gain_loss_ratio(scores: list[Decimal]) -> Decimal:
+    """Sum of run-over-run score *increases* / sum of score *decreases*.
+
+    Score-derived, not return-derived. See :func:`_compute_score_stability`.
+    """
     if len(scores) < 2:
         return Decimal("0")
     gains = Decimal("0")
@@ -542,7 +556,12 @@ def analyze_contribution(
     return ContributionAnalysisReport(
         strategy_name=strategy_name,
         strategy_id=strategy_id,
-        run_count=len(run_snapshots) // max(len(engine_stats), 1) if engine_stats else 0,
+        # One entry per *security per run*, so the distinct run ids are the
+        # run count. Dividing the snapshot total by the engine count (the
+        # previous expression) reported 2390 / 6 = 398 "runs" for a single
+        # completed run -- arithmetic without meaning.
+        run_count=len({s["run_id"] for s in run_snapshots if s.get("run_id") is not None}),
+        security_count=len({s["security_id"] for s in run_snapshots if s.get("security_id") is not None}),
         date_range=date_range,
         engine_stats=tuple(engine_stats),
         top_rules=top_rules,

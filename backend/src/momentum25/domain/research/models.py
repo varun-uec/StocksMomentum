@@ -189,16 +189,24 @@ class PortfolioPerformance:
     buy_setup_score_volatility: Decimal
     max_momentum_score: Decimal
     min_momentum_score: Decimal
-    max_drawdown_pct: Decimal  # largest peak-to-trough decline in scores
+    max_momentum_score_drawdown: Decimal  # largest peak-to-trough decline in SCORES
 
     # Rank-based metrics
     avg_pass_rate: Decimal  # fraction of securities passing hard filters
     avg_top_rank_stability: Decimal  # fraction of top-10 that stayed in top-10
 
-    # Risk-like metrics from score time series
-    sharpe_ratio: Decimal  # (mean_score - 0) / std_score, annualised
-    sortino_ratio: Decimal  # (mean_score - 0) / downside_std
-    profit_factor: Decimal  # sum(gain_days) / abs(sum(loss_days))
+    # Stability diagnostics over the momentum-SCORE time series.
+    #
+    # These are shaped like Sharpe / Sortino / profit factor but are computed
+    # from the momentum score -- a 0-100 setup-quality rating -- not from
+    # returns. They were previously *named* sharpe_ratio / sortino_ratio /
+    # profit_factor / max_drawdown_pct and rendered on /strategies with a %
+    # sign and profit-loss colouring, presenting a quality score as a return
+    # claim (2026-08-09 audit §2.3). They carry no profit or return meaning
+    # and must never be rendered as one.
+    momentum_score_stability: Decimal  # mean_score / std_score, annualised
+    momentum_score_downside_stability: Decimal  # mean_score / below-mean deviation
+    momentum_score_gain_loss_ratio: Decimal  # sum(score gains) / sum(score losses)
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,7 +266,8 @@ class ContributionAnalysisReport:
 
     strategy_name: str
     strategy_id: int
-    run_count: int
+    run_count: int  # distinct screening runs analysed
+    security_count: int  # distinct securities across those runs
     date_range: tuple[date, date] | None
     engine_stats: tuple[EngineContributionStats, ...]
     top_rules: tuple[RuleContributionStats, ...]  # top 10 rules by importance

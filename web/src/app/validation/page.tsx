@@ -12,6 +12,7 @@ import {
   runParameterExperiment,
 } from '@/lib/api-client';
 import type {
+  Measurability,
   ResearchDashboardResponse,
   StrategyScorecard,
   AlphaAnalysisResponse,
@@ -22,21 +23,55 @@ import type {
 import { Card, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
 import { focusRing } from '@/lib/theme';
 
+const UNMEASURED = '—';
+
+const MEASURABILITY_COPY: Record<string, string> = {
+  no_forward_returns:
+    'Performance metrics require forward returns, which have not been ingested for this database. Every return-based figure below is shown as \u2014 rather than 0.',
+  no_runs: 'No completed screening runs exist for this strategy yet, so there is nothing to measure.',
+};
+
+/** A number is either measured or it is not. Never render an unmeasured metric as 0. */
+function MeasurabilityNotice({ measurability }: { measurability?: Measurability }) {
+  if (!measurability || measurability.forward_returns_available) return null;
+  const reason = measurability.reason ?? 'no_forward_returns';
+  return (
+    <div className="rounded-lg border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
+      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Not yet measurable</p>
+      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+        {MEASURABILITY_COPY[reason] ?? MEASURABILITY_COPY.no_forward_returns}
+      </p>
+    </div>
+  );
+}
+
 function fmt(val: string | number | undefined | null, decimals = 4): string {
-  if (val === undefined || val === null) return '—';
+  if (val === undefined || val === null) return UNMEASURED;
   const n = typeof val === 'string' ? parseFloat(val) : val;
-  if (isNaN(n)) return '—';
+  if (isNaN(n)) return UNMEASURED;
   return n.toFixed(decimals);
 }
 
 function pct(val: string | number | undefined | null): string {
+  if (val === undefined || val === null) return UNMEASURED;
   const n = typeof val === 'string' ? parseFloat(val) : val;
-  if (n === undefined || n === null || isNaN(n)) return '—';
+  if (isNaN(n)) return UNMEASURED;
   return `${(n * 100).toFixed(2)}%`;
 }
 
+/** Numeric view of a possibly-null metric; NaN keeps every `good`/`bad` test false. */
+function num(val: string | number | undefined | null): number {
+  if (val === undefined || val === null) return NaN;
+  return typeof val === 'string' ? parseFloat(val) : val;
+}
+
+/** `null`/`undefined` means "never measured". Colour is suppressed so an
+ *  unmeasured metric can never read as a good or bad result. */
 function MetricCard({ label, value, good, bad }: { label: string; value: string; good?: boolean; bad?: boolean }) {
-  const color = good ? 'text-emerald-600 dark:text-emerald-400' : bad ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100';
+  const unmeasured = value === UNMEASURED;
+  const color = unmeasured
+    ? 'text-slate-400 dark:text-slate-500'
+    : good ? 'text-emerald-600 dark:text-emerald-400' : bad ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100';
   return (
     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700/50">
       <div className="text-xs font-semibold text-slate-500 mb-1">{label}</div>
@@ -51,40 +86,45 @@ function ScorecardSection({ data }: { data: StrategyScorecard | null }) {
   return (
     <Card title="Strategy Scorecard" subtitle={`${data.period_label} · ${data.total_trading_days} trading days`}>
       <div className="space-y-6">
+        <MeasurabilityNotice measurability={data.measurability} />
         <MetricGroup title="Return Metrics">
-          <MetricCard label="CAGR" value={pct(data.cagr)} good={parseFloat(data.cagr) > 0} />
-          <MetricCard label="Annual Return" value={pct(data.annual_return)} good={parseFloat(data.annual_return) > 0} />
-          <MetricCard label="Cumulative Return" value={pct(data.cumulative_return)} good={parseFloat(data.cumulative_return) > 0} />
+          <MetricCard label="CAGR" value={pct(data.cagr)} good={num(data.cagr) > 0} />
+          <MetricCard label="Annual Return" value={pct(data.annual_return)} good={num(data.annual_return) > 0} />
+          <MetricCard label="Cumulative Return" value={pct(data.cumulative_return)} good={num(data.cumulative_return) > 0} />
           <MetricCard label="Avg Holding Return" value={pct(data.avg_holding_return)} />
           <MetricCard label="Best Return" value={pct(data.best_return)} good />
           <MetricCard label="Worst Return" value={pct(data.worst_return)} bad />
         </MetricGroup>
 
         <MetricGroup title="Win / Loss">
-          <MetricCard label="Win Rate" value={pct(data.win_rate)} good={parseFloat(data.win_rate) > 0.5} />
-          <MetricCard label="Total Wins" value={String(data.total_wins)} good />
-          <MetricCard label="Total Losses" value={String(data.total_losses)} bad />
+          <MetricCard label="Win Rate" value={pct(data.win_rate)} good={num(data.win_rate) > 0.5} />
+          <MetricCard label="Total Wins" value={data.total_wins === null || data.total_wins === undefined ? UNMEASURED : String(data.total_wins)} good />
+          <MetricCard label="Total Losses" value={data.total_losses === null || data.total_losses === undefined ? UNMEASURED : String(data.total_losses)} bad />
           <MetricCard label="Avg Winner" value={pct(data.avg_winner)} good />
           <MetricCard label="Avg Loser" value={pct(data.avg_loser)} bad />
-          <MetricCard label="Profit Factor" value={fmt(data.profit_factor, 2)} good={parseFloat(data.profit_factor) > 1} />
+          <MetricCard label="Profit Factor" value={fmt(data.profit_factor, 2)} good={num(data.profit_factor) > 1} />
         </MetricGroup>
 
         <MetricGroup title="Risk Metrics">
           <MetricCard label="Max Drawdown" value={pct(data.max_drawdown)} bad />
-          <MetricCard label="Drawdown Duration" value={`${data.max_drawdown_duration}d`} bad={data.max_drawdown_duration > 30} />
-          <MetricCard label="Volatility" value={pct(data.volatility)} bad={parseFloat(data.volatility) > 0.3} />
+          <MetricCard
+            label="Drawdown Duration"
+            value={data.max_drawdown_duration === null ? UNMEASURED : `${data.max_drawdown_duration}d`}
+            bad={num(data.max_drawdown_duration) > 30}
+          />
+          <MetricCard label="Volatility" value={pct(data.volatility)} bad={num(data.volatility) > 0.3} />
           <MetricCard label="Downside Vol" value={pct(data.downside_volatility)} />
         </MetricGroup>
 
         <MetricGroup title="Risk-Adjusted Returns">
-          <MetricCard label="Sharpe Ratio" value={fmt(data.sharpe_ratio, 2)} good={parseFloat(data.sharpe_ratio) > 1} />
-          <MetricCard label="Sortino Ratio" value={fmt(data.sortino_ratio, 2)} good={parseFloat(data.sortino_ratio) > 1} />
-          <MetricCard label="Calmar Ratio" value={fmt(data.calmar_ratio, 2)} good={parseFloat(data.calmar_ratio) > 1} />
+          <MetricCard label="Sharpe Ratio" value={fmt(data.sharpe_ratio, 2)} good={num(data.sharpe_ratio) > 1} />
+          <MetricCard label="Sortino Ratio" value={fmt(data.sortino_ratio, 2)} good={num(data.sortino_ratio) > 1} />
+          <MetricCard label="Calmar Ratio" value={fmt(data.calmar_ratio, 2)} good={num(data.calmar_ratio) > 1} />
           <MetricCard label="Information Ratio" value={fmt(data.information_ratio, 2)} />
         </MetricGroup>
 
         <MetricGroup title="Market-Relative">
-          <MetricCard label="Alpha" value={fmt(data.alpha, 4)} good={parseFloat(data.alpha) > 0} />
+          <MetricCard label="Alpha" value={fmt(data.alpha, 4)} good={num(data.alpha) > 0} />
           <MetricCard label="Beta" value={fmt(data.beta, 2)} />
           <MetricCard label="R-Squared" value={fmt(data.r_squared, 4)} />
         </MetricGroup>
@@ -93,8 +133,8 @@ function ScorecardSection({ data }: { data: StrategyScorecard | null }) {
           <MetricCard label="Pass Rate" value={pct(data.avg_pass_rate)} />
           <MetricCard label="Avg Momentum Score" value={fmt(data.avg_momentum_score, 4)} />
           <MetricCard label="Avg Buy Setup" value={fmt(data.avg_buy_setup_score, 4)} />
-          <MetricCard label="False Positive Rate" value={pct(data.false_positive_rate)} bad={parseFloat(data.false_positive_rate) > 0.1} />
-          <MetricCard label="False Negative Rate" value={pct(data.false_negative_rate)} bad={parseFloat(data.false_negative_rate) > 0.1} />
+          <MetricCard label="False Positive Rate" value={pct(data.false_positive_rate)} bad={num(data.false_positive_rate) > 0.1} />
+          <MetricCard label="False Negative Rate" value={pct(data.false_negative_rate)} bad={num(data.false_negative_rate) > 0.1} />
         </MetricGroup>
       </div>
     </Card>
@@ -111,7 +151,14 @@ function MetricGroup({ title, children }: { title: string; children: React.React
 }
 
 function AlphaSection({ data }: { data: AlphaAnalysisResponse | null }) {
-  if (!data || data.comparisons.length === 0) return null;
+  if (!data) return null;
+  if (data.comparisons.length === 0) {
+    return (
+      <Card title="Alpha Analysis" subtitle={data.period_label}>
+        <MeasurabilityNotice measurability={data.measurability} />
+      </Card>
+    );
+  }
 
   return (
     <Card title="Alpha Analysis" subtitle={data.period_label}>
@@ -123,14 +170,14 @@ function AlphaSection({ data }: { data: AlphaAnalysisResponse | null }) {
           >
             <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">{comp.benchmark_name}</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              <MetricCard label="Alpha" value={fmt(comp.alpha, 4)} good={parseFloat(comp.alpha) > 0} />
-              <MetricCard label="Strategy Return" value={pct(comp.strategy_return)} good={parseFloat(comp.strategy_return) > 0} />
+              <MetricCard label="Alpha" value={fmt(comp.alpha, 4)} good={num(comp.alpha) > 0} />
+              <MetricCard label="Strategy Return" value={pct(comp.strategy_return)} good={num(comp.strategy_return) > 0} />
               <MetricCard label="Benchmark Return" value={pct(comp.benchmark_return)} />
-              <MetricCard label="Excess Return" value={pct(comp.excess_return)} good={parseFloat(comp.excess_return) > 0} />
-              <MetricCard label="Strategy CAGR" value={pct(comp.cagr)} good={parseFloat(comp.cagr) > 0} />
+              <MetricCard label="Excess Return" value={pct(comp.excess_return)} good={num(comp.excess_return) > 0} />
+              <MetricCard label="Strategy CAGR" value={pct(comp.cagr)} good={num(comp.cagr) > 0} />
               <MetricCard label="Benchmark CAGR" value={pct(comp.benchmark_cagr)} />
-              <MetricCard label="Relative Perf" value={pct(comp.relative_performance)} good={parseFloat(comp.relative_performance) > 0} />
-              <MetricCard label="Ann. Return" value={pct(comp.annualized_return)} good={parseFloat(comp.annualized_return) > 0} />
+              <MetricCard label="Relative Perf" value={pct(comp.relative_performance)} good={num(comp.relative_performance) > 0} />
+              <MetricCard label="Ann. Return" value={pct(comp.annualized_return)} good={num(comp.annualized_return) > 0} />
             </div>
           </div>
         ))}
@@ -152,6 +199,18 @@ function AlphaSection({ data }: { data: AlphaAnalysisResponse | null }) {
 
 function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
   if (!data) return null;
+
+  // S6: is_weak / is_redundant / is_high_value are return-derived verdicts. With
+  // no forward returns they are null, and a rule must never be added, removed or
+  // reweighted on the strength of a null. The panel is withheld, not zero-filled.
+  if (!data.measurability.forward_returns_available) {
+    return (
+      <Card title="Rule Effectiveness" subtitle={`${data.total_runs_analyzed} runs analyzed`}>
+        <MeasurabilityNotice measurability={data.measurability} />
+        <p className="mt-3 text-xs text-slate-500">{data.summary}</p>
+      </Card>
+    );
+  }
 
   return (
     <Card title="Rule Effectiveness" subtitle={`${data.total_runs_analyzed} runs analyzed`}>
@@ -227,6 +286,15 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
 function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) {
   if (!data || data.engines.length === 0) return null;
 
+  if (!data.measurability.forward_returns_available) {
+    return (
+      <Card title="Engine Effectiveness" subtitle={`${data.total_runs_analyzed} runs analyzed`}>
+        <MeasurabilityNotice measurability={data.measurability} />
+        <p className="mt-3 text-xs text-slate-500">{data.summary}</p>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Engine Effectiveness" subtitle={`${data.total_runs_analyzed} runs analyzed`}>
       <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
@@ -238,7 +306,7 @@ function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) 
               <th className="text-right py-2 px-3">Pass Rate</th>
               <th className="text-right py-2 px-3">Contribution</th>
               <th className="text-right py-2 px-3">Correlation</th>
-              <th className="text-right py-2 px-3">Standalone</th>
+              <th className="text-right py-2 px-3">Avg Fwd Return (engine scores &gt; 0)</th>
               <th className="text-right py-2 px-3">Status</th>
             </tr>
           </thead>
@@ -252,7 +320,7 @@ function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) 
                 <td className="py-2 px-3 text-right text-slate-700 dark:text-slate-300">{fmt(e.correlation_with_outcome, 2)}</td>
                 <td className="py-2 px-3 text-right">
                   <span className={e.improves_performance ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                    {pct(e.standalone_performance)}
+                    {pct(e.avg_forward_return_when_engine_scores_high)}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-right">
@@ -328,24 +396,40 @@ function ValidationSection({ data }: { data: HistoricalValidationResponse | null
   );
 }
 
-function QualityMetrics({ stability, fpr, fnr }: { stability: string; fpr: string; fnr: string }) {
+function QualityMetric({ title, value, good }: { title: string; value: string | null; good: boolean }) {
+  const unmeasured = value === null || value === undefined;
+  return (
+    <Card title={title}>
+      <div
+        className={`text-2xl font-bold font-mono ${
+          unmeasured
+            ? 'text-slate-400 dark:text-slate-500'
+            : good
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-rose-600 dark:text-rose-400'
+        }`}
+      >
+        {pct(value)}
+      </div>
+      {unmeasured && <p className="mt-1 text-xs text-slate-500">Not yet measurable</p>}
+    </Card>
+  );
+}
+
+function QualityMetrics({
+  stability,
+  fpr,
+  fnr,
+}: {
+  stability: string | null;
+  fpr: string | null;
+  fnr: string | null;
+}) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <Card title="Ranking Stability">
-        <div className={`text-2xl font-bold font-mono ${parseFloat(stability) > 0.7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
-          {pct(stability)}
-        </div>
-      </Card>
-      <Card title="False Positive Rate">
-        <div className={`text-2xl font-bold font-mono ${parseFloat(fpr) < 0.1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-          {pct(fpr)}
-        </div>
-      </Card>
-      <Card title="False Negative Rate">
-        <div className={`text-2xl font-bold font-mono ${parseFloat(fnr) < 0.1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-          {pct(fnr)}
-        </div>
-      </Card>
+      <QualityMetric title="Ranking Stability" value={stability} good={num(stability) > 0.7} />
+      <QualityMetric title="False Positive Rate" value={fpr} good={num(fpr) < 0.1} />
+      <QualityMetric title="False Negative Rate" value={fnr} good={num(fnr) < 0.1} />
     </div>
   );
 }

@@ -153,12 +153,12 @@ class PortfolioPerformanceDTO(BaseModel):
     min_momentum_score: Decimal = Decimal("0")
 
     # Risk metrics
-    max_drawdown_pct: Decimal = Decimal("0")
+    max_momentum_score_drawdown: Decimal = Decimal("0")
     avg_pass_rate: Decimal = Decimal("0")
     avg_top_rank_stability: Decimal = Decimal("0")
-    sharpe_ratio: Decimal = Decimal("0")
-    sortino_ratio: Decimal = Decimal("0")
-    profit_factor: Decimal = Decimal("0")
+    momentum_score_stability: Decimal = Decimal("0")
+    momentum_score_downside_stability: Decimal = Decimal("0")
+    momentum_score_gain_loss_ratio: Decimal = Decimal("0")
 
 
 class ScorePointDTO(BaseModel):
@@ -211,7 +211,8 @@ class ContributionAnalysisResponse(BaseModel):
     """Complete contribution analysis report."""
 
     strategy_name: str
-    run_count: int
+    run_count: int  # distinct screening runs analysed
+    security_count: int  # distinct securities across those runs
     date_range: str | None = None
     engine_stats: list[EngineContributionStatsDTO]
     top_rules: list[RuleContributionStatsDTO]

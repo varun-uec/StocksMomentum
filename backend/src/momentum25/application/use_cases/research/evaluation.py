@@ -96,12 +96,12 @@ class EvaluateStrategyUseCase:
                 buy_setup_score_volatility=Decimal("0"),
                 max_momentum_score=Decimal("0"),
                 min_momentum_score=Decimal("0"),
-                max_drawdown_pct=Decimal("0"),
+                max_momentum_score_drawdown=Decimal("0"),
                 avg_pass_rate=Decimal("0"),
                 avg_top_rank_stability=Decimal("0"),
-                sharpe_ratio=Decimal("0"),
-                sortino_ratio=Decimal("0"),
-                profit_factor=Decimal("0"),
+                momentum_score_stability=Decimal("0"),
+                momentum_score_downside_stability=Decimal("0"),
+                momentum_score_gain_loss_ratio=Decimal("0"),
             )
             return StrategyEvaluationResult(
                 strategy_name=strategy_name,

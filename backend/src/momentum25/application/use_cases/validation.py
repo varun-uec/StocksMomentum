@@ -15,10 +15,13 @@ from structlog import get_logger
 
 from momentum25.domain.errors import StrategyNotFoundError
 from momentum25.domain.research.validation_models import (
+    NO_FORWARD_RETURNS,
+    NO_RUNS,
     AlphaAnalysisReport,
     EngineEffectivenessReport,
     HistoricalValidationReport,
     HistoricalValidationResult,
+    Measurability,
     ParameterExperimentReport,
     RuleEffectivenessReport,
     StrategyScorecard,
@@ -35,6 +38,38 @@ from momentum25.domain.research.validation_services import (
 )
 
 _logger = get_logger("validation_use_case")
+
+# Horizon used for every return-joined validation surface. Matches the
+# scorecard's and alpha analysis's own ``period_horizon_days``, so the whole
+# validation page reads one consistent window.
+_EFFECTIVENESS_HORIZON_DAYS = 20
+
+# Rule/engine effectiveness is a Top-N question: the ranked head is what the
+# product actually surfaces, and evaluating the full universe would swamp the
+# signal with securities the user never sees.
+_TOP_N_FOR_EFFECTIVENESS = 25
+
+
+class _ForwardReturnJoinMixin:
+    """Shared (run_id, security_id) -> forward return lookup.
+
+    Replaces the previous list-index alignment between one entry per *run* and
+    one entry per *(rule x security x run)*, which silently dropped 24 of every
+    25 evaluations and was meaningless at any run count (2026-08-09 audit
+    §1.2.4). An empty mapping is a legitimate answer -- it makes every
+    return-derived field null rather than zero.
+    """
+
+    _screening_run_repo: Any
+
+    async def _forward_returns_by_security(self, run_id: int) -> dict[int, Decimal]:
+        rows = await self._screening_run_repo.get_forward_returns(run_id)
+        return {
+            row.security_id: row.forward_return
+            for row in rows
+            if row.horizon_days == _EFFECTIVENESS_HORIZON_DAYS
+            and row.forward_return is not None
+        }
 
 
 class HistoricalValidationUseCase:
@@ -383,9 +418,13 @@ class AlphaMeasurementUseCase:
                 start_date=date.today(),
                 end_date=date.today(),
                 comparisons=(),
-                best_alpha=Decimal("0"),
-                worst_alpha=Decimal("0"),
-                avg_alpha=Decimal("0"),
+                best_alpha=None,
+                worst_alpha=None,
+                avg_alpha=None,
+                measurability=Measurability(
+                    forward_returns_available=False,
+                    reason=NO_RUNS if not strategy_runs else NO_FORWARD_RETURNS,
+                ),
             )
 
         return compute_alpha_analysis(
@@ -563,7 +602,7 @@ class StrategyScorecardUseCase:
         )
 
 
-class RuleEffectivenessUseCase:
+class RuleEffectivenessUseCase(_ForwardReturnJoinMixin):
     """Analyze rule effectiveness across historical runs.
 
     Priority 4 — Measure pass/fail frequency, contribution to outcomes,
@@ -618,23 +657,21 @@ class RuleEffectivenessUseCase:
             )
 
         rule_evaluations: list[dict[str, Any]] = []
-        period_returns: list[Decimal] = []
 
         for run in strategy_runs:
+            run_id = run.id or 0
             rankings, _ = await self._screening_run_repo.get_rankings(
-                run.id or 0, limit=10000, offset=0
+                run_id, limit=10000, offset=0
             )
-            # Avg momentum score as period return proxy
-            if rankings:
-                avg_score = sum(
-                    (r.momentum_score for r in rankings), Decimal("0")
-                ) / len(rankings)
-                period_returns.append(avg_score)
+            # Real per-security forward returns, keyed by (run_id, security_id).
+            # The momentum score is a 0-100 setup-quality rating and is never a
+            # stand-in for a return (2026-08-09 audit §1.2.4 / §2.3).
+            returns_by_security = await self._forward_returns_by_security(run_id)
 
-            # Get rule results for top securities
-            for ranking in rankings[:25]:  # Top 25 per run
+            for ranking in rankings[:_TOP_N_FOR_EFFECTIVENESS]:
+                forward_return = returns_by_security.get(ranking.security_id)
                 rules = await self._screening_run_repo.get_rule_results(
-                    run.id or 0, ranking.security_id
+                    run_id, ranking.security_id
                 )
                 for rule in rules:
                     rule_evaluations.append({
@@ -644,17 +681,20 @@ class RuleEffectivenessUseCase:
                         "contribution": rule.contribution,
                         "raw_value": rule.raw_value,
                         "run_date": run.run_date,
+                        "run_id": run_id,
+                        "security_id": ranking.security_id,
+                        "forward_return": forward_return,
                     })
 
         return analyze_rule_effectiveness(
             rule_evaluations=rule_evaluations,
-            period_returns=period_returns,
+            run_count=len(strategy_runs),
             strategy_name=strategy_name,
             strategy_id=strategy.id or 0,
         )
 
 
-class EngineEffectivenessUseCase:
+class EngineEffectivenessUseCase(_ForwardReturnJoinMixin):
     """Evaluate engine effectiveness across historical runs.
 
     Priority 5 — Measure each engine's contribution, standalone performance,
@@ -708,52 +748,48 @@ class EngineEffectivenessUseCase:
             )
 
         engine_evaluations: list[dict[str, Any]] = []
-        period_returns: list[Decimal] = []
 
         for run in strategy_runs:
+            run_id = run.id or 0
             rankings, _ = await self._screening_run_repo.get_rankings(
-                run.id or 0, limit=10000, offset=0
+                run_id, limit=10000, offset=0
             )
-            if rankings:
-                avg_score = sum(
-                    (r.momentum_score for r in rankings), Decimal("0")
-                ) / len(rankings)
-                period_returns.append(avg_score)
+            returns_by_security = await self._forward_returns_by_security(run_id)
 
-                # Get rule results for engine-level aggregation
-                for ranking in rankings[:25]:
-                    rules = await self._screening_run_repo.get_rule_results(
-                        run.id or 0, ranking.security_id
-                    )
-                    # Group by engine
-                    engine_groups: dict[str, dict[str, Any]] = {}
-                    for rule in rules:
-                        if rule.engine_id not in engine_groups:
-                            engine_groups[rule.engine_id] = {
-                                "engine_id": rule.engine_id,
-                                "rules_passed": 0,
-                                "rules_failed": 0,
-                                "score": Decimal("0"),
-                                "contribution_to_final": Decimal("0"),
-                            }
-                        eg = engine_groups[rule.engine_id]
-                        if rule.passed:
-                            eg["rules_passed"] += 1
-                        else:
-                            eg["rules_failed"] += 1
-                        eg["score"] += rule.contribution
-                        eg["contribution_to_final"] += rule.contribution
+            for ranking in rankings[:_TOP_N_FOR_EFFECTIVENESS]:
+                forward_return = returns_by_security.get(ranking.security_id)
+                rules = await self._screening_run_repo.get_rule_results(
+                    run_id, ranking.security_id
+                )
+                engine_groups: dict[str, dict[str, Any]] = {}
+                for rule in rules:
+                    eg = engine_groups.setdefault(rule.engine_id, {
+                        "engine_id": rule.engine_id,
+                        "rules_passed": 0,
+                        "rules_failed": 0,
+                        "score": Decimal("0"),
+                        "contribution_to_final": Decimal("0"),
+                    })
+                    if rule.passed:
+                        eg["rules_passed"] += 1
+                    else:
+                        eg["rules_failed"] += 1
+                    eg["score"] += rule.contribution
+                    eg["contribution_to_final"] += rule.contribution
 
-                    for engine_id, eg in engine_groups.items():
-                        engine_evaluations.append({
-                            **eg,
-                            "run_date": run.run_date,
-                            "passed_gate": eg["rules_passed"] > 0,
-                        })
+                for eg in engine_groups.values():
+                    engine_evaluations.append({
+                        **eg,
+                        "run_date": run.run_date,
+                        "run_id": run_id,
+                        "security_id": ranking.security_id,
+                        "passed_gate": eg["rules_passed"] > 0,
+                        "forward_return": forward_return,
+                    })
 
         return analyze_engine_effectiveness(
             engine_evaluations=engine_evaluations,
-            period_returns=period_returns,
+            run_count=len(strategy_runs),
             strategy_name=strategy_name,
             strategy_id=strategy.id or 0,
         )
