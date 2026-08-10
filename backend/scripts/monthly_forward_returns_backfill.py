@@ -148,12 +148,18 @@ async def _run_one_date(
     screening_use_case: HistoricalScreeningUseCase,
     forward_backfill: ForwardReturnsBackfill,
     screening_run_repo: SqlScreeningRunRepository,
+    run_suffix: str = _RUN_SUFFIX,
 ) -> dict[str, int]:
-    """Screen one date, tag the run, and backfill its forward returns."""
+    """Screen one date, tag the run, and backfill its forward returns.
+
+    ``run_suffix`` lets a caller write the series under its own
+    ``data_version``, so a re-run can sit beside the original instead of
+    colliding with it. Defaults to this script's own suffix.
+    """
     result = await screening_use_case.execute(
         strategy_name=STRATEGY_NAME,
         as_of_date=run_date,
-        run_suffix=_RUN_SUFFIX,
+        run_suffix=run_suffix,
     )
     run_id = int(result["run_id"])
 
