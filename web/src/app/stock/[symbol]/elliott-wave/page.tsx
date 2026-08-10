@@ -10,104 +10,23 @@
  * Momentum25 score, ranking or gates.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { LineStyle } from 'lightweight-charts';
-import { getElliottWave } from '@/lib/api-client';
 import { Card, Badge, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
+import { PriceChart } from '@/components/stock/PriceChart';
+import { useChartShell } from '@/components/stock/useChartShell';
 import {
-  PriceChart,
-  type ChartMarker,
-  type ChartOverlayLine,
-} from '@/components/stock/PriceChart';
-import { lookbackDaysFor, useChartShell } from '@/components/stock/useChartShell';
+  CANDIDATE_COLORS,
+  describe,
+  useElliottWaveChart,
+} from '@/components/stock/useElliottWaveChart';
+import { CountSummary, WaveDetail } from '@/components/stock/elliott-wave-panels';
 import { focusRing } from '@/lib/theme';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
-import type {
-  ElliottEvidenceStatus,
-  ElliottSubdivision,
-  ElliottWaveCount,
-  ElliottWaveLabel,
-} from '@/lib/types';
+import type { ElliottWaveCount } from '@/lib/types';
 
-const MAX_LOOKBACK_DAYS = 2000;
-
-/** One colour per ranked candidate, so a count keeps its identity everywhere. */
-const CANDIDATE_COLORS = ['#a855f7', '#0ea5e9', '#f59e0b'];
-/** Lower-opacity variants, so the degree below the selected one reads as finer. */
-const CANDIDATE_FAINT = [
-  'rgba(168, 85, 247, 0.45)',
-  'rgba(14, 165, 233, 0.45)',
-  'rgba(245, 158, 11, 0.45)',
-];
-
-const STATUS_STYLE: Record<ElliottEvidenceStatus, string> = {
-  supporting: 'text-emerald-600 dark:text-emerald-400',
-  contradicting: 'text-rose-600 dark:text-rose-400',
-  'not measurable': 'text-slate-400 dark:text-slate-500',
-};
-
-/** A level of the degree hierarchy: the count itself, or a nested subdivision. */
-interface DegreeNode {
-  degree: string;
-  pattern: string;
-  variant: string | null;
-  labels: ElliottWaveLabel[];
-  subdivisions: ElliottSubdivision[];
-}
-
-function rootNode(count: ElliottWaveCount): DegreeNode {
-  return {
-    degree: count.degree,
-    pattern: count.pattern,
-    variant: count.variant,
-    labels: count.labels,
-    subdivisions: count.subdivisions,
-  };
-}
-
-function subNode(subdivision: ElliottSubdivision): DegreeNode {
-  return {
-    degree: subdivision.degree,
-    pattern: subdivision.pattern,
-    variant: subdivision.variant,
-    labels: subdivision.labels,
-    subdivisions: subdivision.subdivisions,
-  };
-}
-
-/** Walk `path` (subdivision indices) down from the count, collecting each level. */
-function nodesAlong(count: ElliottWaveCount, path: number[]): DegreeNode[] {
-  const nodes = [rootNode(count)];
-  let subdivisions = count.subdivisions;
-  for (const index of path) {
-    const child = subdivisions[index];
-    if (!child) break;
-    nodes.push(subNode(child));
-    subdivisions = child.subdivisions;
-  }
-  return nodes;
-}
-
-function describe(node: DegreeNode): string {
-  return node.variant ? `${node.variant} ${node.pattern}` : node.pattern;
-}
-
-function Evidence({ status, children }: { status: ElliottEvidenceStatus; children: React.ReactNode }) {
-  return (
-    <li className="text-xs text-slate-600 dark:text-slate-400">
-      <span className={`font-semibold ${STATUS_STYLE[status]}`}>
-        {status === 'supporting' ? '✓' : status === 'contradicting' ? '✕' : '–'}
-      </span>{' '}
-      {children}
-    </li>
-  );
-}
-
-/** The persistent explanation of why the top count ranks where it does. */
 function RankingPanel({
   rationale,
   method,
@@ -177,274 +96,41 @@ function RankingPanel({
   );
 }
 
-/** Everything measured about one selected wave. */
-function WaveDetail({
-  count,
-  label,
-  color,
-}: {
-  count: ElliottWaveCount;
-  label: string;
-  color: string;
-}) {
-  const personality = count.personality.filter((check) => check.wave === label);
-  const needle = `wave ${label} `;
-  const ratios = [...count.price_relationships, ...count.time_relationships].filter((rel) =>
-    rel.name.startsWith(needle)
-  );
-
-  return (
-    <div className="space-y-3">
-      <div className="text-sm font-semibold" style={{ color }}>
-        Wave {label}
-      </div>
-
-      <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-          Personality corroboration
-        </div>
-        {personality.length === 0 ? (
-          <p className="text-xs text-slate-500">
-            No volume or momentum characteristic is defined for this position.
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {personality.map((check) => (
-              <Evidence key={check.expectation} status={check.status}>
-                {check.expectation} — <span className="text-slate-500">{check.detail}</span>
-              </Evidence>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-          Fibonacci relationships
-        </div>
-        {ratios.length === 0 ? (
-          <p className="text-xs text-slate-500">No documented ratio involves this wave.</p>
-        ) : (
-          <ul className="space-y-1">
-            {ratios.map((rel) => (
-              <li key={`${rel.kind}-${rel.name}`} className="text-xs text-slate-600 dark:text-slate-400">
-                <span className="uppercase text-[10px] tracking-wider text-slate-400">
-                  {rel.kind}
-                </span>{' '}
-                {rel.name}: <span className="tabular-nums">{parseFloat(rel.observed).toFixed(3)}</span>{' '}
-                <span className="text-slate-500">
-                  (nearest {rel.nearest}, {(parseFloat(rel.proximity) * 100).toFixed(0)}% proximity)
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CountSummary({ count, color }: { count: ElliottWaveCount; color: string }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500">Current position</div>
-        <div className="text-lg font-semibold" style={{ color }}>
-          {count.current_position}
-        </div>
-        <div className="text-xs text-slate-500 mt-1">
-          {describe(count)} · {count.family} · {count.direction === 'up' ? 'upward' : 'downward'} ·{' '}
-          {count.degree} degree
-        </div>
-      </div>
-
-      {!count.is_current && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          This structure ended before the latest confirmed pivot, so no completion zone is
-          projected.
-        </p>
-      )}
-
-      {count.projection && (
-        <div>
-          <div className="text-xs uppercase tracking-wider text-slate-500">
-            Projected completion zone
-          </div>
-          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
-            {parseFloat(count.projection.low).toFixed(2)} –{' '}
-            {parseFloat(count.projection.high).toFixed(2)}
-          </div>
-          <div className="text-xs text-slate-500">{count.projection.basis}</div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-            Elliott Wave analytical projection; not part of the Momentum25 score or ranking.
-          </p>
-        </div>
-      )}
-
-      <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Rules satisfied</div>
-        <ul className="space-y-1">
-          {count.rules_applied.map((rule) => (
-            <li key={rule} className="text-xs text-slate-600 dark:text-slate-400">
-              · {rule}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {count.allowances.length > 0 && (
-        <div>
-          <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-            Interpretation this label required
-          </div>
-          <ul className="space-y-1">
-            {count.allowances.map((allowance) => (
-              <li key={allowance} className="text-xs text-amber-700 dark:text-amber-400">
-                · {allowance}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-          Guidelines measured
-        </div>
-        <ul className="space-y-1">
-          {count.guideline_checks.map((check) => (
-            <Evidence key={check.name} status={check.status}>
-              {check.name} — <span className="text-slate-500">{check.detail}</span>
-            </Evidence>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
 export default function ElliottWavePage() {
   const { symbol } = useParams<{ symbol: string }>();
   const searchParams = useSearchParams();
   const strategyQuery = searchParams.get('strategy');
-  const [thresholdPct, setThresholdPct] = useState(5);
-  const [candidateIndex, setCandidateIndex] = useState(0);
-  const [degreePath, setDegreePath] = useState<number[]>([]);
-  const [selectedWave, setSelectedWave] = useState<number | null>(null);
-
   // Same chart shell as /stock/[symbol]: indicator panes, moving averages and
   // drawing tools all carry across, persisted per symbol.
   const { timeframe, ready: chartReady, chartProps } = useChartShell(
     symbol ?? '',
     strategyQuery ?? DEFAULT_STRATEGY
   );
-
   const strategyName = strategyQuery ?? DEFAULT_STRATEGY;
 
   const {
-    data: analysis,
-    isLoading: waveLoading,
-    error: waveError,
-  } = useQuery({
-    queryKey: ['elliott-wave', symbol, timeframe, thresholdPct, strategyName],
-    queryFn: () =>
-      getElliottWave(
-        symbol,
-        lookbackDaysFor(timeframe, MAX_LOOKBACK_DAYS),
-        thresholdPct,
-        strategyName
-      ),
-    enabled: !!symbol,
-  });
-
-  const candidates = analysis?.candidates ?? [];
-  const count = candidates[candidateIndex] ?? candidates[0] ?? null;
-  const colorIndex = Math.min(candidateIndex, CANDIDATE_COLORS.length - 1);
-  const color = CANDIDATE_COLORS[colorIndex];
-  const faint = CANDIDATE_FAINT[colorIndex];
-
-  const path = useMemo(
-    () => (count ? nodesAlong(count, degreePath) : []),
-    [count, degreePath]
-  );
-  const active = path[path.length - 1] ?? null;
-
-  const selectCount = useCallback((index: number) => {
-    setCandidateIndex(index);
-    setDegreePath([]);
-    setSelectedWave(null);
-  }, []);
-
-  const markers = useMemo<ChartMarker[]>(() => {
-    if (!active || !count) return [];
-    const own: ChartMarker[] = active.labels
-      .filter((l) => l.label !== '0')
-      .map((l) => ({
-        date: l.bar_date,
-        text: l.label,
-        position: count.direction === 'up' ? 'aboveBar' : 'belowBar',
-        color,
-      }));
-    const finer: ChartMarker[] = active.subdivisions.flatMap((subdivision) =>
-      subdivision.labels
-        .filter((l) => l.label !== '0')
-        .map((l) => ({
-          date: l.bar_date,
-          text: `(${l.label})`,
-          position: count.direction === 'up' ? 'aboveBar' : ('belowBar' as const),
-          color: faint,
-          size: 0.7,
-        }))
-    );
-    return [...own, ...finer];
-  }, [active, count, color, faint]);
-
-  const overlayLine = useMemo(
-    () =>
-      (active?.labels ?? []).map((l) => ({
-        date: l.bar_date,
-        price: parseFloat(l.price),
-        color,
-      })),
-    [active, color]
-  );
-
-  const overlayLines = useMemo<ChartOverlayLine[]>(
-    () =>
-      (active?.subdivisions ?? []).map((subdivision) => ({
-        points: subdivision.labels.map((l) => ({
-          date: l.bar_date,
-          price: parseFloat(l.price),
-        })),
-        color: faint,
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-      })),
-    [active, faint]
-  );
-
-  const priceZone = useMemo(
-    () =>
-      count?.projection && degreePath.length === 0
-        ? {
-            low: parseFloat(count.projection.low),
-            high: parseFloat(count.projection.high),
-            title: 'Projected zone',
-            color,
-          }
-        : null,
-    [count, degreePath, color]
-  );
-
-  // Selecting a wave scrolls the chart to that leg; clearing it restores the
-  // full loaded range.
-  const visibleRange = useMemo(() => {
-    if (!active || selectedWave === null || selectedWave < 1) return null;
-    return {
-      from: active.labels[selectedWave - 1].bar_date,
-      to: active.labels[selectedWave].bar_date,
-    };
-  }, [active, selectedWave]);
+    analysis,
+    waveLoading,
+    waveError,
+    candidates,
+    count,
+    color,
+    path,
+    active,
+    thresholdPct,
+    setThresholdPct,
+    candidateIndex,
+    selectCount,
+    degreePath,
+    setDegreePath,
+    selectedWave,
+    setSelectedWave,
+    markers,
+    overlayLine,
+    overlayLines,
+    priceZone,
+    visibleRange,
+  } = useElliottWaveChart(symbol ?? '', timeframe, strategyName);
 
   if (!symbol) return <ErrorMessage message="No symbol supplied." />;
 

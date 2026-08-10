@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,6 +16,23 @@ import type { RankingItemDTO, RuleResults } from '@/lib/types';
 import { StatusDot } from '@/components/shared/Card';
 import { FloatingPanel } from '@/components/shared/FloatingPanel';
 import { focusRing } from '@/lib/theme';
+import { getOhlcv } from '@/lib/api-client';
+import { toBars } from '@/lib/indicators/overlays';
+import { DEFAULT_PRESET_ID, PRESET_BY_ID, signalScore } from '@/lib/strategies';
+
+/**
+ * The signal-score column is a view over the same daily bars the chart shows.
+ * It is off by default, computed for the visible page only, and it never
+ * touches a stored score: `screening_results` is unaffected by whether it is on.
+ */
+const SIGNAL_TIMEFRAME = '1Y';
+const SIGNAL_LOOKBACK_DAYS = 365;
+
+function signalFromDate(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - SIGNAL_LOOKBACK_DAYS);
+  return d.toISOString().slice(0, 10);
+}
 
 interface MomentumTableProps {
   items: RankingItemDTO[];
@@ -143,9 +161,24 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
+  const [showSignalScore, setShowSignalScore] = useState(false);
+  const [scores, setScores] = useState<Map<string, number>>(new Map());
 
   const columns = useMemo(
     () => [
+      columnHelper.accessor((row) => scores.get(row.symbol) ?? null, {
+        id: 'signal_score',
+        header: 'Signal',
+        cell: (info) => {
+          const value = info.getValue();
+          return value === null ? (
+            <span className="text-slate-400 dark:text-slate-600">…</span>
+          ) : (
+            <span className="tabular-nums font-medium">{value}</span>
+          );
+        },
+        sortUndefined: 'last',
+      }),
       columnHelper.accessor('rank', {
         header: 'Rank',
         cell: (info) => (
@@ -288,7 +321,7 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
         enableSorting: false,
       }),
     ],
-    [onSymbolClick],
+    [onSymbolClick, scores],
   );
 
   const data = useMemo(() => items, [items]);
@@ -307,7 +340,7 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
       sorting,
       globalFilter,
       pagination,
-      columnVisibility: { sector: hasSector },
+      columnVisibility: { sector: hasSector, signal_score: showSignalScore },
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
@@ -328,6 +361,39 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
       );
     },
   });
+
+  // Bars for the visible page only, on the same query key the chart uses, so a
+  // symbol already opened costs no second request.
+  const visibleSymbols = showSignalScore
+    ? table.getRowModel().rows.map((row) => row.original.symbol)
+    : [];
+  const barQueries = useQueries({
+    queries: visibleSymbols.map((symbol) => ({
+      queryKey: ['stock-ohlcv', symbol, SIGNAL_TIMEFRAME],
+      queryFn: () => getOhlcv(symbol, signalFromDate()),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const scoreKey = visibleSymbols
+    .map((symbol, i) => `${symbol}:${barQueries[i]?.data ? 1 : 0}`)
+    .join(',');
+  useEffect(() => {
+    if (!showSignalScore) return;
+    setScores((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      visibleSymbols.forEach((symbol, i) => {
+        const data = barQueries[i]?.data;
+        if (!data || next.has(symbol)) return;
+        next.set(symbol, signalScore(toBars(data.bars), DEFAULT_PRESET_ID));
+        changed = true;
+      });
+      return changed ? next : prev;
+    });
+    // `scoreKey` changes exactly when a visible row's bars arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoreKey, showSignalScore]);
 
   if (items.length === 0) {
     return (
@@ -362,8 +428,22 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
             />
           </div>
         </div>
-        <div className="text-xs text-slate-500 tabular-nums">
-          {table.getFilteredRowModel().rows.length} of {items.length} results
+        <div className="flex items-center gap-4">
+          <label
+            className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer"
+            title={`A 0–100 roll-up of the ${PRESET_BY_ID.get(DEFAULT_PRESET_ID)?.label} rules over the last year of daily bars, computed in this browser for the rows on screen. Not a stored score and not part of the ranking.`}
+          >
+            <input
+              type="checkbox"
+              checked={showSignalScore}
+              onChange={(e) => setShowSignalScore(e.target.checked)}
+              className="w-3 h-3 accent-indigo-500"
+            />
+            Signal score
+          </label>
+          <div className="text-xs text-slate-500 tabular-nums">
+            {table.getFilteredRowModel().rows.length} of {items.length} results
+          </div>
         </div>
       </div>
 

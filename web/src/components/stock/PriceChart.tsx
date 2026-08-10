@@ -67,26 +67,98 @@ export const TIMEFRAMES = [
 
 export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
 
-/** Phase 9 — the available indicator sub-panes, in their fixed chart order. */
-export type PaneId = 'rsi' | 'macd' | 'adx';
-const PANE_ORDER: PaneId[] = ['rsi', 'macd', 'adx'];
-export const PANE_LABELS: Record<PaneId, string> = {
-  rsi: 'RSI (14)',
-  macd: 'MACD (12,26,9)',
-  adx: 'ADX (14)',
-};
+/**
+ * Phase 9 — indicator sub-panes.
+ *
+ * A pane is data: which fields of `indicatorSeries` it draws, in which order,
+ * with which colours and guide lines. The pane effect below loops the registry
+ * instead of branching per pane, so a new pane is one `PaneDef`, not a fourth
+ * `else if`. Callers may pass extra defs through `extraPaneDefs`; the built-in
+ * checkbox row still lists only the three backend-fed panes.
+ */
+export type PaneId = string;
 
-const PANE_COLORS: Record<PaneId, string> = {
-  rsi: '#f59e0b',
-  macd: '#6366f1',
-  adx: '#a855f7',
-};
+export interface PaneSeriesDef {
+  /** Field of `IndicatorSeriesBar` this series draws. */
+  key: string;
+  type: 'line' | 'histogram';
+  color?: string;
+  /** Default is the library default (`true`); MACD's lines set it false. */
+  lastValueVisible?: boolean;
+  /**
+   * Histogram bar colouring by sign. `key` defaults to the series' own field,
+   * so MACD colours its histogram by its own value.
+   */
+  sign?: { key?: string; positive: string; negative: string };
+}
+
+export interface PaneDef {
+  id: PaneId;
+  label: string;
+  series: PaneSeriesDef[];
+  /** Dashed horizontal levels, e.g. RSI's 30 / 70. */
+  guides?: { value: number; label?: string }[];
+  /** Crosshair-readout formatting of the pane's first line series. */
+  format?: (v: number) => string;
+}
 
 const MACD_SIGNAL_COLOR = '#f59e0b';
 const MACD_HIST_POSITIVE = 'rgba(16,185,129,0.45)';
 const MACD_HIST_NEGATIVE = 'rgba(239,68,68,0.45)';
 
-/** One bar of the backend indicator series (Phase 9); every field optional. */
+const GUIDE_COLOR = 'rgba(148,163,184,0.45)';
+const fixed2 = (v: number) => v.toFixed(2);
+
+/** The three backend-fed panes, in their fixed chart order. */
+export const PANE_DEFS: PaneDef[] = [
+  {
+    id: 'rsi',
+    label: 'RSI (14)',
+    series: [{ key: 'rsi14', type: 'line', color: '#f59e0b' }],
+    guides: [{ value: 30 }, { value: 70 }],
+    format: fixed2,
+  },
+  {
+    id: 'macd',
+    label: 'MACD (12,26,9)',
+    series: [
+      {
+        key: 'macd_histogram',
+        type: 'histogram',
+        sign: { positive: MACD_HIST_POSITIVE, negative: MACD_HIST_NEGATIVE },
+      },
+      { key: 'macd_line', type: 'line', color: '#6366f1', lastValueVisible: false },
+      { key: 'macd_signal', type: 'line', color: MACD_SIGNAL_COLOR, lastValueVisible: false },
+    ],
+    format: (v) => v.toFixed(3),
+  },
+  {
+    id: 'adx',
+    label: 'ADX (14)',
+    series: [{ key: 'adx14', type: 'line', color: '#a855f7' }],
+    format: fixed2,
+  },
+];
+
+/** The colour a pane is identified by (its first line series). */
+export function paneColor(def: PaneDef): string {
+  return def.series.find((s) => s.type === 'line')?.color ?? '#94a3b8';
+}
+
+/** The field whose value the crosshair readout shows for a pane. */
+function paneReadoutKey(def: PaneDef): string | null {
+  return def.series.find((s) => s.type === 'line')?.key ?? null;
+}
+
+export const PANE_LABELS: Record<PaneId, string> = Object.fromEntries(
+  PANE_DEFS.map((d) => [d.id, d.label])
+);
+
+/**
+ * One bar of the indicator series (Phase 9). The named fields are what the
+ * backend supplies; the index signature lets a caller merge extra per-bar
+ * values for its own `extraPaneDefs` into the same array.
+ */
 export interface IndicatorSeriesBar {
   date: string;
   rsi14?: number | null;
@@ -95,6 +167,7 @@ export interface IndicatorSeriesBar {
   macd_line?: number | null;
   macd_signal?: number | null;
   macd_histogram?: number | null;
+  [key: string]: number | string | null | undefined;
 }
 
 const MA_PERIODS = [10, 20, 50, 100, 200] as const;
@@ -180,7 +253,7 @@ interface PaneRecord {
 interface CrosshairReadout {
   date: string;
   bar: { open: number; high: number; low: number; close: number } | null;
-  panes: { id: PaneId; value: number }[];
+  panes: { id: PaneId; label: string; color: string; value: string }[];
 }
 
 export function PriceChart({
@@ -198,6 +271,7 @@ export function PriceChart({
   indicatorSeries,
   activePanes,
   onActivePanesChange,
+  extraPaneDefs,
   initialActiveMas,
   onActiveMasChange,
   drawingsEnabled = false,
@@ -233,6 +307,13 @@ export function PriceChart({
    */
   activePanes?: PaneId[];
   onActivePanesChange?: (panes: PaneId[]) => void;
+  /**
+   * Panes beyond the three backend-fed ones. Their series read the same
+   * `indicatorSeries` array, so the caller merges its own per-bar values in.
+   * They are never listed in this toolbar's checkbox row — the caller owns
+   * their on/off UI.
+   */
+  extraPaneDefs?: PaneDef[];
   /** Initial MA toggles for the Phase 9.5 persisted preferences. */
   initialActiveMas?: number[];
   onActiveMasChange?: (mas: number[]) => void;
@@ -307,31 +388,36 @@ export function PriceChart({
     return result;
   }, [parsed]);
 
-  /** Per-pane line data, mapped onto the price bars' timestamps. */
+  const paneDefs = useMemo(
+    () => [...PANE_DEFS, ...(extraPaneDefs ?? [])],
+    [extraPaneDefs]
+  );
+
+  /** Per-series data for every registered pane, keyed `${paneId}:${seriesKey}`. */
   const paneData = useMemo(() => {
-    const out: Record<
-      PaneId,
-      { line: { time: UTCTimestamp; value: number }[]; signal?: { time: UTCTimestamp; value: number }[]; hist?: { time: UTCTimestamp; value: number; color?: string }[] }
-    > = {
-      rsi: { line: [] },
-      macd: { line: [], signal: [], hist: [] },
-      adx: { line: [] },
-    };
-    for (const bar of indicatorSeries ?? []) {
-      const time = toTime(bar.date);
-      if (bar.rsi14 != null) out.rsi.line.push({ time, value: bar.rsi14 });
-      if (bar.adx14 != null) out.adx.line.push({ time, value: bar.adx14 });
-      if (bar.macd_line != null) out.macd.line.push({ time, value: bar.macd_line });
-      if (bar.macd_signal != null) out.macd.signal!.push({ time, value: bar.macd_signal });
-      if (bar.macd_histogram != null)
-        out.macd.hist!.push({
-          time,
-          value: bar.macd_histogram,
-          color: bar.macd_histogram >= 0 ? MACD_HIST_POSITIVE : MACD_HIST_NEGATIVE,
-        });
+    const out = new Map<string, { time: UTCTimestamp; value: number; color?: string }[]>();
+    for (const def of paneDefs) {
+      for (const series of def.series) {
+        const points: { time: UTCTimestamp; value: number; color?: string }[] = [];
+        for (const bar of indicatorSeries ?? []) {
+          const raw = bar[series.key];
+          if (typeof raw !== 'number' || !Number.isFinite(raw)) continue;
+          const point: { time: UTCTimestamp; value: number; color?: string } = {
+            time: toTime(bar.date),
+            value: raw,
+          };
+          if (series.sign) {
+            const source = bar[series.sign.key ?? series.key];
+            const signed = typeof source === 'number' ? source : raw;
+            point.color = signed >= 0 ? series.sign.positive : series.sign.negative;
+          }
+          points.push(point);
+        }
+        out.set(`${def.id}:${series.key}`, points);
+      }
     }
     return out;
-  }, [indicatorSeries]);
+  }, [indicatorSeries, paneDefs]);
 
   /** Lookups for the crosshair readout, keyed by ISO bar date. */
   const readoutMaps = useMemo(() => {
@@ -344,20 +430,24 @@ export function PriceChart({
         close: parseFloat(b.close),
       });
     }
-    const indByDate = new Map<string, Partial<Record<PaneId, number>>>();
+    const indByDate = new Map<string, Record<PaneId, number>>();
     for (const bar of indicatorSeries ?? []) {
-      const entry: Partial<Record<PaneId, number>> = {};
-      if (bar.rsi14 != null) entry.rsi = bar.rsi14;
-      if (bar.adx14 != null) entry.adx = bar.adx14;
-      if (bar.macd_line != null) entry.macd = bar.macd_line;
+      const entry: Record<PaneId, number> = {};
+      for (const def of paneDefs) {
+        const key = paneReadoutKey(def);
+        const raw = key ? bar[key] : undefined;
+        if (typeof raw === 'number' && Number.isFinite(raw)) entry[def.id] = raw;
+      }
       indByDate.set(bar.date, entry);
     }
     return { barByDate, indByDate };
-  }, [bars, indicatorSeries]);
+  }, [bars, indicatorSeries, paneDefs]);
 
   const readoutMapsRef = useRef(readoutMaps);
+  const paneDefsRef = useRef(paneDefs);
   useEffect(() => {
     readoutMapsRef.current = readoutMaps;
+    paneDefsRef.current = paneDefs;
   });
 
   // Create the chart once; series are (re)built when the render mode changes.
@@ -452,9 +542,14 @@ export function PriceChart({
       const bar = barByDate.get(date);
       const inds = indByDate.get(date) ?? {};
       const active = new Set(activePanesRef.current);
-      const panes = PANE_ORDER.filter((id) => active.has(id) && inds[id] != null).map(
-        (id) => ({ id, value: inds[id]! })
-      );
+      const panes = paneDefsRef.current
+        .filter((def) => active.has(def.id) && inds[def.id] != null)
+        .map((def) => ({
+          id: def.id,
+          label: def.label,
+          color: paneColor(def),
+          value: (def.format ?? fixed2)(inds[def.id]),
+        }));
       setReadout(panes.length > 0 || bar ? { date, bar: bar ?? null, panes } : null);
     };
 
@@ -680,78 +775,62 @@ export function PriceChart({
         paneSeriesRef.current.delete(id);
       }
     }
-    // Create the missing ones in canonical order so pane positions are stable.
-    for (const id of PANE_ORDER) {
-      if (!displayedPanes.includes(id) || paneSeriesRef.current.has(id)) continue;
+    // Create the missing ones in registry order so pane positions are stable.
+    for (const def of paneDefs) {
+      if (!displayedPanes.includes(def.id) || paneSeriesRef.current.has(def.id)) continue;
       const pane = chart.addPane(false);
       const record: PaneRecord = { pane, series: [] };
-      if (id === 'rsi') {
+      let guidesPlaced = false;
+      for (const seriesDef of def.series) {
+        if (seriesDef.type === 'histogram') {
+          record.series.push(
+            pane.addSeries(HistogramSeries, {
+              priceLineVisible: false,
+              lastValueVisible: seriesDef.lastValueVisible ?? false,
+              priceFormat: { type: 'volume' },
+              priceScaleId: 'right',
+              base: 0,
+            })
+          );
+          continue;
+        }
         const line = pane.addSeries(LineSeries, {
-          color: PANE_COLORS.rsi,
+          color: seriesDef.color,
           lineWidth: 1,
           priceLineVisible: false,
+          ...(seriesDef.lastValueVisible === undefined
+            ? {}
+            : { lastValueVisible: seriesDef.lastValueVisible }),
         });
-        for (const level of [30, 70]) {
-          line.createPriceLine({
-            price: level,
-            color: 'rgba(148,163,184,0.45)',
-            lineStyle: LineStyle.Dashed,
-            lineWidth: 1,
-            title: '',
-          });
+        // Guides hang off the pane's first line series, as RSI's always have.
+        if (!guidesPlaced) {
+          for (const guide of def.guides ?? []) {
+            line.createPriceLine({
+              price: guide.value,
+              color: GUIDE_COLOR,
+              lineStyle: LineStyle.Dashed,
+              lineWidth: 1,
+              title: guide.label ?? '',
+            });
+          }
+          guidesPlaced = true;
         }
         record.series.push(line);
-      } else if (id === 'macd') {
-        record.series.push(
-          pane.addSeries(HistogramSeries, {
-            priceLineVisible: false,
-            lastValueVisible: false,
-            priceFormat: { type: 'volume' },
-            priceScaleId: 'right',
-            base: 0,
-          })
-        );
-        record.series.push(
-          pane.addSeries(LineSeries, {
-            color: PANE_COLORS.macd,
-            lineWidth: 1,
-            priceLineVisible: false,
-            lastValueVisible: false,
-          })
-        );
-        record.series.push(
-          pane.addSeries(LineSeries, {
-            color: MACD_SIGNAL_COLOR,
-            lineWidth: 1,
-            priceLineVisible: false,
-            lastValueVisible: false,
-          })
-        );
-      } else {
-        record.series.push(
-          pane.addSeries(LineSeries, {
-            color: PANE_COLORS.adx,
-            lineWidth: 1,
-            priceLineVisible: false,
-          })
-        );
       }
-      paneSeriesRef.current.set(id, record);
+      paneSeriesRef.current.set(def.id, record);
     }
     // Re-balance pane heights (price dominates, sub-panes share the rests).
     chart.panes().forEach((p, index) => p.setStretchFactor(index === 0 ? 3 : 1));
 
     // Refresh each pane's data.
-    for (const [id, record] of Array.from(paneSeriesRef.current.entries())) {
-      if (id === 'rsi' || id === 'adx') {
-        record.series[0]?.setData(paneData[id].line);
-      } else {
-        record.series[0]?.setData(paneData.macd.hist ?? []);
-        record.series[1]?.setData(paneData.macd.line);
-        record.series[2]?.setData(paneData.macd.signal ?? []);
-      }
+    for (const def of paneDefs) {
+      const record = paneSeriesRef.current.get(def.id);
+      if (!record) continue;
+      def.series.forEach((seriesDef, i) => {
+        record.series[i]?.setData(paneData.get(`${def.id}:${seriesDef.key}`) ?? []);
+      });
     }
-  }, [displayedPanes, paneData]);
+  }, [displayedPanes, paneData, paneDefs]);
 
   const toggleMas = (period: number, on: boolean) => {
     const next = on
@@ -761,10 +840,11 @@ export function PriceChart({
     onActiveMasChange?.(next);
   };
 
+  const paneOrder = paneDefs.map((d) => d.id);
   const togglePane = (id: PaneId) => {
     const next = displayedPanes.includes(id)
       ? displayedPanes.filter((p) => p !== id)
-      : [...displayedPanes, id].sort((a, b) => PANE_ORDER.indexOf(a) - PANE_ORDER.indexOf(b));
+      : [...displayedPanes, id].sort((a, b) => paneOrder.indexOf(a) - paneOrder.indexOf(b));
     setDisplayedPanes(next);
   };
 
@@ -829,19 +909,19 @@ export function PriceChart({
           <>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-slate-500">Indicators</span>
-              {PANE_ORDER.map((id) => (
+              {PANE_DEFS.map((def) => (
                 <label
-                  key={id}
+                  key={def.id}
                   className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 cursor-pointer"
                 >
                   <input
                     type="checkbox"
-                    checked={activePaneSet.has(id)}
+                    checked={activePaneSet.has(def.id)}
                     disabled={!indicatorSeries?.length}
-                    onChange={() => togglePane(id)}
+                    onChange={() => togglePane(def.id)}
                     className="w-3 h-3 accent-indigo-500"
                   />
-                  <span style={{ color: PANE_COLORS[id] }}>{PANE_LABELS[id]}</span>
+                  <span style={{ color: paneColor(def) }}>{def.label}</span>
                 </label>
               ))}
             </div>
@@ -883,12 +963,8 @@ export function PriceChart({
               </div>
             )}
             {readout.panes.map((p) => (
-              <div
-                key={p.id}
-                className="tabular-nums"
-                style={{ color: PANE_COLORS[p.id] }}
-              >
-                {PANE_LABELS[p.id]}: {p.value.toFixed(p.id === 'macd' ? 3 : 2)}
+              <div key={p.id} className="tabular-nums" style={{ color: p.color }}>
+                {p.label}: {p.value}
               </div>
             ))}
           </div>

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "selfcheck": "tsx scripts/indicator-selfcheck.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.17.0",

@@ -65,6 +65,7 @@ export function useChartShell(symbol: string, strategyName: string) {
       (indicatorSeries?.bars ?? []).map((b) => ({
         date: b.date,
         rsi14: b.rsi14 === null ? null : parseFloat(b.rsi14),
+        atr14: b.atr14 === null ? null : parseFloat(b.atr14),
         adx14: b.adx14 === null ? null : parseFloat(b.adx14),
         macd_line: b.macd_line === null ? null : parseFloat(b.macd_line),
         macd_signal: b.macd_signal === null ? null : parseFloat(b.macd_signal),

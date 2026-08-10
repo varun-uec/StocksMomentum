@@ -267,6 +267,12 @@ export default function StockResearchPage() {
         </Badge>
         <Badge color={readiness.color}>{readiness.label}</Badge>
         <SymbolActionBar symbol={symbol} strategyName={strategyName} current="chart" />
+        <Link
+          href={`/stock/${symbol}/analysis?strategy=${strategyName}`}
+          className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
+        >
+          Try the new analysis view →
+        </Link>
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">

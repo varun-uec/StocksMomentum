@@ -16,26 +16,17 @@
  * detection also plays no part in the ranking or composite score.
  */
 
-import { useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { Card, StatusDot } from '@/components/shared/Card';
-import { detectChartPatterns } from '@/lib/api-client';
 import { focusRing } from '@/lib/theme';
 import { num } from '@/lib/format';
 import type {
-  ChartPatternAnalysis,
   DetectedPattern,
   OHLCVBarDTO,
   RuleExplanation,
   StockExplanation,
 } from '@/lib/types';
-import {
-  PriceChart,
-  type ChartOverlayLine,
-  type TimeframeId,
-} from '@/components/stock/PriceChart';
-
-const GEOMETRY_COLORS = ['#a855f7', '#0ea5e9', '#f59e0b', '#10b981'];
+import { PriceChart, type TimeframeId } from '@/components/stock/PriceChart';
+import { useChartPatterns } from '@/components/stock/useChartPatterns';
 
 function PatternRow({ rule }: { rule: RuleExplanation }) {
   const quality = parseFloat(rule.contribution);
@@ -116,24 +107,9 @@ function ChartPatternSection({
   onTimeframeChange: (id: TimeframeId) => void;
   lookbackDays: number;
 }) {
-  const [selected, setSelected] = useState(0);
-  const detection = useMutation<ChartPatternAnalysis>({
-    // The endpoint accepts 60–2000 sessions; short chart timeframes are widened
-    // to the shortest history a formation can occupy rather than rejected.
-    mutationFn: () => detectChartPatterns(symbol, Math.min(2000, Math.max(60, lookbackDays)), 5),
-    onSuccess: () => setSelected(0),
-  });
-
-  const analysis = detection.data;
-  const shown = analysis?.patterns[selected];
-
-  const overlayLines = useMemo<ChartOverlayLine[]>(
-    () =>
-      (shown?.geometry ?? []).map((line, i) => ({
-        color: GEOMETRY_COLORS[i % GEOMETRY_COLORS.length],
-        points: line.points.map((p) => ({ date: p.bar_date, price: parseFloat(p.price) })),
-      })),
-    [shown]
+  const { detection, analysis, shown, selected, setSelected, overlayLines } = useChartPatterns(
+    symbol,
+    lookbackDays
   );
 
   return (
