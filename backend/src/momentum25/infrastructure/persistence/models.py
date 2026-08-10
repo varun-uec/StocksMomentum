@@ -114,8 +114,9 @@ class LegacyOHLCVDailyModel(Base):
     can coexist with the current provider's live ``ohlcv_daily`` rows for the
     same ``(security_id, date)`` — Gate 4a reconciliation requires *both* sources
     to be present and comparable, and production's live dashboard must never be
-    corrupted by legacy-sourced duplicates. Raw (pre-adjustment) prints only;
-    no adjustment columns are carried here.
+    corrupted by legacy-sourced duplicates. OHLC/volume are raw prints;
+    ``adj_factor``/``adj_close`` carry the same backward adjustment the live
+    table uses (``adj_close == close * adj_factor``).
     """
 
     __tablename__ = "legacy_ohlcv_daily"
@@ -129,6 +130,10 @@ class LegacyOHLCVDailyModel(Base):
     low: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     close: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     volume: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    adj_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    adj_factor: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), nullable=False, default=1, server_default="1"
+    )
     prev_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     turnover_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
 
@@ -138,8 +143,9 @@ class BSELegacyOHLCVDailyModel(Base):
 
     A dedicated staging table mirroring ``legacy_ohlcv_daily`` so BSE-sourced
     bars can never be confused with the NSE-anchored legacy surface the
-    historical screening pipeline reads. Raw (pre-adjustment) prints only; no
-    adjustment columns are carried here.
+    historical screening pipeline reads. OHLC/volume are raw prints;
+    ``adj_factor``/``adj_close`` carry the same backward adjustment the live
+    table uses (``adj_close == close * adj_factor``).
     """
 
     __tablename__ = "bse_legacy_ohlcv_daily"
@@ -153,6 +159,10 @@ class BSELegacyOHLCVDailyModel(Base):
     low: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     close: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     volume: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    adj_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    adj_factor: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), nullable=False, default=1, server_default="1"
+    )
     prev_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     turnover_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
 

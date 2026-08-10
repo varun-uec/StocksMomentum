@@ -6,11 +6,12 @@ screening / forward-return code paths depend on (``get_series``,
 ``ohlcv_daily``. This lets the *existing* screening/scoring pipeline and
 ``ForwardReturnsBackfill`` be pointed at pre-2019 legacy prices unchanged.
 
-The legacy archive carries raw prints only (no adjustment columns), so
-``adj_close`` is surfaced as ``None`` — the downstream forward-return code already
-falls back to the raw ``close`` when ``adj_close`` is absent, matching the live
-table (whose ``adj_factor`` is 1 / whose ``adj_close`` equals ``close`` until the
-Phase 1 adjustment engine runs).
+``adj_close`` is surfaced from the table, exactly as the live repository does.
+It is null for bars the adjustment pass has not reached, and for every bar
+before 2011-01-06 — ``corporate_actions`` starts there because NSE's free API
+caps at 20 rows per symbol, so no action data exists for the dot-com or GFC
+windows. The downstream forward-return code falls back to the raw ``close``
+when ``adj_close`` is null, so those eras stay unadjusted and disclosed.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from momentum25.infrastructure.persistence.models import LegacyOHLCVDailyModel
 
 
 def _to_bar(row: LegacyOHLCVDailyModel) -> OHLCVBar:
-    """Map a legacy ORM row to a domain :class:`OHLCVBar` (raw prints, no adj)."""
+    """Map a legacy ORM row to a domain :class:`OHLCVBar`."""
     return OHLCVBar(
         date=row.date,
         open=row.open,
@@ -33,7 +34,7 @@ def _to_bar(row: LegacyOHLCVDailyModel) -> OHLCVBar:
         low=row.low,
         close=row.close,
         volume=row.volume,
-        adj_close=None,
+        adj_close=row.adj_close,
         prev_close=row.prev_close,
         turnover_value=row.turnover_value,
     )

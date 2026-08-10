@@ -23,9 +23,10 @@ trigger or a unique constraint.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import cast
 
-from sqlalchemy import func, select
+from sqlalchemy import Table, bindparam, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,7 +50,7 @@ _LegacyModel = LegacyOHLCVDailyModel | BSELegacyOHLCVDailyModel
 
 
 def _bar_from_row(row: _LegacyModel | OHLCVDailyModel) -> OHLCVBar:
-    """Map a persisted OHLCV row to the domain bar (adjustment fields absent for legacy)."""
+    """Map a persisted OHLCV row to the domain bar."""
     return OHLCVBar(
         date=row.date,
         open=row.open,
@@ -57,6 +58,7 @@ def _bar_from_row(row: _LegacyModel | OHLCVDailyModel) -> OHLCVBar:
         low=row.low,
         close=row.close,
         volume=row.volume,
+        adj_close=row.adj_close,
         prev_close=row.prev_close,
         turnover_value=row.turnover_value,
     )
@@ -106,6 +108,15 @@ class SqlLegacyOHLCVRepository:
                 "low": stmt.excluded.low,
                 "close": stmt.excluded.close,
                 "volume": stmt.excluded.volume,
+                # Re-derive from the incoming raw close and the *stored*
+                # adj_factor, never from an incoming adj_close. Providers do
+                # not report an adjusted close, so re-ingesting a bar would
+                # otherwise wipe the adj_close that update_adjustment_factors
+                # wrote and leave the two columns describing different prices.
+                # Keeps ``adj_close == close * adj_factor`` true after any
+                # ingestion, matching the live ``ohlcv_daily`` upsert.
+                "adj_close": stmt.excluded.close
+                * cast("Table", self._model.__table__).c.adj_factor,
                 "prev_close": stmt.excluded.prev_close,
                 "turnover_value": stmt.excluded.turnover_value,
             },
@@ -145,6 +156,15 @@ class SqlLegacyOHLCVRepository:
                 "low": stmt.excluded.low,
                 "close": stmt.excluded.close,
                 "volume": stmt.excluded.volume,
+                # Re-derive from the incoming raw close and the *stored*
+                # adj_factor, never from an incoming adj_close. Providers do
+                # not report an adjusted close, so re-ingesting a bar would
+                # otherwise wipe the adj_close that update_adjustment_factors
+                # wrote and leave the two columns describing different prices.
+                # Keeps ``adj_close == close * adj_factor`` true after any
+                # ingestion, matching the live ``ohlcv_daily`` upsert.
+                "adj_close": stmt.excluded.close
+                * cast("Table", self._model.__table__).c.adj_factor,
                 "prev_close": stmt.excluded.prev_close,
                 "turnover_value": stmt.excluded.turnover_value,
             },
@@ -213,6 +233,37 @@ class SqlLegacyOHLCVRepository:
             )
         )
         return int(result.scalar_one())
+
+    async def update_adjustment_factors(
+        self, security_id: int, factors: dict[date, Decimal]
+    ) -> int:
+        """Persist a computed backward-adjustment factor per legacy bar date.
+
+        Identical semantics to the live ``SqlOHLCVRepository`` method:
+        ``adj_close`` is derived from the stored raw ``close`` in the same
+        UPDATE (``close * factor``), so the two columns stay consistent and no
+        read-modify-write race is possible.
+        """
+        if not factors:
+            return 0
+        table = cast("Table", self._model.__table__)
+        stmt = (
+            update(table)
+            .where(
+                table.c.security_id == bindparam("sec_id"),
+                table.c.date == bindparam("bar_date"),
+            )
+            .values(
+                adj_factor=bindparam("factor"),
+                adj_close=table.c.close * bindparam("factor"),
+            )
+        )
+        params = [
+            {"sec_id": security_id, "bar_date": d, "factor": factor}
+            for d, factor in factors.items()
+        ]
+        await self._session.execute(stmt, params)
+        return len(params)
 
     async def distinct_dates(self, start: date, end: date) -> list[date]:
         """Return every distinct legacy bar date in ``[start, end]``, ascending."""

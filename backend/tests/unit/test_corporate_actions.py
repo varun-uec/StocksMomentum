@@ -86,6 +86,33 @@ class TestParseCorporateActionRatio:
         assert action_type == "split"
         assert ratio == Decimal("2") / Decimal("10")
 
+    def test_face_value_split_to_singular_re(self) -> None:
+        # NSE writes the singular rupee as "Re 1", not "Rs 1". The pattern must
+        # accept it, or the most common split of all is silently unadjusted.
+        action_type, ratio = _parse_corporate_action_ratio(
+            "Face Value Split (Sub-Division) - From Rs 5/- Per Share To Re 1/- Per Share"
+        )
+        assert action_type == "split"
+        assert ratio == Decimal("1") / Decimal("5")
+
+    def test_combined_bonus_and_split_legs_compound(self) -> None:
+        # TITAN, ex-date 2011-06-23. The bonus leg alone (0.5) left a -89%
+        # step in the adjusted series; the true factor is 0.5 * 0.1 = 0.05,
+        # matching the observed close move 4292.45 -> 228.90.
+        action_type, ratio = _parse_corporate_action_ratio(
+            "Bonus 1:1 / Face Value Split From Rs.10/- To Re.1/-"
+        )
+        assert action_type == "bonus"
+        assert ratio == Decimal("0.05")
+
+    def test_unusable_split_leg_voids_the_whole_ratio(self) -> None:
+        # Adjusting by the bonus leg alone would corrupt every earlier bar.
+        action_type, ratio = _parse_corporate_action_ratio(
+            "Bonus 1:1 / Face Value Split From Rs 0/- To Re 1/-"
+        )
+        assert action_type == "bonus"
+        assert ratio is None
+
     def test_unrecognized_subject_returns_ratio_none(self) -> None:
         action_type, ratio = _parse_corporate_action_ratio("Interim Dividend - Rs 5 Per Share")
         assert action_type == "other"

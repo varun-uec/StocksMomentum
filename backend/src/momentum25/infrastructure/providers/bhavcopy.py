@@ -160,9 +160,16 @@ _INDEX_CODE_ALIASES: dict[str, str] = {
 # ratio=None and deliberately never adjusts price history -- a wrong guessed
 # ratio would silently corrupt every earlier bar, which is worse than a
 # disclosed gap (see RawCorporateAction docstring).
+#
+# NSE writes the singular rupee as "Re" ("To Re 1/-"), not "Rs", and a split to
+# Re 1 is the most common split there is -- so the face-value pattern must
+# accept both spellings. One subject often carries BOTH legs ("Bonus 1:1 /
+# Face Value Split From Rs.10/- To Re.1/-"); the legs compound, so both are
+# parsed and multiplied.
 _BONUS_RE = re.compile(r"bonus\s+(\d+)\s*:\s*(\d+)", re.IGNORECASE)
 _SPLIT_RE = re.compile(
-    r"face\s+value\s+split.*?from\s+rs\.?\s*(\d+(?:\.\d+)?).*?to\s+rs\.?\s*(\d+(?:\.\d+)?)",
+    r"face\s+value\s+split.*?from\s+r[se]\.?\s*(\d+(?:\.\d+)?)"
+    r".*?to\s+r[se]\.?\s*(\d+(?:\.\d+)?)",
     re.IGNORECASE,
 )
 
@@ -181,24 +188,42 @@ def _parse_corporate_action_ratio(subject: str) -> tuple[str, Decimal | None]:
     Returns ``(action_type, ratio)``. ``ratio`` is the multiplier to apply to
     prices *before* the ex-date (``adjusted = raw * ratio``); ``None`` if the
     subject doesn't match either recognized pattern.
+
+    A subject can carry a bonus and a face-value split at once. The two legs
+    compound, so the returned ratio is their product. Returning only the bonus
+    leg (the earlier behaviour) understated the split: TITAN's 2011-06-23
+    "Bonus 1:1 / Face Value Split From Rs.10/- To Re.1/-" needs 0.5 * 0.1 =
+    0.05, and 0.5 alone left a -89% step in the adjusted series.
+
+    ``action_type`` stays "bonus" whenever a bonus leg is present, so existing
+    persisted rows keep their type.
     """
+    ratio: Decimal | None = None
+    action_type = "other"
+
     bonus_match = _BONUS_RE.search(subject)
     if bonus_match:
+        action_type = "bonus"
         new_shares, held_shares = int(bonus_match.group(1)), int(bonus_match.group(2))
         total = new_shares + held_shares
         if total > 0:
-            return "bonus", Decimal(held_shares) / Decimal(total)
-        return "bonus", None
+            ratio = Decimal(held_shares) / Decimal(total)
 
     split_match = _SPLIT_RE.search(subject)
     if split_match:
+        if action_type == "other":
+            action_type = "split"
         old_face_value = Decimal(split_match.group(1))
         new_face_value = Decimal(split_match.group(2))
         if old_face_value > 0:
-            return "split", new_face_value / old_face_value
-        return "split", None
+            split_ratio = new_face_value / old_face_value
+            ratio = split_ratio if ratio is None else ratio * split_ratio
+        else:
+            # An unusable leg makes the whole ratio unusable. Adjusting by the
+            # other leg alone would silently corrupt every earlier bar.
+            ratio = None
 
-    return "other", None
+    return action_type, ratio
 
 
 class BhavcopyProvider:
