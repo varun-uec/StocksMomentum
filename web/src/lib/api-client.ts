@@ -338,6 +338,18 @@ export async function getOhlcv(
   return fetchJson(`${API_BASE}/securities/${symbol}/ohlcv?${params}`, { cache: 'no-store' });
 }
 
+/** Daily closes for a benchmark index (e.g. NIFTY500), for chart overlays. */
+export async function getIndexCloses(
+  indexCode: string,
+  from?: string,
+  to?: string
+): Promise<import('./types').IndexClosesDTO> {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return fetchJson(`${API_BASE}/indices/${indexCode}/closes?${params}`, { cache: 'no-store' });
+}
+
 /** Symbol/company-name typeahead for the nav lookup. */
 export async function searchSecurities(
   q: string,

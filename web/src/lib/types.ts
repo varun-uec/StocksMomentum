@@ -755,6 +755,17 @@ export interface SecurityOHLCVDTO {
   bars: OHLCVBarDTO[];
 }
 
+/** A benchmark index bar. Close only — the source stores no OHLC or volume. */
+export interface IndexCloseBarDTO {
+  date: string;
+  close: string;
+}
+
+export interface IndexClosesDTO {
+  index_code: string;
+  bars: IndexCloseBarDTO[];
+}
+
 export interface SecuritySearchResult {
   symbol: string;
   name: string;

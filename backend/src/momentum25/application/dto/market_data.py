@@ -26,6 +26,24 @@ class SecurityOHLCVDTO(BaseModel):
     bars: list[OHLCVBarDTO]
 
 
+class IndexCloseBarDTO(BaseModel):
+    """A single benchmark-index bar.
+
+    Close only: ``benchmark_index_daily`` stores no open/high/low/volume, and
+    a fabricated OHLC would misrepresent the source.
+    """
+
+    date: date
+    close: Decimal
+
+
+class IndexOHLCVDTO(BaseModel):
+    """A benchmark index's close series."""
+
+    index_code: str
+    bars: list[IndexCloseBarDTO]
+
+
 class SecuritySearchResultDTO(BaseModel):
     """One typeahead suggestion for the symbol lookup."""
 

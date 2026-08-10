@@ -29,7 +29,7 @@ import {
 } from '@/components/shared/Card';
 import { ScoreGauge } from '@/components/shared/ScoreGauge';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
-import { getLiveStockAnalysis, getOhlcv, getStockExplanation } from '@/lib/api-client';
+import { getIndexCloses, getLiveStockAnalysis, getStockExplanation } from '@/lib/api-client';
 import { num, strategyDisplayName } from '@/lib/format';
 import { focusRing } from '@/lib/theme';
 import {
@@ -62,7 +62,13 @@ import { VolumeAccumulation } from '@/components/stock/VolumeAccumulation';
 import { SuggestedStop } from '@/components/stock/SuggestedStop';
 import { RelativeStrengthVsIndex } from '@/components/stock/RelativeStrengthVsIndex';
 import { INDICATOR_BY_ID, type IndicatorDef } from '@/lib/indicators/catalogue';
-import { atr, toBars, type Bar, type OverlaySeries } from '@/lib/indicators/overlays';
+import {
+  atr,
+  toBars,
+  type Bar,
+  type CloseBar,
+  type OverlaySeries,
+} from '@/lib/indicators/overlays';
 import { useOverlayPreferences, newUid, type ActiveIndicator } from '@/lib/overlay-preferences';
 import {
   PRESET_BY_ID,
@@ -171,16 +177,17 @@ export default function UnifiedAnalysisPage() {
   });
 
   const benchmark = live?.benchmark_index ?? null;
-  const { data: benchmarkOhlcv } = useQuery({
-    queryKey: ['stock-ohlcv', benchmark, timeframe],
-    queryFn: () => getOhlcv(benchmark!, undefined),
+  const { data: benchmarkCloses } = useQuery({
+    queryKey: ['index-closes', benchmark],
+    queryFn: () => getIndexCloses(benchmark!),
     enabled: !!benchmark,
   });
 
   const bars = useMemo<Bar[]>(() => toBars(barDtos), [barDtos]);
-  const benchmarkBars = useMemo<Bar[]>(
-    () => toBars(benchmarkOhlcv?.bars ?? []),
-    [benchmarkOhlcv]
+  const benchmarkBars = useMemo<CloseBar[]>(
+    () =>
+      (benchmarkCloses?.bars ?? []).map((b) => ({ date: b.date, close: parseFloat(b.close) })),
+    [benchmarkCloses]
   );
   const lastClose = bars.length ? bars[bars.length - 1].close : null;
 

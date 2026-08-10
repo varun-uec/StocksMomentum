@@ -5,12 +5,18 @@ from __future__ import annotations
 from datetime import date
 
 from momentum25.application.dto.market_data import (
+    IndexCloseBarDTO,
+    IndexOHLCVDTO,
     OHLCVBarDTO,
     SecurityOHLCVDTO,
     SecuritySearchResultDTO,
 )
 from momentum25.domain.errors import NotFoundError
-from momentum25.domain.ports.repositories import OHLCVRepository, SecurityRepository
+from momentum25.domain.ports.repositories import (
+    BenchmarkIndexRepository,
+    OHLCVRepository,
+    SecurityRepository,
+)
 
 DEFAULT_LOOKBACK_DAYS = 500
 
@@ -71,3 +77,34 @@ class GetSecurityOHLCV:
             if from_ is None or b.date >= from_
         ]
         return SecurityOHLCVDTO(symbol=str(security.symbol), bars=bars)
+
+
+class GetIndexCloseSeries:
+    """Return a benchmark index's daily close series for charting."""
+
+    def __init__(self, benchmark: BenchmarkIndexRepository) -> None:
+        """Wire the use case with its collaborators."""
+        self._benchmark = benchmark
+
+    async def execute(
+        self,
+        index_code: str,
+        from_: date | None = None,
+        to: date | None = None,
+    ) -> IndexOHLCVDTO:
+        """Return closes in ``[from_, to]``, oldest first.
+
+        An index with no persisted closes is a missing resource, not an empty
+        series: returning ``[]`` would let a chart silently render a flat or
+        absent benchmark instead of surfacing that the backfill never ran.
+        """
+        code = index_code.strip().upper()
+        closes = await self._benchmark.get_close_series(code)
+        if not closes:
+            raise NotFoundError(f"Benchmark index not found: {index_code}")
+        bars = [
+            IndexCloseBarDTO(date=d, close=c)
+            for d, c in sorted(closes.items())
+            if (from_ is None or d >= from_) and (to is None or d <= to)
+        ]
+        return IndexOHLCVDTO(index_code=code, bars=bars)

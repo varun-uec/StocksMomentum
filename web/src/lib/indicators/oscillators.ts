@@ -12,7 +12,7 @@
  * live-endpoint cross-check are the guard on that duplication.
  */
 
-import { atr, ema, sma, type Bar, type Params } from '@/lib/indicators/overlays';
+import { atr, ema, sma, type Bar, type CloseBar, type Params } from '@/lib/indicators/overlays';
 
 export type PaneValues = Record<string, (number | null)[]>;
 
@@ -240,7 +240,11 @@ export function atrPane(bars: Bar[], p: Params): PaneValues {
  * its 50-day mean. Bars are matched by date, so a holiday on either side is
  * skipped rather than mis-aligned.
  */
-export function relativeStrength(bars: Bar[], benchmark: Bar[], p: Params): PaneValues {
+export function relativeStrength(
+  bars: Bar[],
+  benchmark: CloseBar[],
+  p: Params
+): PaneValues {
   const period = n(p, 'period', 50);
   const byDate = new Map(benchmark.map((b) => [b.date, b.close]));
   const ratio = nulls(bars.length);

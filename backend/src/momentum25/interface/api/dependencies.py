@@ -23,7 +23,11 @@ from momentum25.application.use_cases.runs import (
     TriggerRefresh,
 )
 from momentum25.application.use_cases.screening import ExecuteScreening
-from momentum25.application.use_cases.securities import GetSecurityOHLCV, SearchSecurities
+from momentum25.application.use_cases.securities import (
+    GetIndexCloseSeries,
+    GetSecurityOHLCV,
+    SearchSecurities,
+)
 from momentum25.application.use_cases.stocks import (
     GetIndicatorSeries,
     GetLiveStockAnalysis,
@@ -312,6 +316,12 @@ async def get_get_security_ohlcv(
 ) -> AsyncIterator[GetSecurityOHLCV]:
     """Provide a GetSecurityOHLCV use-case instance."""
     yield GetSecurityOHLCV(securities=securities, ohlcv=ohlcv)
+
+
+async def get_get_index_close_series() -> AsyncIterator[GetIndexCloseSeries]:
+    """Provide a GetIndexCloseSeries use-case instance."""
+    async with _managed_session() as session:
+        yield GetIndexCloseSeries(benchmark=SqlBenchmarkIndexRepository(session))
 
 
 async def get_search_securities(

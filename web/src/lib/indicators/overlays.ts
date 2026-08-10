@@ -21,6 +21,12 @@ export interface Bar {
   volume: number;
 }
 
+/** A date-stamped close. Benchmark indices supply this and nothing more. */
+export interface CloseBar {
+  date: string;
+  close: number;
+}
+
 /** One drawn line: a label for the legend and a point per bar it is defined on. */
 export interface OverlaySeries {
   label: string;

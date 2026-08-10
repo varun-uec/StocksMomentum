@@ -14,7 +14,7 @@
 import { PANE_DEFS, type PaneDef } from '@/components/stock/PriceChart';
 import * as osc from '@/lib/indicators/oscillators';
 import * as ov from '@/lib/indicators/overlays';
-import type { Bar, OverlaySeries, Params } from '@/lib/indicators/overlays';
+import type { Bar, CloseBar, OverlaySeries, Params } from '@/lib/indicators/overlays';
 
 export type { Bar, OverlaySeries, Params };
 
@@ -31,7 +31,7 @@ export interface IndicatorParamDef {
 
 /** Extra inputs a compute function may need beyond the symbol's own bars. */
 export interface IndicatorContext {
-  benchmark: Bar[];
+  benchmark: CloseBar[];
 }
 
 export interface IndicatorDef {

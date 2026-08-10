@@ -7,6 +7,7 @@ from momentum25.interface.api.routers import (
     chart_patterns,
     elliott_wave,
     health,
+    indices,
     market,
     rankings,
     research,
@@ -31,5 +32,6 @@ api_router.include_router(validation.router)
 api_router.include_router(watchlist.router)
 api_router.include_router(elliott_wave.router)
 api_router.include_router(chart_patterns.router)
+api_router.include_router(indices.router)
 
 __all__ = ["api_router"]
