@@ -30,6 +30,7 @@ from momentum25.domain.research.liquidity_floor import (
     LiquidityDecision,
     evaluate_liquidity_eligibility,
 )
+from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.results import SectorStats, StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import get_git_commit
@@ -106,7 +107,11 @@ class ScreeningOrchestrator:
         summary = ScreeningRunSummary(run_date=trading_date)
 
         # 1. Universe resolution
-        securities = await self._security_repo.list_active()
+        #
+        # Equities only. NSE trades ETF and mutual-fund units in the same EQ
+        # series as company shares, so ingestion cannot separate them and gold
+        # ETFs were being scored by a trend template written for equities.
+        securities = [s for s in await self._security_repo.list_active() if is_equity(s.isin)]
         symbols = [s.symbol for s in securities]
         summary.total_evaluated = len(symbols)
 

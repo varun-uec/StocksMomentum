@@ -17,6 +17,7 @@ from momentum25.infrastructure.providers.bhavcopy import (
     _CURRENT_PROVIDER_START,
     _legacy_archive_url,
     _parse_legacy_bhavcopy,
+    _parse_udiff_isins,
 )
 
 # Legacy (1994) schema — trailing comma → empty final column, exactly as served.
@@ -124,3 +125,25 @@ class TestLegacyParser:
         first = _parse_legacy_bhavcopy(payload, date(1994, 11, 3))
         second = _parse_legacy_bhavcopy(payload, date(1994, 11, 3))
         assert first == second
+
+
+_UDIFF = (
+    "TradDt,Sgmt,FinInstrmTp,ISIN,TckrSymb,SctySrs,ClsPric\n"
+    "2026-08-07,CM,STK,INE002A01018,RELIANCE,EQ,1500.00\n"
+    "2026-08-07,CM,STK,INF204KB17I5,GOLDBEES,EQ,85.00\n"
+    "2026-08-07,CM,STK,,NOISIN,EQ,10.00\n"
+)
+
+
+class TestUdiffIsins:
+    """The UDiFF bhavcopy is the only NSE source printing an ETF's ISIN."""
+
+    def test_maps_symbol_to_isin(self) -> None:
+        isins = _parse_udiff_isins(_zip(_UDIFF), date(2026, 8, 7))
+        assert isins == {"RELIANCE": "INE002A01018", "GOLDBEES": "INF204KB17I5"}
+
+    def test_bad_zip_returns_empty(self) -> None:
+        assert _parse_udiff_isins(b"not a zip", date(2026, 8, 7)) == {}
+
+    def test_unexpected_columns_returns_empty(self) -> None:
+        assert _parse_udiff_isins(_zip("FOO,BAR\n1,2\n"), date(2026, 8, 7)) == {}

@@ -158,7 +158,9 @@ class ExecuteScreening:
                 raise ValueError("No symbols to screen")
 
             # 4. Upsert securities
-            securities = await self._upsert_securities(symbols)
+            securities = await self._upsert_securities(
+                symbols, max(b.date for b in all_bars)
+            )
             symbol_to_security = {str(s.symbol): s for s in securities}
 
             # 5. Persist historical OHLCV data
@@ -226,7 +228,9 @@ class ExecuteScreening:
             raise RuntimeError(msg)
         return SqlStrategyRepository(session)
 
-    async def _upsert_securities(self, symbols: list[str]) -> list[Security]:
+    async def _upsert_securities(
+        self, symbols: list[str], as_of: date
+    ) -> list[Security]:
         """Upsert securities and return entities with database IDs.
 
         Enriches each security with the instrument master's ``listing_date``
@@ -234,16 +238,28 @@ class ExecuteScreening:
         securities from a backtest's universe -- without this, every
         security's ``listing_date`` stays ``None`` and that survivorship-bias
         mitigation silently never filters anything).
+
+        The instrument master lists company shares only, so an ETF trading in
+        the EQ series matches nothing there and used to be stored with a NULL
+        ISIN -- no identity, and so no way to tell it apart from an equity.
+        The ``as_of`` session's UDiFF bhavcopy fills that gap where the
+        provider offers it; ``domain.value_objects.instrument.is_equity`` then
+        keeps fund units out of the screened universe.
         """
         instruments_by_symbol = {
             instrument.symbol: instrument
             for instrument in await self._market_data_provider.fetch_instrument_master()
         }
+        traded_isins = await self._fetch_traded_isins(as_of)
         securities = [
             Security(
                 symbol=Symbol(sym),
                 name=instruments_by_symbol[sym].name if sym in instruments_by_symbol else sym,
-                isin=instruments_by_symbol[sym].isin if sym in instruments_by_symbol else None,
+                isin=(
+                    instruments_by_symbol[sym].isin
+                    if sym in instruments_by_symbol
+                    else traded_isins.get(sym)
+                ),
                 listing_date=(
                     instruments_by_symbol[sym].listing_date
                     if sym in instruments_by_symbol
@@ -264,6 +280,20 @@ class ExecuteScreening:
             for sym, sec in zip(symbols, securities, strict=False)
             if sym in symbol_map
         ]
+
+    async def _fetch_traded_isins(self, as_of: date) -> dict[str, str]:
+        """Return ``symbol -> ISIN`` from the provider, empty if it cannot say.
+
+        Optional provider capability, resolved the same duck-typed way
+        ``HistoricalIsinBackfill`` resolves ``fetch_eod_from_legacy_archive``:
+        only the NSE bhavcopy adapter serves a per-instrument ISIN feed, and a
+        provider without one must degrade to "identity unknown", never block a
+        run.
+        """
+        fetch = getattr(self._market_data_provider, "fetch_traded_isins", None)
+        if fetch is None:
+            return {}
+        return cast(dict[str, str], await fetch(as_of))
 
     async def _persist_bars(
         self,

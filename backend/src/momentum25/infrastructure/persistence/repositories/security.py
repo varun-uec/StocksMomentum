@@ -60,7 +60,11 @@ class SqlSecurityRepository:
             index_elements=[SecurityModel.symbol],
             set_={
                 "name": stmt.excluded.name,
-                "isin": stmt.excluded.isin,
+                # COALESCE for the same reason as ``listing_date`` below: a
+                # caller that could not resolve an ISIN passes ``None``, and a
+                # blind overwrite would erase the identity the instrument
+                # classification depends on.
+                "isin": func.coalesce(stmt.excluded.isin, SecurityModel.isin),
                 "sector": stmt.excluded.sector,
                 "industry": stmt.excluded.industry,
                 # COALESCE, not a blind overwrite: callers that don't know a

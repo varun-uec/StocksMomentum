@@ -18,6 +18,7 @@ from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.research.data_quality import is_stale_as_of
+from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.results import SectorStats, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import get_git_commit
@@ -121,7 +122,11 @@ class HistoricalScreeningUseCase:
         # index, since no historical index-constituent history exists (see
         # docs/research -- nsemine has no historical-constituents endpoint).
         # The residual bias is recorded in ``run.stats`` below.
-        all_securities = await self._security_repo.list_active()
+        # Equities only, on the same grounds as the live path: NSE trades fund
+        # units in the EQ series, and the strategy scores equities.
+        all_securities = [
+            s for s in await self._security_repo.list_active() if is_equity(s.isin)
+        ]
         if enforce_listing_date_filter:
             securities = [
                 s

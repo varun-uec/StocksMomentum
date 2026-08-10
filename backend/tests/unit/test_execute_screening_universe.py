@@ -14,10 +14,15 @@ import pytest
 
 from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.domain.ports.market_data import RawInstrument
+from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.types import Symbol
 
 
 class _FakeMarketDataProvider:
+    async def fetch_traded_isins(self, for_date: date) -> dict[str, str]:
+        """The UDiFF bhavcopy knows the ETF the equity master never lists."""
+        return {"GOLDBEES": "INF204KB17I5"}
+
     async def fetch_instrument_master(self) -> list[RawInstrument]:
         return [
             RawInstrument(
@@ -56,7 +61,9 @@ async def test_upsert_securities_enriches_from_instrument_master() -> None:
         strategy_engine=None,
     )
 
-    result = await use_case._upsert_securities(["INFY", "UNKNOWNCO"])
+    result = await use_case._upsert_securities(
+        ["INFY", "UNKNOWNCO", "GOLDBEES"], date(2026, 8, 7)
+    )
 
     by_symbol = {str(s.symbol): s for s in result}
     assert by_symbol[Symbol("INFY")].listing_date == date(1995, 6, 8)
@@ -65,3 +72,33 @@ async def test_upsert_securities_enriches_from_instrument_master() -> None:
     # placeholder rather than failing the whole ingest.
     assert by_symbol[Symbol("UNKNOWNCO")].listing_date is None
     assert by_symbol[Symbol("UNKNOWNCO")].name == "UNKNOWNCO"
+
+
+def test_fund_units_are_not_equities() -> None:
+    """The ISIN issuer code is the only field separating an ETF from a share."""
+    assert is_equity("INE009A01021")       # Infosys
+    assert is_equity("IN9175A01010")       # a DVR share, still equity
+    assert is_equity(None)                 # unknown identity is not evidence
+    assert not is_equity("INF204KB17I5")   # GOLDBEES units
+    assert not is_equity(" inf732e01037 ")  # LIQUIDBEES, untidy source cell
+
+
+@pytest.mark.asyncio
+async def test_etf_isin_is_captured_at_ingestion() -> None:
+    """An EQ-series ETF must land with the ISIN that marks it a fund unit."""
+    security_repo = _FakeSecurityRepo()
+    use_case = ExecuteScreening(
+        market_data_provider=_FakeMarketDataProvider(),
+        security_repo=security_repo,
+        ohlcv_repo=None,
+        screening_run_repo=_FakeScreeningRunRepo(),
+        indicator_pipeline=None,
+        strategy_engine=None,
+    )
+
+    result = await use_case._upsert_securities(["INFY", "GOLDBEES"], date(2026, 8, 7))
+
+    by_symbol = {str(s.symbol): s for s in result}
+    assert by_symbol[Symbol("GOLDBEES")].isin == "INF204KB17I5"
+    assert not is_equity(by_symbol[Symbol("GOLDBEES")].isin)
+    assert is_equity(by_symbol[Symbol("INFY")].isin)

@@ -343,7 +343,7 @@ async def test_ingestion_does_not_truncate_universe_alphabetically(
     symbols = sorted(
         {b.symbol for b in await use_case._fetch_eod_range(_TARGET - timedelta(days=7), _TARGET)}
     )
-    securities = await use_case._upsert_securities(symbols)
+    securities = await use_case._upsert_securities(symbols, _TARGET)
 
     assert len(securities) == 600
     stored = {str(s.symbol) for s in await security_repo.list_active()}

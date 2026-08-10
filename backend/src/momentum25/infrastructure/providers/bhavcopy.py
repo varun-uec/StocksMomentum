@@ -57,6 +57,49 @@ _LEGACY_REQUIRED_COLUMNS: frozenset[str] = frozenset(
 )
 
 
+# NSE's UDiFF bhavcopy (2024-01-02 onward) is the only current NSE source that
+# prints an ISIN for every traded instrument. The equity master
+# (``EQUITY_L.csv``, behind ``nse.get_all_equities_list``) lists company shares
+# only, so an ETF ingested from the EQ series would otherwise carry no identity
+# at all — which is how fund units entered the screening universe unclassified.
+def _udiff_bhavcopy_url(for_date: date) -> str:
+    """Return the UDiFF bhavcopy URL for ``for_date`` (pure)."""
+    return (
+        "https://nsearchives.nseindia.com/content/cm/"
+        f"BhavCopy_NSE_CM_0_0_0_{for_date:%Y%m%d}_F_0000.csv.zip"
+    )
+
+
+_UDIFF_START: date = date(2024, 1, 2)
+
+
+def _parse_udiff_isins(content: bytes, for_date: date) -> dict[str, str]:
+    """Parse ``TckrSymb -> ISIN`` out of a UDiFF bhavcopy ZIP payload (pure)."""
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(content))
+    except zipfile.BadZipFile:
+        _logger.warning("udiff_bhavcopy_bad_zip", date=for_date.isoformat())
+        return {}
+    names = archive.namelist()
+    if not names:
+        return {}
+    reader = csv.DictReader(io.StringIO(archive.read(names[0]).decode("latin1")))
+    if not {"TckrSymb", "ISIN"}.issubset(set(reader.fieldnames or [])):
+        _logger.warning(
+            "udiff_bhavcopy_unexpected_columns",
+            date=for_date.isoformat(),
+            columns=sorted(reader.fieldnames or []),
+        )
+        return {}
+    isins: dict[str, str] = {}
+    for row in reader:
+        symbol = (row.get("TckrSymb") or "").strip().upper()
+        isin = (row.get("ISIN") or "").strip().upper()
+        if symbol and isin:
+            isins.setdefault(symbol, isin)
+    return isins
+
+
 def _legacy_archive_url(for_date: date) -> str:
     """Return the legacy NSE bhavcopy archive URL for ``for_date`` (pure)."""
     mon = _MONTH_ABBR[for_date.month - 1]
@@ -363,6 +406,38 @@ class BhavcopyProvider:
                     error=str(exc),
                 )
         return bars
+
+    async def fetch_traded_isins(self, for_date: date) -> dict[str, str]:
+        """Return ``symbol -> ISIN`` for every instrument traded on ``for_date``.
+
+        Read off the UDiFF bhavcopy, the one NSE source that prints an ISIN for
+        fund units as well as company shares. Callers use it to classify an
+        instrument (see ``domain.value_objects.instrument``). A non-trading day,
+        a pre-UDiFF date or any transport failure returns an empty mapping: an
+        unknown ISIN stays unknown rather than becoming a guess.
+        """
+        if for_date < _UDIFF_START:
+            return {}
+        try:
+            async with httpx.AsyncClient(
+                headers={**_NSE_HEADERS, "Referer": "https://www.nseindia.com/"},
+                timeout=30,
+                follow_redirects=True,
+            ) as client:
+                resp = await client.get(_udiff_bhavcopy_url(for_date))
+        except httpx.HTTPError as exc:
+            _logger.warning(
+                "udiff_bhavcopy_fetch_failed", date=for_date.isoformat(), error=str(exc)
+            )
+            return {}
+        if resp.status_code != 200:
+            _logger.info(
+                "udiff_bhavcopy_unavailable",
+                date=for_date.isoformat(),
+                status=resp.status_code,
+            )
+            return {}
+        return _parse_udiff_isins(resp.content, for_date)
 
     async def fetch_eod_from_legacy_archive(self, for_date: date) -> list[RawBar]:
         """Fetch EOD bars for ``for_date`` explicitly from the legacy NSE archive.
