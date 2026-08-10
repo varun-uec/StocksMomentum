@@ -351,27 +351,31 @@ class BhavcopyProvider:
         """
         return await self._fetch_eod_legacy(for_date)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
     async def _fetch_eod_legacy(self, for_date: date) -> list[RawBar]:
         """Fetch and parse EOD bars for ``for_date`` from the legacy NSE archive.
 
         A non-trading day (or any date the archive does not carry) returns 404,
         which is treated as an empty session rather than an error — mirroring
-        the holiday handling of the current path. Parsing is delegated to the
+        the holiday handling of the current path. Transport errors (the 404-free
+        network conditions) are retried up to three times and then propagate
+        rather than being absorbed as an empty session: on the multi-thousand-day
+        Phase 3 backfill a transient outage must crash the run loudly, leaving
+        every completed day committed and the run resumable, instead of silently
+        dropping a real trading day from the archive. Parsing is delegated to the
         pure :func:`_parse_legacy_bhavcopy` helper.
         """
         url = _legacy_archive_url(for_date)
-        try:
-            async with httpx.AsyncClient(
-                headers={**_NSE_HEADERS, "Referer": "https://www.nseindia.com/"},
-                timeout=30,
-                follow_redirects=True,
-            ) as client:
-                resp = await client.get(url)
-        except Exception as exc:
-            _logger.warning(
-                "legacy_bhavcopy_fetch_failed", date=for_date.isoformat(), error=str(exc)
-            )
-            return []
+        async with httpx.AsyncClient(
+            headers={**_NSE_HEADERS, "Referer": "https://www.nseindia.com/"},
+            timeout=30,
+            follow_redirects=True,
+        ) as client:
+            resp = await client.get(url)
 
         if resp.status_code == 404:
             _logger.info("legacy_bhavcopy_missing_nontrading_day", date=for_date.isoformat())

@@ -1,13 +1,19 @@
-"""Repositories for the RP-012 Phase 2 overlap backfill.
+"""Repositories for the RP-012 / RP-014 legacy backfills.
 
 Three cohesive persistence adapters:
 
-* :class:`SqlLegacyOHLCVRepository` — the legacy-sourced staging table
-  (``legacy_ohlcv_daily``), kept distinct from the live ``ohlcv_daily`` so both
-  sources coexist for Gate 4a reconciliation without corrupting production data;
+* :class:`SqlLegacyOHLCVRepository` — staging-table bars (``legacy_ohlcv_daily``
+  for NSE legacy archive prints, ``bse_legacy_ohlcv_daily`` for BSE's pre-UDiFF
+  prints), kept distinct from the live ``ohlcv_daily`` so the two sources
+  coexist for Gate 4a reconciliation without corrupting production data. The
+  model class is a constructor argument: the NSE and BSE staging tables share
+  the identical raw-bar shape, so one repository serves both with zero
+  duplicated logic.
 * :class:`SqlHistoricalUniverseRepository` — insert-only writes to the immutable
   ``historical_universe`` and membership reads for Gate 4d calibration;
-* :class:`SqlValidationGapLogRepository` — insert-only C1/C2 validation-gap logs.
+* :class:`SqlValidationGapLogRepository` — insert-only C1/C2 validation-gap logs;
+* :class:`SqlBSEScripJunctionRepository` — insert-only writes to the learned
+  BSE ``SC_CODE`` → ISIN junction and identity reads for RP-014 resolution.
 
 All writes are idempotent (``ON CONFLICT DO NOTHING`` on natural keys) so a
 re-run of a partially-completed backfill never raises against the immutability
@@ -17,6 +23,7 @@ trigger or a unique constraint.
 from __future__ import annotations
 
 from datetime import date
+from typing import cast
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -29,6 +36,8 @@ from momentum25.domain.research.validation_gaps import (
 )
 from momentum25.domain.value_objects.results import UniverseMembership
 from momentum25.infrastructure.persistence.models import (
+    BSELegacyOHLCVDailyModel,
+    BSEScripJunctionModel,
     CorporateActionInferenceLogModel,
     HistoricalUniverseModel,
     LegacyOHLCVDailyModel,
@@ -36,8 +45,10 @@ from momentum25.infrastructure.persistence.models import (
     SurvivorshipGapEventModel,
 )
 
+_LegacyModel = LegacyOHLCVDailyModel | BSELegacyOHLCVDailyModel
 
-def _bar_from_row(row: LegacyOHLCVDailyModel | OHLCVDailyModel) -> OHLCVBar:
+
+def _bar_from_row(row: _LegacyModel | OHLCVDailyModel) -> OHLCVBar:
     """Map a persisted OHLCV row to the domain bar (adjustment fields absent for legacy)."""
     return OHLCVBar(
         date=row.date,
@@ -52,11 +63,21 @@ def _bar_from_row(row: LegacyOHLCVDailyModel | OHLCVDailyModel) -> OHLCVBar:
 
 
 class SqlLegacyOHLCVRepository:
-    """Persistence for legacy-sourced overlap-window bars (``legacy_ohlcv_daily``)."""
+    """Persistence for legacy-sourced bars on a staging table.
 
-    def __init__(self, session: AsyncSession) -> None:
-        """Bind the repository to a unit-of-work session."""
+    ``model_cls`` selects the staging table: ``LegacyOHLCVDailyModel`` (NSE
+    legacy archive) by default, ``BSELegacyOHLCVDailyModel`` for RP-014's
+    BSE pre-UDiFF range. Both tables share the identical raw-bar shape.
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        model_cls: type[_LegacyModel] = LegacyOHLCVDailyModel,
+    ) -> None:
+        """Bind the repository to a unit-of-work session and staging model."""
         self._session = session
+        self._model: type[_LegacyModel] = model_cls
 
     async def upsert_bars(self, security_id: int, bars: list[OHLCVBar]) -> int:
         """Insert or update legacy bars for a security; return rows written."""
@@ -76,9 +97,9 @@ class SqlLegacyOHLCVRepository:
             }
             for b in bars
         ]
-        stmt = insert(LegacyOHLCVDailyModel).values(rows)
+        stmt = insert(self._model).values(rows)
         stmt = stmt.on_conflict_do_update(
-            index_elements=[LegacyOHLCVDailyModel.security_id, LegacyOHLCVDailyModel.date],
+            index_elements=[self._model.security_id, self._model.date],
             set_={
                 "open": stmt.excluded.open,
                 "high": stmt.excluded.high,
@@ -96,7 +117,7 @@ class SqlLegacyOHLCVRepository:
         """Bulk insert/update one trading day's legacy bars in a single statement.
 
         ``items`` is ``(security_id, bar)`` for every symbol on the day. This is
-        the hot path for the ~1,200-day / ~2M-row overlap backfill: one INSERT …
+        the hot path for the ~4,000-7,000-day backfills: one INSERT …
         ON CONFLICT per day rather than one per bar.
         """
         if not items:
@@ -115,9 +136,9 @@ class SqlLegacyOHLCVRepository:
             }
             for security_id, b in items
         ]
-        stmt = insert(LegacyOHLCVDailyModel).values(rows)
+        stmt = insert(self._model).values(rows)
         stmt = stmt.on_conflict_do_update(
-            index_elements=[LegacyOHLCVDailyModel.security_id, LegacyOHLCVDailyModel.date],
+            index_elements=[self._model.security_id, self._model.date],
             set_={
                 "open": stmt.excluded.open,
                 "high": stmt.excluded.high,
@@ -134,32 +155,34 @@ class SqlLegacyOHLCVRepository:
     async def bars_by_security_on(self, on_date: date) -> dict[int, OHLCVBar]:
         """Return every legacy bar on ``on_date`` keyed by ``security_id``."""
         result = await self._session.execute(
-            select(LegacyOHLCVDailyModel).where(LegacyOHLCVDailyModel.date == on_date)
+            select(self._model).where(self._model.date == on_date)
         )
-        return {row.security_id: _bar_from_row(row) for row in result.scalars().all()}
+        rows = cast("list[_LegacyModel]", result.scalars().all())
+        return {row.security_id: _bar_from_row(row) for row in rows}
 
     async def trailing_bars(
         self, security_id: int, as_of: date, limit: int
     ) -> list[OHLCVBar]:
         """Return up to ``limit`` legacy bars on or before ``as_of``, ascending by date."""
         result = await self._session.execute(
-            select(LegacyOHLCVDailyModel)
+            select(self._model)
             .where(
-                LegacyOHLCVDailyModel.security_id == security_id,
-                LegacyOHLCVDailyModel.date <= as_of,
+                self._model.security_id == security_id,
+                self._model.date <= as_of,
             )
-            .order_by(LegacyOHLCVDailyModel.date.desc())
+            .order_by(self._model.date.desc())
             .limit(limit)
         )
-        return [_bar_from_row(row) for row in reversed(result.scalars().all())]
+        rows = cast("list[_LegacyModel]", result.scalars().all())
+        return [_bar_from_row(row) for row in reversed(rows)]
 
     async def distinct_security_ids(self, start: date, end: date) -> list[int]:
         """Return every ``security_id`` with a legacy bar in ``[start, end]``, ascending."""
         result = await self._session.execute(
-            select(LegacyOHLCVDailyModel.security_id)
-            .where(LegacyOHLCVDailyModel.date >= start, LegacyOHLCVDailyModel.date <= end)
+            select(self._model.security_id)
+            .where(self._model.date >= start, self._model.date <= end)
             .distinct()
-            .order_by(LegacyOHLCVDailyModel.security_id)
+            .order_by(self._model.security_id)
         )
         return list(result.scalars().all())
 
@@ -168,24 +191,25 @@ class SqlLegacyOHLCVRepository:
     ) -> list[OHLCVBar]:
         """Return a security's full legacy series in ``[start, end]``, ascending by date."""
         result = await self._session.execute(
-            select(LegacyOHLCVDailyModel)
+            select(self._model)
             .where(
-                LegacyOHLCVDailyModel.security_id == security_id,
-                LegacyOHLCVDailyModel.date >= start,
-                LegacyOHLCVDailyModel.date <= end,
+                self._model.security_id == security_id,
+                self._model.date >= start,
+                self._model.date <= end,
             )
-            .order_by(LegacyOHLCVDailyModel.date)
+            .order_by(self._model.date)
         )
-        return [_bar_from_row(row) for row in result.scalars().all()]
+        rows = cast("list[_LegacyModel]", result.scalars().all())
+        return [_bar_from_row(row) for row in rows]
 
     async def prior_session_count(self, security_id: int, before: date) -> int:
         """Count legacy sessions strictly before ``before`` for a security."""
         result = await self._session.execute(
             select(func.count())
-            .select_from(LegacyOHLCVDailyModel)
+            .select_from(self._model)
             .where(
-                LegacyOHLCVDailyModel.security_id == security_id,
-                LegacyOHLCVDailyModel.date < before,
+                self._model.security_id == security_id,
+                self._model.date < before,
             )
         )
         return int(result.scalar_one())
@@ -193,10 +217,10 @@ class SqlLegacyOHLCVRepository:
     async def distinct_dates(self, start: date, end: date) -> list[date]:
         """Return every distinct legacy bar date in ``[start, end]``, ascending."""
         result = await self._session.execute(
-            select(LegacyOHLCVDailyModel.date)
-            .where(LegacyOHLCVDailyModel.date >= start, LegacyOHLCVDailyModel.date <= end)
+            select(self._model.date)
+            .where(self._model.date >= start, self._model.date <= end)
             .distinct()
-            .order_by(LegacyOHLCVDailyModel.date)
+            .order_by(self._model.date)
         )
         return list(result.scalars().all())
 
@@ -355,3 +379,42 @@ class SqlValidationGapLogRepository:
             select(func.count()).select_from(SurvivorshipGapEventModel)
         )
         return int(result.scalar_one())
+
+
+class SqlBSEScripJunctionRepository:
+    """Insert-only persistence for the learned BSE ``SC_CODE`` → ISIN junction (RP-014)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Bind the repository to a unit-of-work session."""
+        self._session = session
+
+    async def insert_many(
+        self, items: list[tuple[str, str, str, date]]
+    ) -> int:
+        """Insert ``(sc_code, isin, name, observed_on)`` rows; first observation wins.
+
+        ``ON CONFLICT DO NOTHING`` on ``sc_code`` keeps a re-run idempotent and
+        preserves the first session that disclosed each scrip's ISIN — the
+        junction is immutable once learned, exactly like ``historical_universe``.
+        Returns the number of rows actually inserted (``RETURNING`` counts only
+        rows the statement really added, so the backfill summary measures the
+        learned junction, not the rows offered to it).
+        """
+        if not items:
+            return 0
+        rows = [
+            {"sc_code": sc, "isin": isin, "name": name, "observed_on": observed_on}
+            for sc, isin, name, observed_on in items
+        ]
+        stmt = insert(BSEScripJunctionModel).values(rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=[BSEScripJunctionModel.sc_code]
+        )
+        returning = stmt.returning(BSEScripJunctionModel.sc_code)
+        result = await self._session.execute(returning)
+        return len(result.all())
+
+    async def sc_code_to_isin(self) -> dict[str, str]:
+        """Return the full learned junction as ``{sc_code: isin}``."""
+        result = await self._session.execute(select(BSEScripJunctionModel))
+        return {row.sc_code: row.isin for row in result.scalars().all()}

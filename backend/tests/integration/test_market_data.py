@@ -285,6 +285,54 @@ async def test_corporate_action_repository_upsert_is_idempotent(
     assert actions[0].raw_subject == "Bonus 1:1 (corrected)"
 
 
+@pytest.mark.asyncio
+async def test_corporate_action_save_many_collapses_duplicate_keys_in_one_call(
+    db_session: AsyncSession,
+) -> None:
+    """NSE deep-history disclosures repeat (ex_date, type) inside one batch.
+
+    Postgres rejects a multi-row ON CONFLICT statement containing duplicate
+    conflict keys ("cannot affect row a second time"), which previously failed
+    the whole security's refresh. The batch must collapse first — last wins,
+    matching the upsert semantics — exactly like old-era dividend legs sharing
+    one ex-date do.
+    """
+    from momentum25.domain.ports.market_data import RawCorporateAction
+    from momentum25.infrastructure.persistence.repositories.corporate_actions import (
+        SqlCorporateActionRepository,
+    )
+
+    security_id = await _seed_security_id(db_session, "HDFCBANK")
+    repo = SqlCorporateActionRepository(db_session)
+
+    actions = [
+        RawCorporateAction(
+            symbol="HDFCBANK",
+            ex_date=date(2003, 7, 15),
+            action_type="dividend",
+            ratio=Decimal("0.25"),
+            raw_subject="Dividend leg 1",
+        ),
+        RawCorporateAction(
+            symbol="HDFCBANK",
+            ex_date=date(2003, 7, 15),
+            action_type="dividend",
+            ratio=Decimal("0.10"),
+            raw_subject="Dividend leg 2",
+        ),
+    ]
+    written = await repo.save_many(security_id, actions)
+    await db_session.commit()
+    assert written == 1  # one row, not a Postgres exception
+
+    persisted = await repo.list_for_security(security_id)
+    assert len(persisted) == 1
+    assert persisted[0].ex_date == date(2003, 7, 15)
+    assert persisted[0].action_type == "dividend"
+    assert persisted[0].ratio == Decimal("0.10")
+    assert persisted[0].raw_subject == "Dividend leg 2"
+
+
 # ── Security listing_date upsert (Objective 3) ─────────────────────────────
 
 

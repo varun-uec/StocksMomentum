@@ -133,6 +133,48 @@ class LegacyOHLCVDailyModel(Base):
     turnover_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
 
 
+class BSELegacyOHLCVDailyModel(Base):
+    """Legacy BSE EOD bars for the RP-014 pre-UDiFF range (2006-03-01 → 2023-12-29).
+
+    A dedicated staging table mirroring ``legacy_ohlcv_daily`` so BSE-sourced
+    bars can never be confused with the NSE-anchored legacy surface the
+    historical screening pipeline reads. Raw (pre-adjustment) prints only; no
+    adjustment columns are carried here.
+    """
+
+    __tablename__ = "bse_legacy_ohlcv_daily"
+
+    security_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("securities.id"), primary_key=True
+    )
+    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    open: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    high: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    low: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    volume: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    prev_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    turnover_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+
+
+class BSEScripJunctionModel(Base):
+    """Learned BSE ``SC_CODE`` → ISIN identity junction (RP-014).
+
+    Insert-only: one row per BSE scrip code, recording the ISIN/name BSE's
+    UDiFF bhavcopy reported for it on the first observed session (first
+    observation wins). BSE ``SC_CODE`` values are stable across the exchange's
+    history, so this junction lets 2006–2023 legacy bars — which carry no ISIN
+    — resolve to the canonical table by ISIN.
+    """
+
+    __tablename__ = "bse_scrip_junction"
+
+    sc_code: Mapped[str] = mapped_column(String, primary_key=True)
+    isin: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    observed_on: Mapped[date] = mapped_column(Date, nullable=False)
+
+
 class CorporateActionInferenceLogModel(Base):
     """PREVCLOSE-inferred corporate-action factors (RP-012 condition C1).
 

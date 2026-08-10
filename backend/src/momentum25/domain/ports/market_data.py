@@ -32,6 +32,7 @@ class RawInstrument:
     industry: str | None = None
     series: str | None = None
     listing_date: date | None = None
+    native_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +52,12 @@ class RawBar:
     ``security_id`` robustly to ticker drift (a symbol renamed between the
     session date and today's instrument master); ``None`` when the source does
     not carry an ISIN column. It is never derived or guessed.
+
+    ``native_code`` is the source exchange's own stable instrument code when
+    the source publishes one (BSE's ``SC_CODE`` in the 2006–2023 legacy
+    bhavcopy and ``FinInstrmId`` in the UDiFF format). It is the identity key
+    the RP-014 BSE legacy backfill uses to learn a scrip's ISIN from modern
+    UDiFF sessions; ``None`` when the source prints only a ticker.
     """
 
     symbol: str
@@ -63,6 +70,7 @@ class RawBar:
     prev_close: Decimal | None = None
     turnover_value: Decimal | None = None
     isin: str | None = None
+    native_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
