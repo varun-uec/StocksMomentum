@@ -1,7 +1,7 @@
 # Momentum25 India — developer convenience targets.
 # Most workflows run through Docker Compose; backend targets assume `cd backend`.
 
-.PHONY: help up up-dev down logs migrate revision backend-install lint format typecheck test web-install web-dev clean
+.PHONY: help up up-dev down logs migrate revision backend-install api-dev lint format typecheck test web-install web-dev clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -26,6 +26,9 @@ revision: ## Autogenerate a migration: make revision m="message"
 
 backend-install: ## Install backend deps locally (uv)
 	cd backend && uv sync --all-extras
+
+api-dev: ## Run the API locally, bound to all interfaces (matches docker-compose)
+	cd backend && .venv/bin/uvicorn momentum25.main:app --host 0.0.0.0 --port 8000 --app-dir src --reload
 
 lint: ## Ruff lint
 	cd backend && ruff check src tests

@@ -220,9 +220,14 @@ export default function StockResearchPage() {
     return <LoadingSpinner text="Loading stock research…" />;
   }
   if (!explanation) {
+    const unreachable = liveError instanceof TypeError;
     return (
       <ErrorMessage
-        message={`No ${horizonLabel} analysis available for ${symbol}. It was not in the most recent screening run and could not be evaluated on demand either — it may have insufficient price history, or the symbol may not exist.`}
+        message={
+          unreachable
+            ? 'Cannot reach the Momentum25 API. Check that the backend is running and reachable, then reload.'
+            : `No ${horizonLabel} analysis available for ${symbol}. It was not in the most recent screening run and could not be evaluated on demand either — it may have insufficient price history, or the symbol may not exist.`
+        }
       />
     );
   }
