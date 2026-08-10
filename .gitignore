@@ -19,6 +19,9 @@ web/.turbo/
 .env
 .env.local
 
+# Backfill resume checkpoints (machine-local runtime state)
+backend/rp012_phase3_checkpoint.json
+
 # OS / editors
 .DS_Store
 .idea/

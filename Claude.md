@@ -288,3 +288,29 @@ Unless instructed otherwise:
 * stop when architectural clarification is required
 
 Think like a Principal Engineer, implement like a Senior Engineer, and leave the codebase better than you found it.
+
+---
+
+# Writing
+
+Write in Simplified Technical English. Follow Zinsser: short sentences, active voice, one meaning per word, no clutter. Sound like a person, not a manual.
+
+This applies to everything the repo produces in prose:
+
+* research reports and ADRs
+* commit messages and PR descriptions
+* docstrings and comments
+* score explanations and UI copy shown to users
+* chat replies
+
+Rules:
+
+* One sentence, one idea. Break the long ones.
+* Active voice. "The gate rejects the stock," not "the stock is rejected by the gate."
+* Fix a term and keep it. If it is a `gate`, it is never a `filter`, `check`, or `rule` elsewhere.
+* Delete words that carry no meaning: "in order to", "it should be noted that", "very", "basically", "leverage".
+* Prefer the plain word. "Use", not "utilize". "Because", not "due to the fact that".
+* State numbers plainly with their units and window: "120d return, +2.4%", not "materially outperformed".
+* No hedging when the evidence is clear. No overclaiming when it is not. Say "rejected on hold-out", not "did not fully validate".
+
+Domain terms (`momentum`, `gate`, `qualified set`, `Rank IC`, `walk-forward`, `hold-out`) keep their exact meaning from the ADD. Never use them loosely for effect.
