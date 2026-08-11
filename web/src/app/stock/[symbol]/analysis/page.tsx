@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   Badge,
@@ -142,11 +142,20 @@ interface Target {
 export default function UnifiedAnalysisPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const strategyQuery = searchParams.get('strategy');
   const strategyName = strategyQuery ?? DEFAULT_STRATEGY;
   const horizonLabel = strategyDisplayName(strategyName);
 
-  const [mode, setMode] = useState<Mode>('chart');
+  // The mode lives in the URL so the action bar's Chart / Patterns / Elliott
+  // Wave links can switch it; the segmented control below writes it back.
+  const modeParam = searchParams.get('mode');
+  const mode: Mode = MODES.some((m) => m.id === modeParam) ? (modeParam as Mode) : 'chart';
+  const setMode = (next: Mode) => {
+    const params = new URLSearchParams({ mode: next });
+    if (strategyQuery) params.set('strategy', strategyQuery);
+    router.replace(`/stock/${symbol}/analysis?${params.toString()}`, { scroll: false });
+  };
   // Screen-level, never derived from mode: the chart calls `fitContent()`
   // whenever this is falsy, so a null/undefined flip on a mode switch would
   // silently throw away the reader's zoom.
@@ -163,16 +172,18 @@ export default function UnifiedAnalysisPage() {
     symbol ?? ''
   );
 
-  const { data: live } = useQuery({
+  const { data: live, isLoading: liveLoading, error: liveError } = useQuery({
     queryKey: ['stock-live', symbol, strategyName],
     queryFn: () => getLiveStockAnalysis(symbol, false, strategyName),
     enabled: !!symbol,
   });
 
-  const { data: runExplanation } = useQuery({
+  const { data: runExplanation, isLoading: explLoading, error: explError } = useQuery({
     queryKey: ['stock-explanation', symbol, strategyName],
     queryFn: () => getStockExplanation(symbol, undefined, strategyName),
     enabled: !!symbol,
+    // A symbol absent from the latest run is an expected 404, not a transient
+    // failure — the on-demand fallback below serves those symbols instead.
     retry: false,
   });
 
@@ -432,6 +443,24 @@ export default function UnifiedAnalysisPage() {
   if (!symbol) return <ErrorMessage message="No symbol supplied." />;
 
   const explanation = runExplanation ?? live?.explanation ?? null;
+  const usingLiveFallback = !runExplanation && !!explanation;
+
+  if (!chartReady || !overlaysReady || explLoading || (!runExplanation && liveLoading)) {
+    return <LoadingSpinner text="Loading the analysis…" />;
+  }
+  if (!explanation) {
+    const unreachable = (liveError ?? explError) instanceof TypeError;
+    return (
+      <ErrorMessage
+        message={
+          unreachable
+            ? 'Cannot reach the Momentum25 API. Check that the backend is running and reachable, then reload.'
+            : `No ${horizonLabel} analysis available for ${symbol}. It was not in the most recent screening run and could not be evaluated on demand either — it may have insufficient price history, or the symbol may not exist.`
+        }
+      />
+    );
+  }
+
   const backHref = `/stock/${symbol}${strategyQuery ? `?strategy=${strategyQuery}` : ''}`;
   const waveHeadline = wave.candidates[0] ?? null;
 
@@ -456,7 +485,7 @@ export default function UnifiedAnalysisPage() {
           </Badge>
         )}
         {explanation && <Badge color="indigo">Momentum {num(explanation.momentum_score, 0)}</Badge>}
-        <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="chart" />
+        <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="analysis" />
         <Link
           href={backHref}
           className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
@@ -464,6 +493,16 @@ export default function UnifiedAnalysisPage() {
           ← Back to research
         </Link>
       </PageHeader>
+
+      {usingLiveFallback && (
+        <div className="mx-auto max-w-7xl px-4 pt-4">
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-800 dark:text-amber-300">
+            {symbol} was not part of the latest {horizonLabel} screening run, so there is no rank,
+            percentile or score history for it. Everything below was evaluated on demand just now
+            using the same rules, against data as of {live?.data_as_of ?? '—'}.
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="sticky top-[4.5rem] z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 mb-4 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md">
@@ -519,32 +558,28 @@ export default function UnifiedAnalysisPage() {
           {/* Chart — one instance, mounted once, for all three modes. */}
           <section id="chart" className="lg:col-span-2 scroll-mt-32 space-y-6">
             <Card>
-              {ready ? (
-                <PriceChart
-                  {...chartProps}
-                  height={560}
-                  indicatorSeries={indicatorSeries}
-                  extraPaneDefs={extraPaneDefs}
-                  activePanes={[...chartProps.activePanes, ...activePanes].filter(
-                    (id, i, all) => all.indexOf(id) === i
-                  )}
-                  onActivePanesChange={(panes) => {
-                    // The built-in row owns the backend panes; catalogue panes
-                    // are added and removed through the picker.
-                    chartProps.onActivePanesChange(
-                      panes.filter((id) => !activePanes.includes(id))
-                    );
-                  }}
-                  markers={markers}
-                  overlayLine={mode === 'elliott' ? wave.overlayLine : undefined}
-                  overlayLines={overlayLines}
-                  priceZone={mode === 'elliott' ? wave.priceZone : null}
-                  visibleRange={visibleRange}
-                  footnote={footnote}
-                />
-              ) : (
-                <LoadingSpinner text="Loading the chart…" />
-              )}
+              <PriceChart
+                {...chartProps}
+                height={560}
+                indicatorSeries={indicatorSeries}
+                extraPaneDefs={extraPaneDefs}
+                activePanes={[...chartProps.activePanes, ...activePanes].filter(
+                  (id, i, all) => all.indexOf(id) === i
+                )}
+                onActivePanesChange={(panes) => {
+                  // The built-in row owns the backend panes; catalogue panes
+                  // are added and removed through the picker.
+                  chartProps.onActivePanesChange(
+                    panes.filter((id) => !activePanes.includes(id))
+                  );
+                }}
+                markers={markers}
+                overlayLine={mode === 'elliott' ? wave.overlayLine : undefined}
+                overlayLines={overlayLines}
+                priceZone={mode === 'elliott' ? wave.priceZone : null}
+                visibleRange={visibleRange}
+                footnote={footnote}
+              />
             </Card>
 
             {showPicker && (
@@ -732,7 +767,10 @@ export default function UnifiedAnalysisPage() {
                     </div>
                   )}
 
-                  <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <label
+                    className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+                    title="The smallest reversal that confirms a pivot, and so the finest degree labelled. The top degree is coarsened away from it automatically."
+                  >
                     Finest degree
                     <input
                       type="number"
@@ -862,12 +900,12 @@ export default function UnifiedAnalysisPage() {
           {explanation && (
             <section id="overview" className="scroll-mt-32 space-y-6">
               <div className="flex flex-col lg:flex-row items-stretch gap-6 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 p-6 shadow-sm">
-                <div className="flex items-center justify-center gap-8 shrink-0">
+                <div className="flex items-center justify-center gap-8 lg:gap-10 shrink-0">
                   <ScoreGauge label="Momentum" value={parseFloat(explanation.momentum_score)} />
                   <ScoreGauge label="Buy Setup" value={parseFloat(explanation.buy_setup_score)} />
                 </div>
                 <div className="flex-1 min-w-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700/60 pt-4 lg:pt-0 lg:pl-6">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
                     Rule Pass Matrix
                   </div>
                   <RulePassMatrix
@@ -908,8 +946,9 @@ export default function UnifiedAnalysisPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-sm font-bold tabular-nums text-slate-800 dark:text-slate-200">
-                        {num(engine.score)}
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tabular-nums">{num(engine.score)}</div>
+                        <div className="text-xs text-slate-500">score</div>
                       </div>
                     </div>
                   ))}

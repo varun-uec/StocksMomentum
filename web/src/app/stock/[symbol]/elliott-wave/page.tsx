@@ -134,6 +134,25 @@ export default function ElliottWavePage() {
 
   if (!symbol) return <ErrorMessage message="No symbol supplied." />;
 
+  // Every card on this page — the count, the waves, the ranking and the pivot
+  // table — derives from the one wave query, so one page-level guard covers
+  // them all.
+  if (!chartReady || waveLoading) {
+    return <LoadingSpinner text="Loading the wave analysis…" />;
+  }
+  if (waveError) {
+    const unreachable = waveError instanceof TypeError;
+    return (
+      <ErrorMessage
+        message={
+          unreachable
+            ? 'Cannot reach the Momentum25 API. Check that the backend is running and reachable, then reload.'
+            : `The wave analysis for ${symbol} could not be loaded.`
+        }
+      />
+    );
+  }
+
   const backHref = `/stock/${symbol}${strategyQuery ? `?strategy=${strategyQuery}` : ''}`;
   const selectedLabel =
     active && selectedWave !== null ? active.labels[selectedWave].label : null;
@@ -193,7 +212,7 @@ export default function ElliottWavePage() {
                       ? 'border-current'
                       : 'border-slate-300 dark:border-slate-700 text-slate-500'
                   }`}
-                  style={index === candidateIndex ? { color: CANDIDATE_COLORS[index] } : undefined}
+                  style={index === candidateIndex ? { color: CANDIDATE_COLORS[Math.min(index, CANDIDATE_COLORS.length - 1)] } : undefined}
                 >
                   {index === 0 ? 'Top count' : `Alternate ${index}`}: {describe(candidate)} ·{' '}
                   {parseFloat(candidate.labelling_confidence).toFixed(0)}
@@ -238,22 +257,20 @@ export default function ElliottWavePage() {
         )}
 
         <Card>
-          {chartReady && (
-            <PriceChart
-              {...chartProps}
-              height={620}
-              markers={markers}
-              overlayLine={overlayLine}
-              overlayLines={overlayLines}
-              priceZone={priceZone}
-              visibleRange={visibleRange}
-              footnote={
-                active && count
-                  ? `${describe(active)} at ${active.degree} degree, spanning ${active.labels[0].bar_date} to ${active.labels[active.labels.length - 1].bar_date}, within ${analysis?.bars_analyzed ?? 0} bars analysed; ${analysis?.pivots.length ?? 0} confirmed pivots at the top degree's ${analysis?.top_degree_threshold_pct ?? thresholdPct}% reversal threshold, subdivided down to ${thresholdPct}%. Parenthesised labels are the next finer degree. Dashed bounds mark the projected completion zone.`
-                  : `${analysis?.pivots.length ?? 0} confirmed pivots at a ${analysis?.top_degree_threshold_pct ?? thresholdPct}% reversal threshold.`
-              }
-            />
-          )}
+          <PriceChart
+            {...chartProps}
+            height={620}
+            markers={markers}
+            overlayLine={overlayLine}
+            overlayLines={overlayLines}
+            priceZone={priceZone}
+            visibleRange={visibleRange}
+            footnote={
+              active && count
+                ? `${describe(active)} at ${active.degree} degree, spanning ${active.labels[0].bar_date} to ${active.labels[active.labels.length - 1].bar_date}, within ${analysis?.bars_analyzed ?? 0} bars analysed; ${analysis?.pivots.length ?? 0} confirmed pivots at the top degree's ${analysis?.top_degree_threshold_pct ?? thresholdPct}% reversal threshold, subdivided down to ${thresholdPct}%. Parenthesised labels are the next finer degree. Dashed bounds mark the projected completion zone.`
+                : `${analysis?.pivots.length ?? 0} confirmed pivots at a ${analysis?.top_degree_threshold_pct ?? thresholdPct}% reversal threshold.`
+            }
+          />
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -265,11 +282,7 @@ export default function ElliottWavePage() {
                 : undefined
             }
           >
-            {waveLoading && <LoadingSpinner text="Labelling the wave structure…" />}
-            {waveError && (
-              <ErrorMessage message={`The wave analysis for ${symbol} could not be loaded.`} />
-            )}
-            {!waveLoading && !waveError && !count && (
+            {!count && (
               <p className="text-xs text-slate-500">No count is asserted at this threshold.</p>
             )}
             {count && <CountSummary count={count} color={color} />}

@@ -2,15 +2,30 @@
 
 /**
  * The symbol-scoped actions, identical on every `/stock/[symbol]/*` route so a
- * reader never loses the way back to the chart, the wave count or the pattern
- * candidates (audit 2026-08-09, U11).
+ * reader never loses the way back to the chart, the analysis screen, the wave
+ * count or the pattern candidates (audit 2026-08-09, U11).
+ *
+ * Targets are route-aware. On the detail and wave pages, Chart and Patterns
+ * jump to that page's own sections. On the analysis page, which has its own
+ * Chart, Patterns and Elliott Wave modes, those actions switch modes instead
+ * of navigating away to another page.
  */
 
 import Link from 'next/link';
 import { focusRing } from '@/lib/theme';
 import { WatchlistStar } from '@/components/stock/WatchlistStar';
 
-type ActionId = 'chart' | 'elliott-wave' | 'patterns';
+type ActionId = 'chart' | 'analysis' | 'patterns' | 'elliott-wave';
+
+/** Adds query params only when they carry meaning; never a bare `?`. */
+function withQuery(path: string, params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value);
+  }
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+}
 
 export function SymbolActionBar({
   symbol,
@@ -21,16 +36,31 @@ export function SymbolActionBar({
   strategyName?: string | null;
   current: ActionId;
 }) {
-  const query = strategyName ? `?strategy=${strategyName}` : '';
-  const detail = `/stock/${symbol}${query}`;
+  // Identical link shapes on all three routes; the analysis route swaps its
+  // Chart / Patterns / Elliott Wave actions for in-page mode switches.
+  const onAnalysis = current === 'analysis';
+  const analysis = withQuery(`/stock/${symbol}/analysis`, {
+    strategy: strategyName ?? undefined,
+  });
+  const withMode = (mode: string) =>
+    withQuery(`/stock/${symbol}/analysis`, {
+      strategy: strategyName ?? undefined,
+      mode,
+    });
+  const detail = withQuery(`/stock/${symbol}`, { strategy: strategyName ?? undefined });
+  const wave = withQuery(`/stock/${symbol}/elliott-wave`, {
+    strategy: strategyName ?? undefined,
+  });
+
   const actions: { id: ActionId; label: string; href: string }[] = [
-    { id: 'chart', label: 'Chart', href: `${detail}#chart` },
-    { id: 'elliott-wave', label: 'Elliott Wave', href: `/stock/${symbol}/elliott-wave${query}` },
-    { id: 'patterns', label: 'Patterns', href: `${detail}#patterns` },
+    { id: 'chart', label: 'Chart', href: onAnalysis ? withMode('chart') : `${detail}#chart` },
+    { id: 'analysis', label: 'Analysis', href: analysis },
+    { id: 'elliott-wave', label: 'Elliott Wave', href: onAnalysis ? withMode('elliott') : wave },
+    { id: 'patterns', label: 'Patterns', href: onAnalysis ? withMode('patterns') : `${detail}#patterns` },
   ];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <WatchlistStar symbol={symbol} />
       {actions.map((action) =>
         action.id === current ? (
