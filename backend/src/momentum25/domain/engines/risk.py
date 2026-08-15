@@ -19,11 +19,13 @@ from typing import Any
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.strategy import EngineConfig, RuleConfig
-from momentum25.domain.research.swing_targets import (
-    DEFAULT_ATR_STOP_MULTIPLE,
-    DEFAULT_FALLBACK_RISK_PCT,
-)
 from momentum25.domain.value_objects.results import EngineResult, RuleResult
+
+# Owned here (not in domain.research) because this is the production stop
+# convention; domain.research.swing_targets and domain.research.stop_loss
+# import these back, rather than risk.py reaching into research.
+DEFAULT_ATR_STOP_MULTIPLE = Decimal("2")
+DEFAULT_FALLBACK_RISK_PCT = Decimal("0.02")
 
 # Stop-distance ceiling for ``risk_rr``, in percent of price. Derived, not
 # invented: the protective stop is ``2 x ATR14`` (``DEFAULT_ATR_STOP_MULTIPLE``,

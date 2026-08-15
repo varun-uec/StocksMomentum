@@ -65,6 +65,8 @@ from momentum25.interface.api.dependencies_research import (
 
 router = APIRouter(prefix="/research", tags=["research"])
 
+_QUANT = Decimal("0.0001")
+
 
 def _research_measurability(has_results: bool, reason: str) -> ResearchMeasurabilityDTO:
     """Say why a result list is empty, so "no data" never reads as "no effect"."""
@@ -364,8 +366,10 @@ async def contribution_analysis(
                 engine_name=e.engine_id,
                 rule_count=len(e.rule_stats),
                 avg_pass_rate=e.avg_pass_rate,
-                avg_importance=sum((r.importance_score for r in e.rule_stats), Decimal("0"))
-                / max(len(e.rule_stats), 1),
+                avg_importance=(
+                    sum((r.importance_score for r in e.rule_stats), Decimal("0"))
+                    / max(len(e.rule_stats), 1)
+                ).quantize(_QUANT),
                 total_importance=sum((r.total_contribution for r in e.rule_stats), Decimal("0")),
             )
             for e in result.engine_stats

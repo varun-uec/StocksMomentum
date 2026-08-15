@@ -25,7 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-DEFAULT_ATR_STOP_MULTIPLE = Decimal("2")
+from momentum25.domain.engines.risk import DEFAULT_ATR_STOP_MULTIPLE
 
 # Chandelier exit defaults per Chuck LeBeau's original formulation: 3x ATR below
 # the highest high of the trailing 22 sessions (~one month of trading).

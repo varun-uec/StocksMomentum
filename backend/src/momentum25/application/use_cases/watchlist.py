@@ -17,6 +17,8 @@ from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
 from momentum25.domain.ports.repositories import SecurityRepository, WatchlistRepository
 from momentum25.domain.value_objects.results import RuleResult
 
+_QUANT = Decimal("0.0001")
+
 
 async def _resolve_security_id(securities: SecurityRepository, symbol: str) -> int:
     """Return the security id for ``symbol``, or raise :class:`NotFoundError`."""
@@ -233,5 +235,5 @@ class GetWatchlistDetail:
         if len(bars) < 2:
             return close, None
         prev = bars[-2].close
-        change_pct = ((close - prev) / prev * 100) if prev else None
+        change_pct = ((close - prev) / prev * 100).quantize(_QUANT) if prev else None
         return close, change_pct

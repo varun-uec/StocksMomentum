@@ -26,6 +26,12 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
+from momentum25.domain.engines.risk import (
+    DEFAULT_ATR_STOP_MULTIPLE as DEFAULT_ATR_STOP_MULTIPLE,
+)
+from momentum25.domain.engines.risk import (
+    DEFAULT_FALLBACK_RISK_PCT as DEFAULT_FALLBACK_RISK_PCT,
+)
 from momentum25.domain.entities.market_data import OHLCVBar
 
 # Stop multiple matches the existing risk engine's own convention (``risk.py``:
@@ -37,10 +43,8 @@ from momentum25.domain.entities.market_data import OHLCVBar
 # case pass by construction every time ATR is available, which defeats the
 # point of a risk-reward *gate*: absent a confirmed pivot showing real room
 # above price, the plan should have to earn a pass, not default to one.
-DEFAULT_ATR_STOP_MULTIPLE = Decimal("2")
 DEFAULT_ATR_TARGET_MULTIPLE = Decimal("3")
 DEFAULT_MIN_RR_RATIO = Decimal("2.0")  # used only for the no-ATR-at-all fallback below
-DEFAULT_FALLBACK_RISK_PCT = Decimal("0.02")  # matches risk.py's no-ATR fallback
 
 
 @dataclass(frozen=True, slots=True)
