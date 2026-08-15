@@ -26,7 +26,15 @@ export function ScoreGauge({ label, value, size = 120 }: ScoreGaugeProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <div style={{ width: size, height: size * 0.62 }} className="relative">
+      <div
+        role="meter"
+        aria-valuenow={Math.round(clamped)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${label}: ${clamped.toFixed(0)} out of 100`}
+        style={{ width: size, height: size * 0.62 }}
+        className="relative"
+      >
         <RadialBarChart
           width={size}
           height={size}
@@ -49,7 +57,7 @@ export function ScoreGauge({ label, value, size = 120 }: ScoreGaugeProps) {
           {clamped.toFixed(0)}
         </div>
       </div>
-      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider -mt-1">{label}</div>
+      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider -mt-1">{label}</div>
     </div>
   );
 }

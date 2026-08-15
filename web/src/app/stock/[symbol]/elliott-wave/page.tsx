@@ -375,9 +375,9 @@ export default function ElliottWavePage() {
             <table className="w-full text-xs tabular-nums">
               <thead className="text-slate-500">
                 <tr>
-                  <th className="text-left font-medium py-1">Date</th>
-                  <th className="text-left font-medium py-1">Type</th>
-                  <th className="text-right font-medium py-1">Price</th>
+                  <th scope="col" className="text-left font-medium py-1">Date</th>
+                  <th scope="col" className="text-left font-medium py-1">Type</th>
+                  <th scope="col" className="text-right font-medium py-1">Price</th>
                 </tr>
               </thead>
               <tbody>

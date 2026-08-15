@@ -120,7 +120,6 @@ function ChartPatternSection({
         analysis
           ? {
               text: `${analysis.patterns.length} candidate${analysis.patterns.length === 1 ? '' : 's'}`,
-              color: 'bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300',
             }
           : undefined
       }

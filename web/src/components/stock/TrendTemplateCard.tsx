@@ -158,9 +158,7 @@ export function TrendTemplateCard({
       subtitle={`All ${rules.length} conditions must hold — this is a hard gate, not a score`}
       badge={{
         text: gatePassed ? `GATE PASS · ${passed}/${rules.length}` : `GATE FAIL · ${passed}/${rules.length}`,
-        color: gatePassed
-          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-          : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300',
+        color: gatePassed ? 'emerald' : 'rose',
       }}
     >
       <div className="space-y-4">

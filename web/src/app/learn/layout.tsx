@@ -20,7 +20,7 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <main className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* Mobile section selector */}
         <div className="lg:hidden">
@@ -53,6 +53,7 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
                     key={s.href}
                     href={s.href}
                     onClick={() => setMobileOpen(false)}
+                    aria-current={active ? 'page' : undefined}
                     className={`block px-4 py-2.5 text-sm transition-colors ${
                       active
                         ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-medium'
@@ -70,7 +71,7 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
         {/* Desktop sidebar */}
         <aside className="w-full lg:w-56 shrink-0 hidden lg:block">
           <div className="sticky top-20">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Learning Center</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Learning Center</div>
             <nav className="space-y-0.5">
               {SECTIONS.map((s) => {
                 const active = pathname === s.href;
@@ -78,6 +79,7 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
                   <Link
                     key={s.href}
                     href={s.href}
+                    aria-current={active ? 'page' : undefined}
                     className={`block px-3 py-2 rounded-md text-sm transition-colors ${focusRing} ${
                       active
                         ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-medium'

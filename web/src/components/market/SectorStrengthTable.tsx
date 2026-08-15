@@ -115,11 +115,11 @@ export function SectorStrengthTable({
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-slate-500 dark:text-slate-400">
-              <th className="font-medium py-1.5 pr-3">#</th>
-              <th className="font-medium py-1.5 pr-3">Sector</th>
-              <th className="font-medium py-1.5 px-3 text-right">Names</th>
+              <th scope="col" className="font-medium py-1.5 pr-3">#</th>
+              <th scope="col" className="font-medium py-1.5 pr-3">Sector</th>
+              <th scope="col" className="font-medium py-1.5 px-3 text-right">Names</th>
               {PERIODS.map((p) => (
-                <th key={p} className="font-medium py-1.5 px-3 text-right">
+                <th scope="col" key={p} className="font-medium py-1.5 px-3 text-right">
                   {p}
                 </th>
               ))}

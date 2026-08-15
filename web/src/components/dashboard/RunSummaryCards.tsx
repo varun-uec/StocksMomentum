@@ -5,6 +5,8 @@ import { typography } from '@/lib/theme';
 
 interface RunSummaryCardsProps {
   summary: ScreeningRunSummary;
+  /** RS ratings of the ranked stocks on screen. Empty when none are rated. */
+  rsRatings?: number[];
 }
 
 function StatCard({
@@ -49,11 +51,17 @@ function StatCard({
   );
 }
 
-export default function RunSummaryCards({ summary }: RunSummaryCardsProps) {
+export default function RunSummaryCards({ summary, rsRatings = [] }: RunSummaryCardsProps) {
   const passRate =
     summary.total_evaluated > 0
       ? ((summary.passed_count / summary.total_evaluated) * 100).toFixed(1)
       : '0.0';
+
+  // Run duration says nothing about the stocks. Average RS rating does.
+  const avgRs = rsRatings.length
+    ? Math.round(rsRatings.reduce((a, b) => a + b, 0) / rsRatings.length)
+    : null;
+  const topRs = rsRatings.length ? Math.max(...rsRatings) : null;
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -76,10 +84,14 @@ export default function RunSummaryCards({ summary }: RunSummaryCardsProps) {
         description="Failed one or more hard gates"
       />
       <StatCard
-        label="Duration"
-        value={`${summary.execution_duration_seconds.toFixed(2)}s`}
+        label="Avg RS Rating"
+        value={avgRs ?? '—'}
         accent="indigo"
-        description="End-to-end screening time"
+        description={
+          topRs === null
+            ? 'No RS rating available for the ranked stocks'
+            : `Across ${rsRatings.length} ranked stocks · top ${topRs}`
+        }
       />
     </div>
   );

@@ -20,7 +20,3 @@ body {
   scrollbar-width: none;
 }
 
-/* Focus-visible utility for keyboard navigation */
-.focus-ring {
-  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900;
-}

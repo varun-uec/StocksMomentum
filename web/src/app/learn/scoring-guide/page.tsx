@@ -114,9 +114,9 @@ export default function ScoringGuidePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-500 text-xs uppercase tracking-wider">
-                  <th className="text-left py-3 px-3">Engine</th>
-                  <th className="text-right py-3 px-3">Momentum Weight</th>
-                  <th className="text-right py-3 px-3">Buy Setup Weight</th>
+                  <th scope="col" className="text-left py-3 px-3">Engine</th>
+                  <th scope="col" className="text-right py-3 px-3">Momentum Weight</th>
+                  <th scope="col" className="text-right py-3 px-3">Buy Setup Weight</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
 import { searchSecurities } from '@/lib/api-client';
 import { focusRing } from '@/lib/theme';
@@ -60,6 +60,11 @@ const Icons = {
       <path fillRule="evenodd" clipRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
     </svg>
   ),
+  search: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+      <path fillRule="evenodd" clipRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.45 4.39l3.08 3.08a1 1 0 01-1.41 1.42l-3.08-3.08A7 7 0 012 9z" />
+    </svg>
+  ),
   close: (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -82,25 +87,28 @@ const Icons = {
   ),
 };
 
-// The primary surface: today's momentum dashboard and the watchlist. Every
-// other screen (historical replay, strategy comparison, the experiment lab,
-// research validation, analytics, market breadth, the learn hub) is a tool
-// for building or auditing a strategy, not for daily use, so it lives behind
-// the "Research Tools" dropdown instead of competing for top-level space.
+// The investor surface sits at the top level: today's dashboard, the
+// watchlist, market breadth and the learn hub. The quant surfaces (historical
+// replay, strategy comparison, validation, analytics, the experiment lab) are
+// tools for building or auditing a strategy, not for daily use, so they stay
+// behind the "Research" menu.
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: Icons.dashboard },
   { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
-];
-
-const RESEARCH_TOOLS = [
-  { href: '/historical', label: 'Historical', icon: Icons.historical },
-  { href: '/strategies', label: 'Strategies', icon: Icons.strategies },
-  { href: '/experiment', label: 'Lab', icon: Icons.lab },
-  { href: '/validation', label: 'Research', icon: Icons.research },
-  { href: '/analytics', label: 'Analytics', icon: Icons.analytics },
   { href: '/market', label: 'Market', icon: Icons.market },
   { href: '/learn', label: 'Learn', icon: Icons.learn },
 ];
+
+const RESEARCH_TOOLS = [
+  { href: '/strategies', label: 'Strategies', icon: Icons.strategies },
+  { href: '/validation', label: 'Validation', icon: Icons.research },
+  { href: '/historical', label: 'Historical', icon: Icons.historical },
+  { href: '/analytics', label: 'Analytics', icon: Icons.analytics },
+  { href: '/experiment', label: 'Experiment Lab', icon: Icons.lab },
+];
+
+// The bottom bar on mobile. "More" opens the research sheet.
+const MOBILE_PRIMARY = NAV_ITEMS.slice(0, 3);
 
 const THEME_OPTIONS: { mode: ThemeMode; icon: React.ReactNode; label: string }[] = [
   { mode: 'light', icon: Icons.sun, label: 'Light theme' },
@@ -138,7 +146,7 @@ function ThemeToggle() {
  * is finding it in a ranked list, which is impossible for any symbol that did
  * not qualify in the latest run.
  */
-function SymbolSearch({ className = '' }: { className?: string }) {
+function SymbolSearch({ className = '', inputClassName = 'w-28 lg:w-44' }: { className?: string; inputClassName?: string }) {
   const router = useRouter();
   const [value, setValue] = useState('');
   const [results, setResults] = useState<SecuritySearchResult[]>([]);
@@ -230,7 +238,7 @@ function SymbolSearch({ className = '' }: { className?: string }) {
           }}
           placeholder="Symbol or company…"
           title="Search by NSE symbol or company name"
-          className={`w-28 lg:w-44 px-2.5 py-1.5 rounded-md text-xs uppercase tracking-wide bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 ${focusRing}`}
+          className={`${inputClassName} px-2.5 py-1.5 rounded-md text-xs uppercase tracking-wide bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 ${focusRing}`}
         />
       </form>
 
@@ -238,7 +246,7 @@ function SymbolSearch({ className = '' }: { className?: string }) {
         <ul
           id="symbol-search-results"
           role="listbox"
-          className="absolute right-0 mt-1 w-72 max-h-80 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 z-50"
+          className="absolute right-0 mt-1 w-72 max-w-[calc(100vw-2rem)] max-h-80 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 z-50"
         >
           {results.map((r, i) => (
             <li key={r.symbol} role="option" aria-selected={i === active}>
@@ -292,6 +300,7 @@ function NavLink({
       key={item.href}
       href={item.href}
       onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
       // The visible label is hidden below `lg`, leaving an icon-only link.
       aria-label={item.label}
       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${focusRing} ${
@@ -308,19 +317,68 @@ function NavLink({
   );
 }
 
+/** Roving-focus dropdown: Arrow/Home/End move, Escape closes and restores focus. */
 function ResearchToolsMenu() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const isActive = RESEARCH_TOOLS.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   );
 
+  const close = useCallback((restoreFocus: boolean) => {
+    setOpen(false);
+    if (restoreFocus) buttonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    itemRefs.current[active]?.focus();
+  }, [open, active]);
+
+  const openAt = (index: number) => {
+    setActive(index);
+    setOpen(true);
+  };
+
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    const last = RESEARCH_TOOLS.length - 1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive((i) => (i >= last ? 0 : i + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((i) => (i <= 0 ? last : i - 1));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActive(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActive(last);
+    } else if (e.key === 'Escape' || e.key === 'Tab') {
+      close(e.key === 'Escape');
+    }
+  };
+
   return (
-    <div className="relative">
+    <div className="relative" onBlur={(e) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+    }}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onClick={() => (open ? close(false) : openAt(0))}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            openAt(0);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            openAt(RESEARCH_TOOLS.length - 1);
+          }
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${focusRing} ${
@@ -329,23 +387,30 @@ function ResearchToolsMenu() {
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
         }`}
       >
-        Research Tools
-        <svg viewBox="0 0 20 20" fill="currentColor" className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}>
+        Research
+        <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}>
           <path fillRule="evenodd" clipRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
         </svg>
       </button>
       {open && (
         <ul
           role="menu"
+          aria-label="Research"
+          onKeyDown={onMenuKeyDown}
           className="absolute left-0 mt-1 w-48 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 z-50"
         >
-          {RESEARCH_TOOLS.map((item) => (
+          {RESEARCH_TOOLS.map((item, i) => (
             <li key={item.href} role="none">
               <Link
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
                 href={item.href}
                 role="menuitem"
-                onMouseDown={(e) => e.preventDefault()}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                tabIndex={i === active ? 0 : -1}
+                aria-current={pathname === item.href ? 'page' : undefined}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
               >
                 <span className="text-slate-400 dark:text-slate-500">{item.icon}</span>
                 {item.label}
@@ -358,71 +423,215 @@ function ResearchToolsMenu() {
   );
 }
 
-export function NavBar() {
-  const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
+/**
+ * A mobile slide-over. Focus moves in on open, Tab is trapped inside, Escape
+ * closes it and focus returns to whatever opened it.
+ */
+function MobileSheet({
+  title,
+  onClose,
+  children,
+  className = '',
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const focusable = () =>
+      Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      );
+    focusable()[0]?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      previous?.focus();
+    };
+  }, [onClose]);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center h-14 gap-1">
-          {/* Brand */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 mr-4 text-sm font-bold tracking-tight text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
+    <div className="md:hidden fixed inset-0 z-[60]">
+      <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] ${className}`}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={`Close ${title}`}
+            className={`p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
           >
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-extrabold">
-              M25
-            </span>
-            <span className="hidden sm:inline">Momentum25</span>
-          </Link>
+            {Icons.close}
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-0.5">
-            {NAV_ITEMS.map((item) => (
-              <NavLink key={item.href} item={item} pathname={pathname} />
-            ))}
-            <ResearchToolsMenu />
+export function NavBar() {
+  const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // A route change should never leave a sheet open over the new page.
+  useEffect(() => {
+    setMoreOpen(false);
+    setSearchOpen(false);
+  }, [pathname]);
+
+  const moreActive = RESEARCH_TOOLS.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  );
+
+  return (
+    <>
+      <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-14 gap-1">
+            {/* Brand */}
+            <Link
+              href="/"
+              className="flex items-center gap-2 mr-4 text-sm font-bold tracking-tight text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
+            >
+              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-extrabold">
+                M25
+              </span>
+              <span className="hidden sm:inline">Momentum25</span>
+            </Link>
+
+            {/* Desktop Nav */}
+            <div className="hidden md:flex items-center gap-0.5">
+              {NAV_ITEMS.map((item) => (
+                <NavLink key={item.href} item={item} pathname={pathname} />
+              ))}
+              <ResearchToolsMenu />
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="flex items-center gap-3">
+              <SymbolSearch className="hidden md:block" />
+              <ThemeToggle />
+              <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-600 font-medium">v0.2.0</span>
+            </div>
           </div>
+        </div>
+      </nav>
 
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-3">
-            <SymbolSearch className="hidden sm:block" />
-            <ThemeToggle />
-            <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-600 font-medium">v0.2.0</span>
-
-            {/* Mobile menu button */}
+      {/* Mobile bottom bar. It overlays the page instead of pushing it, so the
+          content never reflows when navigation opens. */}
+      <nav
+        aria-label="Primary"
+        className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+      >
+        <ul className="flex items-stretch">
+          {MOBILE_PRIMARY.map((item) => {
+            const isActive =
+              pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
+            return (
+              <li key={item.href} className="flex-1">
+                <Link
+                  href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${focusRing} ${
+                    isActive
+                      ? 'text-indigo-600 dark:text-indigo-300'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+          <li className="flex-1">
             <button
               type="button"
-              onClick={() => setMobileOpen((v) => !v)}
-              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              aria-expanded={mobileOpen}
-              className={`md:hidden p-2 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              className={`w-full flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${focusRing} ${
+                moreActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'
+              }`}
             >
-              {mobileOpen ? Icons.close : Icons.menu}
+              {Icons.menu}
+              More
             </button>
-          </div>
-        </div>
-      </div>
+          </li>
+        </ul>
+      </nav>
 
-      {/* Mobile Nav */}
-      {mobileOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
-          <SymbolSearch className="sm:hidden pb-2" />
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
-          ))}
-          <div className="pt-2 mt-1 border-t border-slate-200 dark:border-slate-800">
-            <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-600">
-              Research Tools
-            </div>
-            {RESEARCH_TOOLS.map((item) => (
-              <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
+      {/* Symbol search is the fastest route to any stock, so on mobile it gets
+          its own always-visible button rather than hiding inside a drawer. */}
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={searchOpen}
+        aria-label="Search for a symbol"
+        className={`md:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center ${focusRing}`}
+      >
+        {Icons.search}
+      </button>
+
+      {moreOpen && (
+        <MobileSheet title="More" onClose={() => setMoreOpen(false)}>
+          <div className="space-y-1">
+            {NAV_ITEMS.slice(3).map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMoreOpen(false)} />
             ))}
           </div>
-        </div>
+          <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
+            <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-600">
+              Research
+            </div>
+            {RESEARCH_TOOLS.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMoreOpen(false)} />
+            ))}
+          </div>
+        </MobileSheet>
       )}
-    </nav>
+
+      {searchOpen && (
+        <MobileSheet title="Search" onClose={() => setSearchOpen(false)} className="min-h-[70vh]">
+          <SymbolSearch className="w-full" inputClassName="w-full" />
+        </MobileSheet>
+      )}
+    </>
   );
 }

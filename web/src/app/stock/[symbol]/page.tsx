@@ -3,8 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { getLiveStockAnalysis, getStockExplanation, getStockHistory } from '@/lib/api-client';
-import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
+import { getIndexCloses, getLiveStockAnalysis, getStockExplanation, getStockHistory } from '@/lib/api-client';
+import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, EmptyState, PageHeader } from '@/components/shared/Card';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { strategyDisplayName } from '@/lib/format';
 import type { EngineExplanation, RuleExplanation, StockExplanation } from '@/lib/types';
@@ -27,6 +27,7 @@ import { WhyItRanks } from '@/components/stock/WhyItRanks';
 import { SuggestedStop } from '@/components/stock/SuggestedStop';
 import { RelativeStrengthVsIndex } from '@/components/stock/RelativeStrengthVsIndex';
 import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
+import { Skeleton, SkeletonCard, SkeletonMetricGrid, SkeletonRegion } from '@/components/shared/Skeleton';
 
 
 // ── Rule-level "what would improve this" guidance ──────────────────────
@@ -52,16 +53,23 @@ const IMPROVEMENT_HINTS: Record<string, string> = {
   risk_rr: 'Would need a protective stop placed unusually far below price, so a failed trend costs more.',
 };
 
+// Reading order: what the stock is, why it ranks, how strong, the chart,
+// what supports the read, and finally what it risks.
 const SECTIONS = [
-  { id: 'overview', label: 'Overview' },
+  { id: 'why', label: 'Why it ranks' },
+  { id: 'strength', label: 'How strong' },
   { id: 'chart', label: 'Chart' },
-  { id: 'trend', label: 'Trend Template' },
-  { id: 'engines', label: 'Engines' },
-  { id: 'rules', label: 'Rules' },
-  { id: 'scores', label: 'Scores' },
-  { id: 'history', label: 'History' },
-  { id: 'live', label: 'Live Analysis' },
+  { id: 'support', label: 'What supports' },
+  { id: 'risk', label: 'Downside risk' },
 ];
+
+const CHART_TABS = [
+  { id: 'price', label: 'Price' },
+  { id: 'scores', label: 'Score history' },
+  { id: 'rank', label: 'Rank history' },
+] as const;
+
+type ChartTab = (typeof CHART_TABS)[number]['id'];
 
 function engineRules(explanation: StockExplanation, engineId: string): RuleExplanation[] {
   return explanation.rule_explanations.filter((r) => r.engine_name === engineId);
@@ -129,7 +137,7 @@ function SectionNav({ active, onSelect }: { active: string; onSelect: (id: strin
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   return (
-    <div className="sticky top-[4.5rem] z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-6">
+    <div className="sticky top-14 z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-6">
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
         {SECTIONS.map((s) => (
           <button
@@ -157,7 +165,9 @@ export default function StockResearchPage() {
   const strategyName = searchParams.get('strategy') || DEFAULT_STRATEGY;
   const horizonLabel = strategyDisplayName(strategyName);
   const chartColors = useChartColors();
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState('why');
+  const [chartTab, setChartTab] = useState<ChartTab>('price');
+  const [showBenchmark, setShowBenchmark] = useState(false);
   // Shared with the Elliott Wave route so panes, MAs and drawings carry across.
   const {
     timeframe,
@@ -182,11 +192,40 @@ export default function StockResearchPage() {
     retry: false,
   });
 
+  // Benchmark overlay: the index closes rebased onto the stock's first visible
+  // close, drawn through the chart's existing polyline overlay.
+  const benchmark = live?.benchmark_index ?? null;
+  const { data: benchmarkCloses } = useQuery({
+    queryKey: ['index-closes', benchmark],
+    queryFn: () => getIndexCloses(benchmark!),
+    enabled: !!benchmark && showBenchmark,
+  });
+
   const { data: history, isLoading: histLoading } = useQuery({
     queryKey: ['stock-history', symbol, strategyName],
     queryFn: () => getStockHistory(symbol, strategyName, 90),
     enabled: !!symbol,
   });
+
+  const benchmarkOverlay = useMemo(() => {
+    if (!showBenchmark || !benchmarkCloses || bars.length === 0) return undefined;
+    const first = bars[0].date;
+    const last = bars[bars.length - 1].date;
+    const window = benchmarkCloses.bars.filter((b) => b.date >= first && b.date <= last);
+    if (window.length === 0) return undefined;
+    const base = parseFloat(window[0].close);
+    const stockBase = parseFloat(bars[0].close);
+    if (!Number.isFinite(base) || base === 0 || !Number.isFinite(stockBase)) return undefined;
+    return [
+      {
+        points: window.map((b) => ({
+          date: b.date,
+          price: (parseFloat(b.close) / base) * stockBase,
+        })),
+        color: chartPalette.warning,
+      },
+    ];
+  }, [showBenchmark, benchmarkCloses, bars]);
 
   // Keep the section tabs in sync with what is actually on screen.
   const sectionsReady = prefsReady && !explLoading && !histLoading && !liveLoading;
@@ -216,7 +255,24 @@ export default function StockResearchPage() {
   const usingLiveFallback = !runExplanation && !!explanation;
 
   if (!prefsReady || explLoading || histLoading || (!runExplanation && liveLoading)) {
-    return <LoadingSpinner text="Loading stock research…" />;
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="max-w-7xl mx-auto space-y-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-3 w-72" />
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <SkeletonRegion label={`Loading research for ${symbol}`}>
+            <SkeletonMetricGrid count={6} />
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={8} />
+          </SkeletonRegion>
+        </div>
+      </div>
+    );
   }
   if (!explanation) {
     const unreachable = liveError instanceof TypeError;
@@ -253,7 +309,6 @@ export default function StockResearchPage() {
     })
     .slice(0, 5);
 
-  const trendEngine = engineFor(explanation, 'trend_template');
   const rsEngine = engineFor(explanation, 'relative_strength');
   const patternEngine = engineFor(explanation, 'pattern');
   const breakoutEngine = engineFor(explanation, 'breakout');
@@ -266,14 +321,29 @@ export default function StockResearchPage() {
         subtitle={`${horizonLabel} horizon · ${explanation.overall_passed ? 'Passes' : 'Fails'} the Trend Template gate`}
       >
         {explanation.rank && <Badge color="indigo">Rank #{explanation.rank}</Badge>}
+        {explanation.percentile && <Badge color="blue">{explanation.percentile}th percentile</Badge>}
         <Badge color={explanation.overall_passed ? 'emerald' : 'rose'}>
           Trend Template {explanation.overall_passed ? 'PASS' : 'FAIL'}
         </Badge>
+        {explanation.hard_filter_failures.length > 0 && (
+          <Badge color="rose">
+            {explanation.hard_filter_failures.length} gate failure
+            {explanation.hard_filter_failures.length === 1 ? '' : 's'}
+          </Badge>
+        )}
         <Badge color={readiness.color}>{readiness.label}</Badge>
         <SymbolActionBar symbol={symbol} strategyName={strategyName} current="chart" />
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {/* Header strip: price, change and 52-week range read with the badges
+            above, not buried at the foot of the page. */}
+        {live && (
+          <div className="pt-6">
+            <MomentumOverview live={live} bars={bars} />
+          </div>
+        )}
+
         <SectionNav active={activeSection} onSelect={setActiveSection} />
 
         {usingLiveFallback && (
@@ -284,48 +354,58 @@ export default function StockResearchPage() {
           </div>
         )}
 
-        <div className="space-y-6">
-          {/* Overview */}
-          <section id="overview" className="scroll-mt-32 space-y-6">
-            <div className="flex flex-col lg:flex-row items-stretch gap-6 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 p-6 shadow-sm">
-              <div className="flex items-center justify-center gap-8 lg:gap-10 shrink-0">
-                <ScoreGauge label="Momentum" value={parseFloat(explanation.momentum_score)} />
-                <ScoreGauge label="Buy Setup" value={parseFloat(explanation.buy_setup_score)} />
+        {/* Data provenance for everything below. */}
+        <div className="mb-6">
+          <Card
+            title="On-demand analysis"
+            subtitle={
+              live
+                ? `Freshly evaluated as of ${live.data_as_of}${live.refreshed ? ` · ${live.bars_fetched} new bars fetched` : ' · stored bars (not refreshed)'}`
+                : 'Evaluating this symbol through the live strategy engine…'
+            }
+            badge={
+              live
+                ? { text: live.verdict, color: live.verdict === 'PASSED' ? 'emerald' : live.verdict === 'FAILED' ? 'rose' : 'amber' }
+                : undefined
+            }
+          >
+            {liveLoading && <LoadingSpinner text="Evaluating this symbol on demand…" />}
+            {liveError && (
+              <p className="text-xs text-rose-600 dark:text-rose-400">
+                The live evaluation for {symbol} could not be completed. The historical run data
+                below is unaffected.
+              </p>
+            )}
+            {live && (
+              <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                {!live.data_sufficient && (
+                  <p className="text-amber-600 dark:text-amber-400">
+                    Insufficient price history to evaluate every rule — the figures below are
+                    partial.
+                  </p>
+                )}
+                {live.indeterminate_rules.length > 0 && (
+                  <p className="text-amber-600 dark:text-amber-400">
+                    Could not be measured for this symbol: {live.indeterminate_rules.join(', ')}.
+                    This is reported as {live.verdict}, not as a failure.
+                  </p>
+                )}
+                <p>
+                  Verdict {live.verdict} · relative strength measured against{' '}
+                  {String(live.rs_basis.universe_size ?? '—')} symbols
+                  {live.rs_basis.as_of ? ` as of ${String(live.rs_basis.as_of)}` : ''}.
+                </p>
               </div>
-              <div className="flex-1 min-w-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700/60 pt-4 lg:pt-0 lg:pl-6">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-                  Rule Pass Matrix
-                </div>
-                <RulePassMatrix
-                  rules={explanation.rule_explanations}
-                  gateFailures={explanation.hard_filter_failures}
-                />
-              </div>
-            </div>
+            )}
+          </Card>
+        </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <MetricCard
-                label="Momentum Score"
-                value={num(explanation.momentum_score, 1)}
-                color={parseFloat(explanation.momentum_score) >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}
-              />
-              <MetricCard label="Buy Setup Score" value={num(explanation.buy_setup_score, 1)} />
-              <MetricCard label="Composite Score" value={num(explanation.composite_score, 1)} />
-              <MetricCard label="RS Rating" value={num(live?.indicators.rs_rating, 0)} />
-              <MetricCard label="Rank" value={explanation.rank ? `#${explanation.rank}` : '—'} />
-              <MetricCard label="Percentile" value={explanation.percentile ? `${explanation.percentile}%` : '—'} />
-              <MetricCard
-                label="Hard Filters"
-                value={`${explanation.hard_filter_failures.length} failures`}
-                color={explanation.overall_passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
-              />
-              {/* Risk-only. Deliberately carries no reward/target counterpart. */}
-              <MetricCard
-                label="Suggested Stop (risk only)"
-                value={num(live?.suggested_stop?.level, 2)}
-                changeLabel={live?.suggested_stop?.method}
-              />
-            </div>
+        <div className="space-y-6">
+          {/* 1. Why it ranks — the ranking rationale comes before any number. */}
+          <section id="why" className="scroll-mt-32 space-y-6">
+            {(live?.explanation ?? runExplanation) && (
+              <WhyItRanks explanation={live?.explanation ?? explanation} />
+            )}
 
             <Card title="Executive Summary">
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -346,63 +426,33 @@ export default function StockResearchPage() {
             </Card>
           </section>
 
-          {/* Chart — the analyst's primary working surface, so it sits directly
-              under the overview rather than at the foot of the page. */}
-          <section id="chart" className="scroll-mt-32">
-            <Card title="Price history">
-              <PriceChart {...chartProps} />
-            </Card>
-          </section>
-
-          {/* Trend Template — the hard gate, grouped by what each rule asks. */}
-          <section id="trend" className="scroll-mt-32">
-            <TrendTemplateCard
-              rules={engineRules(explanation, 'trend_template')}
-              strategyName={strategyName}
-              hints={IMPROVEMENT_HINTS}
-            />
-          </section>
-
-          {/* Scores */}
-          <section id="scores" className="scroll-mt-32">
-            {chartData.length > 1 && (
-              <Card title="Historical Scores" subtitle={`Last 90 days · ${horizonLabel} horizon`}>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: chartColors.tick }} angle={-45} textAnchor="end" height={60} />
-                      <YAxis tick={{ fontSize: 10, fill: chartColors.tick }} domain={[0, 100]} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: chartColors.tooltipBg,
-                          border: `1px solid ${chartColors.tooltipBorder}`,
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                        }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
-                      <Line type="monotone" dataKey="momentum" stroke={chartPalette.info} name="Momentum" dot={false} strokeWidth={2} />
-                      <Line type="monotone" dataKey="buySetup" stroke={chartPalette.secondary} name="Buy Setup" dot={false} strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
+          {/* 2. How strong — the scores behind the rationale. */}
+          <section id="strength" className="scroll-mt-32 space-y-6">
+            <div className="flex flex-col lg:flex-row items-stretch gap-6 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 p-6 shadow-sm">
+              <div className="flex items-center justify-center gap-8 lg:gap-10 shrink-0">
+                <ScoreGauge label="Momentum" value={parseFloat(explanation.momentum_score)} />
+                <ScoreGauge label="Buy Setup" value={parseFloat(explanation.buy_setup_score)} />
+              </div>
+              <div className="flex-1 min-w-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700/60 pt-4 lg:pt-0 lg:pl-6">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                  Rule Pass Matrix
                 </div>
-              </Card>
-            )}
-          </section>
+                <RulePassMatrix
+                  rules={explanation.rule_explanations}
+                  gateFailures={explanation.hard_filter_failures}
+                />
+              </div>
+            </div>
 
-          {/* Engines */}
-          <section id="engines" className="scroll-mt-32 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AnalysisSection title="Relative Strength Analysis" engine={rsEngine} rules={engineRules(explanation, 'relative_strength')} />
-              <AnalysisSection title="Pattern Analysis" engine={patternEngine} rules={engineRules(explanation, 'pattern')} />
-              <AnalysisSection title="Breakout Readiness" engine={breakoutEngine} rules={engineRules(explanation, 'breakout')} />
-              <AnalysisSection title="Risk Assessment" engine={riskEngine} rules={engineRules(explanation, 'risk')} />
-              <AnalysisSection
-                title="Volume & Accumulation"
-                engine={engineFor(explanation, 'volume_accumulation')}
-                rules={engineRules(explanation, 'volume_accumulation')}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <MetricCard
+                label="Momentum Score"
+                value={num(explanation.momentum_score, 1)}
+                color={parseFloat(explanation.momentum_score) >= 50 ? 'text-emerald-600 dark:text-emerald-400' : undefined}
               />
+              <MetricCard label="Buy Setup Score" value={num(explanation.buy_setup_score, 1)} />
+              <MetricCard label="Composite Score" value={num(explanation.composite_score, 1)} />
+              <MetricCard label="RS Rating" value={num(live?.indicators.rs_rating, 0)} />
             </div>
 
             <Card title="Engine Contributions">
@@ -421,14 +471,14 @@ export default function StockResearchPage() {
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate capitalize">
                           {engine.engine_name.replace(/_/g, ' ')}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {engine.rules_passed}/{engine.rule_count} rules passed
                         </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tabular-nums">{num(engine.score)}</div>
-                      <div className="text-xs text-slate-500">score</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">score</div>
                     </div>
                   </div>
                 ))}
@@ -436,10 +486,147 @@ export default function StockResearchPage() {
             </Card>
           </section>
 
-          {/* Rules */}
-          <section id="rules" className="scroll-mt-32 space-y-6">
+          {/* 3. Chart — price, with the score and rank series as sub-tabs so
+              they no longer split the page into three scroll sections. */}
+          <section id="chart" className="scroll-mt-32">
+            <Card title="Price history">
+              <div className="flex items-center gap-1 mb-3" role="tablist" aria-label="Chart series">
+                {CHART_TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={chartTab === t.id}
+                    onClick={() => setChartTab(t.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${focusRing} ${
+                      chartTab === t.id
+                        ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {chartTab === 'price' && (
+                <>
+                  {benchmark && (
+                    <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-2 cursor-pointer w-fit">
+                      <input
+                        type="checkbox"
+                        checked={showBenchmark}
+                        onChange={(e) => setShowBenchmark(e.target.checked)}
+                        className="w-3 h-3 accent-indigo-500"
+                      />
+                      Overlay {benchmark}, rebased to this stock&apos;s first visible close
+                    </label>
+                  )}
+                  <PriceChart {...chartProps} overlayLines={benchmarkOverlay} />
+                </>
+              )}
+
+              {chartTab === 'scores' &&
+                (chartData.length > 1 ? (
+                  <div className="h-72" role="img" aria-label={`Momentum and buy setup scores for ${symbol} over the last 90 days`}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: chartColors.tick }} angle={-45} textAnchor="end" height={60} />
+                        <YAxis tick={{ fontSize: 10, fill: chartColors.tick }} domain={[0, 100]} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: chartColors.tooltipBg,
+                            border: `1px solid ${chartColors.tooltipBorder}`,
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Line type="monotone" dataKey="momentum" stroke={chartPalette.info} name="Momentum" dot={false} strokeWidth={2} />
+                        <Line type="monotone" dataKey="buySetup" stroke={chartPalette.secondary} name="Buy Setup" dot={false} strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <EmptyState message={`No score history for ${symbol} yet — it needs at least two screening runs.`} />
+                ))}
+
+              {chartTab === 'rank' &&
+                (chartData.length > 1 ? (
+                  <div className="h-72" role="img" aria-label={`Rank history for ${symbol} over the last 90 days`}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: chartColors.tick }} angle={-45} textAnchor="end" height={60} />
+                        <YAxis reversed tick={{ fontSize: 10, fill: chartColors.tick }} domain={['dataMin - 5', 'dataMax + 5']} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: chartColors.tooltipBg,
+                            border: `1px solid ${chartColors.tooltipBorder}`,
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Line type="monotone" dataKey="rank" stroke={chartPalette.warning} name="Rank" dot={false} strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <EmptyState message={`No rank history for ${symbol} yet — it needs at least two screening runs.`} />
+                ))}
+            </Card>
+          </section>
+
+          {/* 4. What supports the read. */}
+          <section id="support" className="scroll-mt-32 space-y-6">
+            <TrendTemplateCard
+              rules={engineRules(explanation, 'trend_template')}
+              strategyName={strategyName}
+              hints={IMPROVEMENT_HINTS}
+            />
+
+            {live?.explanation && <MomentumView explanation={live.explanation} />}
+            {live && <TechnicalWorkbench indicators={live.indicators} />}
+            {live?.explanation && (
+              <VolumeAccumulation explanation={live.explanation} indicators={live.indicators} />
+            )}
+            {live && (
+              <RelativeStrengthVsIndex
+                points={live.relative_strength_vs_index ?? []}
+                benchmarkIndex={live.benchmark_index}
+              />
+            )}
+
+            {/* Always rendered so the `#patterns` deep link from the action bar
+                resolves even when the live evaluation is unavailable. */}
+            <div id="patterns" className="scroll-mt-32">
+              <PatternCard
+                explanation={live?.explanation ?? explanation}
+                symbol={symbol}
+                bars={bars}
+                timeframe={timeframe}
+                onTimeframeChange={setTimeframe}
+                lookbackDays={TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? 2000}
+              />
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card title="Strengths" badge={{ text: `${passedRules.length} rules`, color: 'bg-emerald-900/50 text-emerald-300' }}>
+              <AnalysisSection title="Relative Strength Analysis" engine={rsEngine} rules={engineRules(explanation, 'relative_strength')} />
+              <AnalysisSection title="Pattern Analysis" engine={patternEngine} rules={engineRules(explanation, 'pattern')} />
+              <AnalysisSection title="Breakout Readiness" engine={breakoutEngine} rules={engineRules(explanation, 'breakout')} />
+              <AnalysisSection title="Risk Assessment" engine={riskEngine} rules={engineRules(explanation, 'risk')} />
+              <AnalysisSection
+                title="Volume & Accumulation"
+                engine={engineFor(explanation, 'volume_accumulation')}
+                rules={engineRules(explanation, 'volume_accumulation')}
+              />
+            </div>
+
+            {/* Strengths and weaknesses read first; the full table backs them up. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card title="Strengths" badge={{ text: `${passedRules.length} rules`, color: 'emerald' }}>
                 <div className="space-y-1.5">
                   {strengths.map((r) => (
                     <div key={r.rule_id} className="flex items-start gap-2 text-xs">
@@ -450,7 +637,7 @@ export default function StockResearchPage() {
                   {strengths.length === 0 && <div className="text-xs text-slate-400 dark:text-slate-600">No passing rules.</div>}
                 </div>
               </Card>
-              <Card title="Weaknesses" badge={{ text: `${failedRules.length} rules`, color: 'bg-rose-900/50 text-rose-300' }}>
+              <Card title="Weaknesses" badge={{ text: `${failedRules.length} rules`, color: 'rose' }}>
                 <div className="space-y-1.5">
                   {weaknesses.map((r) => (
                     <div key={r.rule_id} className="flex items-start gap-2 text-xs">
@@ -490,14 +677,14 @@ export default function StockResearchPage() {
                       <StatusDot passed={rule.passed} />
                       <div className="min-w-0">
                         <div className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{rule.explanation}</div>
-                        <div className="text-xs text-slate-500 truncate">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           {rule.engine_name} · {num(rule.actual_value, 2)} {rule.threshold ? `(threshold ${num(rule.threshold, 2)})` : ''}
                         </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <div className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">{num(rule.contribution)}</div>
-                      <div className="text-xs text-slate-500">contrib</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">contrib</div>
                     </div>
                   </div>
                 ))}
@@ -505,121 +692,18 @@ export default function StockResearchPage() {
             </Card>
           </section>
 
-          {/* History */}
-          <section id="history" className="scroll-mt-32">
-            {chartData.length > 1 && (
-              <Card title="Historical Rankings" subtitle={`Last 90 days · ${horizonLabel} horizon`}>
-                <div className="h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: chartColors.tick }} angle={-45} textAnchor="end" height={60} />
-                      <YAxis reversed tick={{ fontSize: 10, fill: chartColors.tick }} domain={['dataMin - 5', 'dataMax + 5']} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: chartColors.tooltipBg,
-                          border: `1px solid ${chartColors.tooltipBorder}`,
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                        }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
-                      <Line type="monotone" dataKey="rank" stroke={chartPalette.warning} name="Rank" dot={false} strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+          {/* 5. Downside risk — risk only. No target, no reward, no R:R. */}
+          <section id="risk" className="scroll-mt-32">
+            {live ? (
+              <SuggestedStop
+                stop={live.suggested_stop}
+                trailingStop={live.trailing_stop}
+                latestClose={bars.length ? parseFloat(bars[bars.length - 1].close) : null}
+              />
+            ) : (
+              <Card title="Downside risk">
+                <EmptyState message={`No suggested stop for ${symbol} — the on-demand evaluation is unavailable.`} />
               </Card>
-            )}
-          </section>
-
-          {/* Live on-demand analysis (Phase 6) */}
-          <section id="live" className="scroll-mt-32 space-y-6">
-            <Card
-              title="On-demand analysis"
-              subtitle={
-                live
-                  ? `Freshly evaluated as of ${live.data_as_of}${live.refreshed ? ` · ${live.bars_fetched} new bars fetched` : ' · stored bars (not refreshed)'}`
-                  : 'Evaluating this symbol through the live strategy engine…'
-              }
-              badge={
-                live
-                  ? {
-                      text: live.verdict,
-                      color:
-                        live.verdict === 'PASSED'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-                          : live.verdict === 'FAILED'
-                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-                    }
-                  : undefined
-              }
-            >
-              {liveLoading && <LoadingSpinner text="Evaluating this symbol on demand…" />}
-              {liveError && (
-                <p className="text-xs text-rose-600 dark:text-rose-400">
-                  The live evaluation for {symbol} could not be completed. The historical run data
-                  above is unaffected.
-                </p>
-              )}
-              {live && (
-                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
-                  {!live.data_sufficient && (
-                    <p className="text-amber-600 dark:text-amber-400">
-                      Insufficient price history to evaluate every rule — the figures below are
-                      partial.
-                    </p>
-                  )}
-                  {live.indeterminate_rules.length > 0 && (
-                    <p className="text-amber-600 dark:text-amber-400">
-                      Could not be measured for this symbol: {live.indeterminate_rules.join(', ')}.
-                      This is reported as {live.verdict}, not as a failure.
-                    </p>
-                  )}
-                  <p>
-                    Verdict {live.verdict} · relative strength measured against{' '}
-                    {String(live.rs_basis.universe_size ?? '—')} symbols
-                    {live.rs_basis.as_of ? ` as of ${String(live.rs_basis.as_of)}` : ''}.
-                  </p>
-                </div>
-              )}
-            </Card>
-
-            {live && <MomentumOverview live={live} bars={bars} />}
-
-            {live?.explanation && (
-              <>
-                <MomentumView explanation={live.explanation} />
-                <TechnicalWorkbench indicators={live.indicators} />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <VolumeAccumulation
-                    explanation={live.explanation}
-                    indicators={live.indicators}
-                  />
-                  <SuggestedStop
-                    stop={live.suggested_stop}
-                    trailingStop={live.trailing_stop}
-                    latestClose={
-                      bars.length ? parseFloat(bars[bars.length - 1].close) : null
-                    }
-                  />
-                </div>
-                <RelativeStrengthVsIndex
-                  points={live.relative_strength_vs_index ?? []}
-                  benchmarkIndex={live.benchmark_index}
-                />
-                <div id="patterns" className="scroll-mt-32">
-                  <PatternCard
-                    explanation={live.explanation}
-                    symbol={symbol}
-                    bars={bars}
-                    timeframe={timeframe}
-                    onTimeframeChange={setTimeframe}
-                    lookbackDays={TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? 2000}
-                  />
-                </div>
-                <WhyItRanks explanation={live.explanation} />
-              </>
             )}
           </section>
         </div>

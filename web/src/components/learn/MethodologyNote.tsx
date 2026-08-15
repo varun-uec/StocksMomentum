@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 type Kind = 'published' | 'approximation' | 'implementation';
@@ -55,4 +56,26 @@ export function SubHeading({ children }: { children: ReactNode }) {
 
 export function Prose({ children }: { children: ReactNode }) {
   return <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-3">{children}</div>;
+}
+
+/**
+ * One source for the score-series caveat. Score Stability, Score Downside
+ * Stability and Score Gain/Loss Ratio are shaped like Sharpe, Sortino and
+ * profit factor, but they are computed over the momentum score, not over
+ * returns. Both research pages said this in their own words (audit §2.3 / U7);
+ * they now say it once, here.
+ */
+export function ScoreSeriesDisclaimer({ className = '' }: { className?: string }) {
+  return (
+    <p className={`text-xs text-slate-500 dark:text-slate-400 ${className}`}>
+      All figures are derived from the momentum-score series and run counts — a setup-quality
+      rating, not a return. Score Stability, Score Downside Stability and Score Gain/Loss Ratio
+      are shaped like Sharpe, Sortino and profit factor but carry no profit or return meaning.
+      Realised performance metrics live on the{' '}
+      <Link href="/validation" className="underline hover:text-slate-700 dark:hover:text-slate-300">
+        Validation
+      </Link>{' '}
+      page and require ingested forward returns.
+    </p>
+  );
 }

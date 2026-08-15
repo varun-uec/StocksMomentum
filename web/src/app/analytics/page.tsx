@@ -1,16 +1,17 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
 import { getRuns, evaluateStrategy, getContributionAnalysis } from '@/lib/api-client';
-import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
+import { Card, MetricCard, LoadingSpinner, PageHeader, EmptyState } from '@/components/shared/Card';
+import { ScoreSeriesDisclaimer } from '@/components/learn/MethodologyNote';
+import { useStrategy } from '@/app/strategy-context';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useChartColors } from '@/lib/useChartColors';
-import { chartColorList, chartPalette, focusRing } from '@/lib/theme';
+import { chartColorList, chartPalette } from '@/lib/theme';
 
 export default function ResearchAnalyticsPage() {
   const chartColors = useChartColors();
-  const [selectedStrategy] = useState('minervini_trend_template');
+  const { strategyName: selectedStrategy } = useStrategy();
 
   const { data: runsData, isLoading: runsLoading } = useQuery({
     queryKey: ['runs', 'all'],
@@ -68,7 +69,7 @@ export default function ResearchAnalyticsPage() {
   const isLoading = runsLoading || evalLoading || contribLoading;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <PageHeader
         title="Research Analytics"
         subtitle="Visualize screening frequency, win rates, drawdowns, and rule contributions"
@@ -97,7 +98,7 @@ export default function ResearchAnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card title="Screening Frequency" subtitle="Runs per month">
                 {freqChartData.length > 0 ? (
-                  <div className="h-64">
+                  <div role="img" aria-label="Screening Frequency chart" className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={freqChartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -122,7 +123,7 @@ export default function ResearchAnalyticsPage() {
 
               <Card title="Run Status Distribution">
                 {statusChartData.length > 0 ? (
-                  <div className="h-64 flex items-center justify-center">
+                  <div role="img" aria-label="Run Status Distribution chart" className="h-64 flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -157,7 +158,7 @@ export default function ResearchAnalyticsPage() {
 
               <Card title="Pass Rate Over Time" subtitle="Historical screening pass rates">
                 {passRateData.length > 0 ? (
-                  <div className="h-64">
+                  <div role="img" aria-label="Pass Rate Over Time chart" className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={passRateData}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -182,7 +183,7 @@ export default function ResearchAnalyticsPage() {
 
               <Card title="Engine Contribution Share" subtitle="Total importance by engine">
                 {enginePieData.length > 0 ? (
-                  <div className="h-64 flex items-center justify-center">
+                  <div role="img" aria-label="Engine Contribution Share chart" className="h-64 flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -217,7 +218,7 @@ export default function ResearchAnalyticsPage() {
 
               <Card title="Rule Pass Rates" subtitle="Top 15 rules by pass rate">
                 {rulePassData.length > 0 ? (
-                  <div className="h-72">
+                  <div role="img" aria-label="Rule Pass Rates chart" className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={rulePassData} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -264,15 +265,7 @@ export default function ResearchAnalyticsPage() {
                         value={evaluation.performance.momentum_score_downside_stability}
                       />
                     </div>
-                    {/* These are shaped like Sharpe/Sortino/profit factor but are
-                        computed over the momentum SCORE, not over returns. Shown
-                        without % or profit colouring so they cannot read as a
-                        profit claim (2026-08-09 audit §2.3). */}
-                    <p className="text-xs text-slate-500">
-                      Computed from the momentum-score series, not from returns. These describe how
-                      steady the universe&apos;s setup quality has been — they are not profit,
-                      return or drawdown figures.
-                    </p>
+                    <ScoreSeriesDisclaimer />
                   </div>
                 ) : (
                   <EmptyState message="No evaluation data available" />

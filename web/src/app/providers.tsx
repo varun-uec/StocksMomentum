@@ -11,6 +11,9 @@ export function Providers({ children }: { children: ReactNode }) {
           queries: {
             staleTime: 30_000,
             retry: 1,
+            // Refocusing the window must not refetch and reflow a table the
+            // reader is part-way through scrolling.
+            refetchOnWindowFocus: false,
           },
         },
       }),

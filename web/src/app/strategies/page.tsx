@@ -1,17 +1,20 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listStrategies, evaluateStrategy, getContributionAnalysis, compareStrategies } from '@/lib/api-client';
-import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
+import { Card, MetricCard, StatusDot, LoadingSpinner, PageHeader, EmptyState } from '@/components/shared/Card';
+import { ScoreSeriesDisclaimer } from '@/components/learn/MethodologyNote';
+import { useStrategy } from '@/app/strategy-context';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend } from 'recharts';
 import { useChartColors } from '@/lib/useChartColors';
 import { focusRing, chartPalette, chartColorList } from '@/lib/theme';
 
 export default function StrategyResearchPage() {
   const chartColors = useChartColors();
-  const [selectedStrategy, setSelectedStrategy] = useState('minervini_trend_template');
+  // The strategy in the top-level selector, so the picker below and the rest
+  // of the app never disagree about which strategy is on screen.
+  const { strategyName: selectedStrategy, setStrategyName: setSelectedStrategy } = useStrategy();
   const [compareA, setCompareA] = useState('minervini_trend_template');
   const [compareB, setCompareB] = useState('minervini_trend_template');
 
@@ -54,7 +57,7 @@ export default function StrategyResearchPage() {
     })) ?? [];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <PageHeader title="Strategy Research" subtitle="Evaluate, compare, and analyze screening strategies" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -108,19 +111,7 @@ export default function StrategyResearchPage() {
                 <MetricCard label="Max Score" value={perf.max_momentum_score} color="text-emerald-400" />
                 <MetricCard label="Min Score" value={perf.min_momentum_score} />
               </div>
-              {/* U7 / §2.3: every figure above is derived from the momentum
-                  SCORE series or run counts. None is a return, and none is
-                  rendered with a % of profit or profit/loss colouring. */}
-              <p className="mt-3 text-xs text-slate-500">
-                All figures are derived from the momentum-score series and run counts — a
-                setup-quality rating, not a return. Score Stability, Score Downside Stability and
-                Score Gain/Loss Ratio are shaped like Sharpe, Sortino and profit factor but carry
-                no profit or return meaning. Realised performance metrics live on the{' '}
-                <Link href="/validation" className="underline hover:text-slate-700 dark:hover:text-slate-300">
-                  Validation
-                </Link>{' '}
-                page and require ingested forward returns.
-              </p>
+              <ScoreSeriesDisclaimer className="mt-3" />
             </Card>
 
             <Card title="Recent Runs" subtitle={`${evaluation?.run_summaries.length ?? 0} runs`}>
@@ -128,12 +119,12 @@ export default function StrategyResearchPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
-                      <th className="text-left px-3 py-3">Run ID</th>
-                      <th className="text-left px-3 py-3">Date</th>
-                      <th className="text-right px-3 py-3">Evaluated</th>
-                      <th className="text-right px-3 py-3">Passed</th>
-                      <th className="text-right px-3 py-3">Failed</th>
-                      <th className="text-right px-3 py-3">Pass Rate</th>
+                      <th scope="col" className="text-left px-3 py-3">Run ID</th>
+                      <th scope="col" className="text-left px-3 py-3">Date</th>
+                      <th scope="col" className="text-right px-3 py-3">Evaluated</th>
+                      <th scope="col" className="text-right px-3 py-3">Passed</th>
+                      <th scope="col" className="text-right px-3 py-3">Failed</th>
+                      <th scope="col" className="text-right px-3 py-3">Pass Rate</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
@@ -162,7 +153,7 @@ export default function StrategyResearchPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card title="Engine Contributions" subtitle="Pass rate & importance by engine">
               {engineChartData.length > 1 && (
-                <div className="h-64">
+                <div role="img" aria-label="Engine Contributions chart" className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={engineChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -199,7 +190,7 @@ export default function StrategyResearchPage() {
 
             <Card title="Top Rules by Importance" subtitle="Most impactful rules">
               {topRulesData.length > 0 && (
-                <div className="h-64">
+                <div role="img" aria-label="Top Rules by Importance chart" className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topRulesData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -225,7 +216,7 @@ export default function StrategyResearchPage() {
             </Card>
 
             {contribution.redundant_rules.length > 0 && (
-              <Card title="Redundant Rules" badge={{ text: `${contribution.redundant_rules.length}`, color: 'bg-amber-900/50 text-amber-300' }}>
+              <Card title="Redundant Rules" badge={{ text: `${contribution.redundant_rules.length}`, color: 'amber' }}>
                 <div className="space-y-1">
                   {contribution.redundant_rules.map((rule) => (
                     <div key={rule.rule_id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
@@ -240,7 +231,7 @@ export default function StrategyResearchPage() {
             )}
 
             {contribution.bottom_rules.length > 0 && (
-              <Card title="Least Impactful Rules" badge={{ text: `${contribution.bottom_rules.length}`, color: 'bg-rose-900/50 text-rose-300' }}>
+              <Card title="Least Impactful Rules" badge={{ text: `${contribution.bottom_rules.length}`, color: 'rose' }}>
                 <div className="space-y-1">
                   {contribution.bottom_rules.slice(0, 10).map((rule) => (
                     <div key={rule.rule_id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
@@ -307,12 +298,12 @@ export default function StrategyResearchPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
-                        <th className="text-left px-3 py-3">Symbol</th>
-                        <th className="text-right px-3 py-3">Rank A</th>
-                        <th className="text-right px-3 py-3">Rank B</th>
-                        <th className="text-right px-3 py-3">Momentum A</th>
-                        <th className="text-right px-3 py-3">Momentum B</th>
-                        <th className="text-center px-3 py-3">Agreement</th>
+                        <th scope="col" className="text-left px-3 py-3">Symbol</th>
+                        <th scope="col" className="text-right px-3 py-3">Rank A</th>
+                        <th scope="col" className="text-right px-3 py-3">Rank B</th>
+                        <th scope="col" className="text-right px-3 py-3">Momentum A</th>
+                        <th scope="col" className="text-right px-3 py-3">Momentum B</th>
+                        <th scope="col" className="text-center px-3 py-3">Agreement</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">

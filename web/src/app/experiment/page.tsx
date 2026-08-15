@@ -72,7 +72,7 @@ export default function ExperimentLaboratoryPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <PageHeader
         title="Experiment Laboratory"
         subtitle="Controlled experimentation with rule thresholds, weights, and strategy parameters"
@@ -190,7 +190,7 @@ export default function ExperimentLaboratoryPage() {
 
             {chartData.length > 0 && (
               <Card title="Momentum Score Comparison" subtitle="Base vs Variant">
-                <div className="h-64">
+                <div role="img" aria-label="Momentum Score Comparison chart" className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -218,13 +218,13 @@ export default function ExperimentLaboratoryPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
-                      <th className="text-left px-3 py-3">Date</th>
-                      <th className="text-right px-3 py-3">Base Evaluated</th>
-                      <th className="text-right px-3 py-3">Base Passed</th>
-                      <th className="text-right px-3 py-3">Base Avg Momentum</th>
-                      <th className="text-right px-3 py-3">Variant Evaluated</th>
-                      <th className="text-right px-3 py-3">Variant Passed</th>
-                      <th className="text-right px-3 py-3">Variant Avg Momentum</th>
+                      <th scope="col" className="text-left px-3 py-3">Date</th>
+                      <th scope="col" className="text-right px-3 py-3">Base Evaluated</th>
+                      <th scope="col" className="text-right px-3 py-3">Base Passed</th>
+                      <th scope="col" className="text-right px-3 py-3">Base Avg Momentum</th>
+                      <th scope="col" className="text-right px-3 py-3">Variant Evaluated</th>
+                      <th scope="col" className="text-right px-3 py-3">Variant Passed</th>
+                      <th scope="col" className="text-right px-3 py-3">Variant Avg Momentum</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">

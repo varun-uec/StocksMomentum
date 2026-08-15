@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { keepPreviousData, useQueries } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,6 +11,7 @@ import {
   flexRender,
   createColumnHelper,
   type SortingState,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import type { RankingItemDTO, RuleResults } from '@/lib/types';
 import { StatusDot } from '@/components/shared/Card';
@@ -155,13 +156,36 @@ function RankChange({ change }: { change: number | null }) {
   );
 }
 
+const SIGNAL_SCORE_HINT = `A 0–100 roll-up of the ${PRESET_BY_ID.get(DEFAULT_PRESET_ID)?.label} rules over the last year of daily bars, computed in this browser for the rows on screen. Not a stored score and not part of the ranking.`;
+
+/** Menu labels. Column headers are terse; the menu has room to be clear. */
+const COLUMN_LABELS: Record<string, string> = {
+  signal_score: 'Signal score',
+  rank: 'Rank',
+  symbol: 'Symbol',
+  name: 'Name',
+  momentum_score: 'Momentum',
+  buy_setup_score: 'Buy Setup',
+  rs_rating: 'RS rating',
+  trend_template: 'Trend Template',
+  risk: 'Risk',
+  volume: 'Volume',
+  breakout: 'Breakout',
+  pattern: 'Pattern',
+  rank_change: 'Rank Δ',
+  checklist: 'Rules',
+};
+
 const columnHelper = createColumnHelper<RankingItemDTO>();
 
 export default function MomentumTable({ items, onSymbolClick, title }: MomentumTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  // Rank ascending is how the list already arrives. Stating it up front
+  // makes the sort arrow visible from the first render.
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'rank', desc: false }]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
-  const [showSignalScore, setShowSignalScore] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ signal_score: false });
+  const showSignalScore = columnVisibility.signal_score === true;
   const [scores, setScores] = useState<Map<string, number>>(new Map());
 
   const columns = useMemo(
@@ -340,8 +364,10 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
       sorting,
       globalFilter,
       pagination,
-      columnVisibility: { sector: hasSector, signal_score: showSignalScore },
+      // `sector` is data-driven, not user-driven, so it is not in the menu.
+      columnVisibility: { ...columnVisibility, sector: hasSector },
     },
+    onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
@@ -372,6 +398,7 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
       queryKey: ['stock-ohlcv', symbol, SIGNAL_TIMEFRAME],
       queryFn: () => getOhlcv(symbol, signalFromDate()),
       staleTime: 5 * 60 * 1000,
+      placeholderData: keepPreviousData,
     })),
   });
 
@@ -429,20 +456,49 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <label
-            className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer"
-            title={`A 0–100 roll-up of the ${PRESET_BY_ID.get(DEFAULT_PRESET_ID)?.label} rules over the last year of daily bars, computed in this browser for the rows on screen. Not a stored score and not part of the ranking.`}
+          <FloatingPanel
+            panelClassName="w-56"
+            trigger={({ ref, onClick, open }) => (
+              <button
+                ref={ref}
+                type="button"
+                onClick={onClick}
+                aria-expanded={open}
+                aria-haspopup="dialog"
+                className={`px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
+              >
+                Columns
+              </button>
+            )}
           >
-            <input
-              type="checkbox"
-              checked={showSignalScore}
-              onChange={(e) => setShowSignalScore(e.target.checked)}
-              className="w-3 h-3 accent-indigo-500"
-            />
-            Signal score
-          </label>
-          <div className="text-xs text-slate-500 tabular-nums">
-            {table.getFilteredRowModel().rows.length} of {items.length} results
+            <div className="p-3 space-y-1.5 max-h-80 overflow-y-auto">
+              {table
+                .getAllLeafColumns()
+                .filter((column) => column.id !== 'sector')
+                .map((column) => (
+                  <label
+                    key={column.id}
+                    className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer"
+                    title={
+                      column.id === 'signal_score'
+                        ? SIGNAL_SCORE_HINT
+                        : undefined
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={column.getIsVisible()}
+                      onChange={column.getToggleVisibilityHandler()}
+                      className="w-3 h-3 accent-indigo-500"
+                    />
+                    {COLUMN_LABELS[column.id] ?? column.id}
+                  </label>
+                ))}
+            </div>
+          </FloatingPanel>
+          <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+            Showing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length}
+            {table.getFilteredRowModel().rows.length !== items.length ? ` (filtered from ${items.length})` : ''}
           </div>
         </div>
       </div>

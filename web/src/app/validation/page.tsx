@@ -2,28 +2,55 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  getResearchDashboard,
-  getStrategyScorecard,
-  getAlphaAnalysis,
-  getRuleEffectiveness,
-  getEngineEffectiveness,
-  getHistoricalValidation,
-  runParameterExperiment,
-} from '@/lib/api-client';
+import { getResearchDashboard } from '@/lib/api-client';
 import type {
   Measurability,
-  ResearchDashboardResponse,
   StrategyScorecard,
   AlphaAnalysisResponse,
   RuleEffectivenessResponse,
   EngineEffectivenessResponse,
   HistoricalValidationResponse,
 } from '@/lib/types';
-import { Card, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
+import {
+  Card,
+  ErrorMessage,
+  PageHeader,
+  EmptyState,
+  MetricCard as BaseMetricCard,
+  UNMEASURED,
+} from '@/components/shared/Card';
+import { SkeletonCard, SkeletonMetricGrid, SkeletonRegion } from '@/components/shared/Skeleton';
 import { focusRing } from '@/lib/theme';
 
-const UNMEASURED = '—';
+/** Plain-language definitions, attached to the metric label on hover/focus. */
+const GLOSSARY: Record<string, string> = {
+  CAGR: 'Compound annual growth rate: the constant yearly rate that turns the start value into the end value.',
+  'Annual Return': 'Return over the window, expressed per year.',
+  'Cumulative Return': 'Total return over the whole window, not annualised.',
+  'Avg Holding Return': 'Mean forward return of a position over its holding period.',
+  'Win Rate': 'Share of positions with a positive forward return.',
+  'Profit Factor': 'Gross gains divided by gross losses. Above 1 means gains exceed losses.',
+  'Max Drawdown': 'Largest peak-to-trough fall in the equity curve.',
+  'Drawdown Duration': 'Longest run of days spent below a previous peak.',
+  Volatility: 'Annualised standard deviation of returns.',
+  'Downside Vol': 'Standard deviation of negative returns only.',
+  'Sharpe Ratio': 'Excess return per unit of total volatility.',
+  'Sortino Ratio': 'Excess return per unit of downside volatility. Upside swings are not penalised.',
+  'Calmar Ratio': 'Annual return divided by maximum drawdown.',
+  'Information Ratio': 'Excess return over the benchmark per unit of tracking error.',
+  Alpha: 'Return not explained by the benchmark, after adjusting for beta.',
+  Beta: 'Sensitivity to the benchmark. 1.0 moves with it, above 1.0 amplifies it.',
+  'R-Squared': 'Share of the return variance explained by the benchmark.',
+  'False Positive Rate': 'Share of qualified stocks that did not deliver a positive forward return.',
+  'False Negative Rate': 'Share of rejected stocks that would have delivered a positive forward return.',
+  'Excess Return': 'Strategy return minus benchmark return over the same window.',
+  'Relative Perf': 'Strategy performance measured against the benchmark.',
+};
+
+/** The shared metric card, with this page's glossary wired to the label. */
+function MetricCard(props: React.ComponentProps<typeof BaseMetricCard>) {
+  return <BaseMetricCard {...props} hint={props.hint ?? GLOSSARY[props.label]} />;
+}
 
 const MEASURABILITY_COPY: Record<string, string> = {
   no_forward_returns:
@@ -65,23 +92,14 @@ function num(val: string | number | undefined | null): number {
   return typeof val === 'string' ? parseFloat(val) : val;
 }
 
-/** `null`/`undefined` means "never measured". Colour is suppressed so an
- *  unmeasured metric can never read as a good or bad result. */
-function MetricCard({ label, value, good, bad }: { label: string; value: string; good?: boolean; bad?: boolean }) {
-  const unmeasured = value === UNMEASURED;
-  const color = unmeasured
-    ? 'text-slate-400 dark:text-slate-500'
-    : good ? 'text-emerald-600 dark:text-emerald-400' : bad ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100';
-  return (
-    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700/50">
-      <div className="text-xs font-semibold text-slate-500 mb-1">{label}</div>
-      <div className={`text-sm font-semibold font-mono ${color}`}>{value}</div>
-    </div>
-  );
-}
-
 function ScorecardSection({ data }: { data: StrategyScorecard | null }) {
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Card title="Strategy Scorecard">
+        <EmptyState message="No scorecard for this strategy and window. It needs at least one completed run with forward returns." />
+      </Card>
+    );
+  }
 
   return (
     <Card title="Strategy Scorecard" subtitle={`${data.period_label} · ${data.total_trading_days} trading days`}>
@@ -151,7 +169,13 @@ function MetricGroup({ title, children }: { title: string; children: React.React
 }
 
 function AlphaSection({ data }: { data: AlphaAnalysisResponse | null }) {
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Card title="Alpha Analysis">
+        <EmptyState message="No alpha analysis for this strategy and window." />
+      </Card>
+    );
+  }
   if (data.comparisons.length === 0) {
     return (
       <Card title="Alpha Analysis" subtitle={data.period_label}>
@@ -198,7 +222,13 @@ function AlphaSection({ data }: { data: AlphaAnalysisResponse | null }) {
 }
 
 function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Card title="Rule Effectiveness">
+        <EmptyState message="No rule-effectiveness data for this strategy and window." />
+      </Card>
+    );
+  }
 
   // S6: is_weak / is_redundant / is_high_value are return-derived verdicts. With
   // no forward returns they are null, and a rule must never be added, removed or
@@ -224,11 +254,11 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
-                    <th className="text-left py-2 px-3">Rule</th>
-                    <th className="text-right py-2 px-3">Engine</th>
-                    <th className="text-right py-2 px-3">Pass Rate</th>
-                    <th className="text-right py-2 px-3">Return Delta</th>
-                    <th className="text-right py-2 px-3">Significance</th>
+                    <th scope="col" className="text-left py-2 px-3">Rule</th>
+                    <th scope="col" className="text-right py-2 px-3">Engine</th>
+                    <th scope="col" className="text-right py-2 px-3">Pass Rate</th>
+                    <th scope="col" className="text-right py-2 px-3">Return Delta</th>
+                    <th scope="col" className="text-right py-2 px-3">Significance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -284,7 +314,13 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
 }
 
 function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) {
-  if (!data || data.engines.length === 0) return null;
+  if (!data || data.engines.length === 0) {
+    return (
+      <Card title="Engine Effectiveness">
+        <EmptyState message="No engine-effectiveness data for this strategy and window." />
+      </Card>
+    );
+  }
 
   if (!data.measurability.forward_returns_available) {
     return (
@@ -301,13 +337,13 @@ function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) 
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
-              <th className="text-left py-2 px-3">Engine</th>
-              <th className="text-right py-2 px-3">Avg Score</th>
-              <th className="text-right py-2 px-3">Pass Rate</th>
-              <th className="text-right py-2 px-3">Contribution</th>
-              <th className="text-right py-2 px-3">Correlation</th>
-              <th className="text-right py-2 px-3">Avg Fwd Return (engine scores &gt; 0)</th>
-              <th className="text-right py-2 px-3">Status</th>
+              <th scope="col" className="text-left py-2 px-3">Engine</th>
+              <th scope="col" className="text-right py-2 px-3">Avg Score</th>
+              <th scope="col" className="text-right py-2 px-3">Pass Rate</th>
+              <th scope="col" className="text-right py-2 px-3">Contribution</th>
+              <th scope="col" className="text-right py-2 px-3">Correlation</th>
+              <th scope="col" className="text-right py-2 px-3">Avg Fwd Return (engine scores &gt; 0)</th>
+              <th scope="col" className="text-right py-2 px-3">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -350,7 +386,13 @@ function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) 
 }
 
 function ValidationSection({ data }: { data: HistoricalValidationResponse | null }) {
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Card title="Historical Validation">
+        <EmptyState message="No historical validation for this strategy and window." />
+      </Card>
+    );
+  }
 
   return (
     <Card title="Historical Validation" subtitle={`${data.total_trading_days} trading days across ${data.windows.length} windows`}>
@@ -444,7 +486,7 @@ export default function ValidationPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <PageHeader
         title="Strategy Validation & Alpha Research"
         subtitle="Replace intuition with measurable evidence"
@@ -477,8 +519,15 @@ export default function ValidationPage() {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {isLoading && <LoadingSpinner />}
-        {error && <ErrorMessage message={(error as Error).message} />}
+        {isLoading && (
+          <SkeletonRegion label="Loading the validation dashboard">
+            <SkeletonMetricGrid count={4} />
+            <SkeletonCard lines={6} />
+            <SkeletonCard lines={6} />
+            <SkeletonCard lines={4} />
+          </SkeletonRegion>
+        )}
+        {error && <ErrorMessage message={(error as Error).message} onRetry={() => refetch()} />}
 
         {data && (
           <div className="space-y-6">

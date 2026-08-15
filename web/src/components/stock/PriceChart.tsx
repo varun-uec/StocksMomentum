@@ -140,6 +140,24 @@ export const PANE_DEFS: PaneDef[] = [
   },
 ];
 
+/**
+ * Volume is read off `bars`, not off `indicatorSeries`, so it is registered
+ * separately from the three backend-fed panes and never appears in their
+ * checkbox row.
+ */
+const VOLUME_PANE: PaneDef = {
+  id: 'volume',
+  label: 'Volume',
+  series: [
+    {
+      key: 'volume',
+      type: 'histogram',
+      sign: { key: 'volume_direction', positive: 'rgba(16,185,129,0.45)', negative: 'rgba(239,68,68,0.45)' },
+    },
+  ],
+  format: (v) => v.toLocaleString(),
+};
+
 /** The colour a pane is identified by (its first line series). */
 export function paneColor(def: PaneDef): string {
   return def.series.find((s) => s.type === 'line')?.color ?? '#94a3b8';
@@ -338,6 +356,7 @@ export function PriceChart({
   const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);
   const [drawings, setDrawings] = useState<ChartDrawing[]>(initialDrawings ?? []);
   const [readout, setReadout] = useState<CrosshairReadout | null>(null);
+  const [showVolume, setShowVolume] = useState(false);
 
   // Displayed panes: parent-controlled when `activePanes` is supplied, else a
   // private default of none (Phase 7/8 consumers pass neither prop).
@@ -389,9 +408,27 @@ export function PriceChart({
   }, [parsed]);
 
   const paneDefs = useMemo(
-    () => [...PANE_DEFS, ...(extraPaneDefs ?? [])],
-    [extraPaneDefs]
+    () => [...PANE_DEFS, ...(extraPaneDefs ?? []), ...(showVolume ? [VOLUME_PANE] : [])],
+    [extraPaneDefs, showVolume]
   );
+
+  /**
+   * Pane input: the backend indicator bars, with each bar's volume and its
+   * up/down direction merged in from `bars` so the volume pane needs no
+   * separate plumbing.
+   */
+  const paneSourceBars = useMemo<IndicatorSeriesBar[]>(() => {
+    const byDate = new Map<string, IndicatorSeriesBar>();
+    for (const bar of indicatorSeries ?? []) byDate.set(bar.date, { ...bar });
+    bars.forEach((bar, i) => {
+      const entry = byDate.get(bar.date) ?? { date: bar.date };
+      entry.volume = bar.volume;
+      const prev = i > 0 ? parseFloat(bars[i - 1].close) : parseFloat(bar.open);
+      entry.volume_direction = parseFloat(bar.close) >= prev ? 1 : -1;
+      byDate.set(bar.date, entry);
+    });
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [bars, indicatorSeries]);
 
   /** Per-series data for every registered pane, keyed `${paneId}:${seriesKey}`. */
   const paneData = useMemo(() => {
@@ -399,7 +436,7 @@ export function PriceChart({
     for (const def of paneDefs) {
       for (const series of def.series) {
         const points: { time: UTCTimestamp; value: number; color?: string }[] = [];
-        for (const bar of indicatorSeries ?? []) {
+        for (const bar of paneSourceBars) {
           const raw = bar[series.key];
           if (typeof raw !== 'number' || !Number.isFinite(raw)) continue;
           const point: { time: UTCTimestamp; value: number; color?: string } = {
@@ -417,7 +454,7 @@ export function PriceChart({
       }
     }
     return out;
-  }, [indicatorSeries, paneDefs]);
+  }, [paneSourceBars, paneDefs]);
 
   /** Lookups for the crosshair readout, keyed by ISO bar date. */
   const readoutMaps = useMemo(() => {
@@ -431,7 +468,7 @@ export function PriceChart({
       });
     }
     const indByDate = new Map<string, Record<PaneId, number>>();
-    for (const bar of indicatorSeries ?? []) {
+    for (const bar of paneSourceBars) {
       const entry: Record<PaneId, number> = {};
       for (const def of paneDefs) {
         const key = paneReadoutKey(def);
@@ -441,7 +478,7 @@ export function PriceChart({
       indByDate.set(bar.date, entry);
     }
     return { barByDate, indByDate };
-  }, [bars, indicatorSeries, paneDefs]);
+  }, [bars, paneSourceBars, paneDefs]);
 
   const readoutMapsRef = useRef(readoutMaps);
   const paneDefsRef = useRef(paneDefs);
@@ -888,6 +925,9 @@ export function PriceChart({
             Line
           </ToggleButton>
         </div>
+        <ToggleButton active={showVolume} onClick={() => setShowVolume((v) => !v)}>
+          Volume
+        </ToggleButton>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-slate-500">Moving averages</span>
           {MA_PERIODS.map((period) => (
@@ -951,8 +991,38 @@ export function PriceChart({
           </>
         )}
       </div>
+      {/* Legend: what is currently drawn, with each line's latest value, so
+          the colours on the chart need no decoding. */}
+      {activeMas.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          {activeMas.map((period) => {
+            const series = maSeriesData.get(period);
+            const latest = series?.[series.length - 1]?.value;
+            return (
+              <span key={period} className="inline-flex items-center gap-1.5 text-[11px] tabular-nums">
+                <span
+                  aria-hidden="true"
+                  className="inline-block w-3 h-0.5 rounded-full"
+                  style={{ backgroundColor: MA_COLORS[period] }}
+                />
+                <span className="text-slate-500 dark:text-slate-400">MA{period}</span>
+                <span className="text-slate-700 dark:text-slate-300">
+                  {latest === undefined ? '—' : latest.toFixed(2)}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      )}
       <div className="relative">
-        <div ref={containerRef} className="w-full" />
+        <div
+          ref={containerRef}
+          role="img"
+          aria-label={`Price chart, ${bars.length} daily bars${
+            bars.length ? ` from ${bars[0].date} to ${bars[bars.length - 1].date}` : ''
+          }. Moving averages shown: ${activeMas.length ? activeMas.map((p) => `MA${p}`).join(', ') : 'none'}.`}
+          className="w-full"
+        />
         {readout && (
           <div className="pointer-events-none absolute top-2 right-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">
             <div className="font-medium text-slate-700 dark:text-slate-300">{readout.date}</div>

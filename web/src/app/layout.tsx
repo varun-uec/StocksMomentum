@@ -23,7 +23,8 @@ export default function RootLayout({
       <head>
         <ThemeInitScript />
       </head>
-      <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+      {/* pb-16 clears the fixed mobile bottom nav; the desktop bar is in flow. */}
+      <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors pb-16 md:pb-0">
         <ThemeProvider>
           <Providers>
             <StrategyProvider>

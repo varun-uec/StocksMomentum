@@ -65,12 +65,12 @@ export function RelativeStrengthVsIndex({
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-slate-500 dark:text-slate-400">
-              <th className="font-medium py-1.5 pr-3">Period</th>
-              <th className="font-medium py-1.5 px-3 text-right tabular-nums">Stock</th>
-              <th className="font-medium py-1.5 px-3 text-right tabular-nums">
+              <th scope="col" className="font-medium py-1.5 pr-3">Period</th>
+              <th scope="col" className="font-medium py-1.5 px-3 text-right tabular-nums">Stock</th>
+              <th scope="col" className="font-medium py-1.5 px-3 text-right tabular-nums">
                 {benchmarkIndex ?? 'Index'}
               </th>
-              <th className="font-medium py-1.5 pl-3 text-right tabular-nums">Excess</th>
+              <th scope="col" className="font-medium py-1.5 pl-3 text-right tabular-nums">Excess</th>
             </tr>
           </thead>
           <tbody>

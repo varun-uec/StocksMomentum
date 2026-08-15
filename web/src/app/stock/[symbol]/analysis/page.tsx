@@ -357,9 +357,11 @@ export default function UnifiedAnalysisPage() {
       : null;
   }, [patterns.analysis]);
 
-  const targets = useMemo<Target[]>(() => {
+  // An Elliott Wave projection zone says where a count would complete. It is
+  // not a value target, so it is listed on its own and never carries an R:R
+  // figure derived from the risk-only suggested stop.
+  const waveZones = useMemo<Target[]>(() => {
     const out: Target[] = [];
-    // 1. Elliott Wave projections — the backend's own numbers, every degree.
     for (const candidate of wave.candidates) {
       if (!candidate.projection) continue;
       const low = parseFloat(candidate.projection.low);
@@ -375,7 +377,12 @@ export default function UnifiedAnalysisPage() {
       out.push({ label: `EW zone midpoint — ${tag}`, price: (low + high) / 2 });
       out.push({ label: `EW zone high — ${tag} (${candidate.projection.basis})`, price: high });
     }
-    // 2. Fibonacci extensions of the active count's last completed leg.
+    return out;
+  }, [wave.candidates]);
+
+  const targets = useMemo<Target[]>(() => {
+    const out: Target[] = [];
+    // 1. Fibonacci extensions of the active count's last completed leg.
     const labels = wave.active?.labels ?? [];
     if (labels.length >= 3) {
       const a = parseFloat(labels[labels.length - 3].price);
@@ -389,7 +396,7 @@ export default function UnifiedAnalysisPage() {
         });
       }
     }
-    // 3. Pattern measured move: the formation's own height from its break point.
+    // 2. Pattern measured move: the formation's own height from its break point.
     if (patternHeadline) {
       const prices = patternHeadline.geometry.flatMap((line) =>
         line.points.map((p) => parseFloat(p.price))
@@ -405,7 +412,7 @@ export default function UnifiedAnalysisPage() {
         });
       }
     }
-    // 4. ATR objective from the displayed bars.
+    // 3. ATR objective from the displayed bars.
     const a14 = atr(bars, 14);
     const latestAtr = [...a14].reverse().find((v): v is number => v !== null);
     if (latestAtr !== undefined && lastClose !== null) {
@@ -415,7 +422,7 @@ export default function UnifiedAnalysisPage() {
       });
     }
     return out;
-  }, [wave.candidates, wave.active, patternHeadline, bars, lastClose, atrMultiple]);
+  }, [wave.active, patternHeadline, bars, lastClose, atrMultiple]);
 
   const stop = live?.suggested_stop?.level ? parseFloat(live.suggested_stop.level) : null;
 
@@ -595,6 +602,37 @@ export default function UnifiedAnalysisPage() {
             )}
 
             <Card
+              title="Elliott Wave projected completion zones"
+              subtitle="Where a count would complete. Not a value target, and not part of any risk / reward figure."
+            >
+              {waveZones.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  No projection zone yet. Zones arrive with the wave analysis.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {waveZones.map((zone) => {
+                    const move = lastClose === null ? null : ((zone.price - lastClose) / lastClose) * 100;
+                    return (
+                      <li
+                        key={zone.label}
+                        className="flex flex-wrap items-baseline justify-between gap-2 text-xs border-b border-slate-100 dark:border-slate-800 pb-1"
+                      >
+                        <span className="text-slate-600 dark:text-slate-400">{zone.label}</span>
+                        <span className="tabular-nums text-slate-800 dark:text-slate-200">
+                          {inr(zone.price)}
+                          {move !== null && (
+                            <span className="text-slate-500 dark:text-slate-400"> · {move >= 0 ? '+' : ''}{move.toFixed(1)}%</span>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+
+            <Card
               title="Targets and risk / reward"
               subtitle="Each level states the arithmetic that produced it"
             >
@@ -617,8 +655,8 @@ export default function UnifiedAnalysisPage() {
               </div>
               {targets.length === 0 && (
                 <p className="text-xs text-slate-500">
-                  No projection is available yet. Elliott Wave zones arrive with the wave analysis,
-                  the measured move after you run pattern detection.
+                  No target is available yet. The measured move arrives after you run pattern
+                  detection; the Fibonacci extensions need an active wave count.
                 </p>
               )}
               <ul className="space-y-1">
