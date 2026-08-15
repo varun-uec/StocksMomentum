@@ -1,4 +1,7 @@
-"""HTTP middleware: correlation ID propagation, access logging, metrics, rate limiting, and security headers.
+"""HTTP middleware.
+
+Correlation ID propagation, access logging, metrics, rate limiting, and
+security headers.
 
 Binds a per-request id and correlation ID into the structlog context so all logs
 emitted while handling a request are correlated (NFR-10). Also records Prometheus
@@ -28,8 +31,11 @@ _logger = get_logger("api.access")
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
-    """Binds request id and correlation ID, logs request/response with latency,
-    records metrics, and propagates tracing headers."""
+    """Bind request/correlation ids and observe each request.
+
+    Logs request and response with latency, records metrics, and propagates
+    tracing headers.
+    """
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -37,13 +43,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         """Bind context, time the request, emit an access log, and record metrics."""
         # Accept or generate request id and correlation id
         request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
-        correlation_id = request.headers.get(
-            "x-correlation-id", generate_correlation_id()
-        )
+        correlation_id = request.headers.get("x-correlation-id", generate_correlation_id())
 
-        structlog.contextvars.bind_contextvars(
-            request_id=request_id, correlation_id=correlation_id
-        )
+        structlog.contextvars.bind_contextvars(request_id=request_id, correlation_id=correlation_id)
         start = time.perf_counter()
         response: Response | None = None
         try:
@@ -58,12 +60,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             method = request.method
 
             # Record Prometheus metrics
-            http_requests_total.labels(
-                method=method, path=path, status_code=status_code
-            ).inc()
-            http_request_duration_seconds.labels(
-                method=method, path=path
-            ).observe(elapsed_ms / 1000.0)
+            http_requests_total.labels(method=method, path=path, status_code=status_code).inc()
+            http_request_duration_seconds.labels(method=method, path=path).observe(
+                elapsed_ms / 1000.0
+            )
 
             _logger.info(
                 "http_request",
@@ -95,13 +95,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=()"
-        )
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
         )
@@ -178,9 +174,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._cleanup(client_ip, now)
 
         if len(self._requests.get(client_ip, [])) >= self._max_requests:
-            _logger.warning(
-                "rate_limit_exceeded", client_ip=client_ip, path=request.url.path
-            )
+            _logger.warning("rate_limit_exceeded", client_ip=client_ip, path=request.url.path)
             from fastapi.responses import JSONResponse
 
             return JSONResponse(

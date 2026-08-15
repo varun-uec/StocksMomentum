@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from momentum25.domain.patterns.base import PatternDetector, PatternResult
+from momentum25.domain.patterns.base import PatternResult
 
 
 class CupWithHandleDetector:
@@ -36,6 +36,7 @@ class CupWithHandleDetector:
         low: list[Decimal],
         volume: list[int],
     ) -> PatternResult:
+        """Detect a cup with handle: a rounded bottom followed by a shallow pullback."""
         if len(close) < self._MIN_CUP_LENGTH + 20:
             return PatternResult(
                 pattern_name=self.pattern_name,
@@ -74,7 +75,10 @@ class CupWithHandleDetector:
             )
 
         cup_bottom = min(after_peak)
-        cup_bottom_idx = recent_low.index(cup_bottom)
+        # Search from the left peak, not from 0: the same low can occur before
+        # the peak, and `index()` would then return an earlier position and
+        # make `cup_width` zero or negative.
+        cup_bottom_idx = recent_low.index(cup_bottom, left_peak_idx)
 
         # Cup depth
         cup_depth_pct = (left_peak - cup_bottom) / left_peak * Decimal("100")
@@ -122,8 +126,10 @@ class CupWithHandleDetector:
                 explanation="Insufficient right side data for handle.",
             )
 
-        # Right peak — should approach left peak level
-        right_peak = max(right_side)
+        # No right-rim check. The detector never compares the right peak to the
+        # left peak, so a cup whose right side recovers only part way still
+        # qualifies. Adding that criterion would change what the detector
+        # reports, which is a methodology decision, not a code cleanup.
 
         # Find handle: the rightmost pullback
         handle_region = right_side[-(self._MIN_HANDLE_LENGTH + 5):]

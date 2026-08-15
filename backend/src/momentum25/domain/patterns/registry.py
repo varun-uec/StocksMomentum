@@ -47,9 +47,9 @@ def get_pattern_registry() -> PatternRegistry:
 def register_builtin_patterns() -> None:
     """Register all built-in pattern detectors."""
     # Lazy imports to avoid circular dependencies
-    from momentum25.domain.patterns.flat_base import FlatBaseDetector
     from momentum25.domain.patterns.ascending_base import AscendingBaseDetector
     from momentum25.domain.patterns.cup_handle import CupWithHandleDetector
+    from momentum25.domain.patterns.flat_base import FlatBaseDetector
     from momentum25.domain.patterns.vcp import VCPDetector
 
     registry = get_pattern_registry()

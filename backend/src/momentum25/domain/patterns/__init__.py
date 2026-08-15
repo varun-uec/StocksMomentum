@@ -11,11 +11,11 @@ Current implementations:
 - High Tight Flag
 """
 
-from momentum25.domain.patterns.base import PatternResult, PatternDetector, Pivot
+from momentum25.domain.patterns.base import PatternDetector, PatternResult, Pivot
 from momentum25.domain.patterns.registry import (
     PatternRegistry,
-    register_builtin_patterns,
     get_pattern_registry,
+    register_builtin_patterns,
 )
 
 __all__ = [

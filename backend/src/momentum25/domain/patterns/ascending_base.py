@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from momentum25.domain.patterns.base import PatternDetector, PatternResult
+from momentum25.domain.patterns.base import PatternResult
 
 
 class AscendingBaseDetector:
@@ -34,6 +34,7 @@ class AscendingBaseDetector:
         low: list[Decimal],
         volume: list[int],
     ) -> PatternResult:
+        """Detect an ascending base: a series of higher lows on successive pullbacks."""
         if len(close) < self._MIN_BASE_LENGTH + 30:
             return PatternResult(
                 pattern_name=self.pattern_name,

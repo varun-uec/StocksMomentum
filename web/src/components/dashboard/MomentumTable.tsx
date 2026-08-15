@@ -459,15 +459,43 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
                   const isSorted = header.column.getIsSorted();
+                  const toggleSort = header.column.getToggleSortingHandler();
                   return (
                     <th
                       key={header.id}
+                      // A sortable header is an interactive control, so it must be
+                      // reachable and operable from the keyboard. A plain `th` with
+                      // onClick is neither.
+                      scope="col"
+                      aria-sort={
+                        !canSort
+                          ? undefined
+                          : isSorted === 'asc'
+                            ? 'ascending'
+                            : isSorted === 'desc'
+                              ? 'descending'
+                              : 'none'
+                      }
+                      // No explicit role: a `th` in a table is already a
+                      // columnheader, and `aria-sort` is what conveys that it
+                      // sorts.
+                      tabIndex={canSort ? 0 : undefined}
+                      onKeyDown={
+                        canSort
+                          ? (event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                toggleSort?.(event);
+                              }
+                            }
+                          : undefined
+                      }
                       className={`px-3 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap ${
                         canSort
                           ? `cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200 transition-colors ${focusRing}`
                           : ''
                       }`}
-                      onClick={header.column.getToggleSortingHandler()}
+                      onClick={toggleSort}
                       style={{
                         textAlign:
                           header.id === 'rank' || header.id === 'symbol' || header.id === 'name' || header.id === 'sector' || header.id === 'checklist' || header.id === 'trend_template'
@@ -527,22 +555,22 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
           Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
         </div>
         <div className="flex items-center gap-2">
-          <PageButton onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
+          <PageButton onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} label="First page">
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M15.79 14.77a.75.75 0 01-1.06.02l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 111.04 1.08L11.832 10l3.938 3.71a.75.75 0 01.02 1.06zM7.25 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5a.75.75 0 01.75.75z" />
             </svg>
           </PageButton>
-          <PageButton onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+          <PageButton onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} label="Previous page">
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06-.02z" />
             </svg>
           </PageButton>
-          <PageButton onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+          <PageButton onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} label="Next page">
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06.02z" />
             </svg>
           </PageButton>
-          <PageButton onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
+          <PageButton onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} label="Last page">
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M4.21 5.23a.75.75 0 011.06-.02l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 11-1.04-1.08L8.168 10 4.23 6.29a.75.75 0 01-.02-1.06zM12.75 10a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75z" />
             </svg>
@@ -568,16 +596,20 @@ function PageButton({
   children,
   onClick,
   disabled,
+  label,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled: boolean;
+  /** Screen-reader name. The button's content is an icon, which has none. */
+  label: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-label={label}
       className={`p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${focusRing}`}
     >
       {children}

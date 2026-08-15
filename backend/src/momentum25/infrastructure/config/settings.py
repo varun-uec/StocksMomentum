@@ -132,7 +132,7 @@ class Settings(BaseSettings):
         return upper
 
     @model_validator(mode="after")
-    def _validate_retry_backoff(self) -> "Settings":
+    def _validate_retry_backoff(self) -> Settings:
         """Ensure retry wait values are consistent."""
         if self.retry_min_wait_seconds >= self.retry_max_wait_seconds:
             raise ValueError(

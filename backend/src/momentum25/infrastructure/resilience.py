@@ -133,7 +133,7 @@ class CircuitBreaker:
 # ── Timeout handling ─────────────────────────────────────────────────────────
 
 
-async def with_timeout(
+async def with_timeout[R](
     coro: Awaitable[R],
     timeout_seconds: float,
     operation: str = "unknown",
@@ -153,7 +153,7 @@ async def with_timeout(
     """
     try:
         return await asyncio.wait_for(coro, timeout=timeout_seconds)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         _logger.error("operation_timeout", operation=operation, timeout_seconds=timeout_seconds)
         raise ServiceTimeoutError(
             f"Operation '{operation}' timed out after {timeout_seconds}s"

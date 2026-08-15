@@ -15,15 +15,17 @@ from momentum25.application.use_cases.research.comparison import StrategyCompari
 from momentum25.application.use_cases.research.contribution import ContributionAnalysisUseCase
 from momentum25.application.use_cases.research.evaluation import EvaluateStrategyUseCase
 from momentum25.application.use_cases.research.experiment import ExperimentUseCase
-from momentum25.application.use_cases.research.historical_screening import HistoricalScreeningUseCase
+from momentum25.application.use_cases.research.historical_screening import (
+    HistoricalScreeningUseCase,
+)
 from momentum25.application.use_cases.research.validation import (
     DeterminismVerificationUseCase,
     ValidateRunComparisonUseCase,
 )
-from momentum25.domain.strategy.bootstrap import register_builtin_engines
-from momentum25.domain.strategy.engine_registry import EngineRegistry, engine_registry
-from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
+from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
+from momentum25.domain.strategy.bootstrap import register_builtin_engines
+from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
@@ -39,7 +41,6 @@ from momentum25.interface.api.dependencies import (
     get_security_repo,
     get_strategy_repo,
 )
-
 
 # ── Historical Screening ────────────────────────────────────────────────
 
@@ -157,9 +158,12 @@ async def get_contribution_analysis_use_case(
     screening_run_repo: Annotated[
         SqlScreeningRunRepository, Depends(get_screening_run_repository)
     ],
+    strategy_repo: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[ContributionAnalysisUseCase]:
     """Provide a ContributionAnalysisUseCase instance."""
-    yield ContributionAnalysisUseCase(screening_run_repo=screening_run_repo)
+    yield ContributionAnalysisUseCase(
+        screening_run_repo=screening_run_repo, strategy_repo=strategy_repo
+    )
 
 
 # ── Strategy Comparison ─────────────────────────────────────────────────

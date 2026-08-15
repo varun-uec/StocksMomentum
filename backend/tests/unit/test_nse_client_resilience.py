@@ -26,7 +26,9 @@ def _reset_breaker() -> None:
 
 
 @pytest.mark.asyncio
-async def test_transient_failure_is_retried_and_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_transient_failure_is_retried_and_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls = {"n": 0}
 
     def flaky(**kwargs: object) -> pd.DataFrame:
@@ -44,11 +46,10 @@ async def test_transient_failure_is_retried_and_then_succeeds(monkeypatch: pytes
             }
         )
 
+    monkeypatch.setattr(nse_client_module.historical, "get_stock_historical_data", flaky)
     monkeypatch.setattr(
-        nse_client_module.historical, "get_stock_historical_data", flaky
-    )
-    monkeypatch.setattr(
-        nse_client_module, "_fetch_historical_dataframe",
+        nse_client_module,
+        "_fetch_historical_dataframe",
         nse_client_module.resilient(
             "nse_historical_fetch_test",
             max_attempts=3,
@@ -73,11 +74,10 @@ async def test_persistent_failure_degrades_to_empty_list_not_raise(
     def always_fails(**kwargs: object) -> pd.DataFrame:
         raise ConnectionError("NSE is down")
 
+    monkeypatch.setattr(nse_client_module.historical, "get_stock_historical_data", always_fails)
     monkeypatch.setattr(
-        nse_client_module.historical, "get_stock_historical_data", always_fails
-    )
-    monkeypatch.setattr(
-        nse_client_module, "_fetch_historical_dataframe",
+        nse_client_module,
+        "_fetch_historical_dataframe",
         nse_client_module.resilient(
             "nse_historical_fetch_test",
             max_attempts=2,

@@ -12,6 +12,7 @@ from momentum25.domain.analytics.chart_patterns import (
     detect_chart_patterns,
 )
 from momentum25.domain.entities.market_data import OHLCVBar
+from momentum25.domain.patterns.cup_handle import CupWithHandleDetector
 
 _START = date(2024, 1, 1)
 
@@ -316,6 +317,35 @@ def test_cup_with_handle_is_detected_with_cup_and_handle_geometry() -> None:
     cup = _get(analysis, "cup_with_handle")
     assert {line.name for line in cup.geometry} == {"Cup", "Handle"}
     assert any(c.label == "Volume contraction in the handle" and c.met for c in cup.criteria)
+
+
+def test_cup_bottom_index_is_found_to_the_right_of_the_left_peak() -> None:
+    """F9 regression: the cup low may also occur *before* the left rim.
+
+    ``recent_low.index(cup_bottom)`` searched from position 0, so an equal low
+    early in the window returned an index left of the peak. ``cup_width`` then
+    came out zero or negative and the detector rejected a real cup on a bogus
+    "cup width" reason. The bar series below starts at exactly the cup low, so
+    the value repeats on both sides of the peak.
+    """
+    closes = (
+        [100.0]
+        + _ramp(100.0, 130.0, 8)
+        + _ramp(130.0, 100.0, 40)
+        + _ramp(100.0, 128.0, 40)
+        + _ramp(128.0, 120.0, 5)
+        + [120.0, 121.0, 122.0]
+    )
+    detector = CupWithHandleDetector()
+    decimals = [Decimal(str(c)) for c in closes]
+    result = detector.detect(
+        close=decimals,
+        high=decimals,
+        low=decimals,
+        volume=[2000] * (len(closes) - 8) + [700] * 8,
+    )
+
+    assert "Cup width" not in result.explanation
 
 
 def test_a_shallow_cup_is_rejected() -> None:

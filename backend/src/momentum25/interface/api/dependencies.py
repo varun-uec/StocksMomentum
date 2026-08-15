@@ -414,7 +414,13 @@ async def get_live_stock_analysis() -> AsyncIterator[GetLiveStockAnalysis]:
     on-demand refresh and a Redis-backed refresh cooldown when Redis is
     reachable (degrades to no cooldown on a Redis outage, see
     ``application.use_cases.stocks.RefreshGate``).
+
+    The Redis RS-rating cache is the same instance ``/watchlist/detail`` uses:
+    both endpoints rank a symbol against the whole active universe, so they
+    share one table per trading date instead of rebuilding it per request.
     """
+    from momentum25.infrastructure.redis.rs_rating_cache import RedisRsRatingCache
+
     register_builtin_engines()
     async with _shared_session() as session:
         security_repo = SqlSecurityRepository(session)
@@ -440,6 +446,7 @@ async def get_live_stock_analysis() -> AsyncIterator[GetLiveStockAnalysis]:
             nse_client=NSEMarketDataClient(),
             refresh_gate=get_live_refresh_gate(),
             benchmark_repo=SqlBenchmarkIndexRepository(session),
+            rs_rating_cache=RedisRsRatingCache(get_redis_provider().client),
         )
 
 

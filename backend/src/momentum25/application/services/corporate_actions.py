@@ -8,6 +8,26 @@ actions for a given symbol change rarely (a handful of times a year at
 most), so this is meant to be invoked periodically (e.g. weekly) via
 :mod:`momentum25.application.use_cases.research.refresh_corporate_actions`,
 not inline with every bar upsert.
+
+Known limitation — scope is ``ohlcv_daily`` only
+------------------------------------------------
+
+This refresh updates the live bar table. It does **not** touch the legacy
+staging tables ``legacy_ohlcv_daily`` (NSE archive) or
+``bse_legacy_ohlcv_daily`` (BSE pre-UDiFF archive), which hold their own
+``adj_factor``/``adj_close`` columns and together carry millions of rows.
+
+So a corporate action ingested today is reflected in live screening
+immediately, but historical replay over the legacy era keeps the adjustment
+factors written by the original backfill until that backfill is re-run.
+Re-running it is the intended remedy: rebuilding adjustment factors across
+the whole legacy archive is a bulk batch job
+(``scripts/rp012_phase3_backfill.py``), not per-symbol work to fold into a
+refresh that is already one external HTTP call per security.
+
+The practical exposure is bounded. ``corporate_actions`` starts at
+2011-01-06 (NSE's free API caps at 20 rows per symbol), and legacy bars
+before that date have no action data to apply in either table.
 """
 
 from __future__ import annotations

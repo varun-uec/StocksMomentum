@@ -1,8 +1,9 @@
 """Scoring, ranking, and explainability implementations.
 
-This module provides placeholder implementations of the scoring, ranking, and
-explainability contracts defined in :mod:`momentum25.domain.scoring.contracts`.
-The full business logic is implemented in milestone M3.
+Implements the contracts defined in
+:mod:`momentum25.domain.scoring.contracts`. All three are pure and
+deterministic: the same scores in produce the same ranks and the same
+explanation out.
 """
 
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl

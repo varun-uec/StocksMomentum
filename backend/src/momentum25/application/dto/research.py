@@ -13,7 +13,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # ── Historical Screening ──────────────────────────────────────────────────
 
 
@@ -171,6 +170,20 @@ class ScorePointDTO(BaseModel):
     buy_setup_score: Decimal
 
 
+class ResearchMeasurabilityDTO(BaseModel):
+    """Whether a research response's result lists could be populated at all.
+
+    An empty ``run_summaries`` or ``comparisons`` list is ambiguous on its own:
+    it reads the same whether the strategy has no runs to analyse or was
+    analysed and found nothing. ``results_available: false`` means the former.
+    ``reason`` is a stable identifier the UI keys its copy off, matching the
+    convention :class:`MeasurabilityDTO` already set for validation.
+    """
+
+    results_available: bool
+    reason: str | None = None
+
+
 class StrategyEvaluationResponse(BaseModel):
     """Complete strategy evaluation result."""
 
@@ -178,6 +191,7 @@ class StrategyEvaluationResponse(BaseModel):
     performance: PortfolioPerformanceDTO
     run_summaries: list[HistoricalRunSummaryDTO]
     score_history: list[ScorePointDTO]
+    measurability: ResearchMeasurabilityDTO
 
 
 # ── Contribution Analysis ────────────────────────────────────────────────
@@ -224,16 +238,21 @@ class ContributionAnalysisResponse(BaseModel):
 
 
 class StrategyComparisonPointDTO(BaseModel):
-    """A single security comparison between two strategies."""
+    """Two strategies compared on one shared run date.
 
-    security_id: int
-    symbol: str
+    A comparison point is per *date*, not per security: the underlying
+    comparison aligns the two strategies on the run dates they both cover
+    (:class:`StrategyComparisonPoint`). This DTO previously declared
+    ``security_id``/``symbol``, which had no source, so the router filled them
+    with ``0`` and the stringified run date.
+    """
+
+    run_date: date
     rank_a: int | None = None
     rank_b: int | None = None
     momentum_a: Decimal | None = None
     momentum_b: Decimal | None = None
-    buy_setup_a: Decimal | None = None
-    buy_setup_b: Decimal | None = None
+    score_delta: Decimal | None = None
     agreement: bool = False  # both passed or both failed
 
 
@@ -249,6 +268,7 @@ class StrategyComparisonResponse(BaseModel):
     b_wins: int
     comparisons: list[StrategyComparisonPointDTO]
     rule_level_diffs: list[dict[str, Any]]
+    measurability: ResearchMeasurabilityDTO
 
 
 # ── Experiment Framework ─────────────────────────────────────────────────
@@ -257,7 +277,9 @@ class StrategyComparisonResponse(BaseModel):
 class ParameterOverrideDTO(BaseModel):
     """A single parameter override for an experiment."""
 
-    parameter_path: str = Field(description="Dot-separated path, e.g. 'engines.trend_template.weight'")
+    parameter_path: str = Field(
+        description="Dot-separated path, e.g. 'engines.trend_template.weight'"
+    )
     value: str = Field(description="Stringified value to set")
 
 

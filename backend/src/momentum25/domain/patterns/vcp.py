@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from momentum25.domain.patterns.base import PatternDetector, PatternResult
+from momentum25.domain.patterns.base import PatternResult
 
 
 class VCPDetector:
@@ -33,6 +33,7 @@ class VCPDetector:
         low: list[Decimal],
         volume: list[int],
     ) -> PatternResult:
+        """Detect a volatility contraction pattern: successively tighter price ranges."""
         if len(close) < self._LOOKBACK_BARS:
             return PatternResult(
                 pattern_name=self.pattern_name,
@@ -46,7 +47,7 @@ class VCPDetector:
 
         lookback = min(len(close), self._LOOKBACK_BARS)
         recent_high = [float(h) for h in high[-lookback:]]
-        recent_low = [float(l) for l in low[-lookback:]]
+        recent_low = [float(low_price) for low_price in low[-lookback:]]
         recent_volume = list(volume[-lookback:])
 
         # Compute daily ranges (high - low) / close

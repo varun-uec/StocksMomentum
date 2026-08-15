@@ -12,10 +12,10 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Historical Screening
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass(frozen=True, slots=True)
 class HistoricalSnapshot:
@@ -69,6 +69,7 @@ class HistoricalScreeningRequest:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Validation Framework
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass(frozen=True, slots=True)
 class RankingComparison:
@@ -136,8 +137,12 @@ class RunComparisonReport:
     rule_diffs: tuple[RuleComparison, ...]
 
     # Top movers and shakers for reporting
-    top_gainers: tuple[RankingComparison, ...] = field(default_factory=tuple)  # biggest rank improvement
-    top_losers: tuple[RankingComparison, ...] = field(default_factory=tuple)   # biggest rank regression
+    top_gainers: tuple[RankingComparison, ...] = field(
+        default_factory=tuple
+    )  # biggest rank improvement
+    top_losers: tuple[RankingComparison, ...] = field(
+        default_factory=tuple
+    )  # biggest rank regression
 
     # Indicator-formula revision of each run (``ScreeningRun.stats``). Not covered
     # by ``config_hash``, which hashes the strategy but not the formulas its rules
@@ -164,6 +169,7 @@ class RunComparisonReport:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Performance / Evaluation Metrics (Priority 4)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass(frozen=True, slots=True)
 class PortfolioPerformance:
@@ -224,6 +230,7 @@ class StrategyEvaluationResult:
 # Rule & Engine Contribution Analysis (Priority 5)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True, slots=True)
 class RuleContributionStats:
     """Cross-run statistics for a single rule."""
@@ -279,6 +286,7 @@ class ContributionAnalysisReport:
 # Strategy Comparison (Priority 6)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True, slots=True)
 class StrategyComparisonPoint:
     """Comparison of two strategies on the same run date."""
@@ -323,6 +331,7 @@ class StrategyComparisonReport:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Experiment Framework (Priority 7)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass(frozen=True, slots=True)
 class ParameterOverride:

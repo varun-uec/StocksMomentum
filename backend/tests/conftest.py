@@ -21,7 +21,6 @@ from momentum25.domain.value_objects.types import Symbol
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import Base
 
-
 _TEST_DATABASE_SUFFIX = "_test"
 
 

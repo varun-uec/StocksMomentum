@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict
 
 from momentum25.domain.research.validation_models import (
     MEASURABLE,
@@ -78,7 +78,7 @@ def _std(values: list[Decimal]) -> Decimal:
         return Decimal("0")
     mean = sum(values, Decimal("0")) / len(values)
     var = _variance(values, mean)
-    return Decimal(str(var ** 0.5)).quantize(_QUANT)
+    return Decimal(str(var**0.5)).quantize(_QUANT)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -240,9 +240,7 @@ def compute_alpha(
         try:
             bench_base = 1 + float(benchmark_return)
             bench_base = min(max(bench_base, 1e-12), 1e308)
-            bench_cagr = Decimal(
-                str(bench_base ** (1 / float(years)) - 1)
-            ).quantize(_QUANT)
+            bench_cagr = Decimal(str(bench_base ** (1 / float(years)) - 1)).quantize(_QUANT)
         except (OverflowError, ValueError, ArithmeticError):
             bench_cagr = Decimal("0")
     else:
@@ -254,12 +252,14 @@ def compute_alpha(
     for i in range(len(strategy_returns) - window + 1):
         strat_win = sum(strategy_returns[i : i + window], Decimal("0"))
         bench_win = sum(benchmark_returns[i : i + window], Decimal("0"))
-        rolling.append({
-            "period_start": i,
-            "period_end": i + window - 1,
-            "strategy_return": _quant(strat_win),
-            "benchmark_return": _quant(bench_win),
-        })
+        rolling.append(
+            {
+                "period_start": i,
+                "period_end": i + window - 1,
+                "strategy_return": _quant(strat_win),
+                "benchmark_return": _quant(bench_win),
+            }
+        )
 
     return BenchmarkComparison(
         benchmark_code=benchmark_code,
@@ -316,7 +316,9 @@ def compute_alpha_analysis(
     period_label = f"{start_date.isoformat()} to {end_date.isoformat()}"
     best_alpha = max(alphas) if alphas else Decimal("0")
     worst_alpha = min(alphas) if alphas else Decimal("0")
-    avg_alpha = _safe_div(sum(alphas, Decimal("0")), Decimal(str(len(alphas)))) if alphas else Decimal("0")
+    avg_alpha = (
+        _safe_div(sum(alphas, Decimal("0")), Decimal(str(len(alphas)))) if alphas else Decimal("0")
+    )
 
     return AlphaAnalysisReport(
         strategy_name=strategy_name,
@@ -336,9 +338,24 @@ def compute_alpha_analysis(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+class _ScreeningMetrics(TypedDict):
+    """Return shape of :func:`_screening_metrics`.
+
+    Stated as a TypedDict, not ``dict[str, Decimal | None]``, because the split
+    is the point: the first three keys are always a ``Decimal`` (they come from
+    run stats, which always exist), and only the last two can be ``None``.
+    """
+
+    avg_pass_rate: Decimal
+    avg_momentum_score: Decimal
+    avg_buy_setup_score: Decimal
+    false_positive_rate: Decimal | None
+    false_negative_rate: Decimal | None
+
+
 def _screening_metrics(
     run_summaries: list[dict[str, Any]], period_returns: list[Decimal]
-) -> dict[str, Decimal | None]:
+) -> _ScreeningMetrics:
     """Screening-side scorecard metrics, shared by the measured and unmeasured paths.
 
     Pass rates and average scores come from run stats and are always
@@ -363,14 +380,10 @@ def _screening_metrics(
     )
 
     momentum_scores = [
-        s["avg_momentum_score"]
-        for s in run_summaries
-        if s.get("avg_momentum_score") is not None
+        s["avg_momentum_score"] for s in run_summaries if s.get("avg_momentum_score") is not None
     ]
     buy_scores = [
-        s["avg_buy_setup_score"]
-        for s in run_summaries
-        if s.get("avg_buy_setup_score") is not None
+        s["avg_buy_setup_score"] for s in run_summaries if s.get("avg_buy_setup_score") is not None
     ]
 
     if n == 0:
@@ -381,24 +394,24 @@ def _screening_metrics(
         fp_count = sum(
             1
             for i, r in enumerate(period_returns)
-            if i < len(run_summaries)
-            and run_summaries[i].get("total_passed", 0) > 0
-            and r < 0
+            if i < len(run_summaries) and run_summaries[i].get("total_passed", 0) > 0 and r < 0
         )
         fn_count = sum(
             1
             for i, r in enumerate(period_returns)
-            if i < len(run_summaries)
-            and run_summaries[i].get("total_passed", 0) == 0
-            and r > 0
+            if i < len(run_summaries) and run_summaries[i].get("total_passed", 0) == 0 and r > 0
         )
         false_positive_rate = _safe_div(Decimal(str(fp_count)), Decimal(str(n)))
         false_negative_rate = _safe_div(Decimal(str(fn_count)), Decimal(str(n)))
 
+    # Quantized here, not at each call site: a mean of Decimals carries the
+    # division's full precision (28 significant digits), and the unmeasured
+    # scorecard path served that straight to the API as
+    # "32.80407073184481310143477908".
     return {
         "avg_pass_rate": avg_pass_rate,
-        "avg_momentum_score": _mean_or_none(momentum_scores) or Decimal("0"),
-        "avg_buy_setup_score": _mean_or_none(buy_scores) or Decimal("0"),
+        "avg_momentum_score": _quant(_mean_or_none(momentum_scores)),
+        "avg_buy_setup_score": _quant(_mean_or_none(buy_scores)),
         "false_positive_rate": false_positive_rate,
         "false_negative_rate": false_negative_rate,
     }
@@ -513,9 +526,7 @@ def compute_scorecard(
             # number instead of raising -- and Decimal(str(complex)) then raises
             # decimal.InvalidOperation rather than ValueError/OverflowError).
             base = min(max(base, 1e-12), 1e308)
-            cagr = Decimal(
-                str(base ** (1 / float(years)) - 1)
-            ).quantize(_QUANT)
+            cagr = Decimal(str(base ** (1 / float(years)) - 1)).quantize(_QUANT)
         except (OverflowError, ValueError, ArithmeticError):
             cagr = Decimal("0")
     else:
@@ -527,22 +538,30 @@ def compute_scorecard(
     total_wins = len(winners)
     total_losses = len(losers)
     win_rate = _safe_div(Decimal(str(total_wins)), Decimal(str(n)))
-    avg_winner = _safe_div(sum(winners, Decimal("0")), Decimal(str(total_wins))) if winners else Decimal("0")
-    avg_loser = _safe_div(sum(losers, Decimal("0")), Decimal(str(total_losses))) if losers else Decimal("0")
+    avg_winner = (
+        _safe_div(sum(winners, Decimal("0")), Decimal(str(total_wins))) if winners else Decimal("0")
+    )
+    avg_loser = (
+        _safe_div(sum(losers, Decimal("0")), Decimal(str(total_losses))) if losers else Decimal("0")
+    )
 
     # Profit factor
     gains = sum((r for r in period_returns if r > 0), Decimal("0"))
     losses = abs(sum((r for r in period_returns if r < 0), Decimal("0")))
-    profit_factor = _safe_div(gains, losses) if losses > 0 else (Decimal("999.9999") if gains > 0 else Decimal("0"))
+    profit_factor = (
+        _safe_div(gains, losses)
+        if losses > 0
+        else (Decimal("999.9999") if gains > 0 else Decimal("0"))
+    )
 
     # ── Risk metrics ──────────────────────────────────────────────────────
-    volatility = _std(period_returns) * Decimal(str(252.0 ** 0.5))  # annualized
+    volatility = _std(period_returns) * Decimal(str(252.0**0.5))  # annualized
 
     # Downside deviation
     downside = [float(r) for r in period_returns if r < 0]
     if downside:
-        downside_var = sum(d ** 2 for d in downside) / len(downside)
-        downside_vol = Decimal(str(downside_var ** 0.5)) * Decimal(str(252.0 ** 0.5))
+        downside_var = sum(d**2 for d in downside) / len(downside)
+        downside_vol = Decimal(str(downside_var**0.5)) * Decimal(str(252.0**0.5))
     else:
         downside_vol = Decimal("0")
 
@@ -588,10 +607,13 @@ def compute_scorecard(
 
         # Beta: covariance(strategy, benchmark) / variance(benchmark)
         if bench_std > 0:
-            cov = sum(
-                float((period_returns[i] - mean_return) * (benchmark_returns[i] - bench_mean))
-                for i in range(n)
-            ) / n
+            cov = (
+                sum(
+                    float((period_returns[i] - mean_return) * (benchmark_returns[i] - bench_mean))
+                    for i in range(n)
+                )
+                / n
+            )
             bench_var = sum(float((b - bench_mean) ** 2) for b in benchmark_returns) / n
             if bench_var > 0:
                 beta = Decimal(str(cov / bench_var)).quantize(_QUANT)
@@ -601,14 +623,12 @@ def compute_scorecard(
             # R-squared: (correlation)^2
             if bench_std > 0 and volatility > 0:
                 corr = Decimal(str(cov / (float(bench_std) * float(volatility)))).quantize(_QUANT)
-                r_squared = (corr ** 2).quantize(_QUANT)
+                r_squared = (corr**2).quantize(_QUANT)
 
             # Information ratio: excess return / tracking error
-            excess_returns = [
-                period_returns[i] - benchmark_returns[i] for i in range(n)
-            ]
+            excess_returns = [period_returns[i] - benchmark_returns[i] for i in range(n)]
             excess_mean = _safe_div(sum(excess_returns, Decimal("0")), Decimal(str(n)))
-            tracking_error = _std(excess_returns) * Decimal(str(252.0 ** 0.5))
+            tracking_error = _std(excess_returns) * Decimal(str(252.0**0.5))
             if tracking_error > 0:
                 information_ratio = _safe_div(excess_mean * _TRADING_DAYS_PER_YEAR, tracking_error)
 
@@ -632,10 +652,11 @@ def compute_scorecard(
         win_returns = period_returns[i : i + window]
         win_mean = _safe_div(sum(win_returns, Decimal("0")), Decimal(str(window)))
         win_std = _std(win_returns)
-        if win_std > 0:
-            rs = _safe_div(win_mean * _TRADING_DAYS_PER_YEAR, win_std)
-        else:
-            rs = Decimal("0")
+        rs = (
+            _safe_div(win_mean * _TRADING_DAYS_PER_YEAR, win_std)
+            if win_std > 0
+            else Decimal("0")
+        )
         rolling_sharpe.append({"period": i, "sharpe": rs})
 
     return StrategyScorecard(
@@ -681,20 +702,20 @@ def compute_scorecard(
     )
 
 
-def _compute_period_returns(
-    daily_returns: list[Decimal], period_days: int
-) -> list[dict[str, Any]]:
+def _compute_period_returns(daily_returns: list[Decimal], period_days: int) -> list[dict[str, Any]]:
     """Aggregate daily returns into period returns (e.g. monthly, yearly)."""
     periods: list[dict[str, Any]] = []
     for i in range(0, len(daily_returns), period_days):
         chunk = daily_returns[i : i + period_days]
         if chunk:
             period_return = sum(chunk, Decimal("0"))
-            periods.append({
-                "period": i // period_days,
-                "return": _quant(period_return),
-                "days": len(chunk),
-            })
+            periods.append(
+                {
+                    "period": i // period_days,
+                    "return": _quant(period_return),
+                    "days": len(chunk),
+                }
+            )
     return periods
 
 
@@ -765,9 +786,7 @@ def analyze_rule_effectiveness(
 
         # Per-evaluation returns, joined on (run_id, security_id) by the caller.
         with_return = [e for e in evals if e.get("forward_return") is not None]
-        returns_when_passes = [
-            e["forward_return"] for e in with_return if e.get("passed", False)
-        ]
+        returns_when_passes = [e["forward_return"] for e in with_return if e.get("passed", False)]
         returns_when_fails = [
             e["forward_return"] for e in with_return if not e.get("passed", False)
         ]
@@ -777,18 +796,19 @@ def analyze_rule_effectiveness(
 
         # Contribution to profitable vs unprofitable outcomes, on the same join.
         contrib_success = [
-            e.get("contribution", Decimal("0"))
-            for e in with_return
-            if e["forward_return"] > 0
+            e.get("contribution", Decimal("0")) for e in with_return if e["forward_return"] > 0
         ]
         contrib_unsuccess = [
-            e.get("contribution", Decimal("0"))
-            for e in with_return
-            if e["forward_return"] <= 0
+            e.get("contribution", Decimal("0")) for e in with_return if e["forward_return"] <= 0
         ]
         avg_contrib_success = _mean_or_none(contrib_success)
         avg_contrib_unsuccess = _mean_or_none(contrib_unsuccess)
 
+        return_delta: Decimal | None
+        significance: Decimal | None
+        is_weak: bool | None
+        is_redundant: bool | None
+        is_high_value: bool | None
         if avg_return_pass is not None and avg_return_fail is not None:
             return_delta = avg_return_pass - avg_return_fail
             significance = min(
@@ -800,10 +820,9 @@ def analyze_rule_effectiveness(
             )
             is_weak = pass_rate < Decimal("0.3") and abs(return_delta) < Decimal("0.01")
             is_redundant = pass_rate > Decimal("0.95")
-            is_high_value = (
-                return_delta > Decimal("0.02")
-                and Decimal("0.3") <= pass_rate <= Decimal("0.95")
-            )
+            is_high_value = return_delta > Decimal("0.02") and Decimal(
+                "0.3"
+            ) <= pass_rate <= Decimal("0.95")
         else:
             # A rule evaluated on only one side of its own pass/fail split, or
             # with no matured returns at all, has no measurable delta. It is
@@ -874,13 +893,10 @@ def analyze_rule_effectiveness(
             )
         if weak_rules:
             summary_parts.append(
-                f"Found {len(weak_rules)} weak rules with low pass rate and "
-                f"minimal return impact."
+                f"Found {len(weak_rules)} weak rules with low pass rate and minimal return impact."
             )
         summary = (
-            " ".join(summary_parts)
-            if summary_parts
-            else "All rules show meaningful contribution."
+            " ".join(summary_parts) if summary_parts else "All rules show meaningful contribution."
         )
 
     return RuleEffectivenessReport(
@@ -945,9 +961,7 @@ def analyze_engine_effectiveness(
         engine_groups.setdefault(eid, []).append(ev)
 
     all_returns = [
-        ev["forward_return"]
-        for ev in engine_evaluations
-        if ev.get("forward_return") is not None
+        ev["forward_return"] for ev in engine_evaluations if ev.get("forward_return") is not None
     ]
     overall_avg_return = _mean_or_none(all_returns)
 
@@ -985,13 +999,9 @@ def analyze_engine_effectiveness(
                 for e in with_return
                 if (e.get("score", Decimal("0")) > 0) == (e["forward_return"] > 0)
             )
-            correlation = _safe_div(
-                Decimal(str(correlated)), Decimal(str(len(with_return)))
-            )
+            correlation = _safe_div(Decimal(str(correlated)), Decimal(str(len(with_return))))
             high_score_returns = [
-                e["forward_return"]
-                for e in with_return
-                if e.get("score", Decimal("0")) > 0
+                e["forward_return"] for e in with_return if e.get("score", Decimal("0")) > 0
             ]
             avg_return_high = _mean_or_none(high_score_returns)
             improves = (
@@ -1027,9 +1037,7 @@ def analyze_engine_effectiveness(
     )
     best_engine = ranked[0].engine_id if ranked else ""
     worst_engine = ranked[-1].engine_id if ranked else ""
-    recommended_exclusions = tuple(
-        e.engine_id for e in engines if e.improves_performance is False
-    )
+    recommended_exclusions = tuple(e.engine_id for e in engines if e.improves_performance is False)
     engines.sort(key=lambda e: e.engine_id)
 
     if not measurable:
@@ -1051,11 +1059,7 @@ def analyze_engine_effectiveness(
                 f"Recommended exclusions: {', '.join(recommended_exclusions)} "
                 f"(these engines do not measurably improve performance)."
             )
-        summary = (
-            " ".join(summary_parts)
-            if summary_parts
-            else "All engines contribute positively."
-        )
+        summary = " ".join(summary_parts) if summary_parts else "All engines contribute positively."
 
     return EngineEffectivenessReport(
         strategy_name=strategy_name,
@@ -1110,9 +1114,19 @@ def analyze_parameter_experiment(
         variant_name="base",
         overrides=(),
         run_count=len(base_results),
-        avg_momentum_score=_safe_div(sum(base_momentum, Decimal("0")), Decimal(str(len(base_momentum)))) if base_momentum else Decimal("0"),
-        avg_buy_setup_score=_safe_div(sum(base_buy, Decimal("0")), Decimal(str(len(base_buy)))) if base_buy else Decimal("0"),
-        avg_pass_rate=_safe_div(sum(base_pass_rates, Decimal("0")), Decimal(str(len(base_pass_rates)))) if base_pass_rates else Decimal("0"),
+        avg_momentum_score=_safe_div(
+            sum(base_momentum, Decimal("0")), Decimal(str(len(base_momentum)))
+        )
+        if base_momentum
+        else Decimal("0"),
+        avg_buy_setup_score=_safe_div(sum(base_buy, Decimal("0")), Decimal(str(len(base_buy))))
+        if base_buy
+        else Decimal("0"),
+        avg_pass_rate=_safe_div(
+            sum(base_pass_rates, Decimal("0")), Decimal(str(len(base_pass_rates)))
+        )
+        if base_pass_rates
+        else Decimal("0"),
     )
 
     # Compute variant result
@@ -1129,9 +1143,19 @@ def analyze_parameter_experiment(
         variant_name=variant_name,
         overrides=overrides,
         run_count=len(variant_results),
-        avg_momentum_score=_safe_div(sum(var_momentum, Decimal("0")), Decimal(str(len(var_momentum)))) if var_momentum else Decimal("0"),
-        avg_buy_setup_score=_safe_div(sum(var_buy, Decimal("0")), Decimal(str(len(var_buy)))) if var_buy else Decimal("0"),
-        avg_pass_rate=_safe_div(sum(var_pass_rates, Decimal("0")), Decimal(str(len(var_pass_rates)))) if var_pass_rates else Decimal("0"),
+        avg_momentum_score=_safe_div(
+            sum(var_momentum, Decimal("0")), Decimal(str(len(var_momentum)))
+        )
+        if var_momentum
+        else Decimal("0"),
+        avg_buy_setup_score=_safe_div(sum(var_buy, Decimal("0")), Decimal(str(len(var_buy))))
+        if var_buy
+        else Decimal("0"),
+        avg_pass_rate=_safe_div(
+            sum(var_pass_rates, Decimal("0")), Decimal(str(len(var_pass_rates)))
+        )
+        if var_pass_rates
+        else Decimal("0"),
     )
 
     # Determine best variant

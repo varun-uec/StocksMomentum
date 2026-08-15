@@ -47,10 +47,12 @@ class ProfileSpan:
         self._start: float | None = None
 
     def __enter__(self) -> ProfileSpan:
+        """Start the timer."""
         self._start = time.perf_counter()
         return self
 
     def __exit__(self, *exc_details: Any) -> None:
+        """Stop the timer and log the span if it exceeded the slow threshold."""
         if self._start is None:
             return
         elapsed_ms = round((time.perf_counter() - self._start) * 1000, 2)

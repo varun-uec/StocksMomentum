@@ -8,7 +8,7 @@ with domain-specific checks.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import HTTPException
 
@@ -57,7 +57,7 @@ def validate_date_range(start_date: date | None, end_date: date | None) -> tuple
     Raises:
         HTTPException 422: If the date range is invalid.
     """
-    now = datetime.now(timezone.utc).date()
+    now = datetime.now(UTC).date()
     if end_date is None:
         end_date = now
     if start_date is None:

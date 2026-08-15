@@ -12,7 +12,7 @@ daily job never runs twice for the same date when workers are scaled out.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import datetime
 
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -105,4 +105,6 @@ class SchedulerService:
         jobs = self._scheduler.get_jobs()
         if not jobs:
             return None
-        return jobs[0].next_run_time
+        # APScheduler does not annotate ``next_run_time``.
+        next_run: datetime | None = jobs[0].next_run_time
+        return next_run

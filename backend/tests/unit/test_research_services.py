@@ -10,32 +10,24 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-import pytest
-
 from momentum25.domain.research.models import (
     ContributionAnalysisReport,
     EngineContributionStats,
     ExperimentConfig,
-    ExperimentReport,
     ExperimentResult,
-    HistoricalRunSummary,
     HistoricalSnapshot,
     ParameterOverride,
     PortfolioPerformance,
     RankingComparison,
-    RuleComparison,
     RuleContributionStats,
     RunComparisonReport,
-    ScoreComparison,
-    StrategyComparisonPoint,
     StrategyComparisonReport,
-    StrategyEvaluationResult,
 )
 from momentum25.domain.research.services import (
     _compute_max_drawdown,
+    _compute_score_downside_stability,
     _compute_score_gain_loss_ratio,
     _compute_score_stability,
-    _compute_score_downside_stability,
     _safe_div,
     _variance,
     analyze_contribution,
@@ -45,10 +37,10 @@ from momentum25.domain.research.services import (
     compute_performance,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tests for helpers and utility functions
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestHelperFunctions:
     """Test internal helper functions used by domain services."""
@@ -76,7 +68,16 @@ class TestHelperFunctions:
     def test_variance_known_values(self) -> None:
         """_variance computes correctly for known values."""
         result = _variance(
-            [Decimal("2"), Decimal("4"), Decimal("4"), Decimal("4"), Decimal("5"), Decimal("5"), Decimal("7"), Decimal("9")],
+            [
+                Decimal("2"),
+                Decimal("4"),
+                Decimal("4"),
+                Decimal("4"),
+                Decimal("5"),
+                Decimal("5"),
+                Decimal("7"),
+                Decimal("9"),
+            ],
             Decimal("5"),
         )
         assert abs(result - 4.0) < 0.01
@@ -132,6 +133,7 @@ class TestHelperFunctions:
 # Tests for Priority 3 — Validation Framework
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestCompareRuns:
     """Tests for the compare_runs domain service (Priority 3)."""
 
@@ -145,8 +147,18 @@ class TestCompareRuns:
                 "momentum_score": Decimal("85.5"),
                 "buy_setup_score": Decimal("70.0"),
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": True, "raw_value": Decimal("100")},
-                    {"rule_id": "r2", "engine_id": "e1", "passed": True, "raw_value": Decimal("50")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": True,
+                        "raw_value": Decimal("100"),
+                    },
+                    {
+                        "rule_id": "r2",
+                        "engine_id": "e1",
+                        "passed": True,
+                        "raw_value": Decimal("50"),
+                    },
                 ),
             },
             {
@@ -156,8 +168,18 @@ class TestCompareRuns:
                 "momentum_score": Decimal("75.0"),
                 "buy_setup_score": Decimal("65.0"),
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": True, "raw_value": Decimal("90")},
-                    {"rule_id": "r2", "engine_id": "e1", "passed": False, "raw_value": Decimal("30")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": True,
+                        "raw_value": Decimal("90"),
+                    },
+                    {
+                        "rule_id": "r2",
+                        "engine_id": "e1",
+                        "passed": False,
+                        "raw_value": Decimal("30"),
+                    },
                 ),
             },
         ]
@@ -241,7 +263,12 @@ class TestCompareRuns:
                 "momentum_score": Decimal("85.5"),
                 "buy_setup_score": Decimal("70.0"),
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": True, "raw_value": Decimal("100")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": True,
+                        "raw_value": Decimal("100"),
+                    },
                 ),
             },
         ]
@@ -254,7 +281,12 @@ class TestCompareRuns:
                 "momentum_score": Decimal("85.5"),
                 "buy_setup_score": Decimal("70.0"),
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": False, "raw_value": Decimal("50")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": False,
+                        "raw_value": Decimal("50"),
+                    },
                 ),
             },
         ]
@@ -293,6 +325,7 @@ class TestCompareRuns:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tests for Priority 4 — Strategy Evaluation
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestComputePerformance:
     """Tests for the compute_performance domain service (Priority 4)."""
@@ -394,6 +427,7 @@ class TestComputePerformance:
 # Tests for Priority 5 — Contribution Analysis
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestAnalyzeContribution:
     """Tests for the analyze_contribution domain service (Priority 5)."""
 
@@ -419,8 +453,22 @@ class TestAnalyzeContribution:
                     "rank": 1,
                     "passed": True,
                     "rule_results": (
-                        {"rule_id": "r1", "engine_id": "e1", "passed": True, "contribution": Decimal("0.5"), "raw_value": Decimal("100"), "weight": Decimal("1")},
-                        {"rule_id": "r2", "engine_id": "e1", "passed": False, "contribution": Decimal("0"), "raw_value": Decimal("20"), "weight": Decimal("1")},
+                        {
+                            "rule_id": "r1",
+                            "engine_id": "e1",
+                            "passed": True,
+                            "contribution": Decimal("0.5"),
+                            "raw_value": Decimal("100"),
+                            "weight": Decimal("1"),
+                        },
+                        {
+                            "rule_id": "r2",
+                            "engine_id": "e1",
+                            "passed": False,
+                            "contribution": Decimal("0"),
+                            "raw_value": Decimal("20"),
+                            "weight": Decimal("1"),
+                        },
                     ),
                 },
             ],
@@ -444,7 +492,14 @@ class TestAnalyzeContribution:
                     "rank": 1,
                     "passed": True,
                     "rule_results": (
-                        {"rule_id": "always_passes", "engine_id": "e1", "passed": True, "contribution": Decimal("0.5"), "raw_value": Decimal("100"), "weight": Decimal("1")},
+                        {
+                            "rule_id": "always_passes",
+                            "engine_id": "e1",
+                            "passed": True,
+                            "contribution": Decimal("0.5"),
+                            "raw_value": Decimal("100"),
+                            "weight": Decimal("1"),
+                        },
                     ),
                 },
                 {
@@ -453,7 +508,14 @@ class TestAnalyzeContribution:
                     "rank": 1,
                     "passed": True,
                     "rule_results": (
-                        {"rule_id": "always_passes", "engine_id": "e1", "passed": True, "contribution": Decimal("0.5"), "raw_value": Decimal("100"), "weight": Decimal("1")},
+                        {
+                            "rule_id": "always_passes",
+                            "engine_id": "e1",
+                            "passed": True,
+                            "contribution": Decimal("0.5"),
+                            "raw_value": Decimal("100"),
+                            "weight": Decimal("1"),
+                        },
                     ),
                 },
             ],
@@ -468,6 +530,7 @@ class TestAnalyzeContribution:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tests for Priority 6 — Strategy Comparison
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestCompareStrategies:
     """Tests for the compare_strategies domain service (Priority 6)."""
@@ -484,7 +547,12 @@ class TestCompareStrategies:
                 "buy_setup_score": Decimal("70.0"),
                 "hard_filters_passed": True,
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": True, "raw_value": Decimal("100")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": True,
+                        "raw_value": Decimal("100"),
+                    },
                 ),
             },
         ]
@@ -545,6 +613,7 @@ class TestCompareStrategies:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tests for Priority 7 — Experiment Framework
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestApplyParameterOverrides:
     """Tests for the apply_parameter_overrides function (Priority 7)."""
@@ -645,6 +714,7 @@ class TestApplyParameterOverrides:
 # Tests for domain model construction
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestDomainModels:
     """Tests that domain models can be constructed correctly."""
 
@@ -738,8 +808,11 @@ class TestDomainModels:
             engine_id="e1",
             rule_stats=(
                 RuleContributionStats(
-                    rule_id="r1", engine_id="e1",
-                    run_count=10, pass_count=8, fail_count=2,
+                    rule_id="r1",
+                    engine_id="e1",
+                    run_count=10,
+                    pass_count=8,
+                    fail_count=2,
                     pass_rate=Decimal("0.8"),
                     avg_contribution=Decimal("0.5"),
                     total_contribution=Decimal("4.0"),
@@ -747,8 +820,11 @@ class TestDomainModels:
                     importance_score=Decimal("0.4"),
                 ),
                 RuleContributionStats(
-                    rule_id="r2", engine_id="e1",
-                    run_count=10, pass_count=5, fail_count=5,
+                    rule_id="r2",
+                    engine_id="e1",
+                    run_count=10,
+                    pass_count=5,
+                    fail_count=5,
                     pass_rate=Decimal("0.5"),
                     avg_contribution=Decimal("0.3"),
                     total_contribution=Decimal("1.5"),
@@ -862,6 +938,7 @@ class TestDomainModels:
 # Determinism contract tests
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestResearchDeterminism:
     """Verify that research services produce identical outputs on repeated calls."""
 
@@ -875,7 +952,12 @@ class TestResearchDeterminism:
                 "momentum_score": Decimal("85.5"),
                 "buy_setup_score": Decimal("70.0"),
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": True, "raw_value": Decimal("100")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": True,
+                        "raw_value": Decimal("100"),
+                    },
                 ),
             },
         ]
@@ -887,18 +969,33 @@ class TestResearchDeterminism:
                 "momentum_score": Decimal("75.0"),
                 "buy_setup_score": Decimal("60.0"),
                 "rule_results": (
-                    {"rule_id": "r1", "engine_id": "e1", "passed": False, "raw_value": Decimal("80")},
+                    {
+                        "rule_id": "r1",
+                        "engine_id": "e1",
+                        "passed": False,
+                        "raw_value": Decimal("80"),
+                    },
                 ),
             },
         ]
 
         report1 = compare_runs(
-            snapshots_a, snapshots_b, 1, 2,
-            date(2024, 1, 1), date(2024, 2, 1), "minervini",
+            snapshots_a,
+            snapshots_b,
+            1,
+            2,
+            date(2024, 1, 1),
+            date(2024, 2, 1),
+            "minervini",
         )
         report2 = compare_runs(
-            snapshots_a, snapshots_b, 1, 2,
-            date(2024, 1, 1), date(2024, 2, 1), "minervini",
+            snapshots_a,
+            snapshots_b,
+            1,
+            2,
+            date(2024, 1, 1),
+            date(2024, 2, 1),
+            "minervini",
         )
 
         assert report1.ranking_changed == report2.ranking_changed

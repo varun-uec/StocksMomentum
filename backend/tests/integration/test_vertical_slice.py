@@ -95,9 +95,7 @@ async def _seed_security(session: AsyncSession, symbol: str, name: str) -> Secur
     return model
 
 
-async def _seed_bars(
-    session: AsyncSession, security_id: int, bars: list[dict]
-) -> None:
+async def _seed_bars(session: AsyncSession, security_id: int, bars: list[dict]) -> None:
     """Bulk upsert bars for a security."""
     repo = SqlOHLCVRepository(session)
     from momentum25.domain.entities.market_data import OHLCVBar
@@ -144,13 +142,9 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
 
     # ── 2. Seed historical OHLCV data (simulating NSE market data) ─────────
     await _seed_bars(db_session, passer.id, _make_uptrend_bars(300, start_date, 100.0))
-    await _seed_bars(
-        db_session, failer.id, _make_descending_bars(300, start_date, 400.0)
-    )
+    await _seed_bars(db_session, failer.id, _make_descending_bars(300, start_date, 400.0))
     # IPO has insufficient history (< 275 bars)
-    await _seed_bars(
-        db_session, ipo.id, _make_uptrend_bars(10, target_date - timedelta(days=9))
-    )
+    await _seed_bars(db_session, ipo.id, _make_uptrend_bars(10, target_date - timedelta(days=9)))
 
     # ── 3. Wire collaborators (same as ScreeningOrchestrator test) ──────────
     security_repo = SqlSecurityRepository(db_session)
@@ -198,7 +192,9 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
     # NEWIPO skipped (insufficient data < 275 bars)
     assert summary.total_skipped_insufficient_data >= 1
     # All three symbols account for the total
-    assert summary.total_passed + summary.total_skipped_insufficient_data + summary.total_failed == 3
+    assert (
+        summary.total_passed + summary.total_skipped_insufficient_data + summary.total_failed == 3
+    )
     assert summary.duration_seconds > 0
 
     # ── 6. Verify persistence ──────────────────────────────────────────────
@@ -241,9 +237,7 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
 
     # ── 8. Verify API returns explainability ───────────────────────────────
     with TestClient(app) as client:
-        response = client.get(
-            f"/api/v1/rankings/runs/{run.id}/stocks/{passer.id}/explanation"
-        )
+        response = client.get(f"/api/v1/rankings/runs/{run.id}/stocks/{passer.id}/explanation")
 
     assert response.status_code == 200, f"Explanation API failed: {response.text}"
     explanation = response.json()
@@ -327,7 +321,9 @@ async def test_vertical_slice_single_symbol(db_session: AsyncSession) -> None:
     # (Note: the stub RS rating of 50 means the trend template may not pass
     # the hard gate; future milestones will implement real RS calculation)
     assert summary.total_evaluated == 1
-    assert summary.total_passed + summary.total_failed + summary.total_skipped_insufficient_data == 1
+    assert (
+        summary.total_passed + summary.total_failed + summary.total_skipped_insufficient_data == 1
+    )
 
     # Verify persistence
     run = await screening_run_repo.latest_completed(strategy.id)

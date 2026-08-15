@@ -101,7 +101,9 @@ def _make_engine() -> StrategyEngine:
 
     registry = EngineRegistry()
     registry.register(TrendTemplateEngine())
-    return StrategyEngine(engines=registry, scoring=ScoringEngineImpl(), ranking=RankingEngineImpl())
+    return StrategyEngine(
+        engines=registry, scoring=ScoringEngineImpl(), ranking=RankingEngineImpl()
+    )
 
 
 @dataclass
@@ -201,9 +203,14 @@ async def test_live_lookup_matches_batch_orchestrator_verdict(
     # Phase 2 exit criterion: ADX/MACD/swing pivots are exposed as data on the
     # live response, not just consumed internally by rule evaluation.
     for key in (
-        "adx14", "plus_di14", "minus_di14",
-        "macd_line", "macd_signal", "macd_histogram",
-        "swing_resistance", "swing_support",
+        "adx14",
+        "plus_di14",
+        "minus_di14",
+        "macd_line",
+        "macd_signal",
+        "macd_histogram",
+        "swing_resistance",
+        "swing_support",
     ):
         assert key in live.indicators
 

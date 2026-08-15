@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from momentum25 import __version__
 from momentum25.app.services.screening_job import run_screening_pipeline
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
-from momentum25.domain.strategy.engine_registry import EngineRegistry, engine_registry
+from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.infrastructure.config.settings import Settings, get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.logging.setup import configure_logging, get_logger
@@ -165,7 +165,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             shutdown_task = asyncio.create_task(_shutdown(scheduler))
             await asyncio.wait_for(shutdown_task, timeout=_SHUTDOWN_TIMEOUT_SECONDS)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _logger.warning("shutdown_timeout", timeout_seconds=_SHUTDOWN_TIMEOUT_SECONDS)
         _logger.info("application_stopped")
 

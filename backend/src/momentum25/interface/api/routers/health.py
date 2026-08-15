@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import text
@@ -18,7 +17,6 @@ from momentum25.application.dto.health import (
 )
 from momentum25.domain.research.trading_calendar import assess_freshness
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
-from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.observability.metrics import metrics_endpoint
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import SqlOHLCVRepository
@@ -27,7 +25,7 @@ from momentum25.infrastructure.redis.client import get_redis_provider
 router = APIRouter(tags=["health"])
 
 # Track application start time for uptime calculation
-_STARTED_AT = datetime.now(timezone.utc)
+_STARTED_AT = datetime.now(UTC)
 
 
 @router.get("/health", response_model=HealthDTO)
@@ -65,7 +63,7 @@ async def liveness() -> LivenessDTO:
     Returns immediately without checking dependencies. If this endpoint is
     unreachable, Kubernetes will restart the pod.
     """
-    uptime = (datetime.now(timezone.utc) - _STARTED_AT).total_seconds()
+    uptime = (datetime.now(UTC) - _STARTED_AT).total_seconds()
     return LivenessDTO(
         status="ok",
         version=__version__,
@@ -135,7 +133,7 @@ async def data_freshness() -> DataFreshnessDTO:
     async with get_database().session() as session:
         latest = await SqlOHLCVRepository(session).latest_date()
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     calendar = get_nse_trading_calendar()
     sessions_since = (
         calendar.sessions_between(latest, today) if latest is not None else []

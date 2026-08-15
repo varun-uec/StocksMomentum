@@ -210,9 +210,25 @@ class ScreeningRunRepository(Protocol):
         ...
 
     async def get_forward_returns(
-        self, run_id: int, security_id: int | None = None
+        self, run_id: int, security_id: int | None = None, horizon_days: int | None = None
     ) -> list[ForwardReturn]:
-        """Return persisted forward-return rows for a run, optionally scoped to one security."""
+        """Return persisted forward-return rows for a run.
+
+        Optionally scoped to one security and/or one horizon. Scoping the
+        horizon matters for the validation surfaces: a run holds one row per
+        security *per horizon*, and they read a single horizon.
+        """
+        ...
+
+    async def get_forward_return_by_security(
+        self, run_id: int, horizon_days: int
+    ) -> dict[int, Decimal]:
+        """Return ``{security_id: forward_return}`` for one run and one horizon.
+
+        Narrower than :meth:`get_forward_returns` on purpose: the validation
+        surfaces need one horizon and one column, and hydrating every horizon's
+        full row to discard most of it dominated the dashboard's cost.
+        """
         ...
 
     async def get_rankings(self, run_id: int, limit: int, offset: int) -> tuple[list[Ranking], int]:
@@ -225,6 +241,12 @@ class ScreeningRunRepository(Protocol):
 
     async def get_rule_results(self, run_id: int, security_id: int) -> list[RuleResult]:
         """Return all persisted rule results for one security in a run."""
+        ...
+
+    async def get_rule_results_bulk(
+        self, run_id: int, security_ids: list[int]
+    ) -> dict[int, list[RuleResult]]:
+        """Return rule results for many securities in one run, grouped by security."""
         ...
 
     async def score_history(

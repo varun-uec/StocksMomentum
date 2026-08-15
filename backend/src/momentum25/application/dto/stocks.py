@@ -1,4 +1,11 @@
-"""Stock detail, explainability, and history DTOs."""
+"""Stock score/rank history DTOs.
+
+``/stocks/{symbol}`` returns the domain :class:`StockExplanation` directly.
+That dataclass *is* the explainability contract -- it is what the strategy
+engine produces, what the frontend consumes field-for-field, and FastAPI
+serializes it with an explicit ``response_model``. A parallel DTO here would
+be a second definition of the same shape with nothing to translate.
+"""
 
 from __future__ import annotations
 
@@ -8,55 +15,23 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 
-class RuleResultDTO(BaseModel):
-    """A single rule's contribution to a stock's score (explainability)."""
-
-    rule_id: str
-    label: str
-    engine_id: str
-    passed: bool
-    value: Decimal | None
-    threshold: Decimal | None
-    operator: str
-    weight: Decimal
-    contribution: Decimal
-    explanation: str
-
-
-class EngineBreakdownDTO(BaseModel):
-    """An engine's score and its contributing rules."""
-
-    engine_id: str
-    engine_score: Decimal
-    passed_gate: bool
-    rules: list[RuleResultDTO]
-
-
 class ScorePointDTO(BaseModel):
-    """A single point in a stock's score/rank history."""
+    """A single point in a stock's score/rank history.
+
+    Scores are serialized as strings, not floats: they are exact ``Decimal``
+    values in the domain, and a float round-trip would make a displayed score
+    disagree with the persisted one.
+    """
 
     run_date: date
+    security_id: int
     rank: int | None
     momentum_score: Decimal
     buy_setup_score: Decimal
 
 
-class StockExplanationDTO(BaseModel):
-    """Full explainability payload for one stock within a run."""
-
-    symbol: str
-    name: str
-    run_id: int
-    run_date: date
-    momentum_score: Decimal
-    buy_setup_score: Decimal
-    hard_filters_passed: bool
-    engines: list[EngineBreakdownDTO]
-    rationale: str
-
-
 class StockHistoryDTO(BaseModel):
-    """A stock's score/rank history across runs."""
+    """A stock's score/rank history across runs, one point per run date."""
 
     symbol: str
-    points: list[ScorePointDTO]
+    score_history: list[ScorePointDTO]

@@ -10,9 +10,52 @@ to production rankings.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Protocol
 
 from momentum25.domain.entities.security import Security
+
+
+class RsRatingCache(Protocol):
+    """Cache for one day's universe RS ratings, keyed by (date, strategy)."""
+
+    async def get(self, as_of: date, strategy_name: str) -> dict[str, int] | None:
+        """Return the cached ratings, or ``None`` on a miss."""
+        ...
+
+    async def set(self, as_of: date, strategy_name: str, ratings: dict[str, int]) -> None:
+        """Cache *ratings* for the given trading date and strategy."""
+        ...
+
+
+async def resolve_universe_rs_ratings(
+    securities_repo: Any,
+    ohlcv_repo: Any,
+    strategy: Any,
+    as_of: date,
+    cache: RsRatingCache | None,
+) -> dict[str, int]:
+    """Return the universe RS ratings for *as_of*, computing them only on a miss.
+
+    Every read path that needs a single symbol's RS rating -- ``/stocks/{symbol}
+    /live`` and ``/watchlist/detail`` -- must rank that symbol against the whole
+    active universe, which costs one price-history walk over ~2,000 securities.
+    Ratings for a trading date do not change intraday, so they are shared here
+    rather than recomputed per request. A missing cache is not an error: the
+    ratings are simply computed, which is what the daily orchestrator does.
+    """
+    if cache is not None:
+        cached = await cache.get(as_of, strategy.name)
+        if cached is not None:
+            return cached
+
+    universe = await securities_repo.list_active()
+    ratings = await compute_universe_rs_ratings(
+        universe, ohlcv_repo, as_of, strategy.config.indicators.get("rs_return_weights")
+    )
+
+    if cache is not None:
+        await cache.set(as_of, strategy.name, ratings)
+    return ratings
 
 
 async def compute_universe_rs_ratings(

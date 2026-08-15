@@ -82,7 +82,9 @@ def _make_engine() -> StrategyEngine:
 
     registry = EngineRegistry()
     registry.register(TrendTemplateEngine())
-    return StrategyEngine(engines=registry, scoring=ScoringEngineImpl(), ranking=RankingEngineImpl())
+    return StrategyEngine(
+        engines=registry, scoring=ScoringEngineImpl(), ranking=RankingEngineImpl()
+    )
 
 
 @pytest.mark.asyncio
@@ -132,11 +134,11 @@ async def test_incremental_rerun_only_fetches_sessions_since_latest_bar(
     first_new_sessions = calendar.sessions_between(
         latest_persisted + timedelta(days=1), latest_persisted + timedelta(days=10)
     )[:3]
-    expected_sessions = calendar.sessions_between(latest_persisted + timedelta(days=1), date.today())
-
-    provider = _RecordingProvider(
-        {d: [_bar("INCR", d, 100.0)] for d in first_new_sessions}
+    expected_sessions = calendar.sessions_between(
+        latest_persisted + timedelta(days=1), date.today()
     )
+
+    provider = _RecordingProvider({d: [_bar("INCR", d, 100.0)] for d in first_new_sessions})
 
     use_case = ExecuteScreening(
         market_data_provider=provider,
@@ -164,17 +166,20 @@ async def test_background_execution_reaches_completed(db_session: AsyncSession) 
     from momentum25.domain.entities.market_data import OHLCVBar
     from momentum25.infrastructure.persistence.models import SecurityModel
 
-    security_repo = SqlSecurityRepository(db_session)
     ohlcv_repo = SqlOHLCVRepository(db_session)
     screening_run_repo = SqlScreeningRunRepository(db_session)
     strategy_repo = SqlStrategyRepository(db_session)
     strategy = _strategy()
     object.__setattr__(strategy, "name", "bg_test_strategy")
-    object.__setattr__(strategy, "config", StrategyConfig(
-        name="bg_test_strategy",
-        version=1,
-        engines=(EngineConfig(id="trend_template", enabled=True, weight=Decimal("1")),),
-    ))
+    object.__setattr__(
+        strategy,
+        "config",
+        StrategyConfig(
+            name="bg_test_strategy",
+            version=1,
+            engines=(EngineConfig(id="trend_template", enabled=True, weight=Decimal("1")),),
+        ),
+    )
     strategy_id = await strategy_repo.upsert(strategy)
     object.__setattr__(strategy, "id", strategy_id)
     await db_session.commit()

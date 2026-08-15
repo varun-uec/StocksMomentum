@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
@@ -64,7 +65,9 @@ class OHLCVDailyModel(Base):
     security_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("securities.id"), primary_key=True
     )
-    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    # Indexed on its own: the primary key leads with ``security_id``, so a
+    # date-range scan across the whole universe (market breadth) cannot use it.
+    date: Mapped[date] = mapped_column(Date, primary_key=True, index=True)
     open: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     high: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     low: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
@@ -83,7 +86,9 @@ class CorporateActionModel(Base):
     __table_args__ = (UniqueConstraint("security_id", "ex_date", "type"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    security_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("securities.id"))
+    security_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("securities.id"), index=True
+    )
     ex_date: Mapped[date] = mapped_column(Date, nullable=False)
     type: Mapped[str] = mapped_column(String, nullable=False)
     ratio: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
@@ -240,8 +245,10 @@ class ForwardReturnModel(Base):
     run_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("screening_runs.id"), primary_key=True
     )
+    # Indexed on its own: the primary key leads with ``run_id``, so a
+    # per-security join across runs cannot use it.
     security_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("securities.id"), primary_key=True
+        BigInteger, ForeignKey("securities.id"), primary_key=True, index=True
     )
     horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
     forward_return: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
@@ -262,7 +269,8 @@ class BenchmarkIndexDailyModel(Base):
     __tablename__ = "benchmark_index_daily"
 
     index_code: Mapped[str] = mapped_column(String, primary_key=True)
-    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    # Indexed on its own: the primary key leads with ``index_code``.
+    date: Mapped[date] = mapped_column(Date, primary_key=True, index=True)
     close: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
 
 
@@ -288,6 +296,13 @@ class ScreeningRunModel(Base):
     __tablename__ = "screening_runs"
     __table_args__ = (
         UniqueConstraint("strategy_id", "run_date", "data_version", "config_hash"),
+        # ``status`` is only ever written from ``RunStatus``, but nothing in the
+        # database enforced that, so a bad writer could persist a value the
+        # application cannot map back to the enum.
+        CheckConstraint(
+            "status IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED')",
+            name="ck_screening_runs_status",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -326,8 +341,10 @@ class ScreeningResultModel(Base):
     run_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("screening_runs.id"), primary_key=True
     )
+    # Indexed on its own: the primary key leads with ``run_id``, so a
+    # per-security scan across runs (score history) cannot use it.
     security_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("securities.id"), primary_key=True
+        BigInteger, ForeignKey("securities.id"), primary_key=True, index=True
     )
     rank: Mapped[int | None] = mapped_column(Integer, index=True)
     momentum_score: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)

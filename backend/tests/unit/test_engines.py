@@ -31,6 +31,7 @@ from momentum25.domain.value_objects.types import Symbol
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _make_bar(
     close: Decimal,
     open_: Decimal | None = None,
@@ -42,6 +43,7 @@ def _make_bar(
     """Create a single OHLCVBar with sensible defaults."""
     base_date = date(2024, 12, 1)
     from datetime import timedelta
+
     return OHLCVBar(
         date=base_date + timedelta(days=day_offset),
         open=open_ or close - Decimal("5"),
@@ -166,6 +168,7 @@ _NON_TREND_ENGINES = [
     FundamentalEngine(),
 ]
 
+
 @pytest.mark.parametrize("engine", _NON_TREND_ENGINES, ids=lambda e: e.engine_id)
 def test_placeholder_engine_returns_valid_result(
     engine: object,
@@ -189,6 +192,7 @@ def test_placeholder_engine_returns_valid_result(
 # ═══════════════════════════════════════════════════════════════════════════════
 # Trend Template Engine
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_trend_template_strict_compliance() -> None:
     """All 8 Trend Template rules pass => passed_gate=True, score=1.0."""
@@ -264,8 +268,12 @@ def test_trend_template_missing_indicators() -> None:
     # All indicators None -> all 8 rules fail
     ctx = _make_context(
         close=Decimal("150"),
-        sma50=None, sma150=None, sma200=None,
-        sma200_slope_pct=None, low_52w=None, high_52w=None,
+        sma50=None,
+        sma150=None,
+        sma200=None,
+        sma200_slope_pct=None,
+        low_52w=None,
+        high_52w=None,
         rs_rating=None,
     )
     cfg = _make_config("trend_template")
@@ -358,11 +366,14 @@ def test_trend_template_above_52w_low() -> None:
 # Relative Strength Engine
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def test_relative_strength_high_rating() -> None:
     """High RS rating > 70 passes rs_rating with normalised contribution."""
     engine = RelativeStrengthEngine()
     ctx = _make_context(rs_rating=90)
-    rules = (RuleConfig(id="rs_rating", weight=Decimal("2"), params={"norm_min": 70, "norm_max": 99}),)
+    rules = (
+        RuleConfig(id="rs_rating", weight=Decimal("2"), params={"norm_min": 70, "norm_max": 99}),
+    )
     cfg = _make_config("relative_strength", rules=rules, weight=Decimal("2"))
 
     result = engine.evaluate(ctx, cfg)
@@ -397,7 +408,9 @@ def test_relative_strength_low_rating() -> None:
     """Low RS rating below norm_min fails rs_rating."""
     engine = RelativeStrengthEngine()
     ctx = _make_context(rs_rating=30)
-    rules = (RuleConfig(id="rs_rating", weight=Decimal("2"), params={"norm_min": 70, "norm_max": 99}),)
+    rules = (
+        RuleConfig(id="rs_rating", weight=Decimal("2"), params={"norm_min": 70, "norm_max": 99}),
+    )
     cfg = _make_config("relative_strength", rules=rules, weight=Decimal("2"))
 
     result = engine.evaluate(ctx, cfg)
@@ -464,6 +477,7 @@ def test_relative_strength_rs_raw_return_from_series() -> None:
 # Volume & Accumulation Engine
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def test_volume_accumulation_liquidity_passes() -> None:
     """High turnover passes vol_liquidity_min."""
     engine = VolumeAccumulationEngine()
@@ -496,7 +510,7 @@ def test_volume_accumulation_days() -> None:
     # 30 bars: 20 up days (close > open), 10 down days
     closes = [Decimal("100")]
     volumes = [1_000_000]
-    for i in range(1, 30):
+    for _ in range(1, 30):
         closes.append(closes[-1] + Decimal("2"))
         volumes.append(1_000_000)
     ctx = _make_context(closes=closes, volumes=volumes)
@@ -570,13 +584,19 @@ def test_volume_accumulation_institutional_net_positive() -> None:
     from datetime import date, timedelta
 
     from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
+
     base_date = date(2024, 12, 1)
     for i in range(30):
-        bars.append(OHLCVBar(
-            date=base_date + timedelta(days=i),
-            open=opens[i], high=highs[i], low=lows[i],
-            close=closes[i], volume=volumes[i],
-        ))
+        bars.append(
+            OHLCVBar(
+                date=base_date + timedelta(days=i),
+                open=opens[i],
+                high=highs[i],
+                low=lows[i],
+                close=closes[i],
+                volume=volumes[i],
+            )
+        )
     series = OHLCVSeries(security_id=1, bars=tuple(bars))
 
     from momentum25.domain.engines.base import EvaluationContext
@@ -584,6 +604,7 @@ def test_volume_accumulation_institutional_net_positive() -> None:
     from momentum25.domain.value_objects.indicators import IndicatorSet
     from momentum25.domain.value_objects.results import SectorStats
     from momentum25.domain.value_objects.types import Symbol
+
     security = Security(id=1, symbol=Symbol("TEST"), name="Test Co", sector="Technology")
     indicators = IndicatorSet(
         as_of=base_date,
@@ -591,14 +612,19 @@ def test_volume_accumulation_institutional_net_positive() -> None:
     )
     benchmark = OHLCVSeries(security_id=0, bars=(bars[0],))
     ctx = EvaluationContext(
-        security=security, series=series, indicators=indicators,
-        benchmark=benchmark, sector_stats=SectorStats(by_sector={}, by_industry={}),
+        security=security,
+        series=series,
+        indicators=indicators,
+        benchmark=benchmark,
+        sector_stats=SectorStats(by_sector={}, by_industry={}),
     )
     cfg = _make_config("volume_accumulation")
     result = engine.evaluate(ctx, cfg)
     acc_rule = next(r for r in result.rule_results if r.rule_id == "vol_accumulation_days")
     assert acc_rule.passed is True
-    assert "institutional" in acc_rule.explanation.lower() or "accum" in acc_rule.explanation.lower()
+    assert (
+        "institutional" in acc_rule.explanation.lower() or "accum" in acc_rule.explanation.lower()
+    )
 
 
 def test_volume_accumulation_institutional_net_negative() -> None:
@@ -626,13 +652,19 @@ def test_volume_accumulation_institutional_net_negative() -> None:
     from datetime import date, timedelta
 
     from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
+
     base_date = date(2024, 12, 1)
     for i in range(30):
-        bars.append(OHLCVBar(
-            date=base_date + timedelta(days=i),
-            open=opens[i], high=highs[i], low=lows[i],
-            close=closes[i], volume=volumes[i],
-        ))
+        bars.append(
+            OHLCVBar(
+                date=base_date + timedelta(days=i),
+                open=opens[i],
+                high=highs[i],
+                low=lows[i],
+                close=closes[i],
+                volume=volumes[i],
+            )
+        )
     series = OHLCVSeries(security_id=1, bars=tuple(bars))
 
     from momentum25.domain.engines.base import EvaluationContext
@@ -640,6 +672,7 @@ def test_volume_accumulation_institutional_net_negative() -> None:
     from momentum25.domain.value_objects.indicators import IndicatorSet
     from momentum25.domain.value_objects.results import SectorStats
     from momentum25.domain.value_objects.types import Symbol
+
     security = Security(id=1, symbol=Symbol("TEST"), name="Test Co", sector="Technology")
     indicators = IndicatorSet(
         as_of=base_date,
@@ -647,8 +680,11 @@ def test_volume_accumulation_institutional_net_negative() -> None:
     )
     benchmark = OHLCVSeries(security_id=0, bars=(bars[0],))
     ctx = EvaluationContext(
-        security=security, series=series, indicators=indicators,
-        benchmark=benchmark, sector_stats=SectorStats(by_sector={}, by_industry={}),
+        security=security,
+        series=series,
+        indicators=indicators,
+        benchmark=benchmark,
+        sector_stats=SectorStats(by_sector={}, by_industry={}),
     )
     cfg = _make_config("volume_accumulation")
     result = engine.evaluate(ctx, cfg)
@@ -659,6 +695,7 @@ def test_volume_accumulation_institutional_net_negative() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Breakout Engine
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_breakout_pivot_breakout() -> None:
     """Close near top of 20-day range passes bo_pivot_breakout."""
@@ -683,7 +720,7 @@ def test_breakout_false_breakout() -> None:
     """Close above midpoint passes bo_false_breakout."""
     engine = BreakoutEngine()
     closes = [Decimal("150")]
-    for i in range(1, 30):
+    for _ in range(1, 30):
         closes.append(closes[-1] + Decimal("1"))
     ctx = _make_context(closes=closes)
     cfg = _make_config("breakout")
@@ -697,7 +734,7 @@ def test_breakout_followthrough() -> None:
     engine = BreakoutEngine()
     # Strong uptrend: close > SMA5 > SMA10
     closes = [Decimal("100")]
-    for i in range(1, 15):
+    for _ in range(1, 15):
         closes.append(closes[-1] + Decimal("5"))
     ctx = _make_context(closes=closes)
     cfg = _make_config("breakout")
@@ -719,13 +756,18 @@ def test_breakout_insufficient_data() -> None:
 # Momentum Quality Engine
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def test_momentum_quality_trend_persistence() -> None:
     """Strong uptrend passes mq_trend_persistence."""
     engine = MomentumQualityEngine()
     # 120 bars uptrending
     closes = [Decimal(str(100 + i * 2)) for i in range(120)]
     ctx = _make_context(closes=closes)
-    rules = (RuleConfig(id="mq_trend_persistence", weight=Decimal("1"), params={"ma": 50, "lookback": 63}),)
+    rules = (
+        RuleConfig(
+            id="mq_trend_persistence", weight=Decimal("1"), params={"ma": 50, "lookback": 63}
+        ),
+    )
     cfg = _make_config("momentum_quality", rules=rules)
     result = engine.evaluate(ctx, cfg)
     pers_rule = next(r for r in result.rule_results if r.rule_id == "mq_trend_persistence")
@@ -740,19 +782,17 @@ def test_momentum_quality_acceleration() -> None:
     # 63d return = (240/160-1)*100 = 50%   (mixed, includes flat period)
     # So 20d > 63d → acceleration detected
     closes = [Decimal("160")]
-    for i in range(1, 40):
+    for _ in range(1, 40):
         closes.append(closes[-1] - Decimal("0.5"))  # Decline to ~140
-    for i in range(40, 80):
+    for _ in range(40, 80):
         closes.append(closes[-1])  # Flat at ~140
-    for i in range(80, 100):
+    for _ in range(80, 100):
         closes.append(closes[-1] + Decimal("5"))  # Parabolic surge to ~240
     ctx = _make_context(closes=closes)
     cfg = _make_config("momentum_quality")
     result = engine.evaluate(ctx, cfg)
     accel_rule = next(r for r in result.rule_results if r.rule_id == "mq_acceleration")
-    assert accel_rule.passed is True, (
-        f"Expected acceleration, got: {accel_rule.explanation}"
-    )
+    assert accel_rule.passed is True, f"Expected acceleration, got: {accel_rule.explanation}"
 
 
 def test_momentum_quality_no_acceleration() -> None:
@@ -760,9 +800,9 @@ def test_momentum_quality_no_acceleration() -> None:
     engine = MomentumQualityEngine()
     # Decelerating: strong start, weak finish
     closes = [Decimal("100")]
-    for i in range(1, 45):
+    for _ in range(1, 45):
         closes.append(closes[-1] + Decimal("3"))  # Strong rise
-    for i in range(45, 65):
+    for _ in range(45, 65):
         closes.append(closes[-1] + Decimal("0.3"))  # Recent slowdown
     ctx = _make_context(closes=closes)
     cfg = _make_config("momentum_quality")
@@ -784,6 +824,7 @@ def test_momentum_quality_insufficient_data() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Risk Engine
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_risk_extension_within_range() -> None:
     """Price within acceptable extension passes risk_extension."""
@@ -950,7 +991,7 @@ def test_engine_determinism(engine: object) -> None:
     assert result1.engine_score == result2.engine_score
     assert result1.passed_gate == result2.passed_gate
     assert len(result1.rule_results) == len(result2.rule_results)
-    for r1, r2 in zip(result1.rule_results, result2.rule_results):
+    for r1, r2 in zip(result1.rule_results, result2.rule_results, strict=True):
         assert r1.passed == r2.passed
         assert r1.contribution == r2.contribution
         assert r1.explanation == r2.explanation
@@ -959,6 +1000,7 @@ def test_engine_determinism(engine: object) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # RS composite formula unit tests (IBD non-overlapping quarters)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_ibd_composite_weights_recent_quarter_more() -> None:
     """Q4 (most recent 3m) is weighted 2× in the IBD composite.

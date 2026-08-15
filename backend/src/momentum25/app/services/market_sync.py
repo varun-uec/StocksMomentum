@@ -157,9 +157,7 @@ class MarketSyncService:
             "reference_date": ref_date.isoformat(),
             "total_symbols": len(symbols),
             "processed": len(results),
-            "insufficient_history": sum(
-                1 for r in results if r.get("insufficient_history", False)
-            ),
+            "insufficient_history": sum(1 for r in results if r.get("insufficient_history", False)),
             "errors": errors,
         }
 
@@ -281,4 +279,8 @@ class MarketSyncService:
         # Re-fetch to get database IDs
         active = await self._security_repo.list_active()
         symbol_map = {str(s.symbol): s for s in active}
-        return [symbol_map.get(sym, sec) for sym, sec in zip(symbols, securities) if sym in symbol_map]
+        return [
+            symbol_map.get(sym, sec)
+            for sym, sec in zip(symbols, securities, strict=True)
+            if sym in symbol_map
+        ]

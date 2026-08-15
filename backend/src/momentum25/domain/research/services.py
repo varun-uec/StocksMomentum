@@ -255,7 +255,9 @@ def compute_performance(
 
     # Basic stats
     avg_momentum = (
-        sum(momentum_scores, Decimal("0")) / len(momentum_scores) if momentum_scores else Decimal("0")
+        sum(momentum_scores, Decimal("0")) / len(momentum_scores)
+        if momentum_scores
+        else Decimal("0")
     )
     avg_buy_setup = (
         sum(buy_setup_scores, Decimal("0")) / len(buy_setup_scores)
@@ -276,8 +278,10 @@ def compute_performance(
     # Volatility (standard deviation)
     var_momentum = _variance(momentum_scores, avg_momentum)
     var_buy = _variance(buy_setup_scores, avg_buy_setup)
-    momentum_vol = Decimal(str(var_momentum ** 0.5)).quantize(_QUANT) if momentum_scores else Decimal("0")
-    buy_vol = Decimal(str(var_buy ** 0.5)).quantize(_QUANT) if buy_setup_scores else Decimal("0")
+    momentum_vol = (
+        Decimal(str(var_momentum**0.5)).quantize(_QUANT) if momentum_scores else Decimal("0")
+    )
+    buy_vol = Decimal(str(var_buy**0.5)).quantize(_QUANT) if buy_setup_scores else Decimal("0")
 
     # Max drawdown from score time series (cumulative peak-to-trough)
     max_dd = _compute_max_drawdown(momentum_scores)
@@ -289,9 +293,7 @@ def compute_performance(
         passed = s.get("total_passed", 0)
         if total > 0:
             pass_rates.append(Decimal(str(passed)) / Decimal(str(total)))
-    avg_pass_rate = (
-        sum(pass_rates, Decimal("0")) / len(pass_rates) if pass_rates else Decimal("0")
-    )
+    avg_pass_rate = sum(pass_rates, Decimal("0")) / len(pass_rates) if pass_rates else Decimal("0")
 
     # Top rank stability (fraction of top-10 that stayed in top-10)
     stability = _compute_rank_stability(run_summaries)
@@ -354,7 +356,6 @@ def _compute_rank_stability(run_summaries: list[dict[str, Any]]) -> Decimal:
 
     If ranking data is not available, return 0 (neutral).
     """
-    stable_dates = 0
     total_dates = len(run_summaries) - 1  # pairs of consecutive runs
     if total_dates < 1:
         return Decimal("0")
@@ -380,9 +381,9 @@ def _compute_score_stability(scores: list[Decimal]) -> Decimal:
     var = _variance(scores, mean)
     if var == 0:
         return Decimal("0")
-    std = Decimal(str(var ** 0.5))
+    std = Decimal(str(var**0.5))
     # Assume 252 trading days per year
-    ann_factor = Decimal(str(252.0 ** 0.5))
+    ann_factor = Decimal(str(252.0**0.5))
     result = (mean / std) * ann_factor if std > 0 else Decimal("0")
     return result.quantize(_QUANT)
 
@@ -401,8 +402,8 @@ def _compute_score_downside_stability(scores: list[Decimal]) -> Decimal:
     downside_var = sum(downside) / len(downside)
     if downside_var == 0:
         return Decimal("0")
-    downside_std = Decimal(str(downside_var ** 0.5))
-    ann_factor = Decimal(str(252.0 ** 0.5))
+    downside_std = Decimal(str(downside_var**0.5))
+    ann_factor = Decimal(str(252.0**0.5))
     result = (mean / downside_std) * ann_factor if downside_std > 0 else Decimal("0")
     return result.quantize(_QUANT)
 
@@ -480,12 +481,12 @@ def analyze_contribution(
         run_count = len(evaluations)
         pass_count = sum(1 for r in evaluations if r.get("passed", False))
         fail_count = run_count - pass_count
-        pass_rate = Decimal(str(pass_count)) / Decimal(str(run_count)) if run_count > 0 else Decimal("0")
+        pass_rate = (
+            Decimal(str(pass_count)) / Decimal(str(run_count)) if run_count > 0 else Decimal("0")
+        )
         contributions = [r.get("contribution", Decimal("0")) for r in evaluations]
         raw_values: list[Decimal] = [
-            r["raw_value"]
-            for r in evaluations
-            if r.get("raw_value") is not None
+            r["raw_value"] for r in evaluations if r.get("raw_value") is not None
         ]
 
         avg_contrib = (
@@ -546,7 +547,9 @@ def analyze_contribution(
     # Sort by importance
     per_rule.sort(key=lambda r: -r.importance_score)
     top_rules = tuple(per_rule[:10])
-    bottom_rules = tuple(reversed(per_rule[-10:])) if len(per_rule) >= 10 else tuple(reversed(per_rule))
+    bottom_rules = (
+        tuple(reversed(per_rule[-10:])) if len(per_rule) >= 10 else tuple(reversed(per_rule))
+    )
 
     # Redundant rules: those with 100% pass rate
     redundant = tuple(r for r in per_rule if r.pass_rate == Decimal("1"))
@@ -561,7 +564,9 @@ def analyze_contribution(
         # previous expression) reported 2390 / 6 = 398 "runs" for a single
         # completed run -- arithmetic without meaning.
         run_count=len({s["run_id"] for s in run_snapshots if s.get("run_id") is not None}),
-        security_count=len({s["security_id"] for s in run_snapshots if s.get("security_id") is not None}),
+        security_count=len(
+            {s["security_id"] for s in run_snapshots if s.get("security_id") is not None}
+        ),
         date_range=date_range,
         engine_stats=tuple(engine_stats),
         top_rules=top_rules,
@@ -681,7 +686,9 @@ def compare_strategies(
             for rule_key in sorted(common_rules):
                 ra = a_by_rule[rule_key]
                 rb = b_by_rule[rule_key]
-                if ra.get("passed") != rb.get("passed") or ra.get("raw_value") != rb.get("raw_value"):
+                if ra.get("passed") != rb.get("passed") or ra.get("raw_value") != rb.get(
+                    "raw_value"
+                ):
                     rule_diffs.append(
                         RuleComparison(
                             security_id=sec_id,
@@ -709,7 +716,11 @@ def compare_strategies(
 
     # Simplified rank correlation using agreement rate
     rank_corr = _compute_rank_correlation(
-        score_deltas=[s for s in score_deltas if s.strategy_a_rank is not None and s.strategy_b_rank is not None]
+        score_deltas=[
+            s
+            for s in score_deltas
+            if s.strategy_a_rank is not None and s.strategy_b_rank is not None
+        ]
     )
 
     return StrategyComparisonReport(
@@ -737,11 +748,7 @@ def _compute_rank_correlation(
     """Compute a simplified rank correlation (agreement rate)."""
     if not score_deltas:
         return Decimal("0")
-    agreements = sum(
-        1
-        for s in score_deltas
-        if s.strategy_a_rank == s.strategy_b_rank
-    )
+    agreements = sum(1 for s in score_deltas if s.strategy_a_rank == s.strategy_b_rank)
     return Decimal(str(agreements)) / Decimal(str(len(score_deltas)))
 
 
@@ -793,9 +800,7 @@ def apply_parameter_overrides(
                         # Rule-level parameter
                         rules = engine.get("rules", [])
                         for rule in rules:
-                            if rule.get("id") == rule_id:
-                                _set_nested(rule, param_path, new_value)
-                            elif rule_id == "*":
+                            if rule.get("id") == rule_id or rule_id == "*":
                                 _set_nested(rule, param_path, new_value)
                     break
 

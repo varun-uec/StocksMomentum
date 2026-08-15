@@ -27,6 +27,7 @@ from momentum25.application.dto.research import (
     HistoricalScreeningRequest,
     HistoricalScreeningResponse,
     PortfolioPerformanceDTO,
+    ResearchMeasurabilityDTO,
     RuleContributionStatsDTO,
     RunComparisonResponse,
     ScorePointDTO,
@@ -47,6 +48,10 @@ from momentum25.application.use_cases.research.validation import (
     DeterminismVerificationUseCase,
     ValidateRunComparisonUseCase,
 )
+from momentum25.domain.research.models import (
+    RankingComparison,
+    RuleContributionStats,
+)
 from momentum25.interface.api.dependencies import get_refresh_corporate_actions
 from momentum25.interface.api.dependencies_research import (
     get_contribution_analysis_use_case,
@@ -59,6 +64,13 @@ from momentum25.interface.api.dependencies_research import (
 )
 
 router = APIRouter(prefix="/research", tags=["research"])
+
+
+def _research_measurability(has_results: bool, reason: str) -> ResearchMeasurabilityDTO:
+    """Say why a result list is empty, so "no data" never reads as "no effect"."""
+    return ResearchMeasurabilityDTO(
+        results_available=has_results, reason=None if has_results else reason
+    )
 
 
 # ── Historical Screening ────────────────────────────────────────────────
@@ -129,10 +141,35 @@ async def refresh_corporate_actions(
 async def compare_runs(
     run_id_a: Annotated[int, Query(description="Baseline run ID")],
     run_id_b: Annotated[int, Query(description="Comparison run ID")],
-    use_case: Annotated[ValidateRunComparisonUseCase, Depends(get_validate_run_comparison_use_case)],
+    use_case: Annotated[
+        ValidateRunComparisonUseCase, Depends(get_validate_run_comparison_use_case)
+    ],
 ) -> RunComparisonResponse:
     """Compare two screening runs and return a deterministic diff."""
     report = await use_case.execute(run_id_a, run_id_b)
+
+    def _ranking_dto(d: RankingComparison) -> dict[str, Any]:
+        """Map a rank diff, deriving the direction the DTO reports."""
+        if d.run_a_rank is None and d.run_b_rank is None:
+            # Unranked in both runs: it neither entered nor left the ranking.
+            direction = "unchanged"
+        elif d.run_a_rank is None:
+            direction = "new"
+        elif d.run_b_rank is None:
+            direction = "dropped"
+        elif d.rank_delta is None or d.rank_delta == 0:
+            direction = "unchanged"
+        else:
+            # ``rank_delta`` is positive when the security improved in B.
+            direction = "up" if d.rank_delta > 0 else "down"
+        return {
+            "security_id": d.security_id,
+            "symbol": d.symbol,
+            "rank_a": d.run_a_rank,
+            "rank_b": d.run_b_rank,
+            "rank_delta": d.rank_delta,
+            "direction": direction,
+        }
 
     return RunComparisonResponse(
         run_id_a=run_id_a,
@@ -140,31 +177,23 @@ async def compare_runs(
         run_date_a=report.run_date_a,
         run_date_b=report.run_date_b,
         strategy_name=report.strategy_name,
-        ranking_changed=report.ranking_changed,
-        score_changed=report.score_changed,
-        ranking_diffs=[
-            {
-                "security_id": d.security_id,
-                "symbol": d.symbol,
-                "rank_a": d.rank_a,
-                "rank_b": d.rank_b,
-                "rank_delta": d.rank_delta,
-                "direction": d.direction,
-            }
-            for d in report.ranking_diffs
-        ],
+        # The report carries *counts*; the response reports whether anything
+        # changed at all.
+        ranking_changed=report.ranking_changed > 0,
+        score_changed=report.score_changed > 0,
+        ranking_diffs=[_ranking_dto(d) for d in report.rank_deltas],
         score_diffs=[
             {
                 "security_id": d.security_id,
                 "symbol": d.symbol,
-                "momentum_a": d.momentum_a,
-                "momentum_b": d.momentum_b,
+                "momentum_a": d.momentum_score_a,
+                "momentum_b": d.momentum_score_b,
                 "momentum_delta": d.momentum_delta,
                 "buy_setup_a": d.buy_setup_a,
                 "buy_setup_b": d.buy_setup_b,
                 "buy_setup_delta": d.buy_setup_delta,
             }
-            for d in report.score_diffs
+            for d in report.score_deltas
         ],
         rule_diffs=[
             {
@@ -174,32 +203,14 @@ async def compare_runs(
                 "engine_id": d.engine_id,
                 "passed_a": d.passed_a,
                 "passed_b": d.passed_b,
-                "changed": d.changed,
+                # A rule row exists only when it differs, but the pass flags can
+                # still agree (the raw value moved), so this is not always True.
+                "changed": d.passed_a != d.passed_b,
             }
             for d in report.rule_diffs
         ],
-        top_gainers=[
-            {
-                "security_id": d.security_id,
-                "symbol": d.symbol,
-                "rank_a": d.rank_a,
-                "rank_b": d.rank_b,
-                "rank_delta": d.rank_delta,
-                "direction": d.direction,
-            }
-            for d in report.top_gainers
-        ],
-        top_losers=[
-            {
-                "security_id": d.security_id,
-                "symbol": d.symbol,
-                "rank_a": d.rank_a,
-                "rank_b": d.rank_b,
-                "rank_delta": d.rank_delta,
-                "direction": d.direction,
-            }
-            for d in report.top_losers
-        ],
+        top_gainers=[_ranking_dto(d) for d in report.top_gainers],
+        top_losers=[_ranking_dto(d) for d in report.top_losers],
         is_identical=report.is_identical(),
         indicator_version_a=report.indicator_version_a,
         indicator_version_b=report.indicator_version_b,
@@ -216,7 +227,9 @@ async def compare_runs(
 )
 async def verify_determinism(
     as_of_date: Annotated[date, Query()],
-    use_case: Annotated[DeterminismVerificationUseCase, Depends(get_determinism_verification_use_case)],
+    use_case: Annotated[
+        DeterminismVerificationUseCase, Depends(get_determinism_verification_use_case)
+    ],
     strategy_name: Annotated[str, Query()] = "minervini_trend_template",
 ) -> DeterminismVerificationResponse:
     """Verify determinism by re-running the same screening twice."""
@@ -299,6 +312,7 @@ async def evaluate_strategy(
             )
             for s in result.score_history
         ],
+        measurability=_research_measurability(bool(result.run_summaries), "no_completed_runs"),
     )
 
 
@@ -319,12 +333,9 @@ async def contribution_analysis(
     max_runs: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> ContributionAnalysisResponse:
     """Analyze rule contribution across runs for a given strategy."""
-    result = await use_case.execute(
-        strategy_id=0,
-        strategy_name=strategy_name,
-        max_runs=max_runs,
-    )
-    def _rule_dto(r: object) -> RuleContributionStatsDTO:
+    result = await use_case.execute(strategy_name=strategy_name, max_runs=max_runs)
+
+    def _rule_dto(r: RuleContributionStats) -> RuleContributionStatsDTO:
         return RuleContributionStatsDTO(
             rule_id=r.rule_id,
             engine_id=r.engine_id,
@@ -334,7 +345,9 @@ async def contribution_analysis(
             total_contribution=r.total_contribution,
             importance_score=r.importance_score,
             pass_rate=r.pass_rate,
-            is_redundant=getattr(r, "is_redundant", False),
+            # Same definition the domain uses to build ``redundant_rules``:
+            # a rule that never fails separates nothing (services.py).
+            is_redundant=r.pass_rate == Decimal("1"),
         )
 
     return ContributionAnalysisResponse(
@@ -343,14 +356,16 @@ async def contribution_analysis(
         security_count=result.security_count,
         date_range=(
             f"{result.date_range[0].isoformat()} to {result.date_range[1].isoformat()}"
-            if result.date_range else None
+            if result.date_range
+            else None
         ),
         engine_stats=[
             EngineContributionStatsDTO(
                 engine_name=e.engine_id,
                 rule_count=len(e.rule_stats),
                 avg_pass_rate=e.avg_pass_rate,
-                avg_importance=sum((r.importance_score for r in e.rule_stats), Decimal("0")) / max(len(e.rule_stats), 1),
+                avg_importance=sum((r.importance_score for r in e.rule_stats), Decimal("0"))
+                / max(len(e.rule_stats), 1),
                 total_importance=sum((r.total_contribution for r in e.rule_stats), Decimal("0")),
             )
             for e in result.engine_stats
@@ -380,11 +395,9 @@ async def compare_strategies(
     """Compare two strategy configurations."""
     result = await use_case.execute(strategy_a, strategy_b, max_runs)
     from momentum25.application.dto.research import StrategyComparisonPointDTO
+
     total = len(result.score_deltas)
-    agreements = sum(
-        1 for s in result.score_deltas
-        if s.strategy_a_passed == s.strategy_b_passed
-    )
+    agreements = sum(1 for s in result.score_deltas if s.strategy_a_passed == s.strategy_b_passed)
     return StrategyComparisonResponse(
         strategy_a_name=result.strategy_a_name,
         strategy_b_name=result.strategy_b_name,
@@ -395,26 +408,36 @@ async def compare_strategies(
         b_wins=result.strategy_b_wins_score,
         comparisons=[
             StrategyComparisonPointDTO(
-                security_id=0,
-                symbol=f"{s.run_date}",
+                run_date=s.run_date,
                 rank_a=s.strategy_a_rank,
                 rank_b=s.strategy_b_rank,
                 momentum_a=s.strategy_a_score,
                 momentum_b=s.strategy_b_score,
+                score_delta=s.score_delta,
                 agreement=s.strategy_a_passed == s.strategy_b_passed,
             )
             for s in result.score_deltas
         ],
+        # ``rule_differences`` holds per-security rule diffs
+        # (:class:`RuleComparison`), not per-rule pass-rate aggregates. The
+        # previous mapping read ``rule_name``/``strategy_a_pass_rate``, which
+        # that type never had, so this endpoint raised AttributeError as soon
+        # as two strategies disagreed on any rule.
         rule_level_diffs=[
             {
+                "security_id": r.security_id,
+                "symbol": r.symbol,
                 "rule_id": r.rule_id,
-                "rule_name": r.rule_name,
-                "a_pass_rate": str(r.strategy_a_pass_rate),
-                "b_pass_rate": str(r.strategy_b_pass_rate),
-                "pass_rate_delta": str(r.pass_rate_delta),
+                "engine_id": r.engine_id,
+                "passed_a": r.passed_a,
+                "passed_b": r.passed_b,
+                "raw_value_a": str(r.raw_value_a) if r.raw_value_a is not None else None,
+                "raw_value_b": str(r.raw_value_b) if r.raw_value_b is not None else None,
             }
             for r in result.rule_differences
         ],
+        # Two strategies are comparable only on the run dates they both cover.
+        measurability=_research_measurability(bool(result.score_deltas), "no_common_run_dates"),
     )
 
 
@@ -435,13 +458,23 @@ async def run_experiment(
 ) -> ExperimentResponse:
     """Run an experiment comparing base and variant strategy configurations."""
     from momentum25.application.dto.research import ExperimentResultDTO
-    from momentum25.domain.research.models import ExperimentConfig
+    from momentum25.domain.research.models import ExperimentConfig, ParameterOverride
+
+    # The request's overrides *are* the experiment. Dropping them ran the base
+    # strategy against itself and reported the result as a variant.
+    #
+    # ``base_strategy_id`` stays 0: the use case resolves the strategy by name
+    # (and raises if it is missing), and nothing reads the id. Filling it here
+    # would mean a second lookup for a field with no consumer.
     config = ExperimentConfig(
         name=f"exp_{body.base_strategy_name}",
         description=f"Experiment for {body.base_strategy_name}",
         base_strategy_name=body.base_strategy_name,
         base_strategy_id=0,
-        overrides=tuple(),
+        overrides=tuple(
+            ParameterOverride(parameter_path=o.parameter_path, new_value=o.value)
+            for o in body.overrides
+        ),
         run_dates=tuple(body.run_dates) if body.run_dates else (),
     )
     result = await use_case.run_experiment(config)

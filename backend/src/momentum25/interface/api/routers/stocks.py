@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
 from momentum25.application.dto.market_data import SecurityIndicatorSeriesDTO
+from momentum25.application.dto.stocks import StockHistoryDTO
 from momentum25.application.use_cases.stocks import (
     GetIndicatorSeries,
     GetLiveStockAnalysis,
@@ -41,14 +42,14 @@ async def read_stock(
     return await use_case.execute(symbol, run_id, strategy)
 
 
-@router.get("/{symbol}/history")
+@router.get("/{symbol}/history", response_model=StockHistoryDTO)
 async def read_stock_history(
     symbol: str,
     use_case: Annotated[GetStockHistory, Depends(get_stock_history)],
     strategy: Annotated[str, Query()] = "minervini_trend_template",
     limit: Annotated[int, Query(ge=1, le=500)] = 90,
-) -> Any:
-    """Return a stock's score/rank history across runs."""
+) -> StockHistoryDTO:
+    """Return a stock's score/rank history across runs, one point per run date."""
     return await use_case.execute(symbol, strategy, limit)
 
 

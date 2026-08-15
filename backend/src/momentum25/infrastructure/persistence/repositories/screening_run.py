@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from decimal import Decimal
+
+from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.run import ScreeningRun
@@ -16,6 +18,16 @@ from momentum25.domain.value_objects.results import (
 )
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.persistence.models import ScreeningRunModel
+
+# A run is "live" when its ``data_version`` carries none of the historical-
+# backfill or ad-hoc research tags. Historical and research runs are real,
+# permanent rows under ADR-006, but they are not the live production run and
+# must not appear in live history, rank-change, or "latest run" queries.
+_LIVE_RUN_PREDICATES = (
+    ~ScreeningRunModel.data_version.like("historical:%"),
+    ~ScreeningRunModel.data_version.like("%:research:%"),
+    ~ScreeningRunModel.data_version.like("%:icv2:%"),
+)
 
 
 def _to_domain(row: ScreeningRunModel) -> ScreeningRun:
@@ -139,9 +151,7 @@ class SqlScreeningRunRepository:
             .where(
                 ScreeningRunModel.strategy_id == strategy_id,
                 ScreeningRunModel.status == RunStatus.COMPLETED.value,
-                ~ScreeningRunModel.data_version.like("historical:%"),
-                ~ScreeningRunModel.data_version.like("%:research:%"),
-                ~ScreeningRunModel.data_version.like("%:icv2:%"),
+                *_LIVE_RUN_PREDICATES,
             )
             .order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
         )
@@ -155,6 +165,12 @@ class SqlScreeningRunRepository:
 
         Rank is supplied by the ranking engine (``Ranking.rank``) and joined onto the
         per-security score row; there is no separate rankings table.
+
+        Both tables are written with one bulk ``INSERT`` each rather than one
+        ORM object per row. A universe run produces ~2,000 score rows and tens
+        of thousands of rule rows; the ORM's per-object overhead dominated the
+        persistence step and bought nothing, because these rows are never read
+        back through the identity map in this unit of work.
         """
         from momentum25.infrastructure.persistence.models import (
             RuleResultModel,
@@ -163,32 +179,40 @@ class SqlScreeningRunRepository:
 
         rank_by_security = {ranking.security_id: ranking.rank for ranking in rankings}
 
-        for score in scores:
-            result_model = ScreeningResultModel(
-                run_id=run_id,
-                security_id=score.security_id,
-                rank=rank_by_security.get(score.security_id),
-                momentum_score=score.momentum_score,
-                buy_setup_score=score.buy_setup_score,
-                hard_filters_passed=score.hard_filters_passed,
-            )
-            self._session.add(result_model)
-            for engine_result in score.engine_results:
-                for rule in engine_result.rule_results:
-                    rule_model = RuleResultModel(
-                        run_id=run_id,
-                        security_id=score.security_id,
-                        rule_id=rule.rule_id,
-                        engine_id=engine_result.engine_id,
-                        passed=rule.passed,
-                        raw_value=rule.raw_value,
-                        threshold=rule.threshold,
-                        operator=rule.operator,
-                        weight=rule.weight,
-                        contribution=rule.contribution,
-                        explanation=rule.explanation,
-                    )
-                    self._session.add(rule_model)
+        result_rows = [
+            {
+                "run_id": run_id,
+                "security_id": score.security_id,
+                "rank": rank_by_security.get(score.security_id),
+                "momentum_score": score.momentum_score,
+                "buy_setup_score": score.buy_setup_score,
+                "hard_filters_passed": score.hard_filters_passed,
+            }
+            for score in scores
+        ]
+        rule_rows = [
+            {
+                "run_id": run_id,
+                "security_id": score.security_id,
+                "rule_id": rule.rule_id,
+                "engine_id": engine_result.engine_id,
+                "passed": rule.passed,
+                "raw_value": rule.raw_value,
+                "threshold": rule.threshold,
+                "operator": rule.operator,
+                "weight": rule.weight,
+                "contribution": rule.contribution,
+                "explanation": rule.explanation,
+            }
+            for score in scores
+            for engine_result in score.engine_results
+            for rule in engine_result.rule_results
+        ]
+
+        if result_rows:
+            await self._session.execute(insert(ScreeningResultModel), result_rows)
+        if rule_rows:
+            await self._session.execute(insert(RuleResultModel), rule_rows)
 
     async def save_universe_membership(
         self, run_id: int, memberships: list[UniverseMembership]
@@ -227,14 +251,21 @@ class SqlScreeningRunRepository:
             )
 
     async def get_forward_returns(
-        self, run_id: int, security_id: int | None = None
+        self, run_id: int, security_id: int | None = None, horizon_days: int | None = None
     ) -> list[ForwardReturn]:
-        """Return persisted forward-return rows for a run, optionally scoped to one security."""
+        """Return persisted forward-return rows for a run.
+
+        Optionally scoped to one security and/or one horizon. A run holds one
+        row per security per horizon, so a caller that wants a single horizon
+        should say so here rather than filter the rest out in Python.
+        """
         from momentum25.infrastructure.persistence.models import ForwardReturnModel
 
         conditions = [ForwardReturnModel.run_id == run_id]
         if security_id is not None:
             conditions.append(ForwardReturnModel.security_id == security_id)
+        if horizon_days is not None:
+            conditions.append(ForwardReturnModel.horizon_days == horizon_days)
         result = await self._session.execute(
             select(ForwardReturnModel).where(*conditions).order_by(
                 ForwardReturnModel.security_id, ForwardReturnModel.horizon_days
@@ -255,20 +286,63 @@ class SqlScreeningRunRepository:
             for row in result.scalars().all()
         ]
 
+    async def get_forward_return_by_security(
+        self, run_id: int, horizon_days: int
+    ) -> dict[int, Decimal]:
+        """Return ``{security_id: forward_return}`` for one run and one horizon.
+
+        Selects two columns and filters the horizon in SQL. The previous form
+        hydrated every horizon's full ORM row and discarded most of it in
+        Python; across the ~130 runs the validation dashboard reads, that
+        hydration -- not the queries -- was the dominant cost.
+        """
+        from momentum25.infrastructure.persistence.models import ForwardReturnModel
+
+        result = await self._session.execute(
+            select(ForwardReturnModel.security_id, ForwardReturnModel.forward_return).where(
+                ForwardReturnModel.run_id == run_id,
+                ForwardReturnModel.horizon_days == horizon_days,
+                ForwardReturnModel.forward_return.is_not(None),
+            )
+        )
+        return {row.security_id: row.forward_return for row in result.all()}
+
     async def get_rankings(
         self, run_id: int, limit: int, offset: int
     ) -> tuple[list[Ranking], int]:
-        """Return a page of rankings for a run."""
+        """Return a page of rankings for a run, and the run's total result count.
+
+        The count query is skipped when the requested page starts at 0 and is
+        wider than the rows returned -- the page is then the whole run, so its
+        length *is* the total. Every caller except the paginated rankings API
+        asks for the whole run (``limit=10000, offset=0``) and discards the
+        count, and the validation dashboard makes that call once per run.
+
+        Only the four columns :class:`Ranking` carries are selected, so no ORM
+        entity is built. The dashboard reads ~1,600 rows from each of ~130 runs
+        four times over, where full entity hydration cost far more than the
+        queries themselves.
+        """
         from momentum25.infrastructure.persistence.models import ScreeningResultModel
 
         base = (
-            select(ScreeningResultModel)
+            select(
+                ScreeningResultModel.security_id,
+                ScreeningResultModel.momentum_score,
+                ScreeningResultModel.buy_setup_score,
+                ScreeningResultModel.rank,
+            )
             .where(ScreeningResultModel.run_id == run_id)
             .order_by(ScreeningResultModel.rank)
         )
-        total = await self._session.scalar(select(func.count()).select_from(base.subquery()))
         result = await self._session.execute(base.limit(limit).offset(offset))
-        rows = result.scalars().all()
+        rows = result.all()
+        if offset == 0 and len(rows) < limit:
+            total: int | None = len(rows)
+        else:
+            total = await self._session.scalar(
+                select(func.count()).select_from(base.subquery())
+            )
         rankings = [
             Ranking(
                 security_id=r.security_id,
@@ -372,8 +446,9 @@ class SqlScreeningRunRepository:
                 ScreeningRunModel.strategy_id == strategy_id,
                 ScreeningRunModel.status == RunStatus.COMPLETED.value,
                 ScreeningRunModel.run_date < run_date,
+                *_LIVE_RUN_PREDICATES,
             )
-            .order_by(ScreeningRunModel.run_date.desc())
+            .order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
             .limit(1)
         )
         if prev_run_id is None:
@@ -390,11 +465,17 @@ class SqlScreeningRunRepository:
     async def score_history(
         self, strategy_id: int, security_id: int, limit: int
     ) -> list[ScorePoint]:
-        """Return a security's score/rank history across runs."""
+        """Return a security's score/rank history across live runs, one point per date.
+
+        Two things would otherwise duplicate a trading date. Historical and
+        research runs share ``run_date`` with the live run that covers the same
+        session, so they are excluded. A live date can also be re-run, so
+        ``DISTINCT ON (run_date)`` keeps only the newest run for each date.
+        """
         from momentum25.domain.value_objects.results import ScorePoint
         from momentum25.infrastructure.persistence.models import ScreeningResultModel
 
-        result = await self._session.execute(
+        per_date = (
             select(
                 ScreeningRunModel.run_date,
                 ScreeningResultModel.momentum_score,
@@ -406,12 +487,15 @@ class SqlScreeningRunRepository:
                 ScreeningRunModel.strategy_id == strategy_id,
                 # Only completed runs: a failed run's partial results are not a
                 # point in the security's history.
-                ScreeningRunModel.status == "COMPLETED",
+                ScreeningRunModel.status == RunStatus.COMPLETED.value,
                 ScreeningResultModel.security_id == security_id,
+                *_LIVE_RUN_PREDICATES,
             )
-            .order_by(ScreeningRunModel.run_date.desc())
+            .distinct(ScreeningRunModel.run_date)
+            .order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
             .limit(limit)
         )
+        result = await self._session.execute(per_date)
         rows = result.all()
         return [
             ScorePoint(

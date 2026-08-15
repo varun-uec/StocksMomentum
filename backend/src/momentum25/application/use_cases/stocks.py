@@ -10,7 +10,11 @@ from momentum25.application.dto.market_data import (
     IndicatorBarDTO,
     SecurityIndicatorSeriesDTO,
 )
-from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
+from momentum25.application.dto.stocks import ScorePointDTO, StockHistoryDTO
+from momentum25.application.services.rs_ratings import (
+    RsRatingCache,
+    resolve_universe_rs_ratings,
+)
 from momentum25.application.use_cases.rankings import bind_builder_to_run, qualified_count
 from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
 from momentum25.domain.analytics.market_context import (
@@ -150,7 +154,7 @@ class GetStockHistory:
         self._screening_run_repo = screening_run_repo
         self._strategies = strategies
 
-    async def execute(self, symbol: str, strategy_name: str, limit: int) -> dict[str, Any]:
+    async def execute(self, symbol: str, strategy_name: str, limit: int) -> StockHistoryDTO:
         """Return history points for a symbol, scoped to one strategy (e.g. a Momentum Horizon).
 
         One query, not one per run: the previous implementation listed every
@@ -168,17 +172,19 @@ class GetStockHistory:
         history = await self._screening_run_repo.score_history(
             strategy_id=strategy.id, security_id=security.id, limit=limit
         )
-        points = [
-            {
-                "run_date": point.run_date.isoformat(),
-                "security_id": security.id,
-                "rank": point.rank,
-                "momentum_score": str(point.momentum_score),
-                "buy_setup_score": str(point.buy_setup_score),
-            }
-            for point in history
-        ]
-        return {"symbol": symbol, "score_history": points}
+        return StockHistoryDTO(
+            symbol=symbol,
+            score_history=[
+                ScorePointDTO(
+                    run_date=point.run_date,
+                    security_id=security.id,
+                    rank=point.rank,
+                    momentum_score=point.momentum_score,
+                    buy_setup_score=point.buy_setup_score,
+                )
+                for point in history
+            ],
+        )
 
 
 class GetIndicatorSeries:
@@ -308,6 +314,7 @@ class GetLiveStockAnalysis:
         nse_client: Any,
         refresh_gate: RefreshGate | None = None,
         benchmark_repo: BenchmarkIndexRepository | None = None,
+        rs_rating_cache: RsRatingCache | None = None,
     ) -> None:
         """Wire the use case with its collaborators.
 
@@ -315,6 +322,9 @@ class GetLiveStockAnalysis:
         block (Phase 6.2) is simply absent from the response, which is the
         correct degradation -- the alternative would be reporting an excess
         return computed against a benchmark that was never loaded.
+
+        ``rs_rating_cache`` is optional in the same way: without it every
+        request recomputes the universe RS table, which is correct but slow.
         """
         self._securities = securities
         self._ohlcv_repo = ohlcv_repo
@@ -325,6 +335,7 @@ class GetLiveStockAnalysis:
         self._nse_client = nse_client
         self._refresh_gate = refresh_gate or RefreshGate()
         self._benchmark_repo = benchmark_repo
+        self._rs_rating_cache = rs_rating_cache
 
     async def execute(
         self,
@@ -366,9 +377,7 @@ class GetLiveStockAnalysis:
                 indicators=_indicator_snapshot(indicators),
             )
 
-        rs_rating, rs_basis = await self._resolve_rs_rating(
-            symbol, strategy.config.indicators, reference_date
-        )
+        rs_rating, rs_basis = await self._resolve_rs_rating(symbol, strategy, reference_date)
         if rs_rating is not None:
             object.__setattr__(indicators, "rs_rating", rs_rating)
 
@@ -510,17 +519,19 @@ class GetLiveStockAnalysis:
         return upserted
 
     async def _resolve_rs_rating(
-        self, symbol: str, indicators_cfg: dict[str, Any], as_of: date
+        self, symbol: str, strategy: Any, as_of: date
     ) -> tuple[int | None, dict[str, Any]]:
         """Rank *symbol* against the persisted active universe as of *as_of*.
 
         A single symbol has no universe to percentile against on its own
         (Phase 1.2), so RS is computed the same way the daily orchestrator
-        computes it: against every other active, persisted security.
+        computes it: against every other active, persisted security. That walk
+        costs ~8 s over a ~2,000-security universe, and it produces the same
+        table for every symbol looked up on the same trading date, so the
+        result is shared through the same cache ``/watchlist/detail`` uses.
         """
-        universe = await self._securities.list_active()
-        ratings = await compute_universe_rs_ratings(
-            universe, self._ohlcv_repo, as_of, indicators_cfg.get("rs_return_weights")
+        ratings = await resolve_universe_rs_ratings(
+            self._securities, self._ohlcv_repo, strategy, as_of, self._rs_rating_cache
         )
         rs_basis = {
             "universe_size": len(ratings),

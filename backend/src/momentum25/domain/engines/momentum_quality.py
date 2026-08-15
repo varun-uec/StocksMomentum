@@ -102,19 +102,21 @@ class MomentumQualityEngine:
         ma_period = self._int_param(rc, "ma", 50)
         lookback = self._int_param(rc, "lookback", 63)
         bars = series.bars
-        if not bars or len(bars) < lookback + ma_period:
-            if not bars:
-                return RuleResult(
-                    rule_id=rule_id,
-                    engine_id=self.engine_id,
-                    passed=False,
-                    raw_value=None,
-                    threshold=Decimal("0"),
-                    operator=">=",
-                    weight=weight,
-                    contribution=Decimal("0"),
-                    explanation="Insufficient data for trend persistence.",
-                )
+        # Only the empty case needs its own branch. A short-but-non-empty series
+        # falls through to the length check below, which reports the same
+        # failure with the actual bar count.
+        if not bars:
+            return RuleResult(
+                rule_id=rule_id,
+                engine_id=self.engine_id,
+                passed=False,
+                raw_value=None,
+                threshold=Decimal("0"),
+                operator=">=",
+                weight=weight,
+                contribution=Decimal("0"),
+                explanation="Insufficient data for trend persistence.",
+            )
 
         closes = [float(b.close) for b in bars]
         if len(closes) < lookback + ma_period:

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any
 
 from momentum25.application.dto.watchlist import WatchlistDetailResponseDTO, WatchlistItemDTO
-from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
+from momentum25.application.services.rs_ratings import (
+    RsRatingCache,
+    resolve_universe_rs_ratings,
+)
 from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
 from momentum25.domain.entities.security import Security
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
@@ -61,12 +64,11 @@ class RemoveFromWatchlist:
         await self._watchlist.remove(await _resolve_security_id(self._securities, symbol))
 
 
-class RsRatingCache(Protocol):
-    """Cache for one day's universe RS ratings, keyed by (date, strategy)."""
-
-    async def get(self, as_of: date, strategy_name: str) -> dict[str, int] | None: ...
-
-    async def set(self, as_of: date, strategy_name: str, ratings: dict[str, int]) -> None: ...
+def _require_id(security: Security) -> int:
+    """Return a security's id, which callers have already established exists."""
+    if security.id is None:
+        raise NotFoundError(f"Security has no id: {security.symbol}")
+    return security.id
 
 
 def _raw_value(rule_results: list[RuleResult], rule_id: str) -> Decimal | None:
@@ -159,16 +161,18 @@ class GetWatchlistDetail:
     async def _build_in_run_item(
         self, security: Security, run: Any, prev_ranks: dict[int, int]
     ) -> WatchlistItemDTO:
-        result = await self._screening_run_repo.get_screening_result(run.id, security.id)
-        rule_results = await self._screening_run_repo.get_rule_results(run.id, security.id)
+        # ``execute`` only collects securities with an id, so this never raises.
+        security_id = _require_id(security)
+        result = await self._screening_run_repo.get_screening_result(run.id, security_id)
+        rule_results = await self._screening_run_repo.get_rule_results(run.id, security_id)
         rs_rating = _raw_value(rule_results, "tt_rs_rating_min")
         pct_below_high = _raw_value(rule_results, "tt_near_52w_high")
         rank_change = None
         if result.rank is not None:
-            prev = prev_ranks.get(security.id)
+            prev = prev_ranks.get(security_id)
             if prev is not None:
                 rank_change = prev - result.rank
-        close, change_pct = await self._last_close(security.id)
+        close, change_pct = await self._last_close(security_id)
         return WatchlistItemDTO(
             symbol=str(security.symbol),
             in_latest_run=True,
@@ -186,8 +190,10 @@ class GetWatchlistDetail:
         self, security: Security, strategy: Any, as_of: date, rs_ratings: dict[str, int]
     ) -> WatchlistItemDTO:
         symbol = str(security.symbol)
-        close, change_pct = await self._last_close(security.id)
-        indicators = await self._indicator_pipeline.compute(symbol, as_of, strategy.config.indicators)
+        close, change_pct = await self._last_close(_require_id(security))
+        indicators = await self._indicator_pipeline.compute(
+            symbol, as_of, strategy.config.indicators
+        )
         if indicators.sma200 is None:
             return WatchlistItemDTO(
                 symbol=symbol, in_latest_run=False, close=close, change_pct=change_pct
@@ -214,19 +220,9 @@ class GetWatchlistDetail:
         )
 
     async def _universe_rs_ratings(self, strategy: Any, as_of: date) -> dict[str, int]:
-        if self._rs_rating_cache is not None:
-            cached = await self._rs_rating_cache.get(as_of, strategy.name)
-            if cached is not None:
-                return cached
-
-        universe = await self._securities.list_active()
-        ratings = await compute_universe_rs_ratings(
-            universe, self._ohlcv_repo, as_of, strategy.config.indicators.get("rs_return_weights")
+        return await resolve_universe_rs_ratings(
+            self._securities, self._ohlcv_repo, strategy, as_of, self._rs_rating_cache
         )
-
-        if self._rs_rating_cache is not None:
-            await self._rs_rating_cache.set(as_of, strategy.name, ratings)
-        return ratings
 
     async def _last_close(self, security_id: int) -> tuple[Decimal | None, Decimal | None]:
         series = await self._ohlcv_repo.get_series(security_id, lookback_days=5, as_of=date.today())

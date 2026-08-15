@@ -369,8 +369,7 @@ async def parameter_experiment(
 ) -> ParameterExperimentResponse:
     """Run a parameter experiment."""
     variants = [
-        {"name": v.name, "overrides": [o.model_dump() for o in v.overrides]}
-        for v in body.variants
+        {"name": v.name, "overrides": [o.model_dump() for o in v.overrides]} for v in body.variants
     ]
     result = await use_case.execute(
         experiment_name=body.experiment_name,
@@ -419,7 +418,9 @@ async def parameter_experiment(
 )
 async def research_dashboard(
     body: ResearchDashboardRequest,
-    historical_validation_uc: Annotated[HistoricalValidationUseCase, Depends(get_historical_validation_use_case)],
+    historical_validation_uc: Annotated[
+        HistoricalValidationUseCase, Depends(get_historical_validation_use_case)
+    ],
     alpha_uc: Annotated[AlphaMeasurementUseCase, Depends(get_alpha_measurement_use_case)],
     scorecard_uc: Annotated[StrategyScorecardUseCase, Depends(get_scorecard_use_case)],
     rules_uc: Annotated[RuleEffectivenessUseCase, Depends(get_rule_effectiveness_use_case)],

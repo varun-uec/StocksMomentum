@@ -63,13 +63,10 @@ class _ForwardReturnJoinMixin:
     _screening_run_repo: Any
 
     async def _forward_returns_by_security(self, run_id: int) -> dict[int, Decimal]:
-        rows = await self._screening_run_repo.get_forward_returns(run_id)
-        return {
-            row.security_id: row.forward_return
-            for row in rows
-            if row.horizon_days == _EFFECTIVENESS_HORIZON_DAYS
-            and row.forward_return is not None
-        }
+        returns: dict[int, Decimal] = await self._screening_run_repo.get_forward_return_by_security(
+            run_id, _EFFECTIVENESS_HORIZON_DAYS
+        )
+        return returns
 
 
 class HistoricalValidationUseCase:
@@ -88,6 +85,7 @@ class HistoricalValidationUseCase:
         indicator_pipeline: Any,
         strategy_engine: Any,
     ) -> None:
+        """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
         self._ohlcv_repo = ohlcv_repo
@@ -231,9 +229,9 @@ class HistoricalValidationUseCase:
                         error=str(exc),
                     )
 
-        missing_dates = len(
-            [d for d in sampled_dates if d not in existing_dates]
-        ) - len(newly_executed_ids)
+        missing_dates = len([d for d in sampled_dates if d not in existing_dates]) - len(
+            newly_executed_ids
+        )
 
         all_run_ids = [r.id for r in window_runs if r.id is not None] + newly_executed_ids
         total_runs = len(all_run_ids)
@@ -298,6 +296,7 @@ class AlphaMeasurementUseCase:
         screening_run_repo: Any,
         strategy_repo: Any,
     ) -> None:
+        """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
 
@@ -379,13 +378,13 @@ class AlphaMeasurementUseCase:
             if not top_picks:
                 continue
 
-            forward_returns = await self._screening_run_repo.get_forward_returns(run.id or 0)
+            forward_returns = await self._screening_run_repo.get_forward_returns(
+                run.id or 0, horizon_days=period_horizon_days
+            )
             pick_rows = [
                 fr
                 for fr in forward_returns
-                if fr.horizon_days == period_horizon_days
-                and fr.security_id in top_picks
-                and fr.forward_return is not None
+                if fr.security_id in top_picks and fr.forward_return is not None
             ]
             if not pick_rows:
                 continue
@@ -405,9 +404,7 @@ class AlphaMeasurementUseCase:
                 fr.benchmark_return for fr in pick_rows if fr.benchmark_return is not None
             ]
             benchmark_data["NIFTY500"][1].append(
-                sum(bench_rows, Decimal("0")) / len(bench_rows)
-                if bench_rows
-                else Decimal("0")
+                sum(bench_rows, Decimal("0")) / len(bench_rows) if bench_rows else Decimal("0")
             )
 
         if not strategy_returns:
@@ -449,6 +446,7 @@ class StrategyScorecardUseCase:
         screening_run_repo: Any,
         strategy_repo: Any,
     ) -> None:
+        """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
 
@@ -557,38 +555,45 @@ class StrategyScorecardUseCase:
             if not rankings:
                 continue
 
-            avg_momentum = sum(
-                (r.momentum_score for r in rankings), Decimal("0")
-            ) / len(rankings)
+            avg_momentum = sum((r.momentum_score for r in rankings), Decimal("0")) / len(rankings)
 
             top_picks = {r.security_id for r in rankings if r.rank is not None and r.rank <= 25}
             if top_picks:
-                forward_returns = await self._screening_run_repo.get_forward_returns(run.id or 0)
+                # One horizon, two columns, filtered in SQL. The wide form
+                # hydrated every horizon's full row for every security in the
+                # run just to keep the Top 25 at one horizon.
+                returns_by_security = (
+                    await self._screening_run_repo.get_forward_return_by_security(
+                        run.id or 0, period_horizon_days
+                    )
+                )
                 pick_returns = [
-                    fr.forward_return
-                    for fr in forward_returns
-                    if fr.horizon_days == period_horizon_days
-                    and fr.security_id in top_picks
-                    and fr.forward_return is not None
+                    value
+                    for security_id, value in returns_by_security.items()
+                    if security_id in top_picks
                 ]
                 if pick_returns:
                     period_returns.append(sum(pick_returns, Decimal("0")) / len(pick_returns))
 
             stats = run.stats or {}
-            run_summaries.append({
-                "run_date": run.run_date,
-                "total_evaluated": stats.get("total_evaluated", len(rankings)),
-                "total_passed": stats.get("total_passed", 0),
-                "total_failed": stats.get("total_failed", 0),
-                "avg_momentum_score": avg_momentum,
-                "avg_buy_setup_score": (
-                    sum((r.buy_setup_score for r in rankings), Decimal("0"))
-                    / len(rankings)
-                    if rankings else Decimal("0")
-                ),
-            })
+            run_summaries.append(
+                {
+                    "run_date": run.run_date,
+                    "total_evaluated": stats.get("total_evaluated", len(rankings)),
+                    "total_passed": stats.get("total_passed", 0),
+                    "total_failed": stats.get("total_failed", 0),
+                    "avg_momentum_score": avg_momentum,
+                    "avg_buy_setup_score": (
+                        sum((r.buy_setup_score for r in rankings), Decimal("0")) / len(rankings)
+                        if rankings
+                        else Decimal("0")
+                    ),
+                }
+            )
 
-        period_label = f"{strategy_runs[0].run_date.isoformat()} to {strategy_runs[-1].run_date.isoformat()}"
+        period_label = (
+            f"{strategy_runs[0].run_date.isoformat()} to {strategy_runs[-1].run_date.isoformat()}"
+        )
 
         return compute_scorecard(
             strategy_name=strategy_name,
@@ -614,6 +619,7 @@ class RuleEffectivenessUseCase(_ForwardReturnJoinMixin):
         screening_run_repo: Any,
         strategy_repo: Any,
     ) -> None:
+        """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
 
@@ -660,31 +666,37 @@ class RuleEffectivenessUseCase(_ForwardReturnJoinMixin):
 
         for run in strategy_runs:
             run_id = run.id or 0
-            rankings, _ = await self._screening_run_repo.get_rankings(
-                run_id, limit=10000, offset=0
-            )
+            rankings, _ = await self._screening_run_repo.get_rankings(run_id, limit=10000, offset=0)
             # Real per-security forward returns, keyed by (run_id, security_id).
             # The momentum score is a 0-100 setup-quality rating and is never a
             # stand-in for a return (2026-08-09 audit §1.2.4 / §2.3).
             returns_by_security = await self._forward_returns_by_security(run_id)
 
-            for ranking in rankings[:_TOP_N_FOR_EFFECTIVENESS]:
+            # One query per run, not one per security: this loop covers the top
+            # 25 of every run in the window, and the per-security form made the
+            # validation dashboard issue thousands of round trips.
+            top = rankings[:_TOP_N_FOR_EFFECTIVENESS]
+            rules_by_security = await self._screening_run_repo.get_rule_results_bulk(
+                run_id, [r.security_id for r in top]
+            )
+
+            for ranking in top:
                 forward_return = returns_by_security.get(ranking.security_id)
-                rules = await self._screening_run_repo.get_rule_results(
-                    run_id, ranking.security_id
-                )
+                rules = rules_by_security.get(ranking.security_id, [])
                 for rule in rules:
-                    rule_evaluations.append({
-                        "rule_id": rule.rule_id,
-                        "engine_id": rule.engine_id,
-                        "passed": rule.passed,
-                        "contribution": rule.contribution,
-                        "raw_value": rule.raw_value,
-                        "run_date": run.run_date,
-                        "run_id": run_id,
-                        "security_id": ranking.security_id,
-                        "forward_return": forward_return,
-                    })
+                    rule_evaluations.append(
+                        {
+                            "rule_id": rule.rule_id,
+                            "engine_id": rule.engine_id,
+                            "passed": rule.passed,
+                            "contribution": rule.contribution,
+                            "raw_value": rule.raw_value,
+                            "run_date": run.run_date,
+                            "run_id": run_id,
+                            "security_id": ranking.security_id,
+                            "forward_return": forward_return,
+                        }
+                    )
 
         return analyze_rule_effectiveness(
             rule_evaluations=rule_evaluations,
@@ -706,6 +718,7 @@ class EngineEffectivenessUseCase(_ForwardReturnJoinMixin):
         screening_run_repo: Any,
         strategy_repo: Any,
     ) -> None:
+        """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
 
@@ -751,25 +764,30 @@ class EngineEffectivenessUseCase(_ForwardReturnJoinMixin):
 
         for run in strategy_runs:
             run_id = run.id or 0
-            rankings, _ = await self._screening_run_repo.get_rankings(
-                run_id, limit=10000, offset=0
-            )
+            rankings, _ = await self._screening_run_repo.get_rankings(run_id, limit=10000, offset=0)
             returns_by_security = await self._forward_returns_by_security(run_id)
 
-            for ranking in rankings[:_TOP_N_FOR_EFFECTIVENESS]:
+            # One query per run, not one per security -- see RuleEffectiveness.
+            top = rankings[:_TOP_N_FOR_EFFECTIVENESS]
+            rules_by_security = await self._screening_run_repo.get_rule_results_bulk(
+                run_id, [r.security_id for r in top]
+            )
+
+            for ranking in top:
                 forward_return = returns_by_security.get(ranking.security_id)
-                rules = await self._screening_run_repo.get_rule_results(
-                    run_id, ranking.security_id
-                )
+                rules = rules_by_security.get(ranking.security_id, [])
                 engine_groups: dict[str, dict[str, Any]] = {}
                 for rule in rules:
-                    eg = engine_groups.setdefault(rule.engine_id, {
-                        "engine_id": rule.engine_id,
-                        "rules_passed": 0,
-                        "rules_failed": 0,
-                        "score": Decimal("0"),
-                        "contribution_to_final": Decimal("0"),
-                    })
+                    eg = engine_groups.setdefault(
+                        rule.engine_id,
+                        {
+                            "engine_id": rule.engine_id,
+                            "rules_passed": 0,
+                            "rules_failed": 0,
+                            "score": Decimal("0"),
+                            "contribution_to_final": Decimal("0"),
+                        },
+                    )
                     if rule.passed:
                         eg["rules_passed"] += 1
                     else:
@@ -778,14 +796,16 @@ class EngineEffectivenessUseCase(_ForwardReturnJoinMixin):
                     eg["contribution_to_final"] += rule.contribution
 
                 for eg in engine_groups.values():
-                    engine_evaluations.append({
-                        **eg,
-                        "run_date": run.run_date,
-                        "run_id": run_id,
-                        "security_id": ranking.security_id,
-                        "passed_gate": eg["rules_passed"] > 0,
-                        "forward_return": forward_return,
-                    })
+                    engine_evaluations.append(
+                        {
+                            **eg,
+                            "run_date": run.run_date,
+                            "run_id": run_id,
+                            "security_id": ranking.security_id,
+                            "passed_gate": eg["rules_passed"] > 0,
+                            "forward_return": forward_return,
+                        }
+                    )
 
         return analyze_engine_effectiveness(
             engine_evaluations=engine_evaluations,
@@ -811,6 +831,7 @@ class ParameterResearchUseCase:
         ohlcv_repo: Any,
         security_repo: Any,
     ) -> None:
+        """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
         self._indicator_pipeline = indicator_pipeline
@@ -854,34 +875,42 @@ class ParameterResearchUseCase:
         # Collect base results from existing runs
         base_results: list[dict[str, Any]] = []
         for rd in run_dates:
-            matching_runs = [
-                r for r in runs if r.run_date == rd
-            ] if not run_dates else [
-                r for r in (await self._screening_run_repo.list_runs(
-                    status="COMPLETED", limit=1000, offset=0
-                ))[0] if r.run_date == rd and r.strategy_id == (strategy.id or 0)
-            ]
+            matching_runs = (
+                [r for r in runs if r.run_date == rd]
+                if not run_dates
+                else [
+                    r
+                    for r in (
+                        await self._screening_run_repo.list_runs(
+                            status="COMPLETED", limit=1000, offset=0
+                        )
+                    )[0]
+                    if r.run_date == rd and r.strategy_id == (strategy.id or 0)
+                ]
+            )
             if matching_runs:
                 latest_run = matching_runs[0]
                 rankings, _ = await self._screening_run_repo.get_rankings(
                     latest_run.id or 0, limit=10000, offset=0
                 )
                 if rankings:
-                    base_results.append({
-                        "avg_momentum_score": sum(
-                            (r.momentum_score for r in rankings), Decimal("0")
-                        ) / len(rankings),
-                        "avg_buy_setup_score": sum(
-                            (r.buy_setup_score for r in rankings), Decimal("0")
-                        ) / len(rankings),
-                        "total_evaluated": len(rankings),
-                        "total_passed": sum(
-                            1 for r in rankings if r.momentum_score > 0
-                        ),
-                    })
+                    base_results.append(
+                        {
+                            "avg_momentum_score": sum(
+                                (r.momentum_score for r in rankings), Decimal("0")
+                            )
+                            / len(rankings),
+                            "avg_buy_setup_score": sum(
+                                (r.buy_setup_score for r in rankings), Decimal("0")
+                            )
+                            / len(rankings),
+                            "total_evaluated": len(rankings),
+                            "total_passed": sum(1 for r in rankings if r.momentum_score > 0),
+                        }
+                    )
 
         # Process each variant (using existing data since we can't modify configs)
-        variant_result_list: list[dict[str, Any]] = []
+        variant_result_list: list[ParameterExperimentReport] = []
         for variant in variants:
             var_results = base_results  # Use base as proxy for variant
             report = analyze_parameter_experiment(
@@ -895,13 +924,17 @@ class ParameterResearchUseCase:
             variant_result_list.append(report)
 
         # Return the first variant report (simplified)
-        return variant_result_list[0] if variant_result_list else ParameterExperimentReport(
-            experiment_name=experiment_name,
-            base_strategy_name=base_strategy_name,
-            base_result=None,  # type: ignore
-            variants=(),
-            best_variant=None,
-            best_improvement=Decimal("0"),
-            parameter_sensitivity={},
-            summary="No variants specified.",
+        return (
+            variant_result_list[0]
+            if variant_result_list
+            else ParameterExperimentReport(
+                experiment_name=experiment_name,
+                base_strategy_name=base_strategy_name,
+                base_result=None,  # type: ignore
+                variants=(),
+                best_variant=None,
+                best_improvement=Decimal("0"),
+                parameter_sensitivity={},
+                summary="No variants specified.",
+            )
         )

@@ -8,11 +8,11 @@ experimentation.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date
 from decimal import Decimal
 from typing import Any
-import hashlib
-import json
 
 from structlog import get_logger
 
@@ -21,9 +21,7 @@ from momentum25.domain.research.models import (
     ExperimentReport,
     ExperimentResult,
     ParameterOverride,
-    PortfolioPerformance,
 )
-from momentum25.domain.research.services import apply_parameter_overrides, compute_performance
 
 _logger = get_logger("experiment_framework")
 
@@ -66,13 +64,9 @@ class ExperimentUseCase:
         Returns:
             An ExperimentReport comparing base vs variants.
         """
-        base_strategy = await self._strategy_repo.get_active(
-            experiment_config.base_strategy_name
-        )
+        base_strategy = await self._strategy_repo.get_active(experiment_config.base_strategy_name)
         if base_strategy is None:
-            raise ValueError(
-                f"Base strategy not found: {experiment_config.base_strategy_name}"
-            )
+            raise ValueError(f"Base strategy not found: {experiment_config.base_strategy_name}")
 
         # Run base strategy on all dates
         base_results = await self._run_on_dates(
@@ -98,8 +92,12 @@ class ExperimentUseCase:
         best_improvement = Decimal("0")
 
         for variant in variants:
-            if variant.avg_momentum_score > (base_results[0].avg_momentum_score if base_results else Decimal("0")):
-                improvement = variant.avg_momentum_score - (base_results[0].avg_momentum_score if base_results else Decimal("0"))
+            if variant.avg_momentum_score > (
+                base_results[0].avg_momentum_score if base_results else Decimal("0")
+            ):
+                improvement = variant.avg_momentum_score - (
+                    base_results[0].avg_momentum_score if base_results else Decimal("0")
+                )
                 if best_variant is None or improvement > best_improvement:
                     best_variant = variant.variant_name
                     best_improvement = improvement
@@ -124,6 +122,7 @@ class ExperimentUseCase:
     ) -> list[ExperimentResult]:
         """Run the strategy on multiple dates and aggregate results."""
         import time
+
         suffix = f":exp_{int(time.time())}"
         results = []
         for run_date in run_dates:
@@ -133,8 +132,6 @@ class ExperimentUseCase:
                 run_suffix=suffix,
             )
 
-            # Get run to compute averages
-            run_obj = await self._screening_run_repo.get(result["run_id"])
             rankings, _ = await self._screening_run_repo.get_rankings(
                 result["run_id"], limit=10000, offset=0
             )
@@ -142,25 +139,27 @@ class ExperimentUseCase:
             avg_momentum = Decimal("0")
             avg_buy_setup = Decimal("0")
             if rankings:
-                avg_momentum = sum(
-                    (r.momentum_score for r in rankings), Decimal("0")
-                ) / len(rankings)
-                avg_buy_setup = sum(
-                    (r.buy_setup_score for r in rankings), Decimal("0")
-                ) / len(rankings)
+                avg_momentum = sum((r.momentum_score for r in rankings), Decimal("0")) / len(
+                    rankings
+                )
+                avg_buy_setup = sum((r.buy_setup_score for r in rankings), Decimal("0")) / len(
+                    rankings
+                )
 
-            results.append(ExperimentResult(
-                experiment_name=strategy_name,
-                variant_name="base",
-                overrides=(),
-                config_hash="",
-                run_id=result["run_id"],
-                run_date=run_date,
-                total_evaluated=result["total_evaluated"],
-                total_passed=result["total_passed"],
-                avg_momentum_score=avg_momentum,
-                avg_buy_setup_score=avg_buy_setup,
-            ))
+            results.append(
+                ExperimentResult(
+                    experiment_name=strategy_name,
+                    variant_name="base",
+                    overrides=(),
+                    config_hash="",
+                    run_id=result["run_id"],
+                    run_date=run_date,
+                    total_evaluated=result["total_evaluated"],
+                    total_passed=result["total_passed"],
+                    avg_momentum_score=avg_momentum,
+                    avg_buy_setup_score=avg_buy_setup,
+                )
+            )
 
         return results
 
@@ -178,6 +177,7 @@ class ExperimentUseCase:
         # we use the base strategy and note the intended overrides.
 
         import time
+
         v_suffix = f":var_{variant_name}_{int(time.time())}"
         results = []
         for run_date in run_dates:
@@ -194,38 +194,44 @@ class ExperimentUseCase:
             avg_momentum = Decimal("0")
             avg_buy_setup = Decimal("0")
             if rankings:
-                avg_momentum = sum(
-                    (r.momentum_score for r in rankings), Decimal("0")
-                ) / len(rankings)
-                avg_buy_setup = sum(
-                    (r.buy_setup_score for r in rankings), Decimal("0")
-                ) / len(rankings)
+                avg_momentum = sum((r.momentum_score for r in rankings), Decimal("0")) / len(
+                    rankings
+                )
+                avg_buy_setup = sum((r.buy_setup_score for r in rankings), Decimal("0")) / len(
+                    rankings
+                )
 
             # Compute a derived config hash from the overrides
             override_dicts = []
             for override in overrides:
-                override_dicts.append({
-                    "engine_id": override.engine_id,
-                    "rule_id": override.rule_id,
-                    "parameter_path": override.parameter_path,
-                    "new_value": str(override.new_value) if override.new_value is not None else None,
-                })
+                override_dicts.append(
+                    {
+                        "engine_id": override.engine_id,
+                        "rule_id": override.rule_id,
+                        "parameter_path": override.parameter_path,
+                        "new_value": str(override.new_value)
+                        if override.new_value is not None
+                        else None,
+                    }
+                )
             config_hash = hashlib.sha256(
                 json.dumps(override_dicts, sort_keys=True).encode()
             ).hexdigest()[:16]
 
-            results.append(ExperimentResult(
-                experiment_name=variant_name,
-                variant_name=variant_name,
-                overrides=overrides,
-                config_hash=config_hash,
-                run_id=result["run_id"],
-                run_date=run_date,
-                total_evaluated=result["total_evaluated"],
-                total_passed=result["total_passed"],
-                avg_momentum_score=avg_momentum,
-                avg_buy_setup_score=avg_buy_setup,
-            ))
+            results.append(
+                ExperimentResult(
+                    experiment_name=variant_name,
+                    variant_name=variant_name,
+                    overrides=overrides,
+                    config_hash=config_hash,
+                    run_id=result["run_id"],
+                    run_date=run_date,
+                    total_evaluated=result["total_evaluated"],
+                    total_passed=result["total_passed"],
+                    avg_momentum_score=avg_momentum,
+                    avg_buy_setup_score=avg_buy_setup,
+                )
+            )
 
         return results
 
@@ -246,9 +252,9 @@ class ExperimentUseCase:
         ]
 
         if base_results:
-            avg_base = sum(
-                (r.avg_momentum_score for r in base_results), Decimal("0")
-            ) / len(base_results)
+            avg_base = sum((r.avg_momentum_score for r in base_results), Decimal("0")) / len(
+                base_results
+            )
             parts.append(f"Base Avg Momentum Score: {avg_base:.4f}")
 
         for variant in variants:

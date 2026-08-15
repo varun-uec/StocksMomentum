@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl
 from momentum25.domain.value_objects.results import RuleResult, StockScore
+
 # Gate composition is per-strategy and is bound at construction; these are the
 # production strategy's trend-template gate rules.
 _TT_GATES = frozenset(

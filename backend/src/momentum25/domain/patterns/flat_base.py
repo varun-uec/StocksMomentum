@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from momentum25.domain.patterns.base import PatternDetector, PatternResult
+from momentum25.domain.patterns.base import PatternResult
 
 
 class FlatBaseDetector:

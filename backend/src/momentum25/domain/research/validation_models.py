@@ -12,7 +12,6 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Measurability — "not measured" is not the same claim as "measured zero"
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -215,9 +214,10 @@ class RuleEffectiveness:
     fail_count: int
     pass_rate: Decimal
 
-    # Contribution to outcomes
-    contribution_to_successful: Decimal  # avg contribution when trade was successful
-    contribution_to_unsuccessful: Decimal  # avg contribution when trade was unsuccessful
+    # Contribution to outcomes. ``None`` when the rule was never evaluated on
+    # that side of the outcome split -- an absent average, not an average of 0.
+    contribution_to_successful: Decimal | None  # avg contribution when successful
+    contribution_to_unsuccessful: Decimal | None  # avg contribution when unsuccessful
     # ``None`` when no matured forward return exists for the (run, security)
     # pairs this rule was evaluated on. Never a momentum score standing in for
     # a return -- that conflation was the 2026-08-09 audit's finding 1.2.4.
