@@ -69,6 +69,15 @@ class OHLCVRepository(Protocol):
         """Insert or update bars; return the number written."""
         ...
 
+    async def upsert_bars_batch(self, bars_by_security: dict[int, list[OHLCVBar]]) -> int:
+        """Insert or update bars for many securities in one statement; return rows written.
+
+        Same conflict semantics as :meth:`upsert_bars`. On the port because
+        whole-session ingestion writes thousands of securities at once and one
+        round trip per security is not a viable shape for that caller.
+        """
+        ...
+
     async def get_series(self, security_id: int, lookback_days: int, as_of: date) -> OHLCVSeries:
         """Return a price series up to ``as_of`` covering ``lookback_days``."""
         ...

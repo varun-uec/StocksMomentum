@@ -55,6 +55,11 @@ const Icons = {
       <path d="M10 2.5l2.35 4.76 5.25.76-3.8 3.7.9 5.23L10 14.5l-4.7 2.45.9-5.23-3.8-3.7 5.25-.76L10 2.5z" />
     </svg>
   ),
+  data: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <path d="M10 2c3.87 0 7 1.12 7 2.5S13.87 7 10 7 3 5.88 3 4.5 6.13 2 10 2zM3 7.2C4.4 8.3 7.05 9 10 9s5.6-.7 7-1.8V10c0 1.38-3.13 2.5-7 2.5S3 11.38 3 10V7.2zm0 5.5c1.4 1.1 4.05 1.8 7 1.8s5.6-.7 7-1.8v2.8c0 1.38-3.13 2.5-7 2.5s-7-1.12-7-2.5v-2.8z" />
+    </svg>
+  ),
   menu: (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path fillRule="evenodd" clipRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
@@ -97,6 +102,7 @@ const NAV_ITEMS = [
   { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
   { href: '/market', label: 'Market', icon: Icons.market },
   { href: '/learn', label: 'Learn', icon: Icons.learn },
+  { href: '/data', label: 'Data', icon: Icons.data },
 ];
 
 const RESEARCH_TOOLS = [

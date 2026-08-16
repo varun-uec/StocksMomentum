@@ -15,6 +15,8 @@ import type {
   RunDTO,
   StrategySummary,
   DataFreshnessDTO,
+  Exchange,
+  RefreshMarketDataResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000/api/v1';
@@ -101,6 +103,22 @@ export async function executeScreening(
   return fetchJson(`${API_BASE}/runs/execute`, {
     method: 'POST',
     body: JSON.stringify({ strategy, force, background: true }),
+  });
+}
+
+// ── Market data ───────────────────────────────────────────────────────
+
+/**
+ * Ingest the latest completed trading session. Synchronous: the response is
+ * the finished summary, so there is nothing to poll. It does not start a
+ * screening run.
+ */
+export async function refreshLatestMarketData(
+  exchanges: Exchange[]
+): Promise<RefreshMarketDataResponse> {
+  return fetchJson(`${API_BASE}/market-data/refresh`, {
+    method: 'POST',
+    body: JSON.stringify({ exchanges }),
   });
 }
 

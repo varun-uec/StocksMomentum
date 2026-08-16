@@ -980,3 +980,29 @@ export interface ChartPatternAnalysis {
   patterns: DetectedPattern[];
   notes: string[];
 }
+
+// ── Manual market-data refresh ─────────────────────────────────────────
+
+export type Exchange = 'NSE' | 'BSE';
+
+export interface ExchangeRefreshResult {
+  exchange: string;
+  bars_fetched: number;
+  securities_matched: number;
+  securities_missing: number;
+  securities_unmapped: number;
+  rows_written: number;
+  provider_error: string | null;
+  warnings: string[];
+}
+
+export interface RefreshMarketDataRequest {
+  exchanges: Exchange[];
+}
+
+export interface RefreshMarketDataResponse {
+  overall_status: string;
+  target_date: string;
+  duration_seconds: number;
+  results: ExchangeRefreshResult[];
+}

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from momentum25.application.use_cases.chart_patterns import DetectChartPatterns
 from momentum25.application.use_cases.elliott_wave import GetElliottWaveAnalysis
 from momentum25.application.use_cases.market_context import GetMarketContext
+from momentum25.application.use_cases.market_data import RefreshLatestMarketData
 from momentum25.application.use_cases.rankings import GetRankings, GetStockExplanation
 from momentum25.application.use_cases.research.refresh_corporate_actions import (
     RefreshCorporateActions,
@@ -50,6 +51,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
@@ -403,6 +405,30 @@ async def get_refresh_corporate_actions() -> AsyncIterator[RefreshCorporateActio
             security_repo=SqlSecurityRepository(session),
             corporate_action_repo=SqlCorporateActionRepository(session),
             ohlcv_repo=SqlOHLCVRepository(session),
+        )
+
+
+async def get_refresh_latest_market_data() -> AsyncIterator[RefreshLatestMarketData]:
+    """Provide a RefreshLatestMarketData use-case instance.
+
+    Both bhavcopy providers are wired so one request can refresh either
+    exchange; the caller chooses the scope in the request body.
+    """
+    async with _shared_session() as session:
+        import httpx
+
+        from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
+        from momentum25.infrastructure.providers.bse_bhavcopy import BSEBhavcopyProvider
+
+        yield RefreshLatestMarketData(
+            providers={
+                "NSE": BhavcopyProvider(httpx.AsyncClient()),
+                "BSE": BSEBhavcopyProvider(httpx.AsyncClient()),
+            },
+            security_repo=SqlSecurityRepository(session),
+            ohlcv_repo=SqlOHLCVRepository(session),
+            calendar=get_nse_trading_calendar(),
+            clock=SystemClock(),
         )
 
 
