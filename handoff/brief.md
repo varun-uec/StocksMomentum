@@ -12,13 +12,12 @@ this brief defines our own version.)
 
 ## 1. Universe
 
-- [FILL IN: index/exchange, e.g. "NSE, Nifty 500 constituents as of each
-  rebalance date"]
-- Minimum criteria to be eligible at all: [FILL IN — e.g. min market cap,
-  min average daily traded value/liquidity, min listing history e.g. 12+
-  months of price data]
-- Exclude: [FILL IN — e.g. stocks in trade-to-trade segment, stocks under
-  surveillance/ASM, newly listed IPOs with <12 months history]
+- NSE, Nifty 500 constituents as of each rebalance date.
+- Minimum criteria to be eligible: at least 12 months of adjusted-close
+  price history as of the rebalance decision date.
+- Exclude: stocks in the trade-to-trade (T2T) segment, stocks under
+  surveillance/ASM (Additional Surveillance Measure) as of the rebalance
+  date, and newly listed IPOs with less than 12 months of price history.
 
 ## 2. Momentum score
 
@@ -28,18 +27,15 @@ For each stock, as of the last trading day before the rebalance date:
 - **6-month return**: price(t) / price(t - 6 months) - 1
 - **12-month return**: price(t) / price(t - 12 months) - 1
 
-Skip-month: [FILL IN — decide whether to skip the most recent 1 week/month
-in each lookback to avoid short-term reversal contamination, as academic
-12-2 momentum does. If undecided, default assumption for this brief is
-**no skip-month** — flag as a judgment call if Builder adds one unprompted.]
+Skip-month: **none**. All three lookbacks run through the decision date `t`
+with no skip. Any skip-month logic added unprompted is a brief violation,
+not a judgment call.
 
 **Composite score** = weighted blend of the three returns:
 ```
 score = w3 * return_3m + w6 * return_6m + w12 * return_12m
 ```
-Default weights: [FILL IN — e.g. equal weight w3=w6=w12=1/3, or a scheme
-that favors 6M/12M with 3M as a smaller tilt/filter. Weekend Investing's own
-weights are not public; pick and document your own here.]
+Weights: **equal weight**, `w3 = w6 = w12 = 1/3`.
 
 All returns should be computed on **adjusted close prices** (adjusted for
 splits, bonuses, and dividends) — not raw close.
@@ -47,46 +43,51 @@ splits, bonuses, and dividends) — not raw close.
 ## 3. Ranking and selection
 
 - Rank all eligible stocks by composite score, descending.
-- Portfolio size: [FILL IN — e.g. top 30 stocks]
-- Tie-break rule: [FILL IN — e.g. higher 12M return wins ties; must be
-  deterministic]
+- Portfolio size: **top 30 stocks** (N = 30).
+- Tie-break rule: higher 12M return wins ties. If still tied, higher 6M
+  return, then higher 3M return. This must resolve deterministically —
+  no residual tie may be broken arbitrarily (e.g. by insertion order).
 
 ## 4. Weighting within portfolio
 
-[FILL IN — equal weight across all holdings, or score-weighted, or
-volatility-scaled. Equal weight is the simplest default if undecided.]
+Equal weight across all holdings (1/30 of portfolio value each, when the
+portfolio is full).
 
 ## 5. Rebalance mechanics
 
-- Frequency: **monthly**, on [FILL IN — e.g. first trading day of the month,
-  or a fixed calendar date]
-- Decision point: score computed using prices through close of [FILL IN —
-  e.g. last trading day of prior month]
-- Execution: trades placed at [FILL IN — e.g. next day's open, or same-day
-  close]. This must be explicit — "decide at close t, fill at close t" is a
-  look-ahead bug; "decide at close t, fill at open/close t+1" is not.
+- Frequency: **monthly**, on the first trading day of each calendar month.
+- Decision point: score computed using adjusted-close prices through close
+  of the last trading day of the prior month.
+- Execution: trades placed at the **next trading day's open** — i.e. decide
+  at close of the last trading day of month M-1, fill at open of the first
+  trading day of month M. "Decide at close t, fill at close t" is a
+  look-ahead bug under this brief.
 
 ## 6. Exit / re-entry rule ("survival of the fittest")
 
-- A stock already in the portfolio is **removed** if: [FILL IN — e.g. it
-  drops out of the top N*1.5 by rank, or its composite score turns negative]
-- A stock outside the portfolio is **added** if: [FILL IN — e.g. it ranks in
-  the top N at rebalance]
-- This asymmetric in/out band (buffer/hysteresis) is intentional — it's what
-  keeps monthly turnover low. If Builder implements a hard cutoff with no
-  buffer, that's a brief violation, not a judgment call, once this section is
-  filled in.
+- Buffer multiplier: **1.5x** (N * 1.5 = 45).
+- A stock already in the portfolio is **removed** if its rank falls outside
+  the top 45 (N*1.5) at a rebalance.
+- A stock outside the portfolio is **added** if it ranks in the top 30 (N)
+  at a rebalance and a slot is free (portfolio below 30 holdings, or an
+  existing holding was removed this rebalance).
+- This asymmetric in/out band is intentional — it keeps monthly turnover
+  low. A hard cutoff with no buffer (remove anything outside top 30) is a
+  **brief violation**, not a judgment call.
 
 ## 7. Transaction costs / slippage (for backtest)
 
-- Cost per trade: [FILL IN — e.g. X bps brokerage + Y bps assumed slippage]
-- Applied to: [FILL IN — every buy and sell at rebalance, on the traded
-  notional]
+- Cost per trade: **30 bps** total (brokerage + assumed slippage combined),
+  applied as a single flat rate — no separate breakdown between the two
+  components is required.
+- Applied to: every buy and every sell at rebalance, on the traded notional
+  (price × quantity traded, not portfolio NAV).
 
 ## 8. Benchmark
 
-- [FILL IN — e.g. Nifty 500 TRI, or Nifty Smallcap 250 TRI]
-- Used for: relative performance reporting, not for stock selection.
+- **Nifty 500 TRI** (Total Return Index — includes dividends, matches the
+  Nifty 500 universe used for stock selection).
+- Used for: relative performance reporting only, never for stock selection.
 
 ## 9. Look-ahead — explicit statement
 
@@ -97,7 +98,6 @@ information. This is the single most important rule in this brief and the
 basis for checklist items 3, 7, 8, and 9 in `reviewer-handoff.md`.
 
 ---
-**Status: DRAFT.** Sections marked [FILL IN] must be completed before round 1
-starts — an incomplete brief means Reviewer has no fixed point to check
-against, which is exactly the failure mode that caused the "wrong model
-provider for two rounds" escalation in the original project.
+**Status: FINAL.** All sections completed by human decision, 2026-08-17, in
+response to the round-1 escalation (`handoff/escalations/round-0.md`). This
+is now the fixed point for the loop.
