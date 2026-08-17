@@ -23,6 +23,7 @@ from momentum25.infrastructure.persistence.repositories.walk_forward_market_data
     BENCHMARK_LABEL,
     SqlBenchmarkProvider,
     SqlPriceHistoryProvider,
+    StubAllActiveSecuritiesEligibilityProvider,
 )
 
 
@@ -157,3 +158,41 @@ async def test_benchmark_provider_carries_price_index_label(
     assert provider.label == BENCHMARK_LABEL == "Nifty 500 Price Index (not TRI)"
     assert provider.level_on_or_before(date(2024, 1, 8), date(2024, 1, 8)) == Decimal("110")
     assert provider.level_on_or_before(date(2024, 1, 3), date(2024, 1, 3)) == Decimal("100")
+
+
+@pytest.mark.asyncio
+async def test_stub_eligibility_provider_excludes_not_yet_listed_securities(
+    db_session: AsyncSession,
+) -> None:
+    """A security listed after the decision date must not appear in that date's facts."""
+    listed_sid = await _seed_security(db_session, "DDD")
+    (await db_session.get(SecurityModel, listed_sid)).listing_date = date(2020, 1, 1)
+    unlisted_sid = await _seed_security(db_session, "EEE")
+    (await db_session.get(SecurityModel, unlisted_sid)).listing_date = date(2025, 1, 1)
+    await db_session.commit()
+
+    provider = await StubAllActiveSecuritiesEligibilityProvider.load(db_session)
+    facts = {f.security_id: f for f in provider.facts_as_of(date(2024, 6, 1))}
+
+    assert listed_sid in facts
+    assert unlisted_sid not in facts
+    fact = facts[listed_sid]
+    assert fact.in_nifty_500 is True
+    assert fact.is_t2t is False
+    assert fact.is_under_surveillance is False
+    assert fact.listing_days_as_of_decision_date == (date(2024, 6, 1) - date(2020, 1, 1)).days
+
+
+@pytest.mark.asyncio
+async def test_stub_eligibility_provider_excludes_inactive_securities(
+    db_session: AsyncSession,
+) -> None:
+    sid = await _seed_security(db_session, "FFF")
+    security = await db_session.get(SecurityModel, sid)
+    security.listing_date = date(2020, 1, 1)
+    security.is_active = False
+    await db_session.commit()
+
+    provider = await StubAllActiveSecuritiesEligibilityProvider.load(db_session)
+
+    assert all(f.security_id != sid for f in provider.facts_as_of(date(2024, 6, 1)))

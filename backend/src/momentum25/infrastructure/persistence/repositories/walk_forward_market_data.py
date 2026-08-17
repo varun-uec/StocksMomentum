@@ -36,10 +36,12 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.domain.backtest.eligibility import EligibilityFacts
 from momentum25.domain.ports.walk_forward import PricePoint
 from momentum25.infrastructure.persistence.models import (
     BenchmarkIndexDailyModel,
     OHLCVDailyModel,
+    SecurityModel,
 )
 
 # brief-addendum-approximations.md §"Benchmark provider": verified against
@@ -149,3 +151,63 @@ class SqlBenchmarkProvider:
         if idx < 0:
             return None
         return self._levels[idx]
+
+
+ELIGIBILITY_STUB_WARNING = (
+    "STUB eligibility provider: every active NSE security is treated as a "
+    "Nifty 500 constituent with clean T2T/ASM status. This is NOT real Nifty "
+    "500 membership or surveillance data -- no such adapter exists in this "
+    "codebase (see this module's docstring). Any run using this provider is "
+    "not a Nifty 500 backtest and does not close checklist item 13 or the "
+    "EligibilityFactsProvider gap; it exists only to give the walk-forward "
+    "runner and its report a real, non-test execution path."
+)
+
+
+class StubAllActiveSecuritiesEligibilityProvider:
+    """Known-gap stand-in for ``EligibilityFactsProvider`` -- see ``ELIGIBILITY_STUB_WARNING``.
+
+    Treats every active NSE row in ``securities`` as an eligible-by-membership,
+    surveillance-clean constituent. This does not approximate Nifty 500
+    membership (there is no current *or* historical Nifty 500 constituent
+    list anywhere in this database to apply retroactively, unlike the
+    benchmark/universe approximation ``brief-addendum-approximations.md``
+    describes) -- it is a wider, explicitly-labeled stand-in so real callers
+    (a CLI command, a script) have something to pass the runner besides a
+    hand-built fixture. Only ``listing_days_as_of_decision_date`` is computed
+    from real data (``securities.listing_date``); ``in_nifty_500``,
+    ``is_t2t``, and ``is_under_surveillance`` are not backed by any source.
+    """
+
+    def __init__(self, listings: list[tuple[int, date]]) -> None:
+        """Bind the in-memory (security_id, listing_date) pairs for active NSE names."""
+        self._listings = listings
+
+    @classmethod
+    async def load(cls, session: AsyncSession) -> StubAllActiveSecuritiesEligibilityProvider:
+        """Load every active NSE security's listing date in one query."""
+        result = await session.execute(
+            select(SecurityModel.id, SecurityModel.listing_date).where(
+                SecurityModel.exchange == "NSE",
+                SecurityModel.is_active.is_(True),
+                SecurityModel.listing_date.is_not(None),
+            )
+        )
+        return cls([(sid, listed) for sid, listed in result.all()])
+
+    def facts_as_of(self, decision_date: date) -> list[EligibilityFacts]:
+        """Return stub facts for every listed-by-``decision_date`` active security."""
+        facts = []
+        for security_id, listed in self._listings:
+            if listed > decision_date:
+                continue
+            facts.append(
+                EligibilityFacts(
+                    security_id=security_id,
+                    listing_days_as_of_decision_date=(decision_date - listed).days,
+                    is_t2t=False,
+                    is_under_surveillance=False,
+                    in_nifty_500=True,
+                )
+            )
+        return facts
