@@ -82,6 +82,47 @@ or a TRI-licensed feed) when any of the following becomes true:
 
 Until then, the approximation stands, documented, not hidden.
 
+## Real data source available — check before assuming the approximation applies
+
+A Postgres instance (`momentum25-db-1`, reachable via `M25_DATABASE_URL` /
+`.env`) already holds production data. Query it before building or reusing
+any fallback/synthetic provider:
+
+- `corporate_actions` (25,864 rows, keyed by `security_id`, `ex_date`,
+  `type`, `ratio`) — real split/bonus/dividend history. Use this, not a
+  documented gap, for adjusted-close correctness (checklist item 9).
+- `ohlcv_daily` (`adj_close`, `adj_factor` columns, coverage 2019-10 to
+  2026-08) — real daily prices, already adjusted.
+- `securities` has `delisting_date` and `last_trade_date` per security —
+  usable to test survivorship handling (checklist item 8) directly.
+- `survivorship_gap_event` (9,902 rows) — real detected trading gaps per
+  security, useful for hand-checking delisting/suspension behavior.
+- `universe_membership` (438,901 rows, keyed by `run_id` -> `screening_runs`)
+  — real point-in-time eligibility per historical `screening_runs.run_date`
+  (135 completed runs, 2020-11-27 to 2026-08-09). This is real point-in-time
+  universe data, not today's constituent list applied retroactively — check
+  whether it gives usable coverage before defaulting to the retroactive
+  approximation. If `historical_universe` (currently 0 rows — schema exists,
+  unpopulated) is the intended point-in-time universe table per the
+  architecture, check whether it should be backfilled from
+  `universe_membership`/`screening_runs` rather than left empty.
+- `benchmark_index_daily` has `index_code='NIFTY500'`, 2,858 rows,
+  2015-01-01 to 2026-08-07. **Verify from the data whether this is price
+  index or TRI before labeling it** — do not assume the "price index, not
+  TRI" approximation still holds; confirm by checking the source/vendor
+  metadata or by comparing computed returns against known Nifty 500 TRI
+  reference values if available. Only apply the "Price Index (not TRI)"
+  label from this addendum if verification confirms it's actually price
+  index.
+
+If real data closes one or both gaps this addendum describes, update this
+file to say so and drop the approximation from output labels — don't keep
+labeling something as approximate once real data supersedes it. If real data
+only partially closes a gap (e.g. `universe_membership` covers 2020-11
+onward but the backtest window starts earlier), state the exact boundary:
+real point-in-time data before/after date X, retroactive approximation
+outside that range.
+
 ## What Reviewer checks this round
 
 Reviewer does not re-litigate whether the approximation is acceptable — that
