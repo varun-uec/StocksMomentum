@@ -1,145 +1,173 @@
-# Reviewer Findings — round 1
+# Reviewer Findings — Loop 2, Round 1
 
-Verified against `handoff/brief.md` (FINAL, 2026-08-17) and
-`handoff/builder-notes/round-1.md` as a claim, not a summary.
+Verified against `handoff/brief.md` + `handoff/brief-addendum-loop2.md` (both
+FINAL) and `handoff/builder-notes/round-1.md` (Loop 2) as a claim to verify,
+not a summary to relay. This overwrites the stale Loop-1 content that
+previously lived at this same file path (`git log` confirms the current
+`builder-notes/round-1.md` is the walk-forward-engine note, commit `5f93e89`,
+not Loop 1's signal/ranking note).
+
+## What exists this round
+
+New: `domain/ports/walk_forward.py` (3 ports), `application/use_cases/walk_forward.py`
+(`WalkForwardRunner`), `tests/unit/test_walk_forward.py` (7 tests, in-memory
+fakes only). No real infrastructure adapter, no interface-layer caller.
+Confirmed by `grep -rl "walk_forward" src/momentum25/infrastructure
+src/momentum25/interface` → empty, matching Builder's own claim.
 
 ## Checklist results
 
-**Item 1 — Formula matches brief.** [RUN]
-Ran an independent hand-calculation not present in Builder's test file:
-`price_t=200, 3m ago=180, 6m ago=150, 12m ago=100` → r3=0.111111..., r6=0.333333...,
-r12=1.0, composite=0.481481... Computed expected values in a separate Python
-one-liner from raw arithmetic, compared to `compute_momentum_signal` output.
-Expected: exact match. Observed: exact match (Decimal equality).
-No finding.
-
-**Item 2 — Skip-month.** Brief §2 explicitly says "Skip-month: none." Read
-`momentum_signal.py`: all three returns are measured against the same
-`price_t`, no skip parameter exists. Confirmed by the signature —
-`compute_momentum_signal(security_id, price_t, price_3m_ago, price_6m_ago,
-price_12m_ago)`, no gap/skip offset anywhere. No finding.
-
-**Item 3 — Look-ahead in the signal.** [RUN]
-`inspect.signature(compute_momentum_signal)` shows the function accepts only
-four scalar Decimal prices, no date, no series, no clock. There is no channel
-through which post-decision-date data could enter — this isn't a
-skip-injection test against a series-consuming function, it's a pure
-4-scalar-in/1-value-out function. Confirmed no I/O and no hidden state by
-reading the module. Ran it twice with identical inputs, got identical output
-(determinism). No finding.
-
-**Item 4 — Universe construction.** Not independently runnable this round.
-`eligibility.py` is a pure predicate over `EligibilityFacts`, not wired to
-any universe-membership data source. Verified Builder's claim by grepping
-`src/` for T2T/ASM/surveillance data sources: zero matches outside the new
-domain module. No walk-forward/application-layer caller exists yet
-(`grep -rl "domain.backtest"` outside `domain/backtest/` → no results), so
-there is no injectable pipeline to register a synthetic instrument against.
-Classification: not a finding against this round's code — see scope note
-below.
-
-**Item 5 — NaN / missing-data behavior.** [RUN]
-`compute_return(Decimal('nan'), Decimal(100))` → raises
-`decimal.InvalidOperation` from the `price_t <= 0` comparison itself (Decimal
-NaN is unordered, so `<=` raises rather than evaluating False). Effect: NaN
-input crashes rather than silently producing a NaN score or defaulting to 0 —
-this satisfies "fail closed," but via an uncaught exception type
-(`InvalidOperation`) rather than the module's own `ValueError`. Since no
-caller/orchestration exists yet to observe how this exception propagates
-(item 4's scope gap applies here too), I can't verify end-to-end that a
-NaN-poisoned ticker gets excluded rather than crashing the whole batch.
-Classification: **Judgment call** (logged, not disputed) — fail-closed intent
-is met at the unit the brief can be checked against today; whether it stays
-fail-closed at the batch level is undecided until orchestration exists.
-
-**Item 6 — Ranking / tie-break.** [RUN]
-Constructed a 3-way synthetic tie independently (not just re-running
-Builder's test): signals with composite scores `0.10, 0.10, 0.10`, 12M
-returns `0.30, 0.30, 0.10`, 6M returns `0.10, 0.20, 0.90`. Brief §3: tie-break
-by 12M desc, then 6M, then 3M. Expected order: id=2 (12M=0.30,6M=0.20) rank 1,
-id=1 (12M=0.30,6M=0.10) rank 2, id=3 (12M=0.10) rank 3. Ran
-`rank_signals([a,b,c])` — observed exactly this order. Matches Builder's own
-test (re-verified independently, not just re-read). No finding.
-
-**Items 7–10, 13, 14 — Backtest integrity (look-ahead at rebalance level,
-survivorship, corporate actions, fill timing, forked-safety-net,
-benchmark/attribution).** Not executable. No walk-forward loop, no historical
-price/universe data provider, no benchmark series exists in this round's
-diff — confirmed by grep, matches Builder's own scope note. There is nothing
-to falsify yet: no rebalance dates are actually run, no historical universe
-snapshot is pulled, no corporate action is applied, no trade fill is logged.
-Classification: **Judgment call**, not "Reviewer overreach" and not
-"Brief violation" — see Scope discussion below. Accepted.
-
-**Item 11 — Transaction costs.** [RUN]
-Independent scenario not in Builder's tests: move `{1: 100}` → equal-weight
-`{1, 3}` on portfolio value 300. Target each = 150. Trade for 1: +50 (buy).
-Trade for 3: +150 (buy). Expected cost = (50+150) * 0.003 = 0.60.
-Ran `plan_equal_weight_rebalance(frozenset({1,3}), {1: Decimal(100)},
-Decimal(300))` → `total_cost == Decimal('0.6')`. Matches hand-calc. No
+**§0 — NSE reachability claim.** [RUN]
+Re-ran two of Builder's exact commands independently, fresh: `curl -A
+Mozilla https://www.nseindia.com` → **403** (matches claim). `curl -A Mozilla
+https://archives.nseindia.com/content/historical/EQUITIES/2023/JAN/cm02JAN2023bhav.csv.zip`
+→ **200** (matches claim). Builder's reachability finding reproduces. No
 finding.
+
+**Item 4 — Universe construction (real data).** [RUN attempted]
+`grep -rl "EligibilityFactsProvider\|BenchmarkProvider\|PriceHistoryProvider"
+src/momentum25/infrastructure` → empty. No real point-in-time membership
+adapter exists; only the `Protocol` and test fakes. Cannot register a
+synthetic instrument against a real pipeline this round — same class of gap
+as Loop 1 item 4, one layer up. Classification: **Judgment call, accepted**
+— this is the documented, human-decision-blocked gap from addendum §0/§1
+(no free NSE endpoint for point-in-time Nifty 500 membership), not a silent
+skip. Consistent with CLAUDE.md "Don't Guess."
+
+**Item 4b — Universe construction (fake/synthetic).** [RUN]
+Independently built a *different* survivorship scenario than Builder's test
+(different securities, different cutoff, different growth rates, using
+`DatedUniverse`-equivalent logic I wrote from scratch, not copy-pasted).
+Also added a third case: an "IPO-like" security with price history starting
+only 2023-01-01 (no 12m-ago price), eligibility facts otherwise marking it
+eligible (400 listing days). Expected: dropped from every selection because
+`_score` requires all 4 prices. Ran `runner.run(...)` → observed `selected`
+never contains that security across 3 rebalances, `eligible_count=2` every
+time (eligibility predicate doesn't know about missing prices, only `_score`
+catches it) — confirms fail-closed happens at the price layer, not silently
+via the eligibility predicate. No finding; this also resolves the Loop-1
+"batch-level NaN/missing-data" judgment call that was previously undecided
+pending orchestration — orchestration now exists and demonstrates fail-closed
+end-to-end.
+
+**Item 5 — NaN / missing-data, batch level.** [RUN]
+See item 4b above — same experiment answers this. A security missing any of
+its 4 required prices is silently excluded from `signals`, never crashes the
+batch, never appears in `selected`. No finding. **Previously-open Loop-1
+judgment call is now resolved, not just carried forward** — recording this
+explicitly since the mechanical trigger "a finding that was marked fixed
+recurs" only fires on regressions, and this is the inverse (a previously-open
+item becoming closed); noting it so it isn't miscounted as new.
+
+**Item 7 — Look-ahead, portfolio level.** [RUN]
+Wrote a fresh leaky provider independent of Builder's `LeakyPrices`: `SneakyPrices`
+returns a price dated `as_of + 1 day` only on the "current price" call
+(`target == as_of`), and an earlier, clean price otherwise — a subtler leak
+pattern than Builder's own test (which leaks unconditionally on every call).
+Expected: `LookAheadError`. Observed: raised, with the correct security id
+and dates in the message (`price for security 1 dated 2023-03-01 is after
+decision date 2023-02-28`). No finding.
+
+**Item 8 — Survivorship.** [RUN — synthetic, not real-data; see item 4 for
+the real-data gap]
+Independent scenario, different from Builder's test: swapped which security
+survives/delists, different cutoff date, different growth rates. Confirmed
+the departing security is selected pre-cutoff and never post-cutoff. No
+finding on the mechanism; real-data survivorship (a real delisted ticker
+pulled from NSE archives) is not runnable yet — same accepted gap as item 4.
+
+**Item 9 — Corporate actions.** Not executable. No real adjusted-close
+adapter is wired into these new ports this round (the existing
+`infrastructure/providers/bhavcopy.py` / `ohlcv.py` pipeline is not yet
+plugged into `PriceHistoryProvider`). Classification: **Judgment call,
+accepted** — consistent scope-split, not a silent skip; Builder's note names
+this explicitly as deferred.
+
+**Item 10 — Fill timing.** [RUN]
+Independent stress test: built a calendar where the 1st of every month is a
+non-session (holiday-on-rebalance-day edge case, not in Builder's test) to
+try to force an off-by-one into a same-day fill. Ran 6 rebalances across
+Mar–Aug 2023. Expected: `fill_date > decision_date` always. Observed: true
+for all 6 (e.g. decision `2023-02-28` → fill `2023-03-02`, decision
+`2023-06-30` → fill `2023-07-03`). No finding — the strict-inequality
+enforcement holds even under calendar irregularity, not just the smooth
+weekday-only calendar Builder's own tests use.
 
 **Item 12 — Vacuous test check.** [RUN]
-Independently re-implemented a hard-cutoff `select_portfolio` (`rank <= 30`
-only, no buffer) outside the source tree and ran
-`test_select_portfolio_hard_cutoff_would_be_a_brief_violation`'s scenario
-(security 7, held, rank 35) against it. Expected: security 7 dropped under
-the broken hard-cutoff logic (test should go red if swapped in). Observed:
-`7 in result` → `False` under the hard-cutoff version, `True` under the real
-`select_portfolio`. Confirms the test is not vacuous — it can fail. No
-finding.
+Mutated the source (not the test) twice, ran the target test each time on
+the real (non-copied) file, then reverted with `git checkout --`:
+1. Replaced the `LookAheadError` raise condition with `if False:` →
+   `test_look_ahead_provider_is_rejected` went from PASS to **FAIL** ("DID
+   NOT RAISE LookAheadError").
+2. Changed `facts_as_of(decision_date)` call to always pass a future dummy
+   date (`date(2099,1,1)`) → `test_survivorship_point_in_time_universe_used`
+   went from PASS to **FAIL** (`assert False` on the early-selection check).
+`git status --short` confirmed clean revert both times. Both tests can
+actually fail; neither is vacuous. No finding.
 
-**Eligibility boundary (extension of item 4, self-directed).** [RUN]
-Brief §1: "at least 12 months of adjusted-close price history." Builder's
-`_MIN_LISTING_DAYS = 252` and test only checks 100 (fail) / 300 (pass) —
-doesn't hit the boundary. Ran the boundary myself:
-`listing_days_as_of_decision_date=252` → eligible=True;
-`=251` → eligible=False. Matches "at least 12 months" (inclusive ≥) as the
-sensible reading. No finding, but flagging that Builder's own test suite
-doesn't cover this boundary — a coverage gap, not a correctness bug.
+**Item 13 — Forked safety net.** [RUN]
+The item-7 fresh `SneakyPrices` test above already proves the as-of check
+fires on the real `.run()` path (not an isolated unit call) — it raised from
+inside `runner.run()`, not from a standalone call to `_price`. Also
+independently confirmed via `prices.calls` spy in the existing
+`test_asof_enforcement_runs_on_real_path` (re-read, not re-run — identical
+mechanism to what I already exercised in items 7/8b). No finding.
 
-**Tooling.** `ruff check src/momentum25/domain/backtest
-tests/unit/test_momentum_backtest.py` → all checks passed. `mypy
-src/momentum25/domain/backtest` → 0 issues, 5 files. `pytest
-tests/unit/test_momentum_backtest.py -v` → 9/9 passed. All independently
-re-run, not taken from Builder's note.
+**Item 14 — Benchmark/attribution.** [RUN]
+Re-derived NAV independently for the missing-price scenario built in item
+4b (not Builder's `_build_runner` fixture): replayed `result.trades` by hand
+in a fresh script (cash -= notional + cost, accumulate qty, mark survivors at
+`end`), compared to `result.final_nav`. Matched exactly. Also note (not a
+finding): `_reconstruct_nav_from_trades` calls
+`prices.price_on_or_before(sid, end, end)` directly, bypassing the runner's
+`_price()` look-ahead-checking wrapper. This is intentional per Builder's
+docstring (independence from engine bookkeeping) and `target == as_of == end`
+here, so there's no as-of violation — but flagging for the record that this
+function trusts the provider for its final mark, unlike every other price
+read in the runner. Not a finding: the "no info dated on/after decision
+date" rule (brief §9) doesn't apply here since `end` is the backtest's own
+end-of-run bound, not a rebalance decision date, and there is no later
+information available in a finite historical run for `end` itself to leak.
 
-## Scope discussion (items 4, 7–10, 13, 14)
+**Item 3 (signal-level look-ahead, carried from Loop 1, frozen code) —
+regression check.** [RUN] `domain/backtest/momentum_signal.py` untouched
+(`git diff a516be0 HEAD -- backend/src/momentum25/domain/backtest/momentum_signal.py`
+→ empty). No finding.
 
-Builder's round-1 scope is signal + eligibility predicate + ranking/tie-break
-+ per-rebalance trade/cost pricing, as pure domain functions with no
-orchestration or data-source wiring. This is a genuine gap against the
-reviewer-handoff checklist — those items literally cannot be run.
+**Full regression suite.** [RUN]
+`pytest tests/unit/test_walk_forward.py -v` → 7/7 passed (fresh run).
+`pytest tests/unit -q` (full suite) → **516 passed** (fresh run, matches
+Builder's claim exactly).
+`ruff check` on both new files + test file → all checks passed (fresh run).
+`mypy` on both new files → Success, no issues (fresh run).
 
-I considered classifying this as a Brief violation (brief.md describes a
-full walk-forward strategy) but the brief is a strategy spec, not a
-milestone plan — it doesn't mandate what ships in round 1 of an iterative
-loop. CLAUDE.md (binding per loop context) explicitly instructs "implement
-only the current milestone" and "don't invent... data source[s]... for
-missing information." Builder verified by grep that no T2T/ASM data source
-exists anywhere in the codebase and declined to fabricate one. That is the
-correct call under Don't Guess, not a shortcut.
+## Scope note (items 4, 8, 9 — real-data gap)
 
-Logged as: **Judgment call, accepted.** Everything checkable without that
-missing data source (items 1, 3, 6, 11, 12, plus the self-directed boundary
-check) was checked and passed independent verification. Items 4, 5
-(end-to-end), 7–10, 13, 14 remain open for a future round once an
-orchestration layer + historical data provider exists — they are not
-"resolved," they're "not yet buildable," and should stay on the checklist
-for round 2+ once that infrastructure lands. This is not registered as an
-open finding requiring Builder rework in round 1; it's carried forward as
-known future scope.
+Builder correctly declined to build a real point-in-time-membership /
+surveillance / corporate-action adapter rather than fake one against today's
+data (which would silently bake in survivorship bias — exactly what
+addendum §1 warns against). This is a genuine, documented, human-decision
+blocker (vendor or manual dated-snapshot needed), not a scope dodge: Builder
+ran the reachability check first as instructed, found NSE only publishes
+*current* membership/surveillance lists, and stopped rather than guess.
+Classification: **Judgment call, accepted.**
 
 ## Summary
 
 - Findings requiring action: **0**
-- Judgment calls logged: 2 (NaN failure mode at batch level — undecided
-  pending orchestration; deferred backtest-integrity items — accepted scope
-  split for this round)
+- Judgment calls logged: 3 — real point-in-time membership/surveillance
+  provider (items 4, 8), real corporate-action adapter (item 9), all
+  accepted, all blocked on the same documented human decision (vendor vs.
+  manual dataset drop). Carried forward, not silently dropped.
+- Previously-open item closed: Loop-1's batch-level NaN/missing-data
+  judgment call is now demonstrated fail-closed end-to-end (item 4b/5).
 - Reviewer overreach: 0
-- All executable checklist items (1, 2, 3, 6, 11, 12, eligibility boundary)
-  independently re-verified with fresh, non-Builder-authored scenarios and
-  passed.
-- Tooling (ruff, mypy, pytest) independently re-run and clean.
+- All independently-run scenarios used numbers/security IDs/calendars
+  different from Builder's own tests, including two source-mutation kill
+  tests (item 12) and one adversarial leak pattern more subtle than
+  Builder's own `LeakyPrices` (item 7).
+- Tooling (ruff, mypy, pytest, full 516-test suite) independently re-run and
+  clean.
+- NSE reachability claims independently reproduced via fresh `curl` calls.
 
 VERDICT: PASS
