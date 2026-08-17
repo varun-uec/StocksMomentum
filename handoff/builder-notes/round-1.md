@@ -1,110 +1,126 @@
-# Builder Notes — round 1
+# Builder Notes — Loop 2, Round 1
 
-## Precondition: brief was completed before this round
+Scope: `brief-addendum-loop2.md` (walk-forward engine + historical data). Frozen
+`domain/backtest/` untouched. This is a proposal, not a PASS — Reviewer disposes.
 
-`brief.md` was still DRAFT (8 `[FILL IN]` sections) when Reviewer escalated
-in `reviewer-findings/round-1.md` / `escalations/round-0.md`. Per
-loop-protocol.md this is a fixed-point issue only a human can resolve, so no
-code was written until the human filled in `brief.md` sections 1-8 (universe,
-skip-month/weights, portfolio size/tie-break/weighting, rebalance mechanics,
-exit/re-entry buffer, transaction costs, benchmark). That version of
-`brief.md` is what this round implements against. Round number is 1 — no
-`builder-notes/` existed before this file.
+## 1. NSE reachability finding (checked FIRST, per the addendum)
 
-## What changed
+**Result: NSE archive hosts are reachable; the interactive site is not.** This
+environment is NOT on a restrictive allowlist that blocks NSE. Actual commands
+and observed HTTP codes:
 
-New package `backend/src/momentum25/domain/backtest/` (pure domain, no I/O):
+| Target | Command | Result |
+|---|---|---|
+| `www.nseindia.com` (site root) | `curl -A Mozilla https://www.nseindia.com` | **HTTP 403** (anti-automation on the interactive site) |
+| `archives.nseindia.com` legacy bhavcopy | `curl .../content/historical/EQUITIES/2023/JAN/cm02JAN2023bhav.csv.zip` | **HTTP 200, 89 KB**, unzipped to a real 2384-row EOD CSV (`SYMBOL,SERIES,OPEN,...,ISIN`) |
+| `nsearchives.nseindia.com` UDiFF bhavcopy | `curl .../content/cm/BhavCopy_NSE_CM_0_0_0_20240702_F_0000.csv.zip` | **HTTP 200, 164 KB** |
+| current Nifty 500 constituent list | `curl .../content/indices/ind_nifty500list.csv` | **HTTP 200, 32 KB**, real header `Company Name,Industry,Symbol,Series,ISIN Code` |
+| `niftyindices.com` constituent file | `curl .../IndexConstituent/ind_nifty500list.csv` | HTTP 200 |
+| generic control (`google.com`) | — | HTTP 200 |
 
-- `momentum_signal.py` — `compute_return`, `compute_momentum_signal`: brief §2
-  composite score, no skip-month, equal weights (w3=w6=w12=1/3). Rejects
-  non-positive prices (data-integrity fault, not a valid score input).
-- `eligibility.py` — `EligibilityFacts`, `is_eligible`: brief §1 (Nifty 500
-  membership, >=252 trading days history, not T2T, not under ASM/surveillance).
-- `rebalance.py` — `rank_signals` (brief §3 tie-break: composite score desc,
-  then 12M, then 6M, then 3M return, all deterministic), `select_portfolio`
-  (brief §6 buffer/hysteresis: existing holdings survive to rank 45, new
-  entries need rank <=30).
-- `portfolio_step.py` — `plan_equal_weight_rebalance`: brief §4 equal
-  weighting and brief §7 transaction cost (30bps on each trade's notional,
-  buy and sell, on traded notional not NAV).
+So: raw daily OHLC (back to 1994 via legacy archive), UDiFF ISINs, corporate
+actions, and the *current* constituent list are all fetchable. Reachability is
+NOT the blocker.
 
-`backend/tests/unit/test_momentum_backtest.py` — 9 tests, all with
-hand-computed expected values in the test body (not traced from the
-implementation):
+**The real, data-availability blocker (a scope-limiting discovery, per addendum
+§0):** two inputs this loop needs most are not published by NSE as historical,
+point-in-time time series:
 
-- `test_compute_return_hand_calculated`, `test_composite_score_equal_weight_hand_calculated`
-  — arithmetic worked out in the test comment (e.g. price 110 vs {100,100,55}
-  → (10%+10%+100%)/3).
-- `test_compute_return_rejects_non_positive_price` — fail-closed on bad data.
-- `test_eligibility_requires_all_conditions` — each of the 4 brief §1
-  conditions independently flips eligibility to False.
-- `test_rank_signals_tie_break_by_12m_then_6m_then_3m` — three signals with
-  equal composite score, cascading tie-break verified by hand.
-- `test_select_portfolio_buffer_keeps_existing_holding_outside_top_30` +
-  `test_select_portfolio_hard_cutoff_would_be_a_brief_violation` — the buffer
-  is brief §6's explicit non-negotiable; I ran a hand-rolled `rank <= 30`
-  hard-cutoff version of `select_portfolio` outside the test suite and
-  confirmed it goes red on the regression test (not a vacuous test — see
-  command in this round's session, reproducible: swap `select_portfolio`'s
-  body for `{r.signal.security_id for r in ranked if r.rank <= PORTFOLIO_SIZE}`
-  and rerun).
-- `test_plan_equal_weight_rebalance_cost_hand_calculated` +
-  `..._sells_dropped_holding_in_full` — cost hand-calculated as
-  `abs(notional) * 0.003`, no-op trades omitted, dropped holdings sold in full.
+- **Point-in-time Nifty 500 membership.** NSE publishes only *today's*
+  constituent list (`ind_nifty500list.csv`). There is no free NSE endpoint that
+  returns "the Nifty 500 as of 2021-04-01". Applying today's list backward is
+  exactly the survivorship bias `brief.md` §9 / checklist item 8 forbid.
+- **Historical ASM/GSM/T2T surveillance.** NSE publishes the *current*
+  surveillance lists only; historical daily snapshots are not archived freely.
+  This is the same gap Loop 1 flagged in `eligibility.py`.
 
-Look-ahead (brief §9, checklist item 3): `compute_momentum_signal`'s
-signature only accepts `price_t` and three lookback prices — there is no
-parameter through which a later-dated price can enter. Verified by calling it
-twice with identical inputs and confirming identical output (determinism),
-and by inspection that no clock/date-range/database access exists in the
-module (it's pure, no I/O per CLAUDE.md domain-layer rules).
+Both need a human decision: a licensed vendor (point-in-time index membership +
+surveillance history) or a manual dated-snapshot drop. I did not fabricate
+either — consistent with `eligibility.py`'s existing "never default-assume clean
+status silently" contract.
 
-All: `ruff check` clean, `mypy` clean (0 issues, 5 source files), `pytest`
-9/9 pass.
+## 2. Ladder check — what already exists (reused, not rebuilt)
 
-## Scope boundary (flagging as a judgment call)
+The repo already has a production market-data pipeline. I did **not** rebuild it:
 
-This round implements the **signal, eligibility rule, ranking/tie-break, and
-per-rebalance trade-and-cost step** as pure domain functions. It does not
-wire a full walk-forward loop against real price/universe data (application
-use case + infra data providers: historical adjusted-close series, Nifty 500
-membership history, ASM/T2T status feed, benchmark TRI series).
+- Adjusted-close prices: `infrastructure/persistence/repositories/ohlcv.py`
+  (`get_series(..., as_of)`), `domain/entities/market_data.py::compute_adjustment_factors`.
+- Bhavcopy fetch incl. legacy-archive routing to 1994 and UDiFF: `infrastructure/providers/bhavcopy.py`.
+- Corporate actions (ratio parsing): same provider + `repositories/corporate_actions.py`.
+- Benchmark index: `repositories/benchmark_index.py`.
+- Trading calendar: `infrastructure/calendar/nse_calendar.py`.
 
-Reason: no ASM/T2T/surveillance data source exists anywhere in this
-codebase today (confirmed by grep — zero matches for ASM/surveillance/T2T in
-`infrastructure/`). Brief §1 requires excluding these; I am not fabricating
-that data or defaulting it to "always clean," per CLAUDE.md's "Don't Guess"
-(never invent business rules/config for missing information). `eligibility.py`
-models the fields so the rule is correct the day that data exists, and its
-docstring states this gap explicitly rather than hiding it.
+Per addendum §1 the price/corp-action/benchmark providers of §1 substantially
+already exist; the genuinely missing seam was the **walk-forward runner** and the
+**as-of-enforcing ports** it drives. That is what I built.
 
-Given that, a full historical backtest run (checklist items 7-10, 13, 14)
-isn't executable yet — those items need real historical universe/price data
-that this round doesn't have a source for. I've implemented and tested
-everything that's checkable without that data source: signal correctness
-(item 1), look-ahead absence in the signal (item 3), tie-break determinism
-(item 6), and the transaction-cost formula (item 11), all with hand-computed
-expected values per reviewer-handoff.md's evidentiary bar.
+## 3. What changed (built this round)
 
-If Reviewer judges this scope split unreasonable — e.g. expects a runnable
-end-to-end backtest this round even without a surveillance data source (using
-a documented stub/injectable port instead of leaving it unbuilt) — that's a
-disputed judgment call I'm open to on rebuttal, but brief.md itself doesn't
-mandate a specific data-source or infra-wiring milestone for round 1, and
-CLAUDE.md's Scope Discipline says "implement only the current milestone" /
-"do not implement speculative features."
+- **`domain/ports/walk_forward.py`** (new) — three driven ports, each carrying an
+  explicit `as_of` decision date:
+  - `PriceHistoryProvider.price_on_or_before(security_id, target, as_of)` →
+    `PricePoint(security_id, session_date, adj_close)`. Returns the session date
+    so look-ahead is *detectable*, not just documented.
+  - `EligibilityFactsProvider.facts_as_of(decision_date)` → point-in-time
+    `EligibilityFacts` (the survivorship-critical port; real impl blocked on §1).
+  - `BenchmarkProvider.level_on_or_before(target, as_of)` — reporting only.
 
-## Git
+- **`application/use_cases/walk_forward.py`** (new) — `WalkForwardRunner`, wired
+  to the frozen domain modules (`is_eligible`, `compute_momentum_signal`,
+  `rank_signals`, `select_portfolio`, `plan_equal_weight_rebalance`) with zero
+  changes to them. Properties enforced in code, not just intent:
+  - **Fill timing (brief §5):** decision date = the session immediately before
+    the rebalance date; fill date = the first session of the month. Fill date is
+    a strictly later date than the decision date — never same-day.
+  - **Look-ahead enforcement (brief §9):** `_price()` re-checks every returned
+    `session_date <= as_of` and raises `LookAheadError` on a leak. The runner does
+    NOT trust the provider to obey `as_of`.
+  - **Fail-closed scoring:** a security missing any of its 4 required prices is
+    dropped, never scored on a forward-filled or defaulted value.
+  - **Independent equity reconstruction (addendum §3, item 14):** the reported
+    `total_return` comes from `_reconstruct_nav_from_trades()`, which replays only
+    the trade log + prices and ignores any NAV the loop tracked.
+  - Fill-price approximation flagged with a `ponytail:` comment: uses adjusted
+    *close* on the fill date (the adjusted series has no open); the date is still
+    strictly post-decision, so no look-ahead. A held name unpriceable at
+    rebalance is marked to zero (conservative, look-ahead-free) — also flagged.
 
-Not committed — no commit made this round (repo convention: only commit when
-explicitly asked). Working-tree diff for this round:
+- **`tests/unit/test_walk_forward.py`** (new) — 7 deterministic tests, in-memory
+  fakes only. These make Reviewer checklist items runnable per addendum §4:
+  item 7 (leaky provider → `LookAheadError`), item 8 (point-in-time universe:
+  a name is scored while in-index, absent once it leaves), item 10 (fill date >
+  decision date on every trade), item 13 (as-of price call fires on the real run
+  path with `as_of == decision_date`, via a spy), item 14 (independent NAV
+  replay equals the engine's reported `final_nav`), plus determinism (same inputs
+  → identical outputs).
 
-```
-A  backend/src/momentum25/domain/backtest/__init__.py
-A  backend/src/momentum25/domain/backtest/eligibility.py
-A  backend/src/momentum25/domain/backtest/momentum_signal.py
-A  backend/src/momentum25/domain/backtest/portfolio_step.py
-A  backend/src/momentum25/domain/backtest/rebalance.py
-A  backend/tests/unit/test_momentum_backtest.py
-M  handoff/brief.md
-```
+## 4. Completed vs. explicitly scoped out
+
+Completed: addendum §2 (walk-forward runner) and §3 (per-rebalance log, trade
+log, trade-log-reconstructed summary) as data structures + logic, wired to the
+frozen domain, with the §4 falsification tests runnable against fakes.
+
+Scoped out this round, with reason (NOT a silent skip):
+- **Real point-in-time membership + historical surveillance providers** —
+  blocked on data availability (§1). Ports defined; real impls need a vendor or a
+  human-provided dated dataset. This is the item to escalate for a human.
+- **Real DB/NSE-backed adapter for the new ports + a live historical run** — a
+  full walk-forward over real data cannot be *correct* without point-in-time
+  membership, so building an adapter that silently uses today's list would bake
+  in survivorship bias. Deferred rather than done wrong. Price/benchmark real
+  impls already exist and can wrap into these ports once membership is resolved.
+- **Benchmark TRI vs price index:** brief §8 wants Nifty 500 **TRI**; the
+  existing `fetch_benchmark` (nsemine) returns the price index. TRI is a separate
+  source (niftyindices.com). Flagged; not resolved this round.
+
+## 5. Validation run
+
+- `ruff check` new files — All checks passed.
+- `mypy src/.../walk_forward.py` (port + use case) — Success, no issues.
+- `pytest tests/unit/test_walk_forward.py` — 7 passed.
+- `pytest tests/unit` (full suite, regression check) — **516 passed**.
+
+## 6. Commit
+
+`loop: round 1 (builder)` — hash recorded on commit (see git log; this note is
+part of that commit).
