@@ -15,8 +15,10 @@ import pytest
 
 from momentum25.application.use_cases.walk_forward import (
     LookAheadError,
+    WalkForwardResult,
     WalkForwardRunner,
     _reconstruct_nav_from_trades,
+    format_walk_forward_report,
 )
 from momentum25.domain.backtest.eligibility import EligibilityFacts
 from momentum25.domain.ports.walk_forward import PricePoint
@@ -237,3 +239,40 @@ def test_reconstruct_helper_ignores_engine_bookkeeping():
         list(result.trades), Decimal(1_000_000), runner._prices, end
     )
     assert independent == result.final_nav
+
+
+def _sample_result(benchmark_return, benchmark_label) -> WalkForwardResult:
+    return WalkForwardResult(
+        rebalances=(),
+        trades=(),
+        initial_capital=Decimal(1_000_000),
+        final_nav=Decimal(1_100_000),
+        total_return=Decimal("0.10"),
+        benchmark_return=benchmark_return,
+        benchmark_label=benchmark_label,
+    )
+
+
+def test_report_carries_benchmark_label_next_to_the_number():
+    """Checklist item 14 / brief-addendum-approximations.md: the label must
+    sit next to the benchmark number in the one output surface that prints
+    it, not just live on the dataclass field."""
+    result = _sample_result(Decimal("0.05"), "Nifty 500 Price Index (not TRI)")
+    report = format_walk_forward_report(result)
+    line = next(line for line in report.splitlines() if "Benchmark return" in line)
+    assert "Nifty 500 Price Index (not TRI)" in line
+    assert "5.00%" in line
+
+
+def test_report_never_prints_benchmark_number_without_a_label():
+    """A missing label must not silently disappear behind the number."""
+    result = _sample_result(Decimal("0.05"), None)
+    report = format_walk_forward_report(result)
+    line = next(line for line in report.splitlines() if "Benchmark return" in line)
+    assert "UNLABELED BENCHMARK" in line
+
+
+def test_report_omits_benchmark_line_when_no_benchmark_bound():
+    result = _sample_result(None, None)
+    report = format_walk_forward_report(result)
+    assert "Benchmark return" not in report

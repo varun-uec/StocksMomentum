@@ -91,6 +91,28 @@ class WalkForwardResult:
     benchmark_label: str | None
 
 
+def format_walk_forward_report(result: WalkForwardResult) -> str:
+    """Render a human-readable summary of ``result``.
+
+    The report/output surface required by
+    ``brief-addendum-approximations.md`` §"What Reviewer checks this round":
+    the benchmark return must never appear without its label directly next
+    to it. ``benchmark_label`` is ``None`` only when no benchmark provider
+    was bound to the runner, in which case the benchmark line is omitted
+    entirely rather than printed unlabeled.
+    """
+    lines = [
+        f"Initial capital: {result.initial_capital}",
+        f"Final NAV:       {result.final_nav}",
+        f"Total return:    {result.total_return:.2%}",
+    ]
+    if result.benchmark_return is not None:
+        label = result.benchmark_label or "UNLABELED BENCHMARK"
+        lines.append(f"Benchmark return ({label}): {result.benchmark_return:.2%}")
+    lines.append(f"Rebalances: {len(result.rebalances)}, Trades: {len(result.trades)}")
+    return "\n".join(lines)
+
+
 def _months_before(d: date, months: int) -> date:
     """Return the calendar date ``months`` before ``d``, clamping the day.
 
