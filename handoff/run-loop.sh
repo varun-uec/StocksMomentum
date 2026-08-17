@@ -14,7 +14,8 @@ builder_prompt() {
   local N=$1
   cat <<EOF
 You are the Builder in a Builder/Reviewer loop. Read $HANDOFF/loop-protocol.md,
-$HANDOFF/reviewer-handoff.md, and $HANDOFF/brief.md fully before doing anything.
+$HANDOFF/reviewer-handoff.md, $HANDOFF/brief.md, and
+$HANDOFF/brief-addendum-loop2.md fully before doing anything.
 
 This is round $N.
 
@@ -39,7 +40,8 @@ reviewer_prompt() {
   local N=$1
   cat <<EOF
 You are the Reviewer in a Builder/Reviewer loop. Read $HANDOFF/loop-protocol.md,
-$HANDOFF/reviewer-handoff.md, and $HANDOFF/brief.md fully before doing anything.
+$HANDOFF/reviewer-handoff.md, $HANDOFF/brief.md, and
+$HANDOFF/brief-addendum-loop2.md fully before doing anything.
 
 This is round $N.
 
