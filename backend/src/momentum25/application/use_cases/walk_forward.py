@@ -85,6 +85,10 @@ class WalkForwardResult:
     final_nav: Decimal
     total_return: Decimal
     benchmark_return: Decimal | None
+    # brief-addendum-approximations.md: any output surfacing benchmark_return
+    # must carry this label next to the number (e.g. "Nifty 500 Price Index
+    # (not TRI)"). ``None`` only when no benchmark provider was bound.
+    benchmark_label: str | None
 
 
 def _months_before(d: date, months: int) -> date:
@@ -183,6 +187,7 @@ class WalkForwardRunner:
             final_nav=final_nav,
             total_return=total_return,
             benchmark_return=self._benchmark_return(rebalance_dates),
+            benchmark_label=getattr(self._benchmark, "label", None),
         )
 
     # ── Internals ─────────────────────────────────────────────────────────
