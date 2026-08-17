@@ -14,8 +14,9 @@ builder_prompt() {
   local N=$1
   cat <<EOF
 You are the Builder in a Builder/Reviewer loop. Read $HANDOFF/loop-protocol.md,
-$HANDOFF/reviewer-handoff.md, $HANDOFF/brief.md, and
-$HANDOFF/brief-addendum-loop2.md fully before doing anything.
+$HANDOFF/reviewer-handoff.md, $HANDOFF/brief.md,
+$HANDOFF/brief-addendum-loop2.md, and
+$HANDOFF/brief-addendum-approximations.md fully before doing anything.
 
 This is round $N.
 
@@ -40,8 +41,9 @@ reviewer_prompt() {
   local N=$1
   cat <<EOF
 You are the Reviewer in a Builder/Reviewer loop. Read $HANDOFF/loop-protocol.md,
-$HANDOFF/reviewer-handoff.md, $HANDOFF/brief.md, and
-$HANDOFF/brief-addendum-loop2.md fully before doing anything.
+$HANDOFF/reviewer-handoff.md, $HANDOFF/brief.md,
+$HANDOFF/brief-addendum-loop2.md, and
+$HANDOFF/brief-addendum-approximations.md fully before doing anything.
 
 This is round $N.
 
@@ -143,9 +145,10 @@ while [ "$N" -le "$MAX_ROUNDS" ]; do
         # (i.e. no round with real code changes happened in between).
         CODE_DIFF=$(git diff --stat "$LAST_CODE_COMMIT" "$BUILDER_COMMIT" -- . ":(exclude)$HANDOFF")
         if [ -z "$CODE_DIFF" ]; then
-          git tag "loop-pass-round-$N"
+          TAG="loop-pass-$(git rev-parse --short "$BUILDER_COMMIT")"
+          git tag "$TAG"
           echo "=== PASS confirmed twice with zero code changes in between. Loop complete. ==="
-          echo "Tagged as loop-pass-round-$N."
+          echo "Tagged as $TAG."
           exit 0
         else
           echo "Round $N was PASS but code changed since last PASS — resetting confirmation counter."
