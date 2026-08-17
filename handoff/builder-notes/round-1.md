@@ -1,116 +1,122 @@
-# Builder Notes — Round 1 (Approximations Loop)
+# Builder note — Loop 3, round 1
 
-Round 1 of the loop opened by `brief-addendum-approximations.md` (and its
-Postgres-data follow-up). No `reviewer-findings/round-0.md` exists for this
-loop — this round implements what the addendum asks for, verified against
-real data first per its own instruction ("check before assuming the
-approximation applies").
+## What changed
 
-## What I checked before writing any code
+1. **Archived the Approximations-loop round files** so Loop 3 restarts round
+   numbering from 1, same pattern as the loop-2 archive: `handoff/builder-notes/round-{1..4}.md`
+   → `handoff/builder-notes/approximations/round-{1..4}.md`, same for
+   `handoff/reviewer-findings/`. `handoff/run-loop.sh` updated to point Builder
+   and Reviewer prompts at `brief-addendum-loop3.md` (this was already
+   uncommitted in the working tree at round start; kept and finished it).
 
-Queried the real `momentum25` Postgres instance (`momentum25-db-1`,
-`M25_DATABASE_URL`), per the addendum's pointer, before deciding whether the
-documented approximations still apply:
+2. **Item 8 (survivorship) closed for real.** Ran
+   `scripts/rp012_populate_survivorship_dates.py` (a pre-existing, deterministic,
+   data-derived script already in the repo from prior RP-012 research — not new
+   code) against `momentum25-db-1`. It classifies every security's
+   `listing_date`/`last_trade_date`/`delisting_date` from observed bar coverage
+   in `ohlcv_daily` ∪ `legacy_ohlcv_daily`, using a 60-trading-day gap rule
+   (`domain/research/survivorship.classify_survivorship`, pure, already
+   reviewed). Result: `securities_classified=3229 delisted=596 active=2630
+   indeterminate_boundary=3`. Spot-checked plausibility against known real
+   events: GRUH Finance (delisting_date 2019-10-15, merged into Bandhan Bank),
+   IL&FS Engineering/IL&FS Transportation (2018-10-15 / 2019-03-29, IL&FS
+   crisis) — dates match public record. `is_active` was confirmed NOT reliable
+   as a delisting signal (some `is_active=TRUE` rows already carry a populated
+   `delisting_date` — the ingestion flag and the observed-data-derived date
+   disagree; the script documents this and correctly does not treat it as
+   ambiguous).
 
-- `ohlcv_daily.adj_close`: 2,651,179 / 3,076,892 rows populated (86%). Real,
-  usable adjusted-close history. **Closes the price-data gap.**
-- `benchmark_index_daily` (`NIFTY500`): 2,858 rows, 2015-01-01 → 2026-08-07.
-  Levels (6786.10 on 2015-01-01, 23712.10 on 2026-08-07) match the publicly
-  known Nifty 500 **price** index range for this period — a TRI series would
-  print materially higher over an 11-year span from compounded dividends. No
-  TRI series exists anywhere in this database to diff against row-for-row, so
-  this is a magnitude/plausibility check, stated as such, not a full
-  reconciliation. **Confirms the "Price Index (not TRI)" label still applies
-  — does not disprove it.**
-- `securities.delisting_date`: **0 of 3,235 rows populated.** The addendum's
-  framing ("securities has delisting_date... usable to test survivorship
-  handling") does not hold up against the actual data — there is no delisted
-  ticker in this table to test against. `survivorship_gap_event` (9,902 rows)
-  has real trading-gap data but that's a proxy for suspension/inactivity, not
-  a delisting flag, and nothing in the frozen `EligibilityFacts` dataclass
-  has a slot for it.
-- `universe_membership` (438,901 rows) / `historical_universe` (0 rows,
-  unpopulated): `universe_membership.reason` values are
-  `below_liquidity_floor`, `close_below_floor`, `insufficient_history`,
-  `no_bar_on_trading_date`, `not_yet_listed`, `stale_data` — a **different
-  production strategy's** screening gates (liquidity/history), not Nifty 500
-  index constituency or ASM/T2T surveillance status. Backfilling
-  `historical_universe` from this table would misrepresent "Nifty 500
-  constituent" as "passed some other strategy's liquidity filter" — a
-  fabrication, not an approximation.
-- Grepped the full codebase for any Nifty 500 constituent list or ASM/GSM/T2T
-  data, current or historical: **none exists anywhere** — not a table, not a
-  column, not an ingestion adapter. This is a stronger statement than
-  `brief-addendum-approximations.md`'s framing assumed (it describes an
-  already-built "current list applied retroactively" provider to confirm;
-  Loop 2 built no such provider — the port was left entirely unimplemented,
-  which its Reviewer round-2 accepted as a carried-forward judgment call).
+   Added `SqlSurvivorshipEligibilityProvider`
+   (`infrastructure/persistence/repositories/walk_forward_market_data.py`):
+   includes a security for a decision date iff
+   `listing_date <= decision_date <= (delisting_date or +inf)`, using the
+   now-populated columns instead of `is_active`. Wired into the CLI
+   (`interface/cli/main.py`) as the walk-forward command's eligibility
+   provider, replacing `StubAllActiveSecuritiesEligibilityProvider` there.
+   Per `brief-addendum-loop3.md` §1 Item 13, **the stub itself is untouched
+   and still exported** — it stays as a documented fallback/dev tool, just no
+   longer the CLI's default.
 
-## What I built
+3. **Item 13 (point-in-time Nifty 500 / T2T / ASM membership) — still not
+   obtainable this round, documented attempt below (not a silent skip).**
+   Membership/surveillance in `EligibilityFacts` remains stub
+   (`is_t2t=False`, `is_under_surveillance=False`, `in_nifty_500=True` for
+   every security), same as the Approximations loop. `SURVIVORSHIP_ELIGIBILITY_WARNING`
+   replaces `ELIGIBILITY_STUB_WARNING` as the CLI's runtime warning — it states
+   plainly that survivorship is now real and membership/surveillance is not,
+   rather than bundling both under one blanket "stub" label as before.
 
-`backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py`:
+## Real attempt made on Item 13 (NSE data sourcing)
 
-- **`SqlPriceHistoryProvider`** — real `PriceHistoryProvider` backed by
-  `ohlcv_daily.adj_close`. `load()` (async) pulls the full date range in one
-  query at construction; `price_on_or_before()` (sync, per the port's
-  contract) answers via bisect over an in-memory, per-security sorted series.
-  One query instead of one round trip per (security, date) — a rebalance
-  needs 4 prices × every eligible security. Rows with `adj_close IS NULL`
-  (14% of the table) are excluded at load time — fail closed, same policy the
-  runner already applies to a missing price, never fall back to unadjusted
-  `close`.
-- **`SqlBenchmarkProvider`** — real `BenchmarkProvider` backed by
-  `benchmark_index_daily`. Same load-once/bisect pattern. Carries a `.label`
-  attribute (`BENCHMARK_LABEL = "Nifty 500 Price Index (not TRI)"`).
-- **`WalkForwardResult.benchmark_label`** (new field, `application/use_cases/walk_forward.py`) —
-  threaded from `getattr(self._benchmark, "label", None)` so the label
-  travels with `benchmark_return` wherever the result is consumed, per the
-  addendum's "must appear next to the number itself" requirement. The
-  `BenchmarkProvider` Protocol itself is untouched (duck-typed via
-  `getattr`), so the existing in-memory test fakes in `test_walk_forward.py`
-  need no changes and stay valid.
+- `nseindia.com` is TCP/TLS-reachable from this environment but the bare
+  homepage returns `403` without a browser session; a warm-up GET (cookie jar
+  + realistic `User-Agent`) against the homepage, then a follow-up request
+  with those cookies, does work — `GET /api/corporates-corporateActions`
+  returned `200` with real, current corporate-action rows. So the network/
+  anti-bot problem flagged as a risk in `brief-addendum-loop2.md` is
+  surmountable for at least some endpoints.
+- Tried nine plausible endpoint names for (a) a delisted-companies register
+  and (b) historical index reconstitution, under the same warmed-up session:
+  `/api/live-analysis-delistedCompanies`, `/api/comp-delisting`,
+  `/api/companies-listing-delisting`, `/api/CorporatesDelisting`,
+  `/api/corporate-delisting`, `/api/liveEquity-derivatives?index=delisted`,
+  `/market-data/security-wise-delisting`, plus two `archives.nseindia.com`
+  CSV path guesses for `eq_delisted_companies.csv`. All returned `404` (or
+  `000`/timeout for one `archives` host). None of these are documented public
+  API paths I could find from this environment — I was guessing plausible
+  URL shapes against a live site with no API reference available here, which
+  is an unreliable way to find a real data feed and I stopped rather than
+  keep guessing indefinitely.
+- No ASM/GSM/T2T daily-circular archive endpoint or historical index
+  constituent-change endpoint was found or fetched this round.
+- Conclusion for this round: Item 13 genuinely isn't closed. The blocker is
+  not network reachability (that part works) — it's not knowing NSE's actual
+  API surface for these two specific datasets without either a documented
+  reference or a browser-based session to observe real requests being made.
+  A follow-up round with either (a) a human providing the correct endpoint
+  paths / a manually-downloaded circular archive dropped in `data/raw/nse/`,
+  or (b) browser automation to observe the real request URLs the NSE website
+  itself makes when a human loads the delisting/reconstitution pages, would
+  very likely close this — guessing REST paths blind is not the right next
+  step and I did not keep escalating that approach.
+- Per `brief-addendum-loop3.md` §0 item 5 (paid vendor fallback): not
+  evaluated this round — free-source attempts were not exhausted enough
+  (see above) to justify moving to a paid vendor for this specific gap yet.
 
-Verified both providers end-to-end against the **real** `momentum25` database
-(not just the test DB) in a throwaway script: `SqlPriceHistoryProvider`
-returned a real adjusted close for a real security/date; `SqlBenchmarkProvider`
-returned a real NIFTY500 level with the price-index label attached.
+## What Reviewer should check this round
 
-`EligibilityFactsProvider` has **no adapter**. Per the reasoning above, no
-data source exists — current or historical — for Nifty 500 constituency or
-T2T/ASM status, so `in_nifty_500`/`is_t2t`/`is_under_surveillance` cannot be
-populated truthfully. Setting `in_nifty_500=True` for every actively-traded
-security in `ohlcv_daily` would silently redefine the universe from "Nifty
-500 constituents" to "everything this ingestion pipeline tracks" — a brief
-violation risk, not an approximation the addendum licensed. This is the same
-gap loop-2's Reviewer accepted as a judgment call in round-1/round-2
-(`handoff/reviewer-findings/loop2/round-2.md`), carried forward unchanged,
-now with the sharper, verified statement above rather than "not yet
-point-in-time."
+- `git diff` against `d37cbb5` (last Approximations-loop commit) touches only
+  `walk_forward_market_data.py` (new class + docstring), `interface/cli/main.py`
+  (provider swap), the new test file additions, and `handoff/` files — zero
+  changes to `domain/backtest/`, `application/use_cases/walk_forward.py`,
+  `SqlPriceHistoryProvider`, or `SqlBenchmarkProvider`.
+- `securities.delisting_date` is populated from real data (not fabricated) —
+  re-run `scripts/rp012_populate_survivorship_dates.py --dry-run` and confirm
+  the same counts; spot-check GRUH/IL&FS dates above against public record
+  independently.
+- `SqlSurvivorshipEligibilityProvider.facts_as_of()` actually excludes a
+  delisted name post-delisting and includes it pre-delisting, and the CLI
+  (`walk-forward` command) is the one actually using it now, not just a
+  provider that exists but isn't wired (checklist item 13's "forked safety
+  net" pattern from prior rounds).
+- The membership/T2T/ASM gap is still honestly labeled at the point the
+  benchmark/warning text reaches a human (CLI stdout), not just in this note.
 
-## Tests
+## Tests / verification run
 
-- `backend/tests/integration/test_walk_forward_market_data_providers.py`
-  (new, 4 tests, against the real `_test` Postgres DB via the `db_session`
-  fixture): latest-close-on-or-before lookup, as-of horizon winning over a
-  later `target` (checklist item 7's mechanism, exercised against a real SQL
-  load this time, not a fake), null-`adj_close` exclusion, benchmark label
-  presence.
-- `pytest tests/unit -q` → 516 passed (unchanged count — no unit tests
-  touched; `test_walk_forward.py`'s fakes are untouched and still exercise
-  the runner in isolation).
-- `pytest tests/integration/test_walk_forward_market_data_providers.py
-  tests/unit/test_walk_forward.py -q` → 11 passed.
-- `ruff check` / `mypy` on both new/changed source files → clean.
-
-## Findings addressed
-
-No `round-0.md` findings exist for this loop — this is the initial
-implementation per `brief-addendum-approximations.md` and its Postgres
-follow-up.
+- `pytest tests/integration/test_walk_forward_market_data_providers.py -q`
+  → 9 passed (3 new: delisted-before-eligible, delisted-after-excluded,
+  `is_active` ignored).
+- Full suite: `pytest -q` → 633 passed.
+- Manual CLI run: `walk-forward 2024-01-01 2024-03-01` against the real DB —
+  completes, prints the new warning text, 3 rebalances / 103 trades, non-zero
+  return. Output captured above.
 
 ## Commit
 
-`c5966da` — `loop: round 1 (builder) — real Postgres-backed price/benchmark providers`
-(3 files changed: `walk_forward_market_data.py` new,
-`test_walk_forward_market_data_providers.py` new,
-`walk_forward.py` +`benchmark_label` field).
+Not yet committed — will commit after this note is written, as
+`git diff --stat` shows: `walk_forward_market_data.py` (+98/-?),
+`interface/cli/main.py`, `test_walk_forward_market_data_providers.py` (+49),
+`handoff/run-loop.sh`, plus the archive renames and this note.
+
+Not marking anything PASS or resolved — that's Reviewer's call.

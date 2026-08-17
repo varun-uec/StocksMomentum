@@ -24,10 +24,10 @@ from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
-    ELIGIBILITY_STUB_WARNING,
+    SURVIVORSHIP_ELIGIBILITY_WARNING,
     SqlBenchmarkProvider,
     SqlPriceHistoryProvider,
-    StubAllActiveSecuritiesEligibilityProvider,
+    SqlSurvivorshipEligibilityProvider,
 )
 
 app = typer.Typer(help="Momentum25 India operational CLI.", no_args_is_help=True)
@@ -72,12 +72,13 @@ def walk_forward(
     """Run a walk-forward backtest and print its report.
 
     Real ``SqlPriceHistoryProvider``/``SqlBenchmarkProvider`` data, real trading
-    calendar. Universe/eligibility uses ``StubAllActiveSecuritiesEligibilityProvider``
-    -- a known, explicitly-labeled gap, not real Nifty 500 membership (see
-    ``ELIGIBILITY_STUB_WARNING``). This command exists to give the walk-forward
-    report a real, non-test execution path in the running application.
+    calendar. Universe/eligibility uses ``SqlSurvivorshipEligibilityProvider``:
+    real survivorship (delisted names correctly drop out as of their delisting
+    date), but Nifty 500 membership and T2T/ASM surveillance status are still
+    stub -- a known, explicitly-labeled gap (see
+    ``SURVIVORSHIP_ELIGIBILITY_WARNING``).
     """
-    typer.echo(f"WARNING: {ELIGIBILITY_STUB_WARNING}")
+    typer.echo(f"WARNING: {SURVIVORSHIP_ELIGIBILITY_WARNING}")
     asyncio.run(_run_walk_forward(start, end, initial_capital))
 
 
@@ -91,7 +92,7 @@ async def _run_walk_forward(start: str, end: str, initial_capital: str) -> None:
         benchmark = await SqlBenchmarkProvider.load(
             session, "NIFTY500", start_date, end_date
         )
-        universe = await StubAllActiveSecuritiesEligibilityProvider.load(session)
+        universe = await SqlSurvivorshipEligibilityProvider.load(session)
     runner = WalkForwardRunner(
         calendar=get_nse_trading_calendar(),
         prices=prices,

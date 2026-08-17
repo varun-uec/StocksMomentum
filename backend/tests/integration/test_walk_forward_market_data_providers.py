@@ -23,6 +23,7 @@ from momentum25.infrastructure.persistence.repositories.walk_forward_market_data
     BENCHMARK_LABEL,
     SqlBenchmarkProvider,
     SqlPriceHistoryProvider,
+    SqlSurvivorshipEligibilityProvider,
     StubAllActiveSecuritiesEligibilityProvider,
 )
 
@@ -196,3 +197,51 @@ async def test_stub_eligibility_provider_excludes_inactive_securities(
     provider = await StubAllActiveSecuritiesEligibilityProvider.load(db_session)
 
     assert all(f.security_id != sid for f in provider.facts_as_of(date(2024, 6, 1)))
+
+
+@pytest.mark.asyncio
+async def test_survivorship_provider_includes_delisted_security_before_delisting(
+    db_session: AsyncSession,
+) -> None:
+    """Checklist item 8: a delisted name stays eligible up to its delisting date."""
+    sid = await _seed_security(db_session, "GGG")
+    security = await db_session.get(SecurityModel, sid)
+    security.listing_date = date(2015, 1, 1)
+    security.delisting_date = date(2020, 6, 30)
+    await db_session.commit()
+
+    provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
+
+    before = {f.security_id for f in provider.facts_as_of(date(2020, 6, 30))}
+    assert sid in before
+
+
+@pytest.mark.asyncio
+async def test_survivorship_provider_excludes_delisted_security_after_delisting(
+    db_session: AsyncSession,
+) -> None:
+    """The same delisted name must drop out of eligibility as of its delisting date."""
+    sid = await _seed_security(db_session, "HHH")
+    security = await db_session.get(SecurityModel, sid)
+    security.listing_date = date(2015, 1, 1)
+    security.delisting_date = date(2020, 6, 30)
+    await db_session.commit()
+
+    provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
+
+    after = {f.security_id for f in provider.facts_as_of(date(2020, 7, 1))}
+    assert sid not in after
+
+
+@pytest.mark.asyncio
+async def test_survivorship_provider_ignores_is_active_flag(db_session: AsyncSession) -> None:
+    """Unlike the stub, survivorship must not depend on the unreliable ``is_active`` flag."""
+    sid = await _seed_security(db_session, "III")
+    security = await db_session.get(SecurityModel, sid)
+    security.listing_date = date(2015, 1, 1)
+    security.is_active = False  # inactive, but not delisted per the real data
+    await db_session.commit()
+
+    provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
+
+    assert sid in {f.security_id for f in provider.facts_as_of(date(2024, 6, 1))}

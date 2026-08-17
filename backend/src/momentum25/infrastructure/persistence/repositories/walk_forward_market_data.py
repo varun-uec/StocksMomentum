@@ -13,18 +13,25 @@ full date range in one query at construction time (``load()``, async) and then
 answer ``price_on_or_before`` / ``level_on_or_before`` from an in-memory,
 per-key sorted list via binary search.
 
-``EligibilityFactsProvider`` has no adapter here. Verified against this
-database (2026-08-17): no table, column, or ingestion adapter anywhere in the
-codebase carries Nifty 500 index membership (current or historical) or
-ASM/GSM/T2T surveillance status — not even a "current list" to apply
-retroactively as the brief-addendum-approximations.md universe/surveillance
-approximation describes. ``universe_membership`` looks like a candidate but
-its ``reason`` values (``below_liquidity_floor``, ``insufficient_history``,
-``not_yet_listed``, ``stale_data``, ...) are a different production strategy's
-screening gates, not Nifty 500 constituency or surveillance status — treating
-it as such would fabricate the universe rather than approximate it. This
-remains the same documented, human-decision-blocked gap recorded in
+``EligibilityFactsProvider`` has two adapters here. Membership/surveillance
+(Nifty 500 constituency, T2T, ASM/GSM) is still STUB — re-verified 2026-08-17
+against this database and against live nseindia.com endpoints (see
+``handoff/builder-notes/round-1.md`` for exactly what was tried): no table,
+column, or reachable NSE endpoint in this environment carries point-in-time
+Nifty 500 membership or T2T/ASM/GSM status. ``universe_membership`` looks
+like a candidate but its ``reason`` values (``below_liquidity_floor``,
+``insufficient_history``, ``not_yet_listed``, ``stale_data``, ...) are a
+different production strategy's screening gates, not Nifty 500 constituency
+or surveillance status — treating it as such would fabricate the universe
+rather than approximate it. This remains the same documented,
+human-decision-blocked gap recorded in
 ``handoff/reviewer-findings/loop2/round-1.md``.
+
+Survivorship (checklist item 8) is now REAL: ``securities.delisting_date``/
+``last_trade_date`` are populated from observed bar coverage (see
+``scripts/rp012_populate_survivorship_dates.py``), and
+``SqlSurvivorshipEligibilityProvider`` below uses them instead of the
+``is_active`` flag. See ``SURVIVORSHIP_ELIGIBILITY_WARNING``.
 """
 
 from __future__ import annotations
@@ -200,6 +207,75 @@ class StubAllActiveSecuritiesEligibilityProvider:
         facts = []
         for security_id, listed in self._listings:
             if listed > decision_date:
+                continue
+            facts.append(
+                EligibilityFacts(
+                    security_id=security_id,
+                    listing_days_as_of_decision_date=(decision_date - listed).days,
+                    is_t2t=False,
+                    is_under_surveillance=False,
+                    in_nifty_500=True,
+                )
+            )
+        return facts
+
+
+SURVIVORSHIP_ELIGIBILITY_WARNING = (
+    "Nifty 500 membership and T2T/ASM surveillance status are still STUB "
+    "(is_t2t=False, is_under_surveillance=False, in_nifty_500=True for every "
+    "security) -- see this module's docstring, no adapter for that data "
+    "exists yet (handoff/brief-addendum-loop3.md Item 13, NSE reconstitution/ "
+    "circular endpoints attempted and blocked, see builder-notes/round-1.md). "
+    "Survivorship IS real: securities.delisting_date/last_trade_date are "
+    "populated from observed ohlcv_daily/legacy_ohlcv_daily bar coverage "
+    "(scripts/rp012_populate_survivorship_dates.py), so a delisted security "
+    "is included up to its last trade date and excluded after, regardless of "
+    "the is_active flag (which is not a reliable delisting signal in this "
+    "database -- some is_active=true rows carry a populated delisting_date)."
+)
+
+
+class SqlSurvivorshipEligibilityProvider:
+    """Real survivorship, stub membership/surveillance -- see ``SURVIVORSHIP_ELIGIBILITY_WARNING``.
+
+    Unlike ``StubAllActiveSecuritiesEligibilityProvider``, this provider does
+    not filter on ``is_active`` (an unreliable delisting signal here -- see
+    warning). It includes a security for ``decision_date`` iff
+    ``listing_date <= decision_date <= (delisting_date or +inf)``, using
+    ``securities.delisting_date`` populated by
+    ``scripts/rp012_populate_survivorship_dates.py`` from real bar coverage.
+    This is the mechanism checklist item 8 requires: a delisted name is
+    eligible before its delisting date and excluded from it onward.
+    """
+
+    def __init__(
+        self, rows: list[tuple[int, date, date | None]]
+    ) -> None:
+        """Bind (security_id, listing_date, delisting_date) rows for every NSE security."""
+        self._rows = rows
+
+    @classmethod
+    async def load(cls, session: AsyncSession) -> SqlSurvivorshipEligibilityProvider:
+        """Load every NSE security's listing/delisting dates in one query."""
+        result = await session.execute(
+            select(
+                SecurityModel.id,
+                SecurityModel.listing_date,
+                SecurityModel.delisting_date,
+            ).where(
+                SecurityModel.exchange == "NSE",
+                SecurityModel.listing_date.is_not(None),
+            )
+        )
+        return cls([(sid, listed, delisted) for sid, listed, delisted in result.all()])
+
+    def facts_as_of(self, decision_date: date) -> list[EligibilityFacts]:
+        """Return facts for every security listed and not yet delisted as of ``decision_date``."""
+        facts = []
+        for security_id, listed, delisted in self._rows:
+            if listed > decision_date:
+                continue
+            if delisted is not None and decision_date > delisted:
                 continue
             facts.append(
                 EligibilityFacts(
