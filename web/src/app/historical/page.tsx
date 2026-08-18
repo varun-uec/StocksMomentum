@@ -123,7 +123,9 @@ export default function HistoricalReplayPage() {
 
         {/* Available Dates */}
         <Card title="Available Historical Runs" subtitle={`${uniqueDates.length} unique dates`}>
-          {uniqueDates.length === 0 ? (
+          {runsLoading ? (
+            <LoadingSpinner text="Loading runs…" />
+          ) : uniqueDates.length === 0 ? (
             <EmptyState message="No completed runs available to replay." />
           ) : (
             <div className="flex flex-wrap gap-2">

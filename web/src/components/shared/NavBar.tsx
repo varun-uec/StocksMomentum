@@ -40,6 +40,11 @@ const Icons = {
       <path fillRule="evenodd" clipRule="evenodd" d="M12 7a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L12 10.586V7zM6 2a1 1 0 00-1 1v13.5A1.5 1.5 0 006.5 18h11a1.5 1.5 0 001.5-1.5V7.243a1 1 0 00-1.707-.707L15 6.793V3a1 1 0 00-1-1H6z" />
     </svg>
   ),
+  backtest: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <path fillRule="evenodd" clipRule="evenodd" d="M10 2a8 8 0 108 8 1 1 0 10-2 0 6 6 0 11-6-6c1.66 0 3.16.68 4.24 1.76L12.5 7.5H18V2l-1.34 1.34A7.97 7.97 0 0010 2zm-1.5 5.13a.75.75 0 00-1.13.65v4.44a.75.75 0 001.13.65l3.83-2.22a.75.75 0 000-1.3L8.5 7.13z" />
+    </svg>
+  ),
   learn: (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
       <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-1.128 6.008 6.008 0 004.957-4.025l-.64-1.274A8.95 8.95 0 003.31 9.397zM8 14.072l-2.4-1.029V11.6a6.008 6.008 0 004.8 0v1.443L8 14.072zm1-8.024a1 1 0 10-2 0 1 1 0 002 0z" />
@@ -111,7 +116,7 @@ const RESEARCH_TOOLS = [
   { href: '/historical', label: 'Historical', icon: Icons.historical },
   { href: '/analytics', label: 'Analytics', icon: Icons.analytics },
   { href: '/experiment', label: 'Experiment Lab', icon: Icons.lab },
-  { href: '/backtest', label: 'Backtest', icon: Icons.analytics },
+  { href: '/backtest', label: 'Backtest', icon: Icons.backtest },
 ];
 
 // The bottom bar on mobile. "More" opens the research sheet.

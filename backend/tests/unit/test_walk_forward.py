@@ -276,3 +276,11 @@ def test_report_omits_benchmark_line_when_no_benchmark_bound():
     result = _sample_result(None, None)
     report = format_walk_forward_report(result)
     assert "Benchmark return" not in report
+
+
+def test_reversed_date_range_is_rejected():
+    """Regression (B3-001): start > end must fail loudly, not report a
+    spurious zero-rebalance, zero-return run."""
+    runner, start, end = _build_runner()
+    with pytest.raises(ValueError, match="start must be on or before end"):
+        runner.run(end, start, Decimal(1_000_000))

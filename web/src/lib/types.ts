@@ -1026,6 +1026,17 @@ export interface BacktestRebalance {
   nav_pre_cost: string;
 }
 
+/** One fill in the trade log. Decimal fields arrive as strings. */
+export interface BacktestTrade {
+  security_id: number;
+  side: string;
+  quantity: string;
+  fill_price: string;
+  notional: string;
+  fill_date: string;
+  cost: string;
+}
+
 export interface BacktestResponse {
   start: string;
   end: string;
@@ -1038,6 +1049,6 @@ export interface BacktestResponse {
   rebalance_count: number;
   trade_count: number;
   rebalances: BacktestRebalance[];
-  trades: unknown[];
+  trades: BacktestTrade[];
   survivorship_warning: string;
 }

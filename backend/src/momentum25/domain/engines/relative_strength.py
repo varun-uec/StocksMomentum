@@ -58,7 +58,7 @@ class RelativeStrengthEngine:
                 rs_rating, sector_rs_pct, security.sector, rc
             ),
             "rs_industry_relative": lambda rc: self._eval_rs_industry_relative(
-                rs_rating, industry_rs_pct, security.sector, rc
+                rs_rating, industry_rs_pct, security.industry, rc
             ),
         }
 
@@ -194,7 +194,7 @@ class RelativeStrengthEngine:
 
     def _eval_rs_industry_relative(
         self, rs_rating: int | None, industry_rs_percentile: Decimal | None,
-        sector: str | None, rc: RuleConfig | None,
+        industry: str | None, rc: RuleConfig | None,
     ) -> RuleResult:
         rule_id = "rs_industry_relative"
         weight = self._weight(rc, Decimal("0.5"))

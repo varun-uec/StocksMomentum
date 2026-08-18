@@ -72,7 +72,10 @@ def walk_forward(
     ``SURVIVORSHIP_ELIGIBILITY_WARNING``).
     """
     typer.echo(f"WARNING: {SURVIVORSHIP_ELIGIBILITY_WARNING}")
-    asyncio.run(_run_walk_forward(start, end, initial_capital))
+    try:
+        asyncio.run(_run_walk_forward(start, end, initial_capital))
+    except ValueError as exc:  # invalid range/capital, same rule as the API
+        raise typer.BadParameter(str(exc)) from exc
 
 
 async def _run_walk_forward(start: str, end: str, initial_capital: str) -> None:

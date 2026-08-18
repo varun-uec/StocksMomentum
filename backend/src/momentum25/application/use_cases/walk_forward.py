@@ -154,7 +154,13 @@ class WalkForwardRunner:
         scores the point-in-time universe as of the prior session's close and
         fills at the first-session price — a strictly later date. Returns the
         per-rebalance and trade logs plus a trade-log-reconstructed summary.
+
+        Raises ``ValueError`` if ``start`` is after ``end``. A reversed range
+        would otherwise filter every session out and report a spurious
+        zero-rebalance, zero-return run.
         """
+        if start > end:
+            raise ValueError("start must be on or before end")
         sessions = self._calendar.sessions_between(_months_before(start, 13), end)
         session_index = {d: i for i, d in enumerate(sessions)}
         rebalance_dates = self._first_session_of_each_month(sessions, start, end)
