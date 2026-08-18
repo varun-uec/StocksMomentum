@@ -1,104 +1,139 @@
-# Reviewer findings — Loop 3, round 2 (second independent pass)
+# Reviewer findings — round 2 (second independent pass)
 
-Purpose of this round per `loop-protocol.md` Termination: confirm round-1's
-`PASS` with a second, independent Reviewer pass with zero code changes in
-between, verified by `git diff` — not either agent's word. This pass was run
-fresh, from scratch, without relying on round-1's findings file as ground
-truth; round-1's numbers are cited only afterward, as corroboration.
+Per `loop-protocol.md` Termination, this round exists to confirm round-1's
+`PASS` with a second, independent pass and zero code changes in between,
+verified by `git diff`, not either agent's word. Full checklist re-run fresh
+per `reviewer-handoff.md` and `loop-protocol.md`'s "not just the items that
+failed last time" requirement — nothing inferred from reading code alone;
+every item below was executed.
 
-## Zero-code-change confirmation
+## Finding 1 — `handoff/builder-notes/round-2.md` is stale and does not
+describe the round-1 it claims to follow
 
-What was run: `git log --oneline -8`, `git diff efc48a9 HEAD --stat`,
-`git status`.
+- Checklist item: unlisted (process/file-layout integrity, not a signal or
+  backtest-correctness item).
+- Classification: **Judgment call** (accepted — does not block PASS, see
+  reasoning below, but should be fixed going forward).
+- What was run: `git log --oneline -15`, then `git show --stat` on each of
+  `8b12e58`, `efc48a9`, `23ef183`, `cd40d40`, `bf8ba1a`, `1bc098e` to
+  reconstruct which files each commit actually touched, then read the full
+  content of `handoff/builder-notes/round-1.md`, `round-2.md`,
+  `handoff/reviewer-findings/round-1.md`, `round-2.md` as they exist on disk
+  at current `HEAD` (`1bc098e`).
+- Expected: `builder-notes/round-2.md` (the file I was told to verify as
+  "this round's claim") describes a no-op round following the round-1 that
+  is currently recorded in `reviewer-findings/round-1.md`.
+- Observed: it does not. `builder-notes/round-1.md` was rewritten twice —
+  once by `8b12e58` (real `SqlSurvivorshipEligibilityProvider` + a documented
+  9-endpoint NSE sourcing attempt for Item 13) and again by `bf8ba1a` (a
+  second, later "round 1" that overwrites that description with a from-
+  scratch DB re-verification per the revised `brief-addendum-loop3.md` §0).
+  `reviewer-findings/round-1.md` was correspondingly rewritten by `1bc098e`
+  to review the `bf8ba1a` content. But `builder-notes/round-2.md` and
+  `reviewer-findings/round-2.md` on disk are still the **first** cycle's
+  files (`23ef183`/`cd40d40`), written against the now-superseded
+  `efc48a9` round-1 (the `SqlSurvivorshipEligibilityProvider`-description
+  version, not the DB-re-verification version). `round-2.md`'s text
+  literally says "`HEAD` remains `efc48a9`" — untrue at current `HEAD`
+  (`1bc098e`) — and cites round-1 claims (Item 8 closed via a described
+  provider-add, Item 13 nine-endpoint attempt) that are no longer what
+  `reviewer-findings/round-1.md` currently says round 1 covered (DB
+  re-verification only). No round-2 file was ever written against the
+  `bf8ba1a`/`1bc098e` round-1 cycle.
+- Why this doesn't block PASS: independent of which round-1 cycle is being
+  cited, the underlying **source code has not changed at all** across every
+  one of these commits. `git diff 8b12e58 HEAD --stat -- src/ tests/` and
+  `git diff bf8ba1a HEAD --stat -- src/ tests/` are both empty — every
+  commit in this sequence (`efc48a9`, `23ef183`, `cd40d40`, `bf8ba1a`,
+  `1bc098e`) touched only `handoff/*.md` and `run-loop.sh`. So the
+  protocol's actual substantive concern for a round-2 ("did code change
+  between the two Reviewer passes?") is satisfiable by direct `git diff`
+  regardless of which handoff file is stale — and it comes back empty. I
+  re-verified every checklist item below fresh myself rather than trust
+  either round-2 file's narration.
+- Builder should regenerate `builder-notes/round-2.md` against the current
+  `reviewer-findings/round-1.md` next round so the file trail is coherent,
+  rather than leaving two rounds' worth of round-2 files pointing at a
+  superseded round-1.
 
-Observed: `HEAD` is `23ef183` (builder's round-2 commit). The only change
-since `efc48a9` (the commit round-1 verified) is the addition of
-`handoff/builder-notes/round-2.md` — 46 insertion lines, zero source files
-touched. Working tree clean. This satisfies the protocol's mechanical
-requirement for a trusted `PASS`.
+## Zero-code-change confirmation [RUN]
 
-## Full suite [RUN]
+- What was run: `git diff 8b12e58 HEAD --stat -- src/ tests/` and
+  `git diff bf8ba1a HEAD --stat -- src/ tests/` (both plausible "round-1
+  reviewed" base points, given Finding 1).
+- Expected: empty (no source/test changes since either candidate round-1).
+- Observed: both empty. `git status`: clean. Confirms no code changed
+  regardless of which round-1 cycle is treated as the reference point.
 
-What was run: `cd backend && M25_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@localhost:55432/momentum25_test pytest -q`
-(test DB was already provisioned on the running `momentum25-db-1` container,
-port 55432; only had to export the env var this session — a fresh setup
-step, not inherited from round-1's session).
+## Full test suite [RUN]
 
-Expected vs. observed: 633 passed, 0 failed — matches round-1's reported
-count exactly, obtained independently.
+- What was run: `M25_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@localhost:55432/momentum25_test python -m pytest -q`
+  from `src`'s project root (repo root, not a `backend/` subdirectory — the
+  latter doesn't exist; confirmed with `ls`).
+- Expected: full pass, matching round-1's reported 633.
+- Observed: `633 passed, 1 warning in 10.70s`. Matches exactly, obtained
+  independently in a fresh shell.
 
 ## Item 8 — Survivorship (delisted securities) [RUN]
 
-Classification: no finding (claim re-verified independently).
-
-What was run:
-- Fresh scratch script against the prod DB (`momentum25`, not `_test`):
-  queried `securities` for `symbol='GRUH'` directly, got
-  `(id=9992, delisting_date=2019-10-15)`. Then instantiated the real
-  `SqlSurvivorshipEligibilityProvider.load(session)` and called
-  `facts_as_of(date(2019,10,15))` vs `facts_as_of(date(2019,10,16))`.
-  Observed: `sid in before` → `True`, `sid in after` → `False`. Matches the
-  brief's "included up to delisting, excluded after" semantics and
-  round-1's finding, reproduced independently rather than re-read.
-- Mutation test on `facts_as_of`: changed
-  `decision_date > delisted` → `decision_date >= delisted` on the live
-  source file, ran `pytest tests/integration/test_walk_forward_market_data_providers.py -k survivorship`.
-  Observed: `test_survivorship_provider_includes_delisted_security_before_delisting`
-  goes red (`assert 1 in set()`), 1 failed / 2 passed. Confirms the test
-  actually exercises the boundary — not vacuous (item 12). File restored
-  from backup immediately after; `git status` confirms clean afterward, all
-  9 tests in that file pass again.
-- Live CLI run: `python -m momentum25.interface.cli.main walk-forward
-  2024-01-01 2024-03-01` against the prod DB. Observed: prints
-  `SURVIVORSHIP_ELIGIBILITY_WARNING`, 3 rebalances, 103 trades, 7.50% total
-  return, 4.52% benchmark return — matches round-1's captured numbers
-  exactly, reproduced fresh.
-- Forked-safety-net check (item 13's mechanism, applied to this provider):
-  monkeypatched `SqlSurvivorshipEligibilityProvider.facts_as_of` with a spy
-  wrapping the original, called `_run_walk_forward` directly (the actual CLI
-  entry point's async function, not a hand-built harness), same date range.
-  Observed: spy fired for exactly 3 decision dates
-  (`2023-12-29`, `2024-01-31`, `2024-02-29`) — confirms the provider sits on
-  the live execution path, not defined-but-unused.
+- Classification: no finding (independently re-verified, holds).
+- What was run:
+  - `grep` confirms `SqlSurvivorshipEligibilityProvider` is defined in
+    `src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py`
+    and imported/used (not just defined) in
+    `src/momentum25/interface/cli/main.py` (`universe = await
+    SqlSurvivorshipEligibilityProvider.load(session)`), i.e. wired to the
+    live CLI path, not a forked-safety-net.
+  - Queried the prod DB directly: `SELECT id, delisting_date FROM securities
+    WHERE symbol='GRUH'` → `(9992, 2019-10-15)`.
+  - Instantiated the real provider against the live prod DB in a fresh
+    scratch script (not copy-pasted from any prior round's script) and
+    called `facts_as_of(date(2019,10,15))` vs `facts_as_of(date(2019,10,16))`.
+    Observed: security id `9992` present in the `before` set, absent from
+    the `after` set — matches the brief's "included up to and including
+    delisting date, excluded from the day after" semantics.
+- Expected vs observed: match. Independently reproduced, not relayed from
+  either round-2 file or round-1's note.
 
 ## Item 13 — Point-in-time Nifty 500 / T2T / ASM membership [RUN]
 
-Classification: Judgment call (accepted) — unchanged from round-1, re-verified.
+- Classification: Judgment call (accepted) — re-verified, unchanged from
+  round-1's conclusion.
+- What was run: independently re-executed the DB queries `\dt`,
+  `SELECT count(*) FROM historical_universe`, and
+  `SELECT DISTINCT reason FROM universe_membership` against
+  `momentum25-db-1` via `docker exec ... psql`.
+- Expected vs observed: `historical_universe` count = `0` (matches round-1's
+  claim); `universe_membership.reason` distinct values are 7
+  liquidity/history reasons (`below_liquidity_floor`, `close_below_floor`,
+  `insufficient_history`, `no_bar_on_trading_date`, `not_yet_listed`,
+  `stale_data`, blank) — no membership/T2T/ASM-flavored value present,
+  matching round-1's claim that no point-in-time membership/surveillance
+  data exists in this DB. `StubAllActiveSecuritiesEligibilityProvider`
+  remains present in `src/` and `tests/` per `grep`, undeleted, as the
+  addendum requires.
+- No new sourcing attempt was made or required this round (no code
+  changed), so nothing new to evaluate beyond re-confirming the prior
+  documented-attempt outcome still matches the code and DB state, which it
+  does.
 
-What was run:
-- `grep -rln "total_return_index\|is_survivorship_free\|point_in_time_membership" src/`
-  → no hits. No field anywhere falsely claims point-in-time membership.
-- `grep -rn StubAllActiveSecuritiesEligibilityProvider src/ tests/` → 6 hits;
-  the stub still exists in the codebase and its tests, per the addendum's
-  explicit instruction not to delete it.
-- Read `walk_forward_market_data.py` module docstring and
-  `SURVIVORSHIP_ELIGIBILITY_WARNING`/`ELIGIBILITY_STUB_WARNING` constants
-  directly (not relayed from round-1's note): both state plainly that
-  membership/T2T/ASM remain stub while survivorship is real, and the CLI run
-  above confirms the warning actually prints on a real invocation.
+## Regression on frozen paths [RUN]
 
-This remains a legitimate documented-attempt outcome under
-`brief-addendum-loop3.md` §1 — no new sourcing attempt was required or made
-this round (round-2 made no code changes), so there is nothing new to
-evaluate on this item beyond re-confirming the documentation still matches
-the code, which it does.
-
-## Regression check on frozen paths [RUN]
-
-What was run: `git diff efc48a9 HEAD --stat -- src/momentum25/domain/backtest/ src/momentum25/application/use_cases/walk_forward.py`
-→ empty output, zero lines changed.
+- What was run: `git diff 8b12e58 HEAD --stat -- src/`.
+- Expected: empty.
+- Observed: empty — `domain/backtest/`, `walk_forward.py`,
+  `SqlPriceHistoryProvider`, `SqlBenchmarkProvider`, and every other source
+  file are untouched across the entire commit range covering both round-1
+  cycles.
 
 ## Summary
 
-Every item re-verified independently this round reproduces round-1's result
-exactly, using fresh commands run in a new session rather than re-reading
-round-1's findings file as ground truth. No regression, no new findings, no
-disputed judgment calls, nothing recurring from a "previously fixed" state.
-This is the confirming second pass the protocol requires: `git diff` between
-the two Reviewer passes is empty (only a builder-notes file was added, no
-source change), and the independent re-execution agrees with round-1's
-result in every particular checked.
-
----
+Every checklist item re-run this round reproduces independently, from fresh
+commands against live DB/CLI/test state, not from reading either stale
+round-2 handoff file. Zero source-code changes anywhere in the commit range
+under review. The one real defect found this round is a documentation/
+process one (Finding 1: `round-2.md` is stale and narrates a superseded
+round-1), not a signal, ranking, or backtest-integrity defect — it does not
+change any of the underlying facts, which all independently check out.
 
 VERDICT: PASS
