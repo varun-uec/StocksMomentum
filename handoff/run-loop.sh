@@ -145,9 +145,10 @@ while [ "$N" -le "$MAX_ROUNDS" ]; do
         # (i.e. no round with real code changes happened in between).
         CODE_DIFF=$(git diff --stat "$LAST_CODE_COMMIT" "$BUILDER_COMMIT" -- . ":(exclude)$HANDOFF")
         if [ -z "$CODE_DIFF" ]; then
-          git tag "loop-pass-round-$N"
+          TAG="loop-pass-$(git rev-parse --short HEAD)"
+          git tag "$TAG"
           echo "=== PASS confirmed twice with zero code changes in between. Loop complete. ==="
-          echo "Tagged as loop-pass-round-$N."
+          echo "Tagged as $TAG."
           exit 0
         else
           echo "Round $N was PASS but code changed since last PASS — resetting confirmation counter."

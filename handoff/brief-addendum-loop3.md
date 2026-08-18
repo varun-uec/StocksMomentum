@@ -18,12 +18,99 @@ answer. This loop's job is to go get the real data, so the two remaining
 sharper, evidence-backed statement of exactly what's obtainable and what
 isn't.
 
-## 0. Data sourcing is in scope for round 1 (same as Loop 2)
+## 0. Check the app database FIRST, thoroughly, before touching NSE
 
-As with Loop 2, finding and fetching real data is part of round 1's work,
-not a precondition someone else must satisfy first.
+Prior rounds (Approximations loop, round 1) grepped for this data and
+concluded it doesn't exist in `momentum25` Postgres. **Re-verify this
+claim from scratch this round — do not trust the prior conclusion at face
+value.** That check may have been incomplete (e.g. checked obvious table/
+column names but missed a differently-named table, a JSON/JSONB column
+holding structured status data, or a schema/table added since that check
+ran).
+
+Concretely, before writing any scraping/fetching code:
+
+- `\dt` (list all tables) and `\d+` on every table in the schema — not just
+  the ones already known (`securities`, `universe_membership`,
+  `ohlcv_daily`, `benchmark_index_daily`). Look for anything plausibly
+  related to index membership, constituent history, surveillance,
+  compliance, or trading status, even if the name doesn't obviously match
+  ("index_history", "constituents", "compliance_status", "trading_flags",
+  "scrip_status", etc.).
+- Check for JSON/JSONB columns on `securities` or elsewhere that might hold
+  structured per-date status data not visible as a normal column.
+  `SELECT column_name, data_type FROM information_schema.columns WHERE
+  data_type IN ('json','jsonb');` across the whole schema.
+  For any JSONB column, `SELECT DISTINCT jsonb_object_keys(col) FROM
+  table;` (or similar) to see what's actually inside it, rather than
+  assuming it's empty or irrelevant from the column name alone.
+- Check `universe_membership.reason` values again (438,901 rows, previously
+  found to only contain liquidity/history-screening reasons) — confirm
+  fresh whether that's still the complete set of distinct reason values, in
+  case rows have been added since the last check with different reasons
+  (e.g. `not_in_nifty500`, `under_asm`, `t2t`).
+- Check `historical_universe` (previously found to be 0 rows/unpopulated) —
+  confirm it's still empty. If it's been populated since, that may directly
+  close this gap.
+- Check `securities.delisting_date` (previously 0/3235 populated) and
+  `survivorship_gap_event` (previously 9,902 rows of trading-gap data, not
+  delisting flags) fresh — confirm whether either has changed.
+- If the app has any other database, schema, or service (not just
+  `momentum25` proper — check for a separate reference-data DB, a data
+  warehouse, or an admin/back-office service that might hold compliance or
+  index data) that the human is aware of, ask before assuming there's only
+  one database.
+
+**If this re-check finds real data:** wire it directly into
+`EligibilityFactsProvider` and/or the survivorship provider. This is
+strictly better than the NSE-scraping path below — skip straight to
+building the real adapter and its [RUN] verification per §2, and the NSE
+leads in §0b become unnecessary for this round.
+
+**If this re-check confirms the prior finding (data genuinely isn't
+there):** proceed to §0b (NSE sourcing) as originally planned, and state in
+the round note explicitly what was checked this time that wasn't checked
+before, so the "we already looked, it's not there" conclusion is trustworthy
+going forward rather than something that needs re-litigating every loop.
+
+## 0b. If not in the DB — data sourcing from NSE is in scope
 
 **Sources to check, roughly in order of expected cost/effort:**
+
+**Leads already found (human pre-searched these — verify freshness/coverage
+yourself, don't assume they still work or are complete):**
+
+- `https://archives.nseindia.com/content/indices/IndexInclExcl.xls` — NSE's
+  own historical index inclusion/exclusion file. **Known issue, confirmed via
+  a Dec 2023 developer forum report: this file stopped updating around
+  31 July 2020.** Verify this yourself before use — check the actual max
+  date in the downloaded file. If still stale, this only covers backtest
+  dates up to ~2020; state that coverage boundary explicitly in the report
+  output rather than silently extrapolating past it.
+- `niftyindices.com/reports` → "Archives of D/M Reports" →
+  "Indices Market Capitalization...." → select month/year → download. Appears
+  to have monthly historical constituent data as report downloads (PDF/XLS,
+  not a clean API) — untested for actual coverage range or parseability.
+  Likely needs real parsing work per file, and confirmation of how far back
+  the archive goes.
+- `nseindia.com/reports/asm` — gives the **current** ASM list only, as a
+  CSV download. No evidence of a historical ASM archive at this endpoint.
+  If no historical ASM archive can be found anywhere, document that
+  explicitly — "ASM historical status: not obtainable free as of [date],
+  only current-day snapshot available" is an acceptable, honest round-3
+  outcome for this specific sub-item, distinct from giving up on membership
+  data too.
+- GSM/T2T status appears to only be published via **daily circular PDFs**
+  (e.g. `nsearchives.nseindia.com/content/circulars/...`), not a bulk
+  historical file — confirms the scraper approach in the original §0 below
+  is likely necessary if this is pursued further, not a shortcut available.
+
+Given the above, **expect a partial-coverage outcome for Item 13, not a full
+fix.** A backtest report that honestly states "membership data verified for
+2020-01-01 through 2020-07-31 only; surveillance status: current-snapshot
+only, no historical coverage" is a legitimate, valuable round-3 result — do
+not let Builder feel pressure to force full coverage by extrapolating past
+verified data ranges.
 
 1. **NSE historical index reconstitution files.** NSE periodically publishes
    which stocks were added to / removed from the Nifty 500 and on what
