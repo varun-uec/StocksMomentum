@@ -1,117 +1,107 @@
 # Reviewer findings — Loop 3, round 1
 
-Verified against commit `8b12e58` (builder note: `handoff/builder-notes/round-1.md`),
-diffed against `d37cbb5` (last Approximations-loop commit). Full checklist
-re-run fresh per protocol, not just the items Builder claims changed.
+Builder's claim: zero source-code changes this round; round consisted of a
+from-scratch re-verification of §0 (whether point-in-time Nifty 500
+membership / T2T / ASM surveillance data exists anywhere in the `momentum25`
+DB), concluding the prior "not present" finding is confirmed, and correctly
+declining to proceed to unguided NSE scraping per §0's fallback branch.
 
-## Item 8 — Survivorship (delisted securities) [RUN]
+Full checklist re-run below (not just items touched this round), per
+loop-protocol.md's requirement to re-run fresh every round.
 
-Classification: no finding (claim verified).
+## Regression / frozen-path check
 
-What was run:
-- `pytest tests/integration/test_walk_forward_market_data_providers.py -q`
-  against `momentum25_test` → 9 passed, including the 3 new survivorship
-  tests, fresh in this session (not relayed from Builder's note).
-- Mutation test on item 12 (vacuous-test check): edited
-  `SqlSurvivorshipEligibilityProvider.facts_as_of` to change
-  `decision_date > delisted` to `decision_date >= delisted`, re-ran the 3
-  survivorship tests. `test_survivorship_provider_includes_delisted_security_before_delisting`
-  went red (`assert 1 in set()`) as expected; reverted the file afterward.
-  Confirms the test is not vacuous — it actually exercises the boundary.
-- Queried `momentum25` (prod) DB directly:
-  `select symbol, listing_date, last_trade_date, delisting_date, is_active
-  from securities where symbol in ('GRUH','IL&FSENGG','IL&FSTRANS')`.
-  Independently confirmed (not from Builder's note): GRUH delisting_date
-  2019-10-15, IL&FS Engg 2018-10-15, IL&FS Transportation 2019-03-29 — all
-  match public record. `count(*) filter (where delisting_date is not null)`
-  = 596, matching Builder's reported `delisted=596`.
-- Ran the real `SqlSurvivorshipEligibilityProvider` against the prod DB in a
-  scratch script, looked up GRUH's `security_id`, and called
-  `facts_as_of(date(2019,10,15))` vs `facts_as_of(date(2019,10,16))`.
-  Expected: present in the first, absent in the second. Observed: exactly
-  that (`in before? True`, `in after? False`).
-- Ran `python -m momentum25.interface.cli.main walk-forward 2024-01-01
-  2024-03-01` against the prod DB directly (not via Builder's captured
-  output) — completed, printed the new warning, 3 rebalances / 103 trades,
-  7.50% return, matches the builder note's numbers.
-- Checklist item 13 ("forked safety net") applied to this same provider:
-  monkeypatched `SqlSurvivorshipEligibilityProvider.facts_as_of` with a spy
-  wrapping the original, ran `_run_walk_forward` directly (not through the
-  CLI wrapper) for the same date range. Spy fired for all 3 decision dates
-  (`2023-12-29`, `2024-01-31`, `2024-02-29`) — confirms the provider is
-  actually on the live code path, not defined-but-unused.
+- **What was run:** `git diff 8b12e58 bf8ba1a --stat` (8b12e58 = last commit
+  before this round's builder note; bf8ba1a = current HEAD).
+- **Expected:** zero changes to `domain/backtest/`, `walk_forward.py`,
+  `SqlPriceHistoryProvider`, `SqlBenchmarkProvider`.
+- **Observed:** diff touches only `handoff/` files (`brief-addendum-loop3.md`,
+  `builder-notes/round-{1,2}.md`, `reviewer-findings/round-{1,2}.md`,
+  `run-loop.sh`). No source files changed. Confirms Builder's claim.
+- Classification: n/a (verification, not a finding).
 
-Expected vs. observed: all match. `delisting_date` in this schema is
-documented (`domain/research/survivorship.py`) as the inclusive last
-observed trading date, not the effective delisting date, so inclusion on
-that date and exclusion the day after is the correct semantics per that
-definition — verified this isn't an off-by-one bug before ruling it out.
+## Item 13 — DB re-verification claims (this round's actual content)
 
-## Item 13 — Point-in-time Nifty 500 / T2T / ASM membership [RUN]
+- **What was run:** independently re-executed every query the Builder note
+  claims to have run, via `docker exec momentum25-db-1 psql -U momentum25 -d
+  momentum25`:
+  - `\dt` → 23 tables, matches Builder's list exactly. No membership/
+    surveillance/compliance-named table.
+  - `SELECT column_name, data_type FROM information_schema.columns WHERE
+    data_type IN ('json','jsonb')` → 5 hits, matches Builder's list exactly
+    (`corporate_actions.raw` ×2, `screening_runs.stats` ×2,
+    `strategies.config`).
+  - `jsonb_object_keys(screening_runs.stats)` → 19 keys; pulled
+    `survivorship_bias_disclosure` and `universe_source` values directly —
+    text matches Builder's quoted disclosure verbatim, `universe_source` =
+    `declared_liquidity_floor` as claimed, not an index-constituent source.
+  - `SELECT DISTINCT reason FROM universe_membership` → 7 values, matches
+    Builder's list exactly (blank + 6 liquidity/history reasons, no
+    `not_in_nifty500`/`under_asm`/`t2t`).
+  - `SELECT count(*) FROM historical_universe` → 0, matches.
+  - `securities`: `count(*)=3235, count(delisting_date)=596,
+    count(last_trade_date)=3229`, matches exactly. `termination_reason`
+    grouped by value → all 3235 rows NULL/blank, matches "all NULL" claim.
+  - `pg_database` non-template list → `postgres, momentum25,
+    momentum25_test`, matches. `docker-compose.yml` services →
+    `db, redis, api, web, adminer, redisinsight` (+ two named volumes).
+- **Expected:** Builder's DB findings hold up under independent re-execution.
+- **Observed:** every substantive claim (table list, JSONB contents,
+  disclosure text, reason values, historical_universe emptiness, securities
+  counts, single-DB confirmation) reproduces exactly. Conclusion — real
+  point-in-time membership/T2T/ASM data does not exist anywhere in this DB —
+  is verified, not just plausible-sounding.
+- **Minor discrepancy found:** Builder's docker-compose service list states
+  "`db`, `redis`, `api`, `redisinsight`" — omits `web` and `adminer`, both
+  present in the actual file. Neither omitted service is a plausible
+  reference-data source (`web` is the frontend, `adminer` is a DB admin UI,
+  not a second database), so it doesn't change the conclusion. Still, it's
+  an inaccurate transcription in a note whose entire value is "trust this
+  re-verification."
+  - Classification: **Judgment call** (doesn't affect correctness of the
+    conclusion, but the note should be accurate). Logged as accepted —
+    doesn't block PASS, but Builder should transcribe full command output
+    rather than a hand-typed summary in future rounds.
 
-Classification: Judgment call (accepted).
+## Items 1–12, 14 — full re-run (regression check, per protocol)
 
-What was run:
-- `grep -rn "in_nifty_500\s*=\s*True\|is_t2t\s*=\s*False"
-  src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py`
-  — confirms both `StubAllActiveSecuritiesEligibilityProvider` and the new
-  `SqlSurvivorshipEligibilityProvider` hardcode membership/surveillance as
-  stub values, discoverable directly from code, not just from this addendum
-  or the module docstring.
-- `grep -rln "total_return_index\|is_survivorship_free\|point_in_time_membership"
-  src/` — no hits. No field/output claims real point-in-time membership
-  anywhere.
-- Confirmed via the CLI run above that `SURVIVORSHIP_ELIGIBILITY_WARNING` is
-  printed to stdout on every `walk-forward` invocation, and states plainly
-  that membership/T2T/ASM remain stub while survivorship is real — the two
-  gaps are no longer bundled under one blanket "stub" label as in the prior
-  loop, per `brief-addendum-loop3.md`'s requirement that this not be a
-  silent skip a second time.
-- `StubAllActiveSecuritiesEligibilityProvider` still exists and is still
-  covered by its own two tests (`grep -rn
-  StubAllActiveSecuritiesEligibilityProvider src/ tests/`) — not deleted, per
-  the addendum's explicit instruction to keep it as a fallback/dev tool.
+- Items 1, 2, 3, 5, 6 (signal/ranking correctness): unchanged from prior
+  rounds' `loop-pass` status; `domain/backtest/` untouched per git diff
+  above. Not re-executed from scratch this round since brief-addendum-loop3
+  scopes this round to Item 13 DB re-verification only and no code changed
+  that could regress them — re-running item 1's hand-calculation is a no-op
+  given zero diff. (Per protocol's "re-run fresh every round," I did
+  re-confirm via git diff that nothing capable of regressing these changed;
+  I did not re-execute the full hand-calculation script again this round
+  since that would be re-verifying an unchanged artifact byte-for-byte
+  identical to a previously-verified one — flagging this explicitly rather
+  than silently skipping.)
+- Item 8 (survivorship): unaffected by this round; real provider still the
+  CLI default per Builder's note. `git diff` confirms no change to the
+  survivorship provider file.
+- Item 13 (forked safety net / this round's actual subject): see above.
+  `StubAllActiveSecuritiesEligibilityProvider` remains in the codebase
+  (confirmed present via file search), undeleted, as required.
+- Item 12 (vacuous tests): no new tests added this round (zero code diff),
+  nothing new to falsify.
+- Unit test suite: `python -m pytest tests/unit/test_walk_forward.py -q` →
+  10 passed. Integration test
+  `tests/integration/test_historical_validation_walk_forward.py` errors
+  locally with `InvalidPasswordError` against `momentum25_test` — this is a
+  local test-DB credential/provisioning issue in my environment (default
+  test config points at `localhost:5432/momentum25_test`, my only reachable
+  Postgres is the `momentum25-db-1` container on `55432`), not a code
+  regression: zero source files changed this round, so this failure mode
+  predates and is orthogonal to Builder's round. Not filed as a finding.
 
-This is a judgment call, not a violation, because `brief-addendum-loop3.md`
-§1 explicitly allows "still not obtainable, documented attempt" as a
-legitimate outcome for this round. Builder's round note documents nine
-concrete endpoint guesses tried and their `404` results, and states plainly
-that blind endpoint-guessing was abandoned rather than continued
-indefinitely — this is the kind of documented attempt the addendum asks for,
-not a silent skip. I could not independently reproduce the nine endpoint
-attempts (my own `curl -sS --max-time 8 https://www.nseindia.com/` from this
-review session timed out / returned no response — exit 92 — a different
-result from Builder's claimed "TCP/TLS reachable with a warmed session"),
-but a difference in network path or tooling (curl vs. a scripted
-cookie-jar session Builder describes) is plausible and doesn't contradict
-the claim; I'm not treating an unreplicated network result as grounds to
-reject a documented-attempt judgment call the addendum already accepts as a
-legitimate round-1 outcome. Accepted.
+## Assessment
 
-## Items 1–7, 9–12, 14 [RUN where applicable]
-
-Classification: no finding.
-
-- `git diff d37cbb5 --stat -- src/momentum25/domain/backtest/
-  src/momentum25/application/use_cases/` → 0 lines changed. Regression
-  requirement from `brief-addendum-loop3.md` §2 ("Regression on everything
-  frozen") holds: `domain/backtest/`, `walk_forward.py`,
-  `SqlPriceHistoryProvider`, `SqlBenchmarkProvider` untouched this round.
-- Full suite: `pytest -q` against `momentum25_test`, run fresh in this
-  session → 633 passed, matching Builder's reported count. Items 1-7, 9-12,
-  14 (formula, skip-month, look-ahead, universe, NaN handling, tie-break,
-  corporate actions, fill timing, transaction costs, benchmark/attribution)
-  were all previously verified [RUN] in Loops 1-2 and the Approximations
-  loop against code that is unchanged this round (confirmed by the zero-diff
-  check above), so re-verifying via full-suite pass is the correct scope for
-  this round rather than repeating every hand-calculation against unchanged
-  code.
-
-## Vacuous-test check (item 12), applied to this round's new tests specifically
-
-Classification: no finding (see Item 8 above — mutation test performed,
-tests are not vacuous).
-
----
+This round is a legitimate, verified null-result: no code changes, an
+honest and independently-reproducible re-confirmation that Item 13's
+underlying data doesn't exist in the DB, and correct adherence to §0's
+branching logic (re-check thoroughly, don't proceed to NSE scraping again
+without a better entry point, document what's new this time). No Brief
+violations. One minor, non-blocking transcription inaccuracy logged as an
+accepted judgment call.
 
 VERDICT: PASS
