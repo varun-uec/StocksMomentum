@@ -8,27 +8,20 @@ utilities that already work.
 from __future__ import annotations
 
 import asyncio
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 import typer
 
-from momentum25.application.use_cases.walk_forward import (
-    WalkForwardRunner,
-    format_walk_forward_report,
-)
+from momentum25.application.use_cases.walk_forward import format_walk_forward_report
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
-from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
-from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
-    SqlBenchmarkProvider,
-    SqlPriceHistoryProvider,
-    SqlSurvivorshipEligibilityProvider,
 )
+from momentum25.interface.walk_forward_wiring import build_walk_forward_runner
 
 app = typer.Typer(help="Momentum25 India operational CLI.", no_args_is_help=True)
 
@@ -85,20 +78,7 @@ def walk_forward(
 async def _run_walk_forward(start: str, end: str, initial_capital: str) -> None:
     start_date = date.fromisoformat(start)
     end_date = date.fromisoformat(end)
-    database = get_database()
-    price_load_start = start_date - timedelta(days=400)  # covers the 12m lookback
-    async with database.session() as session:
-        prices = await SqlPriceHistoryProvider.load(session, price_load_start, end_date)
-        benchmark = await SqlBenchmarkProvider.load(
-            session, "NIFTY500", start_date, end_date
-        )
-        universe = await SqlSurvivorshipEligibilityProvider.load(session)
-    runner = WalkForwardRunner(
-        calendar=get_nse_trading_calendar(),
-        prices=prices,
-        universe=universe,
-        benchmark=benchmark,
-    )
+    runner = await build_walk_forward_runner(start_date, end_date)
     result = runner.run(start_date, end_date, Decimal(initial_capital))
     typer.echo(format_walk_forward_report(result))
 

@@ -468,3 +468,15 @@ export async function detectChartPatterns(
     cache: 'no-store',
   });
 }
+
+// ── Walk-forward backtest ─────────────────────────────────────────────
+
+export async function runWalkForwardBacktest(
+  request: import('./types').BacktestRequest
+): Promise<import('./types').BacktestResponse> {
+  return fetchJson(`${API_BASE}/backtest/walk-forward`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+    cache: 'no-store',
+  });
+}

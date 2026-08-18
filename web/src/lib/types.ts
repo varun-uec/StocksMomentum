@@ -1006,3 +1006,38 @@ export interface RefreshMarketDataResponse {
   duration_seconds: number;
   results: ExchangeRefreshResult[];
 }
+
+// ── Walk-forward backtest ─────────────────────────────────────────────
+
+export interface BacktestRequest {
+  start: string;
+  end: string;
+  initial_capital: string;
+}
+
+export interface BacktestRebalance {
+  decision_date: string;
+  fill_date: string;
+  universe_size: number;
+  eligible_count: number;
+  selected: number[];
+  trade_count: number;
+  total_cost: string;
+  nav_pre_cost: string;
+}
+
+export interface BacktestResponse {
+  start: string;
+  end: string;
+  initial_capital: string;
+  final_nav: string;
+  total_return: string;
+  /** Never render this without `benchmark_label` next to it. */
+  benchmark_return: string | null;
+  benchmark_label: string | null;
+  rebalance_count: number;
+  trade_count: number;
+  rebalances: BacktestRebalance[];
+  trades: unknown[];
+  survivorship_warning: string;
+}

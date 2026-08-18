@@ -111,6 +111,7 @@ const RESEARCH_TOOLS = [
   { href: '/historical', label: 'Historical', icon: Icons.historical },
   { href: '/analytics', label: 'Analytics', icon: Icons.analytics },
   { href: '/experiment', label: 'Experiment Lab', icon: Icons.lab },
+  { href: '/backtest', label: 'Backtest', icon: Icons.analytics },
 ];
 
 // The bottom bar on mobile. "More" opens the research sheet.
