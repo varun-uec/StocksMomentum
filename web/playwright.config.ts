@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
+import { BACKEND_DIR, E2E_DATABASE_URL } from './e2e/env';
 
 /**
  * End-to-end tests run the production build, served by the real API, against a
@@ -10,9 +11,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const PORT = 8765;
 const webDist = fileURLToPath(new URL('./dist', import.meta.url));
-const backend = fileURLToPath(new URL('../backend', import.meta.url));
-const databaseUrl =
-  process.env.E2E_DATABASE_URL ?? 'postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_e2e';
+const backend = BACKEND_DIR;
+const databaseUrl = E2E_DATABASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
@@ -26,7 +26,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `npm run build && cd ${backend} && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port ${PORT} --app-dir src`,
+    command: `npm run build && cd ${backend} && .venv/bin/alembic upgrade head && .venv/bin/python ../web/e2e/db.py seed && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port ${PORT} --app-dir src`,
     url: `http://localhost:${PORT}/api/v1/health/live`,
     reuseExistingServer: false,
     timeout: 120_000,

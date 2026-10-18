@@ -40,7 +40,7 @@ Both pass today (2 kept, 0 broken). The contracts do not cover `infrastructure` 
 
 ## Data stores
 
-**PostgreSQL** (ADR-004). 17 tables, 13 Alembic migrations (`0001` → `0013`).
+**PostgreSQL** (ADR-004). 18 tables, 14 Alembic migrations (`0001` → `0014`).
 
 | Group | Tables |
 |---|---|
@@ -50,7 +50,7 @@ Both pass today (2 kept, 0 broken). The contracts do not cover `infrastructure` 
 | Universe and survivorship | `historical_universe`, `survivorship_gap_event`, `universe_membership` |
 | Strategy and runs | `strategies`, `screening_runs`, `screening_results`, `rule_results` |
 | Validation | `forward_returns` |
-| User | `watchlist_items` |
+| User | `watchlist_items`, `user_documents` (saved workspace and drawings, versioned by `revision`; ADR-013 §5) |
 
 Run tables are append-only per `run_id` (ADR-006).
 

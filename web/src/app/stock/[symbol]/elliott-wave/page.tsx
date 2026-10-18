@@ -101,7 +101,8 @@ export default function ElliottWavePage() {
   // drawing tools all carry across, persisted per symbol.
   const { timeframe, ready: chartReady, chartProps } = useChartShell(
     symbol ?? '',
-    strategyQuery ?? DEFAULT_STRATEGY
+    strategyQuery ?? DEFAULT_STRATEGY,
+    'elliott-wave'
   );
   const strategyName = strategyQuery ?? DEFAULT_STRATEGY;
 

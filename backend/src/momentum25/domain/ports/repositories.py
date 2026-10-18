@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.entities.user_document import DocumentKind, UserDocument
 from momentum25.domain.ports.market_data import RawCorporateAction, RawIndexBar
 from momentum25.domain.research.forward_returns import ForwardReturn
 from momentum25.domain.research.period_correct_resolution import SymbolInterval
@@ -312,4 +313,36 @@ class WatchlistRepository(Protocol):
 
     async def list_symbols(self) -> list[str]:
         """Return the watchlisted symbols, oldest addition first."""
+        ...
+
+
+@runtime_checkable
+class UserDocumentRepository(Protocol):
+    """Persistence for user documents with optimistic concurrency (ADR-013 §5)."""
+
+    async def get(self, kind: DocumentKind, key: str) -> UserDocument | None:
+        """Return the document, or ``None`` if it was never saved."""
+        ...
+
+    async def create(
+        self, kind: DocumentKind, key: str, body: dict[str, Any], schema_version: int
+    ) -> UserDocument:
+        """Store a new document at revision 1.
+
+        Raises ``RevisionMismatchError`` if it already exists.
+        """
+        ...
+
+    async def replace(
+        self,
+        kind: DocumentKind,
+        key: str,
+        body: dict[str, Any],
+        schema_version: int,
+        expected_revision: int,
+    ) -> UserDocument:
+        """Replace the document if it is still at ``expected_revision``.
+
+        Raises ``RevisionMismatchError`` otherwise, including when it is absent.
+        """
         ...

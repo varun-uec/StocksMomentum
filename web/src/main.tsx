@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router';
 import RootLayout from './app/layout';
+import { importLocalDrawings } from './lib/local-import';
 
 type PageModule = { default: React.ComponentType };
 
@@ -17,6 +18,8 @@ const routes: RouteObject[] = [
     element: <RootLayout />,
     children: [
       { index: true, ...page(() => import('./app/page')) },
+      { path: 'chart', ...page(() => import('./app/chart/page')) },
+      { path: 'chart/:symbol', ...page(() => import('./app/chart/page')) },
       { path: 'stock/:symbol', ...page(() => import('./app/stock/[symbol]/page')) },
       { path: 'stock/:symbol/analysis', ...page(() => import('./app/stock/[symbol]/analysis/page')) },
       { path: 'stock/:symbol/elliott-wave', ...page(() => import('./app/stock/[symbol]/elliott-wave/page')) },
@@ -49,6 +52,8 @@ const routes: RouteObject[] = [
     ],
   },
 ];
+
+void importLocalDrawings();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,12 +1,16 @@
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
-import { searchSecurities } from '@/lib/api-client';
+import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { focusRing } from '@/lib/theme';
-import type { SecuritySearchResult } from '@/lib/types';
 
 // Minimal SVG icons — no emoji, consistent 20×20 viewBox.
 const Icons = {
+  chart: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <path d="M5 2a.75.75 0 01.75.75V5h.5A.75.75 0 017 5.75v6.5a.75.75 0 01-.75.75h-.5v4.25a.75.75 0 01-1.5 0V13h-.5A.75.75 0 013 12.25v-6.5A.75.75 0 013.75 5h.5V2.75A.75.75 0 015 2zm10 0a.75.75 0 01.75.75V7h.5a.75.75 0 01.75.75v5.5a.75.75 0 01-.75.75h-.5v3.25a.75.75 0 01-1.5 0V14h-.5a.75.75 0 01-.75-.75v-5.5A.75.75 0 0113.75 7h.5V2.75A.75.75 0 0115 2zm-5 3a.75.75 0 01.75.75V9h.5a.75.75 0 01.75.75v3.5a.75.75 0 01-.75.75h-.5v2.25a.75.75 0 01-1.5 0V14h-.5a.75.75 0 01-.75-.75v-3.5A.75.75 0 018.75 9h.5V5.75A.75.75 0 0110 5z" />
+    </svg>
+  ),
   dashboard: (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
       <path d="M2 4a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm8 0a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2h-4a2 2 0 01-2-2V4zM2 14a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4zm8 0a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2h-4a2 2 0 01-2-2v-4z" />
@@ -101,6 +105,7 @@ const Icons = {
 // behind the "Research" menu.
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: Icons.dashboard },
+  { href: '/chart', label: 'Chart', icon: Icons.chart },
   { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
   { href: '/market', label: 'Market', icon: Icons.market },
   { href: '/learn', label: 'Learn', icon: Icons.learn },
@@ -157,47 +162,19 @@ function ThemeToggle() {
  */
 function SymbolSearch({ className = '', inputClassName = 'w-28 lg:w-44' }: { className?: string; inputClassName?: string }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [value, setValue] = useState('');
-  const [results, setResults] = useState<SecuritySearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const [searching, setSearching] = useState(false);
+  const { query, results, searching } = useSecuritySearch(value);
+  useEffect(() => setActive(-1), [results]);
 
-  const query = value.trim();
-
-  // Debounced so a fast typist issues one request per pause, not per keystroke;
-  // the abort controller drops responses for queries the user has moved past,
-  // which would otherwise land out of order and show stale suggestions.
-  useEffect(() => {
-    if (query.length < 1) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    const controller = new AbortController();
-    setSearching(true);
-    const timer = setTimeout(() => {
-      searchSecurities(query, 8, controller.signal)
-        .then((r) => {
-          setResults(r);
-          setActive(-1);
-        })
-        .catch(() => {
-          /* aborted or offline — leave the last suggestions in place */
-        })
-        .finally(() => setSearching(false));
-    }, 150);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
-
+  // On the chart workspace a search changes the chart; elsewhere it opens the stock's research page.
   const go = (symbol: string) => {
     setValue('');
-    setResults([]);
     setOpen(false);
-    navigate(`/stock/${encodeURIComponent(symbol.toUpperCase())}`);
+    const base = pathname.startsWith('/chart') ? '/chart' : '/stock';
+    navigate(`${base}/${encodeURIComponent(symbol.toUpperCase())}`);
   };
 
   return (

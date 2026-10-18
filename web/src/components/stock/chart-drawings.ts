@@ -74,6 +74,98 @@ export function drawingId(): string {
 
 export const DRAWING_COLOR = '#6366f1';
 
+// ── Geometry (pure; unit-tested in chart-drawings.test.ts) ────────────────
+
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+/** Which part of a drawing the pointer is on: the whole shape, or one anchor. */
+export type DrawingPart = 'body' | number;
+
+/** Pointer distance, in px, within which an anchor handle is grabbed. */
+export const HANDLE_RADIUS = 6;
+/** Pointer distance, in px, within which a line is hit. */
+const LINE_TOLERANCE = 5;
+
+function distance(a: ScreenPoint, b: ScreenPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function distanceToSegment(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
+  const lengthSq = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+  if (lengthSq === 0) return distance(p, a);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / lengthSq));
+  return distance(p, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+}
+
+/**
+ * Hit-test one drawing at `at`. `points` are the drawing's anchors in pane
+ * coordinates (null when off-screen). Anchors win over the body, so a handle
+ * on top of a line grabs the handle.
+ */
+export function hitTest(kind: DrawingKind, points: (ScreenPoint | null)[], at: ScreenPoint): DrawingPart | null {
+  for (let i = 0; i < points.length; i += 1) {
+    const p = points[i];
+    if (p && distance(p, at) <= HANDLE_RADIUS) return i;
+  }
+  const [a, b] = points;
+  if (!a || (kind !== 'horizontal' && !b)) return null;
+  switch (kind) {
+    case 'horizontal':
+      return at.x >= a.x - LINE_TOLERANCE && Math.abs(at.y - a.y) <= LINE_TOLERANCE ? 'body' : null;
+    case 'trendline':
+      return distanceToSegment(at, a, b!) <= LINE_TOLERANCE ? 'body' : null;
+    case 'rectangle': {
+      const inX = at.x >= Math.min(a.x, b!.x) - LINE_TOLERANCE && at.x <= Math.max(a.x, b!.x) + LINE_TOLERANCE;
+      const inY = at.y >= Math.min(a.y, b!.y) - LINE_TOLERANCE && at.y <= Math.max(a.y, b!.y) + LINE_TOLERANCE;
+      return inX && inY ? 'body' : null;
+    }
+    case 'fib': {
+      const inX = at.x >= Math.min(a.x, b!.x) - LINE_TOLERANCE && at.x <= Math.max(a.x, b!.x) + LINE_TOLERANCE;
+      const lo = Math.min(a.y, b!.y);
+      const hi = Math.max(a.y, b!.y);
+      const nearLevel = FIB_LEVELS.some((ratio) => Math.abs(at.y - (hi + (lo - hi) * ratio)) <= LINE_TOLERANCE);
+      return inX && nearLevel ? 'body' : null;
+    }
+  }
+}
+
+/** The topmost drawing under the pointer: the last one drawn wins, as it paints on top. */
+export function hitTestAll(
+  drawings: { id: string; kind: DrawingKind; points: (ScreenPoint | null)[] }[],
+  at: ScreenPoint,
+): { id: string; part: DrawingPart } | null {
+  for (let i = drawings.length - 1; i >= 0; i -= 1) {
+    const part = hitTest(drawings[i].kind, drawings[i].points, at);
+    if (part !== null) return { id: drawings[i].id, part };
+  }
+  return null;
+}
+
+/**
+ * Move a drawing by a whole number of bars and a price offset per anchor.
+ * `body` moves every anchor; an anchor index moves that anchor only. Bar
+ * indices clamp to the loaded range, so a drawing never lands off the data.
+ */
+export function moveDrawing(
+  drawing: ChartDrawing,
+  part: DrawingPart,
+  barShift: number,
+  newPrices: number[],
+  barDates: string[],
+): ChartDrawing {
+  const indexOf = new Map(barDates.map((d, i) => [d, i]));
+  const points = drawing.points.map((point, i) => {
+    if (part !== 'body' && part !== i) return point;
+    const from = indexOf.get(point.date);
+    const date = from === undefined ? point.date : barDates[Math.max(0, Math.min(barDates.length - 1, from + barShift))];
+    return { date, price: newPrices[i] ?? point.price };
+  });
+  return { ...drawing, points };
+}
+
 // ── Rendering ─────────────────────────────────────────────────────────────
 
 /** Resolves the price series of the price pane at render time; the series is
@@ -89,9 +181,11 @@ interface RenderState {
   drawings: ChartDrawing[];
   draft: RenderablePoint[] | null;
   cursor: RenderablePoint | null;
+  /** The selected drawing, painted thicker with its anchor handles. */
+  selectedId: string | null;
 }
 
-const EMPTY_STATE: RenderState = { drawings: [], draft: null, cursor: null };
+const EMPTY_STATE: RenderState = { drawings: [], draft: null, cursor: null, selectedId: null };
 
 class DrawingsPrimitive implements IPanePrimitive<Time> {
   private _chart: IChartApi | null = null;
@@ -169,7 +263,9 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
     target.useMediaCoordinateSpace(({ context, mediaSize }) => {
       context.lineCap = 'round';
       for (const drawing of state.drawings) {
-        this._renderDrawing(context, mediaSize.width, chart, priceSeries, drawing);
+        const selected = drawing.id === state.selectedId;
+        this._renderDrawing(context, mediaSize.width, chart, priceSeries, drawing, selected);
+        if (selected) this._paintHandles(context, chart, priceSeries, drawing);
       }
       if (state.draft?.length) {
         this._paintDraft(context, chart, priceSeries, state.draft, state.cursor);
@@ -194,10 +290,11 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
     paneWidth: number,
     chart: IChartApi,
     series: ISeriesApi<'Candlestick' | 'Line'>,
-    drawing: ChartDrawing
+    drawing: ChartDrawing,
+    selected: boolean
   ): void {
     ctx.strokeStyle = drawing.color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = selected ? 2.5 : 1.5;
     ctx.setLineDash([]);
 
     switch (drawing.kind) {
@@ -256,6 +353,25 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
         ctx.lineWidth = 1.5;
         break;
       }
+    }
+  }
+
+  private _paintHandles(
+    ctx: CanvasRenderingContext2D,
+    chart: IChartApi,
+    series: ISeriesApi<'Candlestick' | 'Line'>,
+    drawing: ChartDrawing
+  ): void {
+    for (const point of drawing.points) {
+      const p = DrawingsPaneRenderer._screen(chart, series, point);
+      if (!p) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, HANDLE_RADIUS - 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = drawing.color;
+      ctx.stroke();
     }
   }
 

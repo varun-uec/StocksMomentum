@@ -18,7 +18,10 @@ from momentum25.domain.ports.repositories import (
     SecurityRepository,
 )
 
-DEFAULT_LOOKBACK_DAYS = 500
+# With no ``from`` date the chart asks for its whole history (the MAX range).
+# The repository caps by row count, so "everything" is a cap no stored series
+# reaches: 20,000 sessions is about 80 years of daily bars.
+ALL_HISTORY_SESSIONS = 20_000
 
 
 class SearchSecurities:
@@ -65,7 +68,7 @@ class GetSecurityOHLCV:
             raise NotFoundError(f"Security not found: {symbol}")
 
         as_of = to or date.today()
-        lookback_days = (as_of - from_).days + 1 if from_ else DEFAULT_LOOKBACK_DAYS
+        lookback_days = (as_of - from_).days + 1 if from_ else ALL_HISTORY_SESSIONS
         series = await self._ohlcv.get_series(
             security.id, lookback_days=lookback_days, as_of=as_of
         )

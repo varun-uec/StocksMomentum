@@ -39,6 +39,7 @@ from momentum25.application.use_cases.stocks import (
     GetStockExplanation as GetStockExplanationBySymbol,
 )
 from momentum25.application.use_cases.strategies import GetStrategy, ListStrategies
+from momentum25.application.use_cases.user_documents import GetUserDocument, SaveUserDocument
 from momentum25.application.use_cases.watchlist import (
     AddToWatchlist,
     GetWatchlist,
@@ -61,6 +62,7 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlScreeningRunRepository,
     SqlSecurityRepository,
     SqlStrategyRepository,
+    SqlUserDocumentRepository,
     SqlWatchlistRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
@@ -113,6 +115,12 @@ async def get_watchlist_repo() -> AsyncIterator[SqlWatchlistRepository]:
     """Provide a watchlist repository instance."""
     async with _managed_session() as session:
         yield SqlWatchlistRepository(session)
+
+
+async def get_user_document_repo() -> AsyncIterator[SqlUserDocumentRepository]:
+    """Provide a user-document repository instance."""
+    async with _managed_session() as session:
+        yield SqlUserDocumentRepository(session)
 
 
 async def get_screening_run_repository() -> AsyncIterator[SqlScreeningRunRepository]:
@@ -504,3 +512,17 @@ async def get_market_context() -> AsyncIterator[GetMarketContext]:
             benchmark_repo=SqlBenchmarkIndexRepository(session),
             benchmark_index=get_settings().benchmark_index,
         )
+
+
+async def get_get_user_document(
+    documents: Annotated[SqlUserDocumentRepository, Depends(get_user_document_repo)],
+) -> AsyncIterator[GetUserDocument]:
+    """Provide a GetUserDocument use-case instance."""
+    yield GetUserDocument(documents=documents)
+
+
+async def get_save_user_document(
+    documents: Annotated[SqlUserDocumentRepository, Depends(get_user_document_repo)],
+) -> AsyncIterator[SaveUserDocument]:
+    """Provide a SaveUserDocument use-case instance."""
+    yield SaveUserDocument(documents=documents)

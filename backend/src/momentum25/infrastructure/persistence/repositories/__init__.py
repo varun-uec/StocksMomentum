@@ -12,6 +12,9 @@ from momentum25.infrastructure.persistence.repositories.screening_run import (
 )
 from momentum25.infrastructure.persistence.repositories.security import SqlSecurityRepository
 from momentum25.infrastructure.persistence.repositories.strategy import SqlStrategyRepository
+from momentum25.infrastructure.persistence.repositories.user_documents import (
+    SqlUserDocumentRepository,
+)
 from momentum25.infrastructure.persistence.repositories.watchlist import SqlWatchlistRepository
 
 __all__ = [
@@ -21,5 +24,6 @@ __all__ = [
     "SqlScreeningRunRepository",
     "SqlSecurityRepository",
     "SqlStrategyRepository",
+    "SqlUserDocumentRepository",
     "SqlWatchlistRepository",
 ]

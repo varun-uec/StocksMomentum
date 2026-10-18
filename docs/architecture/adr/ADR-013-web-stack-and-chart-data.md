@@ -1,6 +1,6 @@
 # ADR-013: Web Stack, Chart Data Semantics and Workspace Persistence
 
-**Status:** Proposed (draft, 2026-10-18). The web-stack part stays Proposed until the M10 spike passes. The data and workspace parts take effect in M11 once you approve them.
+**Status:** Proposed (draft, 2026-10-18). The web-stack part stays Proposed until the owner accepts the [M10 spike evidence](../../history/audits/2026-10-18-m10-stack-spike-report.md) (S1–S7 pass). §5 was revised after M11 to match what was built; the changes are marked *(M11)*.
 
 ## Context
 Wickstreet is a client-heavy workspace (ADD A1). Four facts from the code shape this decision:
@@ -71,7 +71,7 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 
 - **Drawings belong to the symbol.** They appear on every chart that shows that symbol, at any interval. **Presentation belongs to the chart.** Two charts of the same symbol can have different intervals and indicators but share drawings. M11 uses one workspace with one chart. M13 adds slots with no schema change.
 - **Table:** `user_documents(kind, key, body JSONB, schema_version, revision BIGINT, tenant_id NULL, updated_at)`, primary key `(kind, key)`. It follows the watchlist pattern: a port in `domain/ports/repositories.py`, a repository, use cases and a router. Pydantic validates `body` at the boundary, with a size cap.
-- **Schema evolution:** `schema_version` plus pure upgrade functions applied on read, with golden tests for each version.
+- **Schema evolution:** `schema_version` plus pure upgrade functions applied on read, with golden tests for each version. *(M11)* Only version 1 exists, so no upgrade function exists yet; the first v2 adds one.
 
 **Concurrency (optimistic, standard HTTP):**
 
@@ -80,20 +80,23 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 | `GET /workspaces/{id}`, `GET /drawings/{symbol}` | `200` with `ETag: "<revision>"` |
 | `PUT` with a matching `If-Match` | `200`, revision + 1, new `ETag` |
 | `PUT` with a stale `If-Match` | `412 Precondition Failed`. The body holds the current document and its `ETag`. |
-| `PUT` to an existing document with no `If-Match` | `428 Precondition Required` |
+| `PUT` with neither `If-Match` nor `If-None-Match` | `428 Precondition Required` *(M11: for a missing document too, so every save states its intent)* |
 | `PUT` with `If-None-Match: *` (create only) | `201`, or `412` if the document exists |
 
-**Conflict recovery (client).**
-- Saves are debounced, with one save in flight per document.
-- On `412`, the client loads the server document and shows "Changed in another window". The user picks **Keep theirs** (discard local edits) or **Apply mine** (re-apply the local edits on top of the new revision and save again).
+**Conflict recovery (client).** *(M11: as built in `web/src/lib/server-document.ts` and `merge.ts`)*
+- One store per document, shared by every component that shows it. Saves are debounced (400 ms), one is in flight at a time, and unsaved edits are sent with `keepalive` when the page is left.
+- On `412`, the client does a three-way merge of its last-seen version, its current version and the server's, then saves again:
+  - **`symbol_drawings`:** merged by `drawing_id`. Edits to different drawings both survive with no notice. When both windows changed the *same* drawing differently, the client shows "Changed in another window" and the user picks **Keep theirs** or **Apply mine**.
+  - **`workspace`:** merged chart by chart and field by field. A field this window changed keeps its value; every other field takes the server's. Presentation settings never ask the user: the last writer per field is the expected result.
 - The client never overwrites silently.
-- For `symbol_drawings`, the client merges by `drawing_id`, so edits to *different* drawings never conflict. Only a same-drawing edit asks the user.
 
 **Migration from `localStorage` (one time, idempotent):**
-1. On first load, if local chart state exists and no import marker is set, the client sends `PUT` with `If-None-Match: *`.
-2. On `201`, it sets the marker. It keeps the local data under a backup key for one release, then removes it.
-3. On `412`, the document already exists, so the server wins. The client keeps the local backup and sets the marker. It tells the user once that a local copy was kept.
+1. On start, for each `chart-prefs:<symbol>` key with no import marker, the client sends the symbol's drawings with `If-None-Match: *`.
+2. On `201`, it sets the marker. On `412`, the document already exists, so the server wins, and it sets the marker too. A failed request is retried on the next start.
+3. The original keys stay in place as the backup for one release.
 4. Running the migration again, or from a second browser, changes nothing.
+
+*(M11)* Only drawings are imported. Range, moving averages, panes and indicators were stored per symbol, and they now belong to a chart, so no faithful mapping exists; they start from defaults. The one-time "a local copy was kept" message was not built.
 
 ## Consequences
 - One authority per number: the browser draws bars and indicators but never computes an alert-capable value.

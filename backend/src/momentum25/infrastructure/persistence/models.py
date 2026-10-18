@@ -386,3 +386,20 @@ class WatchlistItemModel(Base):
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class UserDocumentModel(Base):
+    """A saved workspace or drawing set, versioned for optimistic concurrency (ADR-013 §5)."""
+
+    __tablename__ = "user_documents"
+    __table_args__ = (CheckConstraint("revision >= 1", name="ck_user_documents_revision"),)
+
+    kind: Mapped[str] = mapped_column(String, primary_key=True)
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    body: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tenant_id: Mapped[int | None] = mapped_column(BigInteger)  # SaaS extension point (ADR-010)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

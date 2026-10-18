@@ -22,6 +22,7 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | 14 | Market-data refresh (NSE/BSE latest session) | Shipped | `/data` |
 | 15 | Health, data freshness, Prometheus metrics | Shipped | — |
 | 16 | Learn hub (methodology, scoring, rules, FAQ) | Shipped | `/learn/*` |
+| 17 | Chart workspace: type-to-search, drawings with select/move/delete, settings and drawings saved on the server (Wickstreet M11) | Shipped on branch `wickstreet/m10-m11`, awaiting the M11 review | `/chart`, `/chart/[symbol]` |
 | — | Fundamentals screening | Not built. Port and disabled engine only. | — |
 | — | Authentication, multi-tenancy | Not built (ADR-010). | — |
 | — | Intraday data, alerts, broker trading | Not built. | — |
@@ -41,6 +42,7 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | Market | `GET /market/context`, `GET /indices/{index_code}/closes` | |
 | Market data | `POST /market-data/refresh` | Fetches the latest NSE/BSE session. No backfill, no screening. |
 | Watchlist | `GET /watchlist`, `GET /watchlist/detail`, `POST /watchlist/{symbol}`, `DELETE /watchlist/{symbol}` | |
+| Workspace | `GET`/`PUT /workspaces/{id}`, `GET`/`PUT /drawings/{symbol}` | Saved chart settings and drawings. `ETag`/`If-Match` concurrency: `412` with the current document, `428` without a precondition (ADR-013 §5). |
 | Strategies | `GET /strategies`, `GET /strategies/{name}` | |
 | Validation | `GET /validation/historical/{name}`, `/alpha/{name}`, `/scorecard/{name}`, `/rules/{name}`, `/engines/{name}`; `POST /validation/experiment/run`, `POST /validation/dashboard` | Return-derived metrics carry a `measurability` block. |
 | Research | `POST /research/historical/screen`, `/compare/runs`, `/verify/determinism`, `/experiment/run`, `/corporate-actions/refresh`; `GET /research/evaluate/{name}`, `/contribution/{name}`, `/compare/strategies` | Two experiment endpoints exist: `/research/experiment/run` and `/validation/experiment/run`. |
@@ -55,6 +57,7 @@ A Vite single-page app: React 18, React Router 7, TypeScript, Tailwind. The API 
 | Route | Purpose |
 |---|---|
 | `/` | Dashboard: run summary, Top-25 table, strategy selector, "run screening" |
+| `/chart`, `/chart/[symbol]` | Chart workspace. Type anywhere, `/` or Ctrl/⌘+K to search. Drawings: select, drag, Delete. Saved on the server; `/chart` reopens the last symbol. |
 | `/stock/[symbol]` | Score breakdown, rule matrix, engine contributions, history, live analysis, stop-loss |
 | `/stock/[symbol]/analysis` | Unified analysis screen: multi-pane chart, indicator catalogue, patterns, in-browser signal score |
 | `/stock/[symbol]/elliott-wave` | Elliott Wave counts and Fibonacci zones |

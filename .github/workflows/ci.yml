@@ -122,3 +122,26 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+  api-types:
+    name: API types match the backend (Web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install uv
+        run: pip install uv
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: uv sync --all-extras
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ./web/package-lock.json
+      - name: Regenerate the web client's API types
+        working-directory: ./web
+        run: npm ci && npm run gen:api
+      - name: Fail if the committed types are stale
+        run: git diff --exit-code web/src/lib/api-schema.ts

@@ -68,3 +68,17 @@ class NoEligibleUniverseError(DomainError):
 
     code = "no_eligible_universe"
     http_status = 422
+
+
+class RevisionMismatchError(Momentum25Error):
+    """A conditional save named a revision that is no longer current (HTTP 412)."""
+
+    code = "revision_mismatch"
+    http_status = 412
+
+
+class PreconditionRequiredError(Momentum25Error):
+    """A save named no precondition (`If-Match` or `If-None-Match`) (HTTP 428)."""
+
+    code = "precondition_required"
+    http_status = 428

@@ -1,0 +1,133 @@
+"""User-document bodies (ADR-013 §5), version 1.
+
+Strict on purpose: an unknown field is rejected, never dropped, and every list
+has a cap, so one request can never store an unbounded document. A new field
+means a new schema version.
+
+Drawings belong to a symbol. Presentation (range, indicators, panes) belongs
+to a chart inside the workspace, so two charts of one symbol can differ while
+sharing drawings.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
+
+from momentum25.domain.entities.user_document import UserDocument
+
+ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+SYMBOL_PATTERN = r"^[A-Z0-9][A-Z0-9&._-]{0,31}$"
+
+Identifier = Annotated[str, Field(pattern=ID_PATTERN)]
+Symbol = Annotated[str, Field(pattern=SYMBOL_PATTERN)]
+ShortName = Annotated[str, Field(pattern=r"^[a-z0-9_]{1,32}$")]
+ParamName = Annotated[str, Field(pattern=r"^[A-Za-z][A-Za-z0-9_]{0,31}$")]
+
+
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+# ── symbol_drawings ───────────────────────────────────────────────────────
+
+
+class DrawingPointV1(_Strict):
+    """One anchor: a bar date and a price."""
+
+    date: date
+    price: FiniteFloat
+
+
+class DrawingV1(_Strict):
+    """One drawing on a symbol's chart."""
+
+    id: Identifier
+    kind: ShortName
+    points: list[DrawingPointV1] = Field(min_length=1, max_length=8)
+    color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class SymbolDrawingsV1(_Strict):
+    """Every drawing on one symbol."""
+
+    drawings: list[DrawingV1] = Field(max_length=1000)
+
+
+# ── workspace ─────────────────────────────────────────────────────────────
+
+
+class IndicatorV1(_Strict):
+    """One configured catalogue indicator. Display only (NFR-1a)."""
+
+    uid: Identifier
+    id: Identifier
+    params: dict[ParamName, FiniteFloat | Annotated[str, Field(max_length=64)]] = Field(
+        max_length=16
+    )
+
+
+class ChartV1(_Strict):
+    """Presentation of one chart slot."""
+
+    symbol: Symbol | None = None
+    range: Literal["1W", "1M", "3M", "6M", "1Y", "MAX"]
+    mas: list[Annotated[int, Field(ge=0, le=1000)]] = Field(max_length=8)
+    panes: list[ShortName] = Field(max_length=8)
+    indicators: list[IndicatorV1] = Field(max_length=32)
+    preset_id: ShortName | None = None
+    show_signals: bool = True
+    preset_edited: bool = False
+
+
+class WorkspaceV1(_Strict):
+    """The owner's workspace: which chart is active and how each chart looks."""
+
+    active_chart_id: Identifier | None = None
+    charts: dict[Identifier, ChartV1] = Field(max_length=32)
+
+
+# ── responses ─────────────────────────────────────────────────────────────
+
+
+class _DocumentMeta(BaseModel):
+    key: str
+    schema_version: int
+    revision: int
+    updated_at: datetime
+
+
+class WorkspaceDocument(_DocumentMeta):
+    """A stored workspace and its revision."""
+
+    body: WorkspaceV1
+
+    @classmethod
+    def of(cls, doc: UserDocument) -> WorkspaceDocument:
+        """Build the response from a stored document."""
+        return cls(
+            key=doc.key,
+            schema_version=doc.schema_version,
+            revision=doc.revision,
+            updated_at=doc.updated_at,
+            body=WorkspaceV1.model_validate(doc.body),
+        )
+
+
+class SymbolDrawingsDocument(_DocumentMeta):
+    """A symbol's stored drawings and their revision."""
+
+    body: SymbolDrawingsV1
+
+    @classmethod
+    def of(cls, doc: UserDocument) -> SymbolDrawingsDocument:
+        """Build the response from a stored document."""
+        return cls(
+            key=doc.key,
+            schema_version=doc.schema_version,
+            revision=doc.revision,
+            updated_at=doc.updated_at,
+            body=SymbolDrawingsV1.model_validate(doc.body),
+        )

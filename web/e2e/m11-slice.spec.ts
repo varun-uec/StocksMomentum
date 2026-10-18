@@ -1,0 +1,239 @@
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import { expect, resetDocuments, test } from './fixtures';
+
+/** M11 vertical slice: Find → Analyse → Draw → Restore (ADR-013 §5, M9 §3). */
+
+test.beforeEach(() => resetDocuments());
+
+const chart = (page: Page) => page.getByTestId('price-chart');
+
+async function chartReady(page: Page): Promise<void> {
+  await expect(chart(page).locator('canvas').first()).toBeVisible();
+  await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length > 0);
+  await expect(page.getByText(/\d+ daily bars from the stored NSE series/)).toBeVisible();
+}
+
+/** A point on the price pane, as fractions of the chart box. */
+async function at(page: Page, fx: number, fy: number): Promise<{ x: number; y: number }> {
+  const box = (await chart(page).boundingBox())!;
+  return { x: box.x + box.width * fx, y: box.y + box.height * fy };
+}
+
+async function clickAt(page: Page, fx: number, fy: number): Promise<void> {
+  const p = await at(page, fx, fy);
+  await page.mouse.click(p.x, p.y);
+}
+
+async function drag(page: Page, from: [number, number], to: [number, number]): Promise<void> {
+  const a = await at(page, ...from);
+  const b = await at(page, ...to);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 8 });
+  await page.mouse.up();
+}
+
+/** The save indicator shows a confirmed save and nothing is pending. */
+async function settled(page: Page): Promise<void> {
+  await expect(page.getByTestId('save-state')).toHaveText(/^Saved ✓ \d/, { timeout: 5000 });
+}
+
+async function drawTrendline(page: Page, from: [number, number], to: [number, number]): Promise<void> {
+  await page.getByRole('button', { name: 'Trendline' }).click();
+  await clickAt(page, ...from);
+  await clickAt(page, ...to);
+}
+
+type Drawing = { id: string; kind: string; points: { date: string; price: number }[] };
+
+async function serverDrawings(request: APIRequestContext, symbol: string): Promise<Drawing[]> {
+  const res = await request.get(`/api/v1/drawings/${symbol}`);
+  return res.status() === 404 ? [] : (await res.json()).body.drawings;
+}
+
+const drawingCount = (request: APIRequestContext, symbol: string) => () =>
+  serverDrawings(request, symbol).then((d) => d.length);
+
+async function serverChart(request: APIRequestContext): Promise<{ range: string; mas: number[]; panes: string[] } | null> {
+  const res = await request.get('/api/v1/workspaces/default');
+  return res.ok() ? (await res.json()).body.charts.main ?? null : null;
+}
+
+const checkbox = (page: Page, label: string): Locator => page.getByLabel(label, { exact: true });
+
+test('Find: typing on the chart opens search and Enter opens the symbol', async ({ page }) => {
+  await page.goto('/chart');
+  await expect(page).toHaveURL(/\/chart\/RELIANCE$/);
+  await chartReady(page);
+  await page.keyboard.press('t');
+  const box = page.getByRole('combobox', { name: 'Symbol or company' });
+  await expect(box).toBeFocused();
+  await expect(box).toHaveValue('t');
+  await page.keyboard.type('cs');
+  await expect(page.getByRole('option', { name: /^TCS/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/chart\/TCS$/);
+  await expect(page.locator('h1')).toHaveText('TCS');
+  await expect(box).toBeHidden();
+
+  await page.keyboard.press('Control+k');
+  await expect(box).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(box).toBeHidden();
+});
+
+test('Analyse → Draw → Restore: state survives a reload and a second browser', async ({ page, browser, request }) => {
+  await page.goto('/chart/TCS');
+  await chartReady(page);
+
+  // Analyse: one more moving average, the RSI pane, the full range.
+  await checkbox(page, 'MA20').check();
+  await checkbox(page, 'RSI (14)').check();
+  await page.getByRole('button', { name: 'MAX', exact: true }).click();
+  await chartReady(page);
+
+  // Draw two trendlines; drag the first; select and delete the second.
+  await drawTrendline(page, [0.3, 0.2], [0.5, 0.35]);
+  await drawTrendline(page, [0.6, 0.15], [0.8, 0.25]);
+  await expect.poll(drawingCount(request, 'TCS')).toBe(2);
+  const before = await serverDrawings(request, 'TCS');
+
+  await drag(page, [0.4, 0.275], [0.4, 0.4]); // the middle of the first line
+  await clickAt(page, 0.7, 0.2); // select the second
+  await page.keyboard.press('Delete');
+  await expect.poll(drawingCount(request, 'TCS')).toBe(1);
+  await expect
+    .poll(async () => (await serverDrawings(request, 'TCS'))[0].points[0].price)
+    .toBeLessThan(before[0].points[0].price); // moved down the chart
+  await expect.poll(() => serverChart(request)).toMatchObject({ range: 'MAX', mas: expect.arrayContaining([20]), panes: ['rsi'] });
+  await settled(page);
+  const after = await serverDrawings(request, 'TCS');
+  expect(after[0].id).toBe(before[0].id);
+
+  // Restore: reload.
+  await page.reload();
+  await chartReady(page);
+  await expect(checkbox(page, 'MA20')).toBeChecked();
+  await expect(checkbox(page, 'RSI (14)')).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
+
+  // Restore: a fresh browser opens the last symbol with the same state.
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/chart');
+  await expect(second).toHaveURL(/\/chart\/TCS$/);
+  await expect(second.getByTestId('price-chart').locator('canvas').first()).toBeVisible();
+  await expect(second.getByLabel('MA20', { exact: true })).toBeChecked();
+  await expect(second.getByRole('button', { name: 'Clear' })).toBeVisible();
+  await other.close();
+});
+
+test('Restore: an edit made just before leaving the page is not lost', async ({ page, request }) => {
+  await page.goto('/chart/INFY');
+  await chartReady(page);
+  await drawTrendline(page, [0.3, 0.2], [0.5, 0.3]);
+  await page.goto('/about'); // leave at once, inside the save delay
+  await expect.poll(drawingCount(request, 'INFY')).toBe(1);
+});
+
+test('two windows editing different drawings merge silently', async ({ page, browser, request }) => {
+  await page.goto('/chart/HDFCBANK');
+  await chartReady(page);
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/chart/HDFCBANK');
+  await chartReady(second);
+
+  await drawTrendline(page, [0.2, 0.2], [0.35, 0.3]);
+  await expect.poll(drawingCount(request, 'HDFCBANK')).toBe(1);
+  await drawTrendline(second, [0.6, 0.2], [0.75, 0.3]); // based on the older revision
+  await expect.poll(drawingCount(request, 'HDFCBANK')).toBe(2);
+  await settled(second);
+  await expect(second.getByRole('alert')).toHaveCount(0);
+  await other.close();
+});
+
+test('two windows editing the same drawing get the conflict notice, and the choice is saved', async ({ page, browser, request }) => {
+  await page.goto('/chart/HDFCBANK');
+  await chartReady(page);
+  await drawTrendline(page, [0.3, 0.2], [0.5, 0.3]);
+  await expect.poll(drawingCount(request, 'HDFCBANK')).toBe(1);
+  const original = (await serverDrawings(request, 'HDFCBANK'))[0];
+
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/chart/HDFCBANK');
+  await chartReady(second);
+
+  await drag(page, [0.4, 0.25], [0.4, 0.15]); // window 1 moves it up
+  await expect
+    .poll(async () => (await serverDrawings(request, 'HDFCBANK'))[0].points[0].price)
+    .toBeGreaterThan(original.points[0].price);
+  await drag(second, [0.4, 0.25], [0.4, 0.45]); // window 2, still on the old revision, moves it down
+
+  const notice = second.getByRole('alert');
+  await expect(notice).toContainText('changed in another window');
+  const theirs = (await serverDrawings(request, 'HDFCBANK'))[0];
+  await notice.getByRole('button', { name: 'Apply mine' }).click();
+  await expect(notice).toBeHidden();
+  await expect
+    .poll(async () => (await serverDrawings(request, 'HDFCBANK'))[0].points[0].price)
+    .toBeLessThan(original.points[0].price); // window 2's version won
+  expect(theirs.points[0].price).toBeGreaterThan(original.points[0].price);
+  await other.close();
+});
+
+test('drawings saved in this browser before M11 are imported once; a server copy wins', async ({ browser, request }) => {
+  const legacy = (price: number) =>
+    JSON.stringify({
+      timeframe: '1Y',
+      activeMas: [50, 200],
+      activePanes: [],
+      drawings: [
+        {
+          id: `legacy-${price}`,
+          kind: 'horizontal',
+          color: '#6366f1',
+          points: [{ date: '2026-06-01', price }],
+        },
+      ],
+    });
+
+  const first = await browser.newContext();
+  await first.addInitScript((value) => {
+    if (!localStorage.getItem('chart-prefs:ITC')) localStorage.setItem('chart-prefs:ITC', value);
+  }, legacy(400));
+  const page = await first.newPage();
+  let puts = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'PUT' && r.url().endsWith('/drawings/ITC')) puts += 1;
+  });
+  await page.goto('/about');
+  await expect.poll(() => serverDrawings(request, 'ITC').then((d) => d.map((x) => x.id))).toEqual(['legacy-400']);
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  expect(puts).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('chart-prefs:ITC'))).not.toBeNull();
+  await first.close();
+
+  const second = await browser.newContext();
+  await second.addInitScript((value) => localStorage.setItem('chart-prefs:ITC', value), legacy(999));
+  const other = await second.newPage();
+  await other.goto('/about');
+  await other.waitForLoadState('networkidle');
+  expect((await serverDrawings(request, 'ITC')).map((x) => x.id)).toEqual(['legacy-400']);
+  await second.close();
+});
+
+test('the existing research screens still save their charts (NFR-13)', async ({ page, request }) => {
+  await page.goto('/stock/RELIANCE');
+  await expect(chart(page).locator('canvas').first()).toBeVisible();
+  await chart(page).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Horizontal ray' }).click();
+  await clickAt(page, 0.5, 0.3);
+  await expect.poll(drawingCount(request, 'RELIANCE')).toBe(1);
+  // Drawings belong to the symbol: the chart workspace shows the same one.
+  await page.goto('/chart/RELIANCE');
+  await chartReady(page);
+  await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
+});

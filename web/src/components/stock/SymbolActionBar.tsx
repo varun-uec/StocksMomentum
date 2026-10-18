@@ -13,7 +13,7 @@ import { Link } from 'react-router';
 import { focusRing } from '@/lib/theme';
 import { WatchlistStar } from '@/components/stock/WatchlistStar';
 
-type ActionId = 'chart' | 'analysis' | 'patterns' | 'elliott-wave';
+type ActionId = 'chart' | 'analysis' | 'patterns' | 'elliott-wave' | 'workspace';
 
 /** Adds query params only when they carry meaning; never a bare `?`. */
 function withQuery(path: string, params: Record<string, string | undefined>): string {
@@ -55,6 +55,7 @@ export function SymbolActionBar({
     { id: 'analysis', label: 'Analysis', href: analysis },
     { id: 'elliott-wave', label: 'Elliott Wave', href: onAnalysis ? withMode('elliott') : wave },
     { id: 'patterns', label: 'Patterns', href: onAnalysis ? withMode('patterns') : `${detail}#patterns` },
+    { id: 'workspace', label: 'Open in chart', href: `/chart/${symbol}` },
   ];
 
   return (

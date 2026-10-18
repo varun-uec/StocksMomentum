@@ -1,6 +1,6 @@
 # State
 
-As of 2026-10-18, branch `wickstreet/m10-m11` (Wickstreet M10: Vite web app served by the API). Before that, the last code commit was `f492f81` (2026-08-18).
+As of 2026-10-18, branch `wickstreet/m10-m11`: Wickstreet M10 (Vite web app served by the API), M9 (reference study) and M11 (chart workspace vertical slice). Before that, the last code commit was `f492f81` (2026-08-18).
 
 ## Verdict
 
@@ -16,11 +16,12 @@ Deploy only on a private network. There is no authentication.
 |---|---|
 | `lint-imports` | 2 contracts kept, 0 broken |
 | `ruff check src tests` | clean |
-| `mypy src` (strict) | clean, 228 files |
-| `pytest` (full suite, PostgreSQL up) | 659 passed (638 before M10, plus 21 new) |
-| Web `npm test` (Vitest) | 14 passed |
+| `mypy src` (strict) | clean, 234 files |
+| `pytest` (full suite, PostgreSQL up) | 684 passed (638 before M10; +21 in M10, +25 in M11) |
+| Web `npm test` (Vitest) | 49 passed |
 | Web `npm run lint` / `npm run build` | clean |
-| Web `npm run e2e` (Playwright, against a database clone) | 28 passed |
+| Web `npm run e2e` (Playwright, against a database clone) | 37 passed, stable over repeated runs |
+| NFR-11 chart open, 10 years of bars, 30 runs each | warm P95 115 ms (≤ 1 s); cold P95 156 ms (≤ 3 s) |
 
 ## Delivery record
 
@@ -38,6 +39,9 @@ Deploy only on a private network. There is no authentication.
 | 2026-08-16 | Market-data refresh page | Shipped | commit `4a76f19` |
 | 2026-08-17 | Walk-forward backtest: Builder/Reviewer loops 1, 2, approximations, 3 | Each loop ended in PASS | [backtest-loop](../history/backtest-loop/) |
 | 2026-08-18 | Autonomous audit, 6 batches | PASS. 15 findings, 7 LOW fixed, 0 open | [final report](../history/autonomous-audit/FINAL_REPORT.md) |
+| 2026-10-18 | Wickstreet M10: Vite SPA served by the API, Host/Origin guard, loopback binding | S1–S7 pass; ADR-013 awaits acceptance | [spike report](../history/audits/2026-10-18-m10-stack-spike-report.md) |
+| 2026-10-18 | Wickstreet M9: reference study, wireframes, design record | For review | [study](../history/plans/2026-10-18-m9-reference-study.md) |
+| 2026-10-18 | Wickstreet M11: chart workspace vertical slice | Built and tested; awaits the M11 review gate | [report](../history/audits/2026-10-18-m11-vertical-slice-report.md) |
 
 **Swing targets (Phase 3/3b).** Hold-out from 2025-01-01: 3,211 trades, hit rate 64.0%, average R −0.021. Six exit-plan variants all made average R worse in-sample (−0.105 to −0.396). Closed. The stop-loss part shipped as a risk-only figure. Log: [phase3b](../research/2026-08-phase3b-target-methodology-log.md).
 
@@ -71,11 +75,13 @@ Found while writing these docs. Not fixed.
 | 8 | Historical screening applies today's cumulative `adj_factor` to past dates, so a later split rescales earlier prices that price-level gates read. | `infrastructure/pipelines/indicator_pipeline.py::_to_dataframe` (ADR-014 §7) |
 | 9 | Historical screening reads bars only for `is_active` securities, which may drop names delisted after the decision date. Not yet verified against past runs. | `indicator_pipeline.py::_fetch_bars` (ADR-014 §7) |
 
-Fixed in M10 (2026-10-18):
+Fixed in M10 and M11 (2026-10-18):
 
 - **Chart attribution** (was defect 7). Every page footer now credits TradingView Lightweight Charts™ and links to tradingview.com. `/about` shows the NOTICE text.
 - **The Docker image had no strategy configs.** `strategy_dir` pointed outside the image, so a fresh `docker compose up` skipped strategy sync with only a warning. The image now copies `docs/architecture/strategies/`; startup syncs 7 strategies.
 - **Engine effectiveness dropped its `measurability` block.** The DTO had no such field, so Pydantic discarded it silently, and `/validation` crashed whenever engine rows existed. Regression test: `tests/unit/test_validation_dto_measurability.py`.
+- **The chart's MAX range showed only the last 500 bars.** With no `from` date the OHLCV use case capped the series at 500 rows (about two years). It now returns the whole stored series. Regression test: `tests/unit/test_security_ohlcv_range.py`. *(M11)*
+- **A fast second click lost a drawing anchor.** The chart library drops a second click inside its double-click window, so a quick two-click trendline never completed. Anchors are now placed from native clicks. *(M11)*
 - **The web app's API URL setting never worked.** The client read `NEXT_PUBLIC_API_BASE`; Compose set `NEXT_PUBLIC_API_BASE_URL`. The app now calls same-origin `/api/v1`, so no setting exists.
 
 Architecture-level differences from the ADD are listed in [architecture.md](architecture.md#drift-from-the-add).
@@ -100,4 +106,4 @@ Ready for private deployment. Missing for public deployment: authentication, a m
 
 ## In flight
 
-**Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) and ADR-012 to ADR-014 are Proposed; ADR-011 is accepted. M10 (stack spike) is done on branch `wickstreet/m10-m11`; its evidence is in the [spike report](../history/audits/2026-10-18-m10-stack-spike-report.md). ADR-013 stays Proposed until the owner accepts it. Next: M9 reference study, then the M11 vertical slice. Open: ADR-015 licence.
+**Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) and ADR-012 to ADR-014 are Proposed; ADR-011 is accepted. M10 (stack spike), M9 (reference study) and M11 (chart workspace vertical slice) are done on branch `wickstreet/m10-m11`. M11 is the first major review gate: see the [M11 report](../history/audits/2026-10-18-m11-vertical-slice-report.md). ADR-013 stays Proposed until the owner accepts it. Next after the gate: M11b (weekly bars) and M12 (workspace shell). Open: ADR-015 licence.

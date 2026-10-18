@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getIndicatorSeries, getOhlcv } from '@/lib/api-client';
 import { useChartPreferences } from '@/lib/chart-preferences';
 import { TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
@@ -29,9 +29,10 @@ export function lookbackDaysFor(timeframe: TimeframeId, fallback: number): numbe
   return TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? fallback;
 }
 
-export function useChartShell(symbol: string, strategyName: string) {
+/** `chartId` names this screen's chart slot in the saved workspace (ADR-013 §5). */
+export function useChartShell(symbol: string, strategyName: string, chartId: string) {
   const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
-  const { preferences, ready, update } = useChartPreferences(symbol);
+  const { preferences, ready, update } = useChartPreferences(symbol, chartId);
 
   // Apply the persisted timeframe once prefs are loaded; callers render the
   // chart only after `ready`, so it mounts with final values.
@@ -44,10 +45,14 @@ export function useChartShell(symbol: string, strategyName: string) {
     update({ timeframe: id });
   };
 
-  const { data: ohlcv, isLoading: ohlcvLoading } = useQuery({
+  const { data: ohlcv, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['stock-ohlcv', symbol, timeframe],
     queryFn: () => getOhlcv(symbol, fromDateFor(timeframe)),
     enabled: !!symbol,
+    // Keep the current bars on screen while another range loads, so the chart
+    // never blanks and a click during the load still lands on a bar.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === symbol ? keepPreviousData(previous) : undefined,
   });
 
   const { data: indicatorSeries } = useQuery({
@@ -81,7 +86,8 @@ export function useChartShell(symbol: string, strategyName: string) {
       bars: ohlcv?.bars ?? [],
       timeframe,
       onTimeframeChange: setTimeframe,
-      isLoading: ohlcvLoading,
+      // Placeholder bars are the previous range: still loading.
+      isLoading: isLoading || isPlaceholderData,
       indicatorSeries: indicatorBars,
       activePanes: preferences.activePanes,
       onActivePanesChange: (panes: typeof preferences.activePanes) =>
@@ -89,7 +95,7 @@ export function useChartShell(symbol: string, strategyName: string) {
       initialActiveMas: preferences.activeMas,
       onActiveMasChange: (mas: number[]) => update({ activeMas: mas }),
       drawingsEnabled: true,
-      initialDrawings: preferences.drawings,
+      drawings: preferences.drawings,
       onDrawingsChange: (drawings: typeof preferences.drawings) => update({ drawings }),
     },
   };

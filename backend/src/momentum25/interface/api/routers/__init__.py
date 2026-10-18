@@ -17,6 +17,7 @@ from momentum25.interface.api.routers import (
     securities,
     stocks,
     strategies,
+    user_documents,
     validation,
     watchlist,
 )
@@ -32,6 +33,7 @@ api_router.include_router(strategies.router)
 api_router.include_router(securities.router)
 api_router.include_router(validation.router)
 api_router.include_router(watchlist.router)
+api_router.include_router(user_documents.router)
 api_router.include_router(elliott_wave.router)
 api_router.include_router(chart_patterns.router)
 api_router.include_router(indices.router)

@@ -48,10 +48,14 @@ import {
   attachDrawingsLayer,
   drawingId,
   fromTime,
+  hitTestAll,
+  moveDrawing,
   toTime,
   type ChartDrawing,
   type DrawingKind,
+  type DrawingPart,
   type DrawingPoint,
+  type ScreenPoint,
 } from '@/components/stock/chart-drawings';
 
 export const TIMEFRAMES = [
@@ -291,7 +295,7 @@ export function PriceChart({
   initialActiveMas,
   onActiveMasChange,
   drawingsEnabled = false,
-  initialDrawings,
+  drawings: drawingsProp,
   onDrawingsChange,
 }: {
   bars: OHLCVBarDTO[];
@@ -335,8 +339,8 @@ export function PriceChart({
   onActiveMasChange?: (mas: number[]) => void;
   /** Show the drawing toolbar and accept clicks while a tool is active. */
   drawingsEnabled?: boolean;
-  /** Persisted drawings (Phase 9.5); read once on mount. */
-  initialDrawings?: ChartDrawing[];
+  /** The saved drawings. The chart follows this prop, so merges from another window show up. */
+  drawings?: ChartDrawing[];
   onDrawingsChange?: (drawings: ChartDrawing[]) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -352,7 +356,10 @@ export function PriceChart({
   const [drawingTool, setDrawingTool] = useState<DrawingKind | null>(null);
   const [draftPoints, setDraftPoints] = useState<DrawingPoint[]>([]);
   const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);
-  const [drawings, setDrawings] = useState<ChartDrawing[]>(initialDrawings ?? []);
+  // Rendered drawings: the prop, or a live preview while one is being dragged.
+  const [drawings, setDrawings] = useState<ChartDrawing[]>(drawingsProp ?? []);
+  useEffect(() => setDrawings(drawingsProp ?? []), [drawingsProp]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [readout, setReadout] = useState<CrosshairReadout | null>(null);
   const [showVolume, setShowVolume] = useState(false);
 
@@ -371,12 +378,33 @@ export function PriceChart({
   const drawingToolRef = useRef(drawingTool);
   const draftPointsRef = useRef(draftPoints);
   const onDrawingsChangeRef = useRef(onDrawingsChange);
+  const drawingsRef = useRef(drawings);
+  const barDatesRef = useRef<string[]>([]);
   useEffect(() => {
     drawingsEnabledRef.current = drawingsEnabled;
     drawingToolRef.current = drawingTool;
     draftPointsRef.current = draftPoints;
     onDrawingsChangeRef.current = onDrawingsChange;
+    drawingsRef.current = drawings;
+    barDatesRef.current = bars.map((b) => b.date);
   });
+
+  /** Show and save a new drawing list. The ref moves at once, so an event that
+   * arrives before React re-renders still sees the new list. */
+  const commitDrawings = (next: ChartDrawing[]) => {
+    drawingsRef.current = next;
+    setDrawings(next);
+    onDrawingsChangeRef.current?.(next);
+  };
+
+  /** Arm or disarm a drawing tool, dropping any half-placed anchors. */
+  const selectTool = (tool: DrawingKind | null) => {
+    drawingToolRef.current = tool;
+    draftPointsRef.current = [];
+    setDrawingTool(tool);
+    setDraftPoints([]);
+    setCursorPoint(null);
+  };
 
   const parsed = useMemo(
     () =>
@@ -542,7 +570,7 @@ export function PriceChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Click-to-place drawing anchors and the crosshair readout/cursor preview.
+  // Crosshair readout and the cursor preview of an in-progress drawing.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -588,44 +616,8 @@ export function PriceChart({
       setReadout(panes.length > 0 || bar ? { date, bar: bar ?? null, panes } : null);
     };
 
-    const onClick = (param: MouseEventParams<Time>) => {
-      if (!drawingsEnabledRef.current) return;
-      const tool = drawingToolRef.current;
-      if (!tool || param.paneIndex !== 0 || !param.point) return;
-      const time = (param.time ?? chart.timeScale().coordinateToTime(param.point.x)) as
-        | UTCTimestamp
-        | undefined;
-      const price = priceSeriesRef.current?.coordinateToPrice(param.point.y);
-      if (time == null || price == null) return;
-      const point: DrawingPoint = { date: fromTime(time), price };
-
-      const next = [...draftPointsRef.current, point];
-      if (next.length >= DRAWING_REQUIRED_POINTS[tool]) {
-        const drawing: ChartDrawing = {
-          id: drawingId(),
-          kind: tool,
-          points: next,
-          color: DRAWING_COLOR,
-        };
-        setDrawings((prev) => {
-          const updated = [...prev, drawing];
-          onDrawingsChangeRef.current?.(updated);
-          return updated;
-        });
-        setDrawingTool(null);
-        setDraftPoints([]);
-        setCursorPoint(null);
-      } else {
-        setDraftPoints(next);
-      }
-    };
-
     chart.subscribeCrosshairMove(onCrosshairMove);
-    chart.subscribeClick(onClick);
-    return () => {
-      chart.unsubscribeCrosshairMove(onCrosshairMove);
-      chart.unsubscribeClick(onClick);
-    };
+    return () => chart.unsubscribeCrosshairMove(onCrosshairMove);
     // Mounted once; everything stateful is read through the mirroring refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -640,8 +632,142 @@ export function PriceChart({
         drawingTool && draftPoints.length > 0 && draftPoints.length < DRAWING_REQUIRED_POINTS[drawingTool]
           ? cursorPoint
           : null,
+      selectedId,
     });
-  }, [drawings, drawingTool, draftPoints, cursorPoint, height]);
+  }, [drawings, drawingTool, draftPoints, cursorPoint, height, selectedId]);
+
+  // Select, drag and delete drawings (M11). Pointer events are taken in the
+  // capture phase, before the chart's own pan handling, and only when the
+  // pointer is on a drawing; anywhere else the chart pans as usual.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const toScreen = (point: DrawingPoint): ScreenPoint | null => {
+      const chart = chartRef.current;
+      const series = priceSeriesRef.current;
+      if (!chart || !series) return null;
+      const x = chart.timeScale().timeToCoordinate(toTime(point.date));
+      const y = series.priceToCoordinate(point.price);
+      return x == null || y == null ? null : { x, y };
+    };
+    const localPoint = (e: MouseEvent): ScreenPoint => {
+      const rect = container.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    let drag: { id: string; part: DrawingPart; start: ScreenPoint; origin: ChartDrawing; moved: boolean } | null = null;
+
+    const dragged = (current: ScreenPoint): ChartDrawing | null => {
+      const chart = chartRef.current;
+      const series = priceSeriesRef.current;
+      if (!drag || !chart || !series) return null;
+      const startLogical = chart.timeScale().coordinateToLogical(drag.start.x);
+      const nowLogical = chart.timeScale().coordinateToLogical(current.x);
+      const barShift = startLogical == null || nowLogical == null ? 0 : Math.round(nowLogical - startLogical);
+      const dy = current.y - drag.start.y;
+      const prices = drag.origin.points.map((p) => {
+        const y = series.priceToCoordinate(p.price);
+        const price = y == null ? null : series.coordinateToPrice(y + dy);
+        return price ?? p.price;
+      });
+      return moveDrawing(drag.origin, drag.part, barShift, prices, barDatesRef.current);
+    };
+
+    /** The bar date and price under a pane point; bars clamp to the loaded range. */
+    const toData = (p: ScreenPoint): DrawingPoint | null => {
+      const chart = chartRef.current;
+      const series = priceSeriesRef.current;
+      const dates = barDatesRef.current;
+      if (!chart || !series || dates.length === 0 || p.y > chart.panes()[0].getHeight()) return null;
+      const logical = chart.timeScale().coordinateToLogical(p.x);
+      const price = series.coordinateToPrice(p.y);
+      if (logical == null || price == null) return null;
+      return { date: dates[Math.max(0, Math.min(dates.length - 1, Math.round(logical)))], price };
+    };
+
+    // Anchors are placed from native clicks, not the library's click event: the
+    // library drops a second click that comes inside its double-click window,
+    // which loses a fast user's second anchor.
+    const onPlace = (e: MouseEvent) => {
+      const tool = drawingToolRef.current;
+      if (!drawingsEnabledRef.current || !tool || e.button !== 0) return;
+      const point = toData(localPoint(e));
+      if (!point) return;
+      const next = [...draftPointsRef.current, point];
+      draftPointsRef.current = next;
+      if (next.length >= DRAWING_REQUIRED_POINTS[tool]) {
+        const drawing: ChartDrawing = { id: drawingId(), kind: tool, points: next, color: DRAWING_COLOR };
+        commitDrawings([...drawingsRef.current, drawing]);
+        setSelectedId(drawing.id);
+        selectTool(null);
+      } else {
+        setDraftPoints(next);
+      }
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!drawingsEnabledRef.current || drawingToolRef.current || e.button !== 0) return;
+      const at = localPoint(e);
+      const hit = hitTestAll(
+        drawingsRef.current.map((d) => ({ id: d.id, kind: d.kind, points: d.points.map(toScreen) })),
+        at,
+      );
+      if (!hit) {
+        setSelectedId(null);
+        return;
+      }
+      // Keep the chart from panning, and suppress the compatibility mouse events.
+      e.stopPropagation();
+      e.preventDefault();
+      container.focus();
+      setSelectedId(hit.id);
+      const origin = drawingsRef.current.find((d) => d.id === hit.id)!;
+      drag = { id: hit.id, part: hit.part, start: at, origin, moved: false };
+      chartRef.current?.applyOptions({ handleScroll: false, handleScale: false });
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp, { once: true });
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      const next = dragged(localPoint(e));
+      if (!drag || !next) return;
+      drag.moved = true;
+      setDrawings(drawingsRef.current.map((d) => (d.id === drag!.id ? next : d)));
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      window.removeEventListener('pointermove', onPointerMove);
+      chartRef.current?.applyOptions({ handleScroll: true, handleScale: true });
+      const next = drag?.moved ? dragged(localPoint(e)) : null;
+      if (drag && next) commitDrawings(drawingsRef.current.map((d) => (d.id === drag!.id ? next : d)));
+      drag = null;
+    };
+
+    container.addEventListener('pointerdown', onPointerDown, { capture: true });
+    container.addEventListener('click', onPlace);
+    return () => {
+      container.removeEventListener('pointerdown', onPointerDown, { capture: true });
+      container.removeEventListener('click', onPlace);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+    // Mounted once; everything stateful is read through the mirroring refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onChartKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      selectTool(null);
+      setSelectedId(null);
+      return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+      e.preventDefault();
+      commitDrawings(drawings.filter((d) => d.id !== selectedId));
+      setSelectedId(null);
+    }
+  };
 
   useEffect(() => {
     chartRef.current?.applyOptions({ height });
@@ -672,6 +798,9 @@ export function PriceChart({
       priceSeriesRef.current = series;
     }
     chart.timeScale().fitContent();
+    // NFR-11 measures chart open time to this mark: the first frame after the
+    // price series holds its bars.
+    if (parsed.length > 0) requestAnimationFrame(() => performance.mark('wickstreet:chart-painted'));
   }, [candlestick, parsed]);
 
   // MA overlays.
@@ -883,17 +1012,11 @@ export function PriceChart({
     setDisplayedPanes(next);
   };
 
-  const toggleDrawingTool = (kind: DrawingKind) => {
-    setDrawingTool((prev) => (prev === kind ? null : kind));
-    setDraftPoints([]);
-    setCursorPoint(null);
-  };
+  const toggleDrawingTool = (kind: DrawingKind) => selectTool(drawingToolRef.current === kind ? null : kind);
 
   const clearDrawings = () => {
-    setDrawings((prev) => {
-      onDrawingsChangeRef.current?.([]);
-      return [];
-    });
+    commitDrawings([]);
+    setSelectedId(null);
     setDraftPoints([]);
     setCursorPoint(null);
   };
@@ -1015,11 +1138,14 @@ export function PriceChart({
       <div className="relative">
         <div
           ref={containerRef}
-          role="img"
+          tabIndex={drawingsEnabled ? 0 : undefined}
+          onKeyDown={drawingsEnabled ? onChartKeyDown : undefined}
+          data-testid="price-chart"
+          role={drawingsEnabled ? 'application' : 'img'}
           aria-label={`Price chart, ${bars.length} daily bars${
             bars.length ? ` from ${bars[0].date} to ${bars[bars.length - 1].date}` : ''
           }. Moving averages shown: ${activeMas.length ? activeMas.map((p) => `MA${p}`).join(', ') : 'none'}.`}
-          className="w-full"
+          className={`w-full ${drawingsEnabled ? `rounded-sm ${focusRing}` : ''}`}
         />
         {readout && (
           <div className="pointer-events-none absolute top-2 right-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">

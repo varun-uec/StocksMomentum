@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import {
   DRAWING_KINDS,
   type ChartDrawing,
   type DrawingKind,
 } from '@/components/stock/chart-drawings';
 import { TIMEFRAMES, type PaneId, type TimeframeId } from '@/components/stock/PriceChart';
+import { useSymbolDrawings, useWorkspaceChart, type ChartSettings } from '@/lib/workspace';
 
 /**
- * Phase 9.5 — per-symbol chart preferences persisted in localStorage.
+ * Chart preferences, stored on the server since M11 (ADR-013 §5).
  *
- * Mirrors the `theme-provider.tsx` storage pattern (`localStorage.getItem/setItem`)
- * with a key scoped per symbol. Chart display prefs are genuinely client-only, so
- * this is the right layer — no backend involvement.
+ * Phase 9.5 kept them per symbol in `localStorage` under `chart-prefs:<symbol>`.
+ * `parseLegacyPreferences` still reads that shape, once, for the import in
+ * `local-import.ts`.
  */
 
 export interface ChartPreferences {
@@ -24,16 +25,14 @@ export interface ChartPreferences {
 const VALID_TIMEFRAMES: readonly string[] = TIMEFRAMES.map((t) => t.id);
 const VALID_PANES: readonly string[] = ['rsi', 'macd', 'adx'];
 
-export function storageKeyFor(symbol: string): string {
-  return `chart-prefs:${symbol}`;
-}
+export const LEGACY_KEY_PREFIX = 'chart-prefs:';
 
 /**
  * Parse an untrusted stored JSON blob into a fully-validated preferences
  * object. Anything unknown is dropped back to the defaults so a stale or
  * hand-edited payload can never crash the chart.
  */
-function parseStored(raw: string | null): ChartPreferences {
+export function parseLegacyPreferences(raw: string | null): ChartPreferences {
   const base: ChartPreferences = {
     timeframe: '1Y',
     activeMas: [50, 200],
@@ -72,7 +71,7 @@ function parseStored(raw: string | null): ChartPreferences {
   return { timeframe, activeMas, activePanes, drawings };
 }
 
-function isValidDrawing(value: unknown): value is ChartDrawing {
+export function isValidDrawing(value: unknown): value is ChartDrawing {
   if (typeof value !== 'object' || value === null) return false;
   const d = value as Record<string, unknown>;
   if (typeof d.id !== 'string' || typeof d.color !== 'string') return false;
@@ -88,51 +87,40 @@ function isValidDrawing(value: unknown): value is ChartDrawing {
 }
 
 /**
- * Per-symbol chart preferences. `ready` becomes true after the stored value
- * has been read (once, on mount) so consumers can render with final values
- * instead of a defaults-then-sync flash.
+ * One chart's preferences. Range, moving averages and panes belong to the chart
+ * (`chartId`); drawings belong to the symbol. Both live on the server (ADR-013
+ * §5). `ready` is true once both have loaded, so consumers render with final
+ * values instead of a defaults-then-sync flash.
  */
-export function useChartPreferences(symbol: string): {
+export function useChartPreferences(
+  symbol: string,
+  chartId: string,
+): {
   preferences: ChartPreferences;
   ready: boolean;
   update: (patch: Partial<ChartPreferences>) => void;
 } {
-  const [preferences, setPreferences] = useState<ChartPreferences>(() => ({
-    timeframe: '1Y',
-    activeMas: [50, 200],
-    activePanes: [],
-    drawings: [],
-  }));
-  const [ready, setReady] = useState(false);
+  const chart = useWorkspaceChart(chartId);
+  const drawings = useSymbolDrawings(symbol);
 
-  // Read once on mount (never during render — mirrors theme-provider).
-  useEffect(() => {
-    if (!symbol) {
-      setReady(true);
-      return;
-    }
-    let stored: string | null = null;
-    try {
-      stored = localStorage.getItem(storageKeyFor(symbol));
-    } catch {
-      stored = null;
-    }
-    setPreferences(parseStored(stored));
-    setReady(true);
-  }, [symbol]);
+  const preferences = useMemo<ChartPreferences>(
+    () => ({
+      timeframe: VALID_TIMEFRAMES.includes(chart.chart.range) ? (chart.chart.range as TimeframeId) : '1Y',
+      activeMas: chart.chart.mas,
+      activePanes: chart.chart.panes.filter((p) => VALID_PANES.includes(p)),
+      drawings: drawings.drawings.filter(isValidDrawing),
+    }),
+    [chart.chart, drawings.drawings],
+  );
 
   const update = (patch: Partial<ChartPreferences>) => {
-    setPreferences((prev) => {
-      const next = { ...prev, ...patch };
-      try {
-        localStorage.setItem(storageKeyFor(symbol), JSON.stringify(next));
-      } catch {
-        // Storage unavailable (private mode, quota) — preferences are a
-        // best-effort convenience, never a reason to break the chart.
-      }
-      return next;
-    });
+    if (patch.drawings) drawings.update(patch.drawings);
+    const settings: Partial<ChartSettings> = {};
+    if (patch.timeframe) settings.range = patch.timeframe;
+    if (patch.activeMas) settings.mas = patch.activeMas;
+    if (patch.activePanes) settings.panes = patch.activePanes;
+    if (Object.keys(settings).length > 0) chart.update({ ...settings, symbol: symbol || null });
   };
 
-  return { preferences, ready, update };
+  return { preferences, ready: chart.ready && drawings.ready, update };
 }

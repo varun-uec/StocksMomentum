@@ -172,7 +172,7 @@ export default function StockResearchPage() {
     ready: prefsReady,
     bars,
     chartProps,
-  } = useChartShell(symbol ?? '', strategyName);
+  } = useChartShell(symbol ?? '', strategyName, 'stock');
   const setTimeframe = chartProps.onTimeframeChange;
 
   const { data: live, isLoading: liveLoading, error: liveError } = useQuery({

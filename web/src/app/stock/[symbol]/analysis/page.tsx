@@ -163,11 +163,10 @@ export default function UnifiedAnalysisPage() {
 
   const { timeframe, ready: chartReady, bars: barDtos, chartProps } = useChartShell(
     symbol ?? '',
-    strategyName
+    strategyName,
+    'analysis'
   );
-  const { overlays, ready: overlaysReady, update: updateOverlays } = useOverlayPreferences(
-    symbol ?? ''
-  );
+  const { overlays, ready: overlaysReady, update: updateOverlays } = useOverlayPreferences('analysis');
 
   const { data: live, isLoading: liveLoading, error: liveError } = useQuery({
     queryKey: ['stock-live', symbol, strategyName],
