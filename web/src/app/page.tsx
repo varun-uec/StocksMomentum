@@ -3,6 +3,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useNavigate } from 'react-router';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
+import { ScreenerDetail } from '@/components/dashboard/ScreenerDetail';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import {
   executeScreening,
@@ -132,8 +134,13 @@ export default function Home() {
   const isScreening = refreshMutation.isPending || activeRunId !== null;
   const isRefreshing = runFetching || rankingsFetching || isScreening;
 
+  // Wide screens show the selected row beside the table (M12); narrow ones open its research page.
+  const wide = useMediaQuery('(min-width: 1024px)');
+  const [picked, setPicked] = useState<string | null>(null);
+  const selected = wide ? (rankings?.items.find((i) => i.symbol === picked)?.symbol ?? rankings?.items[0]?.symbol ?? null) : null;
   const handleSymbolClick = (symbol: string) => {
-    navigate(`/stock/${symbol}?strategy=${strategyName}`);
+    if (wide) setPicked(symbol);
+    else navigate(`/stock/${symbol}?strategy=${strategyName}`);
   };
 
   return (
@@ -218,11 +225,15 @@ export default function Home() {
                 message={`No stocks currently satisfy the ${strategyName} methodology. This is expected behavior, not an error — Momentum25 never lowers its screening bar to populate a list. Check back after the next session, or try a different strategy.`}
               />
             ) : (
-              <MomentumTable
-                items={rankings.items}
-                onSymbolClick={handleSymbolClick}
-                title="Ranked Universe"
-              />
+              <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6 lg:items-start">
+                <MomentumTable
+                  items={rankings.items}
+                  onSymbolClick={handleSymbolClick}
+                  selectedSymbol={selected}
+                  title="Ranked Universe"
+                />
+                {selected && <ScreenerDetail symbol={selected} runId={rankings.run?.id} strategy={strategyName} />}
+              </div>
             )}
           </>
         )}

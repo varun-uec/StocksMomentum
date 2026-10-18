@@ -6,9 +6,7 @@
 
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Badge, StatusDot } from '@/components/shared/Card';
-import { investmentReadiness } from '@/components/stock/readiness';
-import { rankReasons } from '@/components/stock/WhyItRanks';
+import { ExplanationSummary } from '@/components/workspace/ExplanationSummary';
 import { addToWatchlist, getLiveStockAnalysis, getWatchlistDetail, removeFromWatchlist } from '@/lib/api-client';
 import { num } from '@/lib/format';
 import { focusRing } from '@/lib/theme';
@@ -143,41 +141,9 @@ function DetailsTab({ symbol, strategy }: { symbol: string; strategy: string }) 
   if (error || !explanation) {
     return <p className="px-3 py-2 text-xs text-slate-500">No Momentum25 evaluation for {symbol}: not enough stored history.</p>;
   }
-  const readiness = investmentReadiness(explanation);
-  const { contributors, detractors } = rankReasons(explanation, 3);
-
   return (
     <div className="px-3 py-2 space-y-3 text-xs">
-      <div className="space-y-1">
-        <Badge color={readiness.color}>{readiness.label}</Badge>
-        <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-slate-600 dark:text-slate-300">
-          <dt>Momentum score</dt>
-          <dd className="text-right tabular-nums">{num(explanation.momentum_score)}</dd>
-          <dt>Setup score</dt>
-          <dd className="text-right tabular-nums">{num(explanation.buy_setup_score)}</dd>
-          <dt>Gate failures</dt>
-          <dd className="text-right tabular-nums">{explanation.hard_filter_failures.length}</dd>
-        </dl>
-      </div>
-      <section aria-label="Why it ranks">
-        <h3 className="font-semibold mb-1">Why it ranks</h3>
-        {contributors.length === 0 && <p className="text-slate-500">No passing rules.</p>}
-        {contributors.map((r) => (
-          <p key={r.rule_id} className="flex gap-1.5 text-slate-700 dark:text-slate-300">
-            <StatusDot passed /> <span>{r.explanation}</span>
-          </p>
-        ))}
-      </section>
-      <section aria-label="What could invalidate this">
-        <h3 className="font-semibold mb-1">What could invalidate this</h3>
-        {detractors.length === 0 && <p className="text-slate-500">No failing rules.</p>}
-        {detractors.map((r) => (
-          <p key={r.rule_id} className="flex gap-1.5 text-slate-700 dark:text-slate-300">
-            <StatusDot passed={false} /> <span className="flex-1">{r.explanation}</span>
-            {explanation.hard_filter_failures.includes(r.rule_id) && <Badge color="rose">gate</Badge>}
-          </p>
-        ))}
-      </section>
+      <ExplanationSummary explanation={explanation} />
       <Link to={`/stock/${encodeURIComponent(symbol)}`} className={`inline-block text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}>
         Full research →
       </Link>

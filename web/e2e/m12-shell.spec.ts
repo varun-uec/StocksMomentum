@@ -96,3 +96,31 @@ test('the panel is saved with the workspace: closed stays closed after a reload'
   await page.getByRole('button', { name: 'Panel' }).click();
   await expect(page.getByRole('tabpanel', { name: 'Watchlist' })).toBeVisible();
 });
+
+test('the screener shows the selected row beside the table, with links to its chart', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const rows = page.locator('tbody tr');
+  await expect(rows.first()).toBeVisible({ timeout: 15_000 });
+  const first = (await rows.first().getByRole('button').first().textContent())!.trim();
+  await expect(page.getByRole('complementary', { name: `${first} in this run` })).toBeVisible();
+
+  const second = (await rows.nth(1).getByRole('button').first().textContent())!.trim();
+  await rows.nth(1).getByRole('button', { name: second, exact: true }).click();
+  const panel = page.getByRole('complementary', { name: `${second} in this run` });
+  await expect(panel).toBeVisible();
+  await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.getByRole('heading', { name: 'Why it ranks' })).toBeVisible();
+  await panel.getByRole('link', { name: 'Open chart →' }).click();
+  await expect(page).toHaveURL(new RegExp(`/chart/${second}$`));
+});
+
+test('on a narrow screen the screener opens the research page, as before', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 });
+  await page.goto('/');
+  const firstSymbol = page.locator('tbody tr').first().getByRole('button').first();
+  await expect(firstSymbol).toBeVisible({ timeout: 15_000 });
+  const symbol = (await firstSymbol.textContent())!.trim();
+  await firstSymbol.click();
+  await expect(page).toHaveURL(new RegExp(`/stock/${symbol}\\?strategy=`));
+});

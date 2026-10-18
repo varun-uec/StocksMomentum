@@ -36,6 +36,8 @@ function signalFromDate(): string {
 interface MomentumTableProps {
   items: RankingItemDTO[];
   onSymbolClick?: (symbol: string) => void;
+  /** The row the detail panel shows; highlighted and marked for screen readers. */
+  selectedSymbol?: string | null;
   title?: string;
 }
 
@@ -176,7 +178,7 @@ const COLUMN_LABELS: Record<string, string> = {
 
 const columnHelper = createColumnHelper<RankingItemDTO>();
 
-export default function MomentumTable({ items, onSymbolClick, title }: MomentumTableProps) {
+export default function MomentumTable({ items, onSymbolClick, selectedSymbol = null, title }: MomentumTableProps) {
   // Rank ascending is how the list already arrives. Stating it up front
   // makes the sort arrow visible from the first render.
   const [sorting, setSorting] = useState<SortingState>([{ id: 'rank', desc: false }]);
@@ -577,7 +579,13 @@ export default function MomentumTable({ items, onSymbolClick, title }: MomentumT
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              <tr
+                key={row.id}
+                aria-selected={selectedSymbol === null ? undefined : row.original.symbol === selectedSymbol}
+                className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
+                  row.original.symbol === selectedSymbol ? 'bg-indigo-50/70 dark:bg-indigo-600/10' : ''
+                }`}
+              >
                 {row.getVisibleCells().map((cell) => {
                   const columnId = cell.column.id;
                   const isNumeric =

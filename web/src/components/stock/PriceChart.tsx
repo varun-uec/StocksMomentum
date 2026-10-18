@@ -618,6 +618,8 @@ export function PriceChart({
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#94a3b8',
         attributionLogo: false,
+        // The library's default separator is white, harsh in the dark theme.
+        panes: { separatorColor: 'rgba(148,163,184,0.25)', separatorHoverColor: 'rgba(148,163,184,0.45)' },
       },
       grid: {
         vertLines: { color: 'rgba(148,163,184,0.12)' },
