@@ -1,8 +1,9 @@
 """Prepare the E2E database clone. Run with the backend venv.
 
-``seed``  Ten synthetic symbols, E2E10Y0..9, with 10 years of daily bars. NFR-11
-          times a chart opening 10 years of bars, and the real dataset starts in
-          2019 (about 6.9 years). They exist only in the clone. Idempotent.
+``seed``  Sixteen synthetic symbols, E2E10Y0..15, with 10 years of daily bars.
+          NFR-11 times a chart opening 10 years of bars, and the real dataset
+          starts in 2019 (about 6.9 years). The M13 benchmark fills a 4 × 4
+          layout with them. They exist only in the clone. Idempotent.
 ``reset`` Delete every saved workspace and drawing, so each test starts clean.
 
 The database URL comes from ``E2E_DATABASE_URL`` only, never ``M25_DATABASE_URL``.
@@ -19,7 +20,7 @@ import asyncpg
 SQL = """
 INSERT INTO securities (symbol, name, exchange, is_active)
 SELECT 'E2E10Y' || n, 'Synthetic 10-year series ' || n, 'NSE', true
-FROM generate_series(0, 9) AS n
+FROM generate_series(0, 15) AS n
 ON CONFLICT (symbol) DO NOTHING;
 
 DELETE FROM ohlcv_daily
@@ -50,7 +51,7 @@ async def main(command: str, url: str) -> None:
             "SELECT min(c) FROM (SELECT count(*) c FROM ohlcv_daily o JOIN securities s"
             " ON s.id = o.security_id WHERE s.symbol LIKE 'E2E10Y%' GROUP BY s.id) t"
         )
-        print(f"seeded 10 symbols, at least {count} bars each")
+        print(f"seeded 16 symbols, at least {count} bars each")
     finally:
         await conn.close()
 
