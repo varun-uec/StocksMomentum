@@ -26,7 +26,7 @@ import {
 } from '@/components/shared/Card';
 import { ScoreGauge } from '@/components/shared/ScoreGauge';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
-import { getIndexCloses, getLiveStockAnalysis, getStockExplanation } from '@/lib/api-client';
+import { getLiveStockAnalysis, getStockExplanation } from '@/lib/api-client';
 import { num, strategyDisplayName } from '@/lib/format';
 import { focusRing } from '@/lib/theme';
 import {
@@ -34,10 +34,9 @@ import {
   TIMEFRAMES,
   type ChartMarker,
   type ChartOverlayLine,
-  type IndicatorSeriesBar,
-  type PaneDef,
 } from '@/components/stock/PriceChart';
 import { useChartShell } from '@/components/stock/useChartShell';
+import { MAX_PANES, useBenchmarkCloses, useCatalogueIndicators } from '@/components/stock/useCatalogueIndicators';
 import { useChartPatterns } from '@/components/stock/useChartPatterns';
 import {
   CANDIDATE_COLORS,
@@ -45,7 +44,7 @@ import {
   useElliottWaveChart,
 } from '@/components/stock/useElliottWaveChart';
 import { CountSummary, WaveDetail } from '@/components/stock/elliott-wave-panels';
-import { OverlayPicker, type LegendEntry } from '@/components/stock/OverlayPicker';
+import { OverlayPicker } from '@/components/stock/OverlayPicker';
 import { StrategyPanel } from '@/components/stock/StrategyPanel';
 import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
 import { TrendTemplateCard } from '@/components/stock/TrendTemplateCard';
@@ -63,8 +62,6 @@ import {
   atr,
   toBars,
   type Bar,
-  type CloseBar,
-  type OverlaySeries,
 } from '@/lib/indicators/overlays';
 import { useOverlayPreferences, newUid, type ActiveIndicator } from '@/lib/overlay-preferences';
 import {
@@ -81,7 +78,6 @@ import { defaultParams } from '@/lib/indicators/catalogue';
 // every prop identity change, so an empty literal per render would churn them.
 const NO_MARKERS: ChartMarker[] = [];
 const NO_LINES: ChartOverlayLine[] = [];
-const NO_PANE_DEFS: PaneDef[] = [];
 
 const MODES = [
   { id: 'chart', label: 'Chart' },
@@ -89,9 +85,6 @@ const MODES = [
   { id: 'elliott', label: 'Elliott Wave' },
 ] as const;
 type Mode = (typeof MODES)[number]['id'];
-
-/** Four sub-panes already leave the price pane short; that is the cap. */
-const MAX_PANES = 4;
 
 const SECTIONS = [
   { id: 'chart', label: 'Chart' },
@@ -183,19 +176,8 @@ export default function UnifiedAnalysisPage() {
     retry: false,
   });
 
-  const benchmark = live?.benchmark_index ?? null;
-  const { data: benchmarkCloses } = useQuery({
-    queryKey: ['index-closes', benchmark],
-    queryFn: () => getIndexCloses(benchmark!),
-    enabled: !!benchmark,
-  });
-
   const bars = useMemo<Bar[]>(() => toBars(barDtos), [barDtos]);
-  const benchmarkBars = useMemo<CloseBar[]>(
-    () =>
-      (benchmarkCloses?.bars ?? []).map((b) => ({ date: b.date, close: parseFloat(b.close) })),
-    [benchmarkCloses]
-  );
+  const benchmarkBars = useBenchmarkCloses(symbol, strategyName, true);
   const lastClose = bars.length ? bars[bars.length - 1].close : null;
 
   const lookbackDays = TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? 2000;
@@ -206,74 +188,7 @@ export default function UnifiedAnalysisPage() {
 
   const activeIndicators = overlays.indicators;
 
-  const overlayResult = useMemo(() => {
-    const lines: ChartOverlayLine[] = [];
-    const legend: LegendEntry[] = [];
-    if (bars.length === 0) return { lines, legend };
-    for (const instance of activeIndicators) {
-      const def = INDICATOR_BY_ID.get(instance.id);
-      if (!def?.overlay) continue;
-      let series: OverlaySeries[] = [];
-      try {
-        series = def.overlay(bars, instance.params);
-      } catch {
-        // A parameter combination the maths cannot serve (period longer than
-        // the loaded range) drops that indicator, never the whole chart.
-        series = [];
-      }
-      for (const s of series) {
-        if (s.points.length === 0) continue;
-        lines.push({
-          points: s.points,
-          color: s.color,
-          lineWidth: 1,
-          ...(s.dashed ? { lineStyle: 2 as unknown as ChartOverlayLine['lineStyle'] } : {}),
-        });
-        legend.push({
-          label: s.label,
-          color: s.color,
-          value: s.points[s.points.length - 1].price.toFixed(2),
-        });
-      }
-    }
-    return { lines, legend };
-  }, [activeIndicators, bars]);
-
-  /** Browser-computed pane values merged into the backend indicator series. */
-  const { indicatorSeries, extraPaneDefs, activePanes } = useMemo(() => {
-    const byDate = new Map<string, IndicatorSeriesBar>();
-    for (const bar of chartProps.indicatorSeries ?? []) byDate.set(bar.date, { ...bar });
-    const defs: PaneDef[] = [];
-    const panes: string[] = [];
-    for (const instance of activeIndicators) {
-      const def = INDICATOR_BY_ID.get(instance.id);
-      if (!def?.pane) continue;
-      defs.push(def.pane);
-      panes.push(def.pane.id);
-      if (!def.compute || bars.length === 0) continue;
-      let values: Record<string, (number | null)[]> = {};
-      try {
-        values = def.compute(bars, instance.params, { benchmark: benchmarkBars });
-      } catch {
-        values = {};
-      }
-      for (const [key, series] of Object.entries(values)) {
-        series.forEach((value, i) => {
-          if (value === null || !Number.isFinite(value)) return;
-          const date = bars[i].date;
-          const entry = byDate.get(date) ?? { date };
-          entry[key] = value;
-          byDate.set(date, entry);
-        });
-      }
-    }
-    const merged = Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
-    return {
-      indicatorSeries: merged,
-      extraPaneDefs: defs.length ? defs : NO_PANE_DEFS,
-      activePanes: panes,
-    };
-  }, [activeIndicators, bars, benchmarkBars, chartProps.indicatorSeries]);
+  const catalogue = useCatalogueIndicators(bars, activeIndicators, chartProps, benchmarkBars);
 
   const setIndicators = (next: ActiveIndicator[]) =>
     updateOverlays({ indicators: next, presetEdited: true });
@@ -338,11 +253,11 @@ export default function UnifiedAnalysisPage() {
   );
 
   const overlayLines = useMemo<ChartOverlayLine[]>(() => {
-    const base = overlayResult.lines;
+    const base = catalogue.lines;
     if (mode === 'patterns') return [...base, ...patterns.overlayLines];
     if (mode === 'elliott') return [...base, ...wave.overlayLines];
     return base.length ? base : NO_LINES;
-  }, [mode, overlayResult.lines, patterns.overlayLines, wave.overlayLines]);
+  }, [mode, catalogue.lines, patterns.overlayLines, wave.overlayLines]);
 
   // ── Targets and risk / reward ────────────────────────────────────────
 
@@ -543,7 +458,7 @@ export default function UnifiedAnalysisPage() {
               )}
               <span className="text-[11px] text-slate-500">
                 {activeIndicators.length} indicator{activeIndicators.length === 1 ? '' : 's'} ·{' '}
-                {activePanes.length}/{MAX_PANES} panes
+                {catalogue.paneCount}/{MAX_PANES} panes
               </span>
               <button
                 type="button"
@@ -564,18 +479,7 @@ export default function UnifiedAnalysisPage() {
               <PriceChart
                 {...chartProps}
                 height={560}
-                indicatorSeries={indicatorSeries}
-                extraPaneDefs={extraPaneDefs}
-                activePanes={[...chartProps.activePanes, ...activePanes].filter(
-                  (id, i, all) => all.indexOf(id) === i
-                )}
-                onActivePanesChange={(panes) => {
-                  // The built-in row owns the backend panes; catalogue panes
-                  // are added and removed through the picker.
-                  chartProps.onActivePanesChange(
-                    panes.filter((id) => !activePanes.includes(id))
-                  );
-                }}
+                {...catalogue.paneProps}
                 markers={markers}
                 overlayLine={mode === 'elliott' ? wave.overlayLine : undefined}
                 overlayLines={overlayLines}
@@ -590,8 +494,8 @@ export default function UnifiedAnalysisPage() {
                 <OverlayPicker
                   active={activeIndicators}
                   onChange={setIndicators}
-                  legend={overlayResult.legend}
-                  paneCount={activePanes.length}
+                  legend={catalogue.legend}
+                  paneCount={catalogue.paneCount}
                   maxPanes={MAX_PANES}
                 />
               </Card>

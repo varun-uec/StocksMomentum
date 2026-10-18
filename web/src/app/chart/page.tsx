@@ -6,17 +6,26 @@
  * work, and comes back on reload or in another browser (ADR-013 §5).
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { DEFAULT_STRATEGY, useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
 import { useChartShell } from '@/components/stock/useChartShell';
+import {
+  MAX_PANES,
+  needsBenchmark,
+  useBenchmarkCloses,
+  useCatalogueIndicators,
+} from '@/components/stock/useCatalogueIndicators';
+import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
 import { SaveState } from '@/components/workspace/SaveState';
 import { ShortcutsDialog } from '@/components/workspace/ShortcutsDialog';
 import { SidePanel, useWatchlistDetail, useWatchlistToggle } from '@/components/workspace/SidePanel';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
+import { toBars } from '@/lib/indicators/overlays';
+import { useOverlayPreferences } from '@/lib/overlay-preferences';
 import { focusRing } from '@/lib/theme';
 import { useRightPanel, useSymbolDrawings, useWorkspaceChart } from '@/lib/workspace';
 
@@ -72,7 +81,12 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const drawings = useSymbolDrawings(symbol);
   const [search, setSearch] = useState<{ open: boolean; initial: string }>({ open: false, initial: '' });
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { strategyName } = useStrategy();
+  const { overlays, update: updateOverlays } = useOverlayPreferences(CHART_ID);
+  const bars = useMemo(() => toBars(shell.bars), [shell.bars]);
+  const benchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
+  const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark);
   const { panel, setPanel } = useRightPanel();
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
@@ -92,6 +106,11 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         e.preventDefault();
         const { symbol: current, listed: inList, ready, toggle } = keyState.current;
         if (ready) toggle({ symbol: current, add: !inList });
+        return;
+      }
+      if (e.altKey && e.code === 'KeyI' && !isTyping(e)) {
+        e.preventDefault();
+        setIndicatorsOpen(true);
         return;
       }
       if (e.key === '?' && !isTyping(e)) {
@@ -138,6 +157,14 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         <SaveState documents={[workspace, drawings]} />
         <button
           type="button"
+          onClick={() => setIndicatorsOpen(true)}
+          title="Indicators (Alt+I)"
+          className={`px-2 py-0.5 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 ${focusRing}`}
+        >
+          Indicators{overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}
+        </button>
+        <button
+          type="button"
           onClick={() => setShortcutsOpen(true)}
           aria-label="Keyboard shortcuts"
           title="Keyboard shortcuts (?)"
@@ -159,7 +186,15 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
 
       <div className="flex gap-3">
         <div className="flex-1 min-w-0">
-          {shell.ready ? <PriceChart {...shell.chartProps} height={height} toolRail /> : <LoadingSpinner />}
+          {shell.ready ? (
+            <PriceChart
+              {...shell.chartProps}
+              {...catalogue.paneProps}
+              overlayLines={catalogue.lines}
+              height={height}
+              toolRail
+            />
+          ) : <LoadingSpinner />}
         </div>
         {panel && (
           <div className="hidden lg:block w-72 shrink-0">
@@ -175,6 +210,15 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         )}
       </div>
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <IndicatorDialog
+        open={indicatorsOpen}
+        onClose={() => setIndicatorsOpen(false)}
+        active={overlays.indicators}
+        onChange={(indicators) => updateOverlays({ indicators, presetEdited: true })}
+        legend={catalogue.legend}
+        paneCount={catalogue.paneCount}
+        maxPanes={MAX_PANES}
+      />
 
       <SymbolSearchDialog
         open={search.open}

@@ -18,6 +18,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'Ctrl/⌘+Z', action: 'Undo a drawing edit made in this window' },
   { keys: 'Ctrl/⌘+Shift+Z, Ctrl+Y', action: 'Redo' },
   { keys: 'Esc', action: 'Cancel the tool or the selection' },
+  { keys: 'Alt+I', action: 'Open the indicator list' },
   { keys: 'Alt+W', action: 'Add the symbol to the watchlist, or remove it' },
   { keys: '?', action: 'Show these shortcuts' },
 ];

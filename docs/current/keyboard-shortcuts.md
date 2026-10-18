@@ -19,6 +19,7 @@ The chart workspace (`/chart`) answers these keys. Press `?` there to see the sa
 | Ctrl/⌘+Z | Undo a drawing edit made in this window |
 | Ctrl/⌘+Shift+Z, Ctrl+Y | Redo |
 | Esc | Cancel the tool or the selection |
+| Alt+I | Open the indicator list |
 | Alt+W | Add the symbol to the watchlist, or remove it |
 | ? | Show these shortcuts |
 

@@ -115,3 +115,27 @@ test('the drawing menu restyles a drawing; undo and redo step through edits; arr
   await page.keyboard.press('Control+z');
   await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
 });
+
+test('Alt+I opens the indicator list; an overlay and a pane draw and are saved with the chart', async ({ page, request }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  await page.keyboard.press('Alt+KeyI');
+  const dialog = page.getByRole('dialog', { name: 'Indicators' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: /Bollinger Bands/ }).click();
+  await dialog.getByRole('button', { name: /^CCI/ }).click();
+  await expect(dialog.getByText('Legend · latest value')).toBeVisible(); // the overlay computed values
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect.poll(async () => ((await mainChart(request))?.indicators as { id: string }[] | undefined)?.map((i) => i.id)).toEqual([
+    'bollinger',
+    'cci',
+  ]);
+
+  await page.reload();
+  await ready(page);
+  await expect(page.getByRole('button', { name: 'Indicators · 2' })).toBeVisible();
+  const box = (await page.getByTestId('price-chart').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.3);
+  await expect(page.getByText(/^CCI \(20\): -?\d/)).toBeVisible(); // the browser pane has values under the crosshair
+});
