@@ -62,7 +62,14 @@ class RiskEngine:
             return not cfg.rules or rule_id in rule_cfg
 
         evaluators: dict[str, Any] = {
-            "risk_extension": lambda rc: self._eval_risk_extension(series, ind.sma50, rc),
+            # The SMA the rule's ``ma`` names; the series fallback covers others.
+            "risk_extension": lambda rc: self._eval_risk_extension(
+                series,
+                {50: ind.sma50, 150: ind.sma150, 200: ind.sma200}.get(
+                    self._int_param(rc, "ma", 50)
+                ),
+                rc,
+            ),
             "risk_atr": lambda rc: self._eval_risk_atr(ind.adr_pct, rc),
             "risk_rr": lambda rc: self._eval_risk_rr(series, ind.atr14, rc),
         }

@@ -1,6 +1,6 @@
 # ADR-014: Strategy Studio — Configured Rules, Three Result Classes, Sealed Hold-Out
 
-**Status:** Proposed (2026-10-18). Must be accepted before M14 starts.
+**Status:** Accepted (2026-10-18, by the owner, with the amendments below already folded in: families by hypothesis and lineage, one official independent hold-out evaluation per family, a 36-month hold-out subject to sufficient historical evidence, and no out-of-sample result presented as validated future performance).
 
 ## Context
 Strategy Studio (FR-25) lets a user change a screening strategy and judge it. Users will read any number the Studio shows as a claim about future returns. So the Studio must be correct about what each number means.

@@ -852,6 +852,20 @@ def test_risk_extension_overextended() -> None:
     assert ext_rule.passed is False
 
 
+def test_risk_extension_measures_against_the_configured_sma() -> None:
+    """``ma: 200`` measures against SMA200. Before M14 it always used SMA50 (ADR-014 §2)."""
+    engine = RiskEngine()
+    ctx = _make_context(close=Decimal("150"), sma50=Decimal("140"), sma200=Decimal("100"))
+    rule = RuleConfig(
+        id="risk_extension", weight=Decimal("1"), params={"ma": 200, "max_pct": 25}
+    )
+    result = engine.evaluate(ctx, _make_config("risk", rules=(rule,)))
+    ext_rule = next(r for r in result.rule_results if r.rule_id == "risk_extension")
+    assert ext_rule.raw_value == Decimal("50")  # 150 is 50% above SMA200, not 7% above SMA50
+    assert ext_rule.passed is False
+    assert "SMA200" in ext_rule.explanation
+
+
 def test_risk_atr_acceptable() -> None:
     """Low ADR% passes risk_atr."""
     engine = RiskEngine()

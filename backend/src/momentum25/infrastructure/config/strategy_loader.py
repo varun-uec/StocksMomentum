@@ -24,6 +24,8 @@ from momentum25.domain.entities.strategy import (
     Strategy,
     StrategyConfig,
 )
+from momentum25.domain.errors import ValidationError
+from momentum25.domain.strategy.rule_schemas import validate_config
 
 
 class _RuleSchema(BaseModel):
@@ -88,8 +90,25 @@ def _to_config(schema: _StrategySchema) -> StrategyConfig:
 
 
 def config_from_raw(raw: dict[str, Any]) -> StrategyConfig:
-    """Validate and convert a raw config dict into a :class:`StrategyConfig`."""
+    """Validate and convert a raw config dict into a :class:`StrategyConfig`.
+
+    Checks the shape only. Stored strategies are read through it, and a stored
+    strategy stays readable as it was run (ADR-005), so the rule schemas are
+    enforced where a strategy is written: :func:`checked_config`.
+    """
     return _to_config(_StrategySchema.model_validate(raw))
+
+
+def checked_config(raw: dict[str, Any]) -> StrategyConfig:
+    """Convert a raw config and enforce the rule parameter schemas (ADR-014 §2).
+
+    Raises :class:`ValidationError` listing every problem; nothing is clamped.
+    """
+    config = config_from_raw(raw)
+    errors = validate_config(config)
+    if errors:
+        raise ValidationError(f"Strategy {config.name!r} is invalid: " + "; ".join(errors))
+    return config
 
 
 def raw_from_config(config: StrategyConfig) -> dict[str, Any]:
@@ -138,7 +157,7 @@ def load_strategy_file(path: Path) -> Strategy:
     # every strategy file that omits them.
     is_active = bool(raw.pop("is_active", True))
     kind = str(raw.pop("kind", "production"))
-    config = config_from_raw(raw)
+    config = checked_config(raw)
     return Strategy(
         name=config.name,
         version=config.version,
