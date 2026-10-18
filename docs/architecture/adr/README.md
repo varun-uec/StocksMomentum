@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011 **Accepted**. 012–014 **Proposed**. 015 is a placeholder.
+Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 and 014 **Accepted**. 012 **Proposed**. 015 is a placeholder.
 
 | ADR | Title |
 |---|---|

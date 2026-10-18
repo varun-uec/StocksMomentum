@@ -82,3 +82,15 @@ class PreconditionRequiredError(Momentum25Error):
 
     code = "precondition_required"
     http_status = 428
+
+
+class LookAheadError(Momentum25Error):
+    """A read asked for data the decision could not have seen (ADR-014 §7).
+
+    The point-in-time port raises it for any bar dated after the decision
+    session. The walk-forward backtest raises it under its own convention: data
+    dated on or after its decision date.
+    """
+
+    code = "look_ahead"
+    http_status = 500

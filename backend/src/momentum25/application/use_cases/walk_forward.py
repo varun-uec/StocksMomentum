@@ -32,16 +32,13 @@ from momentum25.domain.backtest.portfolio_step import (
     plan_equal_weight_rebalance,
 )
 from momentum25.domain.backtest.rebalance import rank_signals, select_portfolio
+from momentum25.domain.errors import LookAheadError
 from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.ports.walk_forward import (
     BenchmarkProvider,
     EligibilityFactsProvider,
     PriceHistoryProvider,
 )
-
-
-class LookAheadError(Exception):
-    """A provider returned data dated on or after the decision date (brief §9)."""
 
 
 @dataclass(frozen=True, slots=True)

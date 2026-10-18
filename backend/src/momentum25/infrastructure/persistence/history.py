@@ -50,8 +50,11 @@ VERSIONED: dict[str, tuple[str | None, str]] = {
     "historical_universe": ("as_of_date", "reconstructed"),
 }
 
-# Compared without these: they change on every write.
-_VOLATILE = ("revision_id", "recorded_at", "provenance", "updated_at")
+# Compared without these. The first four change on every write. ``adj_factor``
+# and ``adj_close`` are derived: every new corporate action rewrites them on all
+# earlier bars, and the point-in-time port recomputes factors from the actions
+# themselves, so versioning them would only copy every bar per action.
+_VOLATILE = ("revision_id", "recorded_at", "provenance", "updated_at", "adj_factor", "adj_close")
 
 
 def history_name(table: str) -> str:
