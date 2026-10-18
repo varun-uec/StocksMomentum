@@ -12,6 +12,7 @@ Bounds are wide on purpose. They keep values meaningful (a percentile stays in
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -383,3 +384,17 @@ def validate_config(config: StrategyConfig) -> list[str]:
             elif error := _check_weight(f"{score}.{engine_id}", weight):
                 errors.append(error)
     return errors
+
+
+def registry_version() -> str:
+    """A fingerprint of every rule, parameter, bound and default (for the manifest)."""
+    lines = sorted(
+        f"{s.rule_id}|{s.engine_id}|"
+        + ";".join(
+            f"{p.name}:{p.kind}:{p.default}:{p.minimum}:{p.maximum}:{','.join(map(str, p.choices))}"
+            for p in s.params
+        )
+        for s in RULES.values()
+    )
+    lines.append(f"weights<= {MAX_WEIGHT}; history {HISTORY_SESSIONS}")
+    return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:12]

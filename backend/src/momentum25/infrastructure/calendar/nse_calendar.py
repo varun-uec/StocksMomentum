@@ -54,3 +54,8 @@ class NSETradingCalendar:
 def get_nse_trading_calendar() -> TradingCalendar:
     """Return the process-wide cached NSE trading calendar instance."""
     return NSETradingCalendar()
+
+
+def calendar_version() -> str:
+    """The calendar library's release and the exchange code: sessions depend on both."""
+    return f"exchange_calendars {xcals.__version__} {_CALENDAR_CODE}"
