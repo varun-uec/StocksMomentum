@@ -29,12 +29,13 @@ One table, `alerts`. An alert fires once; the owner re-arms it to watch again.
 - **Conditions:** `above`: value > threshold. `below`: value < threshold. `crosses_above`: previous bar ≤ threshold and this bar > threshold. `crosses_below`: previous bar ≥ threshold and this bar < threshold. The previous bar may be on or before `armed_after`. A bar with no value (warm-up) never fires and never serves as the previous bar.
 - **Fires on the first bar that meets the condition.** The result depends only on the stored bars, never on when the check ran. A missed day therefore cannot hide a cross.
 - **Values** are compared as the API reports them: the quantized decimals of the chart series.
+- **Price basis.** A threshold on a price-scaled source (close, ATR, MACD) is in the price basis of `armed_after`, whose factor was 1 when it was set. A later split or bonus rescales every earlier bar, so the check rescales the threshold too: `threshold × factor(armed_after)` in the current schedule. RSI and ADX do not scale with price. Without this, a 1:1 bonus would fire every `below` alert set before it. (Found while building M15; the same reason drawings store traded prices.)
 
 ## Evaluation
 
 - `EvaluateAlerts` reads each active alert's series through the same use cases the chart calls (`GetSecurityOHLCV`, `GetIndicatorSeries`). Parity is therefore structural, and a test proves it.
 - The daily job calls it once after every strategy has run, so the day's bars are in. `POST /alerts/evaluate` runs it on demand. ADD A1 named the `RunCompleted` event as the hook. No publisher has subscribers yet, and one call site needs none. A subscriber can replace the call when a second consumer appears.
-- The pure condition check lives in the domain (`domain/alerts.py`) and has golden tests.
+- The pure condition check lives in the domain (`domain/entities/alert.py`) and has golden tests.
 
 ## API
 

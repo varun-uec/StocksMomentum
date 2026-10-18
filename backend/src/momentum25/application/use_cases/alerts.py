@@ -7,6 +7,7 @@ calls, so the chart and the alert see one series (NFR-1a).
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 
 from momentum25.application.dto.alerts import (
     AlertDTO,
@@ -16,7 +17,13 @@ from momentum25.application.dto.alerts import (
 )
 from momentum25.application.use_cases.securities import GetSecurityOHLCV
 from momentum25.application.use_cases.stocks import GetIndicatorSeries
-from momentum25.domain.entities.alert import Alert, AlertInterval, SeriesPoint, first_firing
+from momentum25.domain.entities.alert import (
+    Alert,
+    AlertInterval,
+    SeriesPoint,
+    chart_threshold,
+    first_firing,
+)
 from momentum25.domain.errors import NotFoundError
 from momentum25.domain.ports.repositories import (
     AlertRepository,
@@ -130,18 +137,24 @@ class EvaluateAlerts:
         self._prices = prices
         self._indicators = indicators
 
-    async def inputs(self, alert: Alert) -> tuple[list[SeriesPoint], str]:
-        """Return the values the alert reads and their data version.
+    async def inputs(self, alert: Alert) -> tuple[list[SeriesPoint], str, Decimal]:
+        """Return the values the alert reads, their data version, and the threshold.
 
-        They are the chart API's own values: ``close`` from the price series,
+        The values are the chart API's own: ``close`` from the price series,
         every other source from the indicator series, with the price series'
-        ``partial`` flags.
+        ``partial`` flags. The threshold is in the chart's current price basis.
         """
         interval: AlertInterval = alert.interval
         prices = await self._prices.execute(alert.symbol, interval=interval)
+        steps = prices.adjustments
+        last = steps[-1] if steps else None
+        step = next((s for s in steps if s.until >= alert.armed_after), last)
+        threshold = chart_threshold(
+            alert.source, alert.threshold, step.factor if step else Decimal("1")
+        )
         if alert.source == "close":
             points = [SeriesPoint(b.date, b.close, b.partial) for b in prices.bars]
-            return points, prices.data_version
+            return points, prices.data_version, threshold
         partial = {b.date: b.partial for b in prices.bars}
         # The default strategy's series: the one the chart workspace draws.
         series = await self._indicators.execute(alert.symbol, interval=interval)
@@ -149,7 +162,7 @@ class EvaluateAlerts:
             SeriesPoint(b.date, getattr(b, alert.source), partial.get(b.date, False))
             for b in series.bars
         ]
-        return points, series.data_version
+        return points, series.data_version, threshold
 
     async def execute(self) -> AlertEvaluationDTO:
         """One failing symbol never stops the others; it is reported."""
@@ -159,12 +172,12 @@ class EvaluateAlerts:
         for alert in active:
             assert alert.id is not None
             try:
-                points, version = await self.inputs(alert)
+                points, version, threshold = await self.inputs(alert)
             except NotFoundError:
                 _logger.warning("alert_series_missing", alert_id=alert.id, symbol=alert.symbol)
                 failed.append(alert.symbol)
                 continue
-            firing = first_firing(alert.condition, alert.threshold, alert.armed_after, points)
+            firing = first_firing(alert.condition, threshold, alert.armed_after, points)
             if firing is not None:
                 await self._alerts.fire(alert.id, firing, version)
                 fired += 1

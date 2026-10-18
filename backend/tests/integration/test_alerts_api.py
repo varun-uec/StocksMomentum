@@ -15,6 +15,7 @@ from typing import Any, get_args
 
 import httpx
 import pytest
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.alert import Alert, AlertSource
@@ -180,7 +181,7 @@ async def test_the_alert_reads_the_charts_own_values(
             threshold=Decimal("0"),
             armed_after=_HISTORY[0],
         )
-        points, version = await evaluator.inputs(alert)
+        points, version, _ = await evaluator.inputs(alert)
         chart = prices["bars"] if source == "close" else indicators["bars"]
         expected = [
             (b["date"], None if b[source] is None else Decimal(b[source])) for b in chart
@@ -192,3 +193,51 @@ async def test_the_alert_reads_the_charts_own_values(
         # close is checked.
         if interval != "1M" or source == "close":
             assert any(p.value is not None for p in points), source
+
+
+async def test_a_bonus_after_arming_rescales_a_price_threshold(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    """A 1:1 bonus halves every earlier adjusted bar; a price alert must not fire on it.
+
+    ``below`` at 90 is set while closes run about 100-125. After the bonus the
+    later bars trade near half that. On the chart nothing fell, so nothing fires.
+    """
+    created = await client.post("/api/v1/alerts", json=_alert(condition="below", threshold="90"))
+    rsi = await client.post(
+        "/api/v1/alerts", json=_alert(source="rsi14", condition="above", threshold="100")
+    )
+    # Fires only if rescaled: just under twice the lowest post-bonus close, so
+    # half of it sits under every later bar, while the raw value sits far above.
+    lowest_later = min(_close(i) / 2 for i in range(300, 305))
+    rescaled = await client.post(
+        "/api/v1/alerts",
+        json=_alert(condition="above", threshold=str(lowest_later * 2 - Decimal("1"))),
+    )
+    assert created.status_code == rsi.status_code == rescaled.status_code == 201
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=Decimal("0.5"))
+    )
+    await db_session.commit()
+    for i, day in enumerate(_LATER, start=300):
+        close = _close(i) / 2
+        db_session.add(
+            OHLCVDailyModel(
+                security_id=security_id,
+                date=day,
+                open=close,
+                high=close,
+                low=close,
+                close=close,
+                volume=200_000,
+                adj_factor=Decimal("1"),
+                adj_close=close,
+            )
+        )
+    await db_session.commit()
+    result = (await client.post("/api/v1/alerts/evaluate")).json()
+    fired = [a for a in (await client.get("/api/v1/alerts")).json()["alerts"] if a["triggered_on"]]
+    assert result["fired"] == 1
+    assert [a["id"] for a in fired] == [rescaled.json()["id"]]

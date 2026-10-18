@@ -4,6 +4,12 @@ An alert is user data. It reads the same series the chart draws (NFR-1a) and
 never feeds a score, gate or rank. It fires once, on the first complete bar
 after ``armed_after`` that meets its condition; the owner re-arms it to watch
 again. The result depends only on the stored bars, never on when the check ran.
+
+A threshold on a price-scaled source is in the price basis of ``armed_after``,
+the latest session when it was set (its factor was then 1). A later split or
+bonus rescales every earlier bar, so the threshold is rescaled with them: it is
+compared at ``threshold × factor(armed_after)`` in the current schedule. RSI and
+ADX do not scale with price.
 """
 
 from __future__ import annotations
@@ -20,6 +26,11 @@ AlertSource = Literal[
 AlertCondition = Literal["crosses_above", "crosses_below", "above", "below"]
 AlertInterval = Literal["1D", "1W", "1M"]
 AlertStatus = Literal["active", "triggered"]
+
+
+PRICE_SCALED: frozenset[str] = frozenset(
+    {"close", "atr14", "macd_line", "macd_signal", "macd_histogram"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,3 +107,8 @@ def first_firing(
             return Firing(date=point.date, value=point.value)
         previous = point.value
     return None
+
+
+def chart_threshold(source: AlertSource, threshold: Decimal, factor_on_armed: Decimal) -> Decimal:
+    """The threshold in the chart's current price basis (see the module note)."""
+    return threshold * factor_on_armed if source in PRICE_SCALED else threshold
