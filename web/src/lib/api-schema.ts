@@ -901,6 +901,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Alerts
+         * @description Return every alert, fired ones first, and the unseen count.
+         */
+        get: operations["list_alerts_api_v1_alerts_get"];
+        put?: never;
+        /**
+         * Create Alert
+         * @description Create an alert that watches complete bars after the last stored session.
+         */
+        post: operations["create_alert_api_v1_alerts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{alert_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Alert
+         * @description Delete an alert.
+         */
+        delete: operations["delete_alert_api_v1_alerts__alert_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{alert_id}/rearm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rearm Alert
+         * @description Make a fired alert watch again, from bars after the last stored session.
+         */
+        post: operations["rearm_alert_api_v1_alerts__alert_id__rearm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Alerts Seen
+         * @description Mark every fired alert seen.
+         */
+        post: operations["mark_alerts_seen_api_v1_alerts_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evaluate Alerts
+         * @description Check every active alert now. The daily job runs the same check after each sync.
+         */
+        post: operations["evaluate_alerts_api_v1_alerts_evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}/elliott-wave": {
         parameters: {
             query?: never;
@@ -1035,6 +1139,82 @@ export interface components {
             until: string;
             /** Factor */
             factor: string;
+        };
+        /**
+         * AlertDTO
+         * @description One alert and, once it fired, the bar that fired it.
+         */
+        AlertDTO: {
+            /** Id */
+            id: number;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "close" | "rsi14" | "adx14" | "atr14" | "macd_line" | "macd_signal" | "macd_histogram";
+            /**
+             * Interval
+             * @enum {string}
+             */
+            interval: "1D" | "1W" | "1M";
+            /**
+             * Condition
+             * @enum {string}
+             */
+            condition: "crosses_above" | "crosses_below" | "above" | "below";
+            /** Threshold */
+            threshold: string;
+            /**
+             * Armed After
+             * Format: date
+             * @description Only complete bars after this date count.
+             */
+            armed_after: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "triggered";
+            /** Triggered On */
+            triggered_on: string | null;
+            /** Trigger Value */
+            trigger_value: string | null;
+            /**
+             * Data Version
+             * @description The data the firing value came from.
+             */
+            data_version: string | null;
+            /** Seen */
+            seen: boolean;
+            /** Created At */
+            created_at: string | null;
+        };
+        /**
+         * AlertEvaluationDTO
+         * @description What one evaluation did.
+         */
+        AlertEvaluationDTO: {
+            /** Evaluated */
+            evaluated: number;
+            /** Fired */
+            fired: number;
+            /**
+             * Failed
+             * @description Symbols whose series could not be read.
+             */
+            failed: string[];
+        };
+        /**
+         * AlertListDTO
+         * @description Every alert, fired ones first, and how many fired alerts are unseen.
+         */
+        AlertListDTO: {
+            /** Alerts */
+            alerts: components["schemas"]["AlertDTO"][];
+            /** Unseen */
+            unseen: number;
         };
         /**
          * AlphaAnalysisResponse
@@ -1267,6 +1447,32 @@ export interface components {
             bottom_rules: components["schemas"]["RuleContributionStatsDTO"][];
             /** Redundant Rules */
             redundant_rules: components["schemas"]["RuleContributionStatsDTO"][];
+        };
+        /**
+         * CreateAlertRequest
+         * @description A new alert on one value of a symbol's chart series.
+         */
+        CreateAlertRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "close" | "rsi14" | "adx14" | "atr14" | "macd_line" | "macd_signal" | "macd_histogram";
+            /**
+             * Interval
+             * @default 1D
+             * @enum {string}
+             */
+            interval: "1D" | "1W" | "1M";
+            /**
+             * Condition
+             * @enum {string}
+             */
+            condition: "crosses_above" | "crosses_below" | "above" | "below";
+            /** Threshold */
+            threshold: number | string;
         };
         /**
          * DataFreshnessDTO
@@ -4892,6 +5098,157 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_alerts_api_v1_alerts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertListDTO"];
+                };
+            };
+        };
+    };
+    create_alert_api_v1_alerts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAlertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_alert_api_v1_alerts__alert_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rearm_alert_api_v1_alerts__alert_id__rearm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_alerts_seen_api_v1_alerts_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    evaluate_alerts_api_v1_alerts_evaluate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertEvaluationDTO"];
+                };
             };
         };
     };

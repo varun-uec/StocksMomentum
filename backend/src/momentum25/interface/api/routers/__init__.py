@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.interface.api.routers import (
+    alerts,
     backtest,
     chart_patterns,
     elliott_wave,
@@ -34,6 +35,7 @@ api_router.include_router(securities.router)
 api_router.include_router(validation.router)
 api_router.include_router(watchlist.router)
 api_router.include_router(user_documents.router)
+api_router.include_router(alerts.router)
 api_router.include_router(elliott_wave.router)
 api_router.include_router(chart_patterns.router)
 api_router.include_router(indices.router)

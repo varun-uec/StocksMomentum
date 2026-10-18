@@ -9,6 +9,14 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.application.use_cases.alerts import (
+    CreateAlert,
+    DeleteAlert,
+    EvaluateAlerts,
+    ListAlerts,
+    MarkAlertsSeen,
+    RearmAlert,
+)
 from momentum25.application.use_cases.chart_patterns import DetectChartPatterns
 from momentum25.application.use_cases.elliott_wave import GetElliottWaveAnalysis
 from momentum25.application.use_cases.market_context import GetMarketContext
@@ -56,6 +64,7 @@ from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_cale
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
+    SqlAlertRepository,
     SqlBenchmarkIndexRepository,
     SqlCorporateActionRepository,
     SqlOHLCVRepository,
@@ -530,3 +539,77 @@ async def get_save_user_document(
 ) -> AsyncIterator[SaveUserDocument]:
     """Provide a SaveUserDocument use-case instance."""
     yield SaveUserDocument(documents=documents)
+
+
+# ── alerts (FR-22, M15) ──────────────────────────────────────────────────
+
+
+async def get_alert_repo() -> AsyncIterator[SqlAlertRepository]:
+    """Provide an alert repository instance."""
+    async with _managed_session() as session:
+        yield SqlAlertRepository(session)
+
+
+async def get_list_alerts(
+    alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+) -> AsyncIterator[ListAlerts]:
+    """Provide a ListAlerts use-case instance."""
+    yield ListAlerts(alerts)
+
+
+async def get_create_alert(
+    securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
+    ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
+    alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+) -> AsyncIterator[CreateAlert]:
+    """Provide a CreateAlert use-case instance."""
+    yield CreateAlert(securities, ohlcv, alerts)
+
+
+async def get_delete_alert(
+    alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+) -> AsyncIterator[DeleteAlert]:
+    """Provide a DeleteAlert use-case instance."""
+    yield DeleteAlert(alerts)
+
+
+async def get_rearm_alert(
+    ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
+    alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+) -> AsyncIterator[RearmAlert]:
+    """Provide a RearmAlert use-case instance."""
+    yield RearmAlert(ohlcv, alerts)
+
+
+async def get_mark_alerts_seen(
+    alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+) -> AsyncIterator[MarkAlertsSeen]:
+    """Provide a MarkAlertsSeen use-case instance."""
+    yield MarkAlertsSeen(alerts)
+
+
+def evaluate_alerts_with(session: AsyncSession) -> EvaluateAlerts:
+    """Build EvaluateAlerts on one session: the API and the daily job share it.
+
+    It reads values through the chart's own use cases (NFR-1a).
+    """
+    securities = SqlSecurityRepository(session)
+    ohlcv = SqlOHLCVRepository(session)
+    calendar = get_nse_trading_calendar()
+    return EvaluateAlerts(
+        alerts=SqlAlertRepository(session),
+        prices=GetSecurityOHLCV(securities=securities, ohlcv=ohlcv, calendar=calendar),
+        indicators=GetIndicatorSeries(
+            securities=securities,
+            strategies=SqlStrategyRepository(session),
+            indicator_pipeline=IndicatorPipelineImpl(session),
+            ohlcv=ohlcv,
+            calendar=calendar,
+        ),
+    )
+
+
+async def get_evaluate_alerts() -> AsyncIterator[EvaluateAlerts]:
+    """Provide an EvaluateAlerts use-case instance."""
+    async with _shared_session() as session:
+        yield evaluate_alerts_with(session)

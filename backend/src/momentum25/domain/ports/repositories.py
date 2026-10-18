@@ -10,6 +10,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
+from momentum25.domain.entities.alert import Alert, Firing
 from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
@@ -345,4 +346,37 @@ class UserDocumentRepository(Protocol):
 
         Raises ``RevisionMismatchError`` otherwise, including when it is absent.
         """
+        ...
+
+
+@runtime_checkable
+class AlertRepository(Protocol):
+    """Persistence for daily alerts (FR-22, M15)."""
+
+    async def list_all(self) -> list[Alert]:
+        """Return every alert: fired ones first, newest firing first, then active ones."""
+        ...
+
+    async def list_active(self) -> list[Alert]:
+        """Return the alerts still watching."""
+        ...
+
+    async def add(self, security_id: int, alert: Alert) -> Alert:
+        """Store a new active alert and return it with its id."""
+        ...
+
+    async def delete(self, alert_id: int) -> bool:
+        """Delete an alert; return False if it did not exist."""
+        ...
+
+    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> None:
+        """Record the bar an active alert fired on. A fired alert is left as it is."""
+        ...
+
+    async def rearm(self, alert_id: int, armed_after: date) -> Alert | None:
+        """Make the alert watch again from bars after ``armed_after``."""
+        ...
+
+    async def mark_seen(self) -> int:
+        """Mark every fired alert seen; return how many changed."""
         ...

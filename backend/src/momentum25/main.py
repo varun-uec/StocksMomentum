@@ -31,6 +31,7 @@ from momentum25.infrastructure.persistence.repositories import SqlStrategyReposi
 from momentum25.infrastructure.redis.client import get_redis_provider
 from momentum25.infrastructure.redis.lock import RedisLockFactory
 from momentum25.infrastructure.scheduler.scheduler import SchedulerService
+from momentum25.interface.api.dependencies import evaluate_alerts_with
 from momentum25.interface.api.errors import register_exception_handlers
 from momentum25.interface.api.middleware import (
     HostOriginGuardMiddleware,
@@ -81,6 +82,13 @@ async def _run_daily_screening_job() -> None:
                     error=str(exc),
                 )
         _logger.info("daily_screening_job_completed", strategy_count=len(strategies))
+
+        # Alerts read the day's bars, so they run once every strategy has synced (FR-22).
+        try:
+            async with get_database().session() as session:
+                await evaluate_alerts_with(session).execute()
+        except Exception as exc:  # noqa: BLE001 - alerts must never fail the daily job
+            _logger.error("daily_alerts_failed", error=str(exc))
 
 
 async def _sync_strategies(settings: Settings) -> int:

@@ -403,3 +403,36 @@ class UserDocumentModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class AlertModel(Base):
+    """A daily alert on one value of a symbol's chart series (FR-22, M15)."""
+
+    __tablename__ = "alerts"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'triggered')", name="ck_alerts_status"),
+        CheckConstraint(
+            "(status = 'active') = (triggered_on IS NULL)", name="ck_alerts_triggered_on"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    security_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("securities.id"), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    interval: Mapped[str] = mapped_column(String, nullable=False)
+    condition: Mapped[str] = mapped_column(String, nullable=False)
+    threshold: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    armed_after: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String, nullable=False, server_default="active", index=True
+    )
+    triggered_on: Mapped[date | None] = mapped_column(Date)
+    trigger_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    data_version: Mapped[str | None] = mapped_column(String)
+    seen: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    tenant_id: Mapped[int | None] = mapped_column(BigInteger)  # SaaS extension point (ADR-010)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
