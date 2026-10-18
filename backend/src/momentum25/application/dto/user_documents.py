@@ -92,6 +92,7 @@ class WorkspaceV1(_Strict):
     """The owner's workspace: which chart is active and how each chart looks."""
 
     active_chart_id: Identifier | None = None
+    right_panel: Literal["watchlist", "details"] | None = "watchlist"
     charts: dict[Identifier, ChartV1] = Field(max_length=32)
 
 

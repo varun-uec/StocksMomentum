@@ -32,6 +32,16 @@ export function lookbackDaysFor(timeframe: TimeframeId, fallback: number): numbe
 }
 
 /**
+ * Indicator bars inside the price bars' span. Panes share the price pane's time
+ * axis, so a value before the first price bar would stretch the axis past the
+ * bars (M11 review). Daily panes keep the snapshot's bar window (their values
+ * equal the rules' inputs), so on the longest ranges they start later.
+ */
+export function withinPriceSpan<T extends { date: string }>(indicatorBars: T[], firstPriceDate: string | undefined): T[] {
+  return firstPriceDate ? indicatorBars.filter((b) => b.date >= firstPriceDate) : indicatorBars;
+}
+
+/**
  * `chartId` names this screen's chart slot in the saved workspace (ADR-013 §5).
  * `weekly` offers the interval switch. Screens that mark daily signals on the
  * chart leave it off, so they always show daily bars.
@@ -70,9 +80,10 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
 
   // Decode the backend's decimal-string bars into the chart's number-typed
   // series (values the backend did not produce are null).
+  const firstPriceDate = ohlcv?.bars[0]?.date;
   const indicatorBars = useMemo(
     () =>
-      (indicatorSeries?.bars ?? []).map((b) => ({
+      withinPriceSpan(indicatorSeries?.bars ?? [], firstPriceDate).map((b) => ({
         date: b.date,
         rsi14: b.rsi14 === null ? null : parseFloat(b.rsi14),
         atr14: b.atr14 === null ? null : parseFloat(b.atr14),
@@ -81,7 +92,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
         macd_signal: b.macd_signal === null ? null : parseFloat(b.macd_signal),
         macd_histogram: b.macd_histogram === null ? null : parseFloat(b.macd_histogram),
       })),
-    [indicatorSeries]
+    [indicatorSeries, firstPriceDate]
   );
 
   // Drawings are saved at traded prices; the chart shows adjusted ones. Until

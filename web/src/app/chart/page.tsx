@@ -6,16 +6,19 @@
  * work, and comes back on reload or in another browser (ADR-013 §5).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { DEFAULT_STRATEGY } from '@/app/strategy-context';
+import { DEFAULT_STRATEGY, useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
 import { useChartShell } from '@/components/stock/useChartShell';
 import { SaveState } from '@/components/workspace/SaveState';
+import { ShortcutsDialog } from '@/components/workspace/ShortcutsDialog';
+import { SidePanel, useWatchlistDetail, useWatchlistToggle } from '@/components/workspace/SidePanel';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
-import { useSymbolDrawings, useWorkspaceChart } from '@/lib/workspace';
+import { focusRing } from '@/lib/theme';
+import { useRightPanel, useSymbolDrawings, useWorkspaceChart } from '@/lib/workspace';
 
 const CHART_ID = 'main';
 /** Shown on a fresh install, before the owner has opened any symbol. */
@@ -34,10 +37,15 @@ function useChartHeight(): number {
   return height;
 }
 
+/** True when the key goes to a field or an open dialog, not to the workspace. */
+function isTyping(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  return !!target?.closest('input, textarea, select, [contenteditable="true"], dialog');
+}
+
 /** True when a key press should open symbol search instead of typing somewhere. */
 function opensSearch(e: KeyboardEvent): { initial: string } | null {
-  const target = e.target as HTMLElement | null;
-  if (target?.closest('input, textarea, select, [contenteditable="true"], dialog')) return null;
+  if (isTyping(e)) return null;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') return { initial: '' };
   if (e.ctrlKey || e.metaKey || e.altKey) return null;
   if (e.key === '/') return { initial: '' };
@@ -63,6 +71,15 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const workspace = useWorkspaceChart(CHART_ID);
   const drawings = useSymbolDrawings(symbol);
   const [search, setSearch] = useState<{ open: boolean; initial: string }>({ open: false, initial: '' });
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const { strategyName } = useStrategy();
+  const { panel, setPanel } = useRightPanel();
+  const watchlist = useWatchlistDetail(strategyName);
+  const toggleWatchlist = useWatchlistToggle();
+  const listed = watchlist.data?.items.some((i) => i.symbol === symbol) ?? false;
+  // The key handler is registered once; refs give it the current values.
+  const keyState = useRef({ symbol, listed, ready: !!watchlist.data, toggle: toggleWatchlist.mutate });
+  keyState.current = { symbol, listed, ready: !!watchlist.data, toggle: toggleWatchlist.mutate };
 
   // Remember the open symbol, so `/chart` and the next visit reopen it.
   useEffect(() => {
@@ -71,6 +88,17 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.code === 'KeyW' && !isTyping(e)) {
+        e.preventDefault();
+        const { symbol: current, listed: inList, ready, toggle } = keyState.current;
+        if (ready) toggle({ symbol: current, add: !inList });
+        return;
+      }
+      if (e.key === '?' && !isTyping(e)) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
       const open = opensSearch(e);
       if (!open) return;
       e.preventDefault();
@@ -108,13 +136,45 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         )}
         <span className="flex-1" />
         <SaveState documents={[workspace, drawings]} />
+        <button
+          type="button"
+          onClick={() => setShortcutsOpen(true)}
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+          className={`w-6 h-6 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 ${focusRing}`}
+        >
+          ?
+        </button>
+        <button
+          type="button"
+          onClick={() => setPanel(panel ? null : 'watchlist')}
+          aria-pressed={panel !== null}
+          className={`hidden lg:inline-block px-2 py-0.5 rounded-md text-xs border border-slate-200 dark:border-slate-700 ${focusRing} ${
+            panel ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'
+          }`}
+        >
+          Panel
+        </button>
       </header>
 
-      {shell.ready ? (
-        <PriceChart {...shell.chartProps} height={height} />
-      ) : (
-        <LoadingSpinner />
-      )}
+      <div className="flex gap-3">
+        <div className="flex-1 min-w-0">
+          {shell.ready ? <PriceChart {...shell.chartProps} height={height} toolRail /> : <LoadingSpinner />}
+        </div>
+        {panel && (
+          <div className="hidden lg:block w-72 shrink-0">
+            <SidePanel
+              symbol={symbol}
+              strategy={strategyName}
+              panel={panel}
+              onPanel={setPanel}
+              onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
+              height={height + 120}
+            />
+          </div>
+        )}
+      </div>
+      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       <SymbolSearchDialog
         open={search.open}

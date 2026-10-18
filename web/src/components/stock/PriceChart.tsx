@@ -69,6 +69,75 @@ export const TIMEFRAMES = [
 
 export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
 
+/** Drawing-tool shortcuts, by `KeyboardEvent.code` (letters stay the same on any layout and with Alt on macOS). */
+const TOOL_KEYS: Record<string, DrawingKind> = {
+  KeyT: 'trendline',
+  KeyH: 'horizontal',
+  'Shift+KeyR': 'rectangle',
+  KeyF: 'fib',
+};
+
+/** Shortcut hint shown on each rail button. */
+const TOOL_HINT: Record<DrawingKind, string> = {
+  trendline: 'Alt+T',
+  horizontal: 'Alt+H',
+  rectangle: 'Alt+Shift+R',
+  fib: 'Alt+F',
+};
+
+const RAIL_ICONS: Record<DrawingKind | 'select' | 'clear', React.ReactNode> = {
+  select: <path d="M5 3l10 6-4.5 1.2L13 16l-2 1-2.5-5.8L5 14z" fill="currentColor" />,
+  trendline: <path d="M4 16L16 4M4 16h0M16 4h0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  horizontal: <path d="M3 10h14M6 10h0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  rectangle: <rect x="4" y="5" width="12" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" />,
+  fib: <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />,
+  clear: <path d="M6 6l1 11h6l1-11M4 6h12M8 6V4h4v2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />,
+};
+
+/** The drawing tools as a column left of the chart (design record D6). */
+function DrawingRail({
+  tool,
+  onTool,
+  canClear,
+  onClear,
+}: {
+  tool: DrawingKind | null;
+  onTool: (kind: DrawingKind | null) => void;
+  canClear: boolean;
+  onClear: () => void;
+}) {
+  const button = (key: string, label: string, active: boolean, onClick: () => void, icon: React.ReactNode, hint = '', danger = false) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      title={hint ? `${label} (${hint})` : label}
+      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${focusRing} ${
+        active
+          ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
+          : danger
+            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+      }`}
+    >
+      <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true">
+        {icon}
+      </svg>
+    </button>
+  );
+  return (
+    <div role="toolbar" aria-label="Drawing tools" aria-orientation="vertical" className="flex flex-col gap-1 pt-1">
+      {button('select', 'Select', tool === null, () => onTool(null), RAIL_ICONS.select, 'Esc')}
+      {DRAWING_KINDS.map((kind) =>
+        button(kind, DRAWING_LABELS[kind], tool === kind, () => onTool(kind), RAIL_ICONS[kind], TOOL_HINT[kind])
+      )}
+      {canClear && button('clear', 'Clear', false, onClear, RAIL_ICONS.clear, '', true)}
+    </div>
+  );
+}
+
 /** The bar interval, separate from the visible range (M11b). */
 const INTERVALS: { id: ChartInterval; label: string; name: string }[] = [
   { id: '1D', label: 'D', name: 'Daily bars' },
@@ -308,6 +377,7 @@ export function PriceChart({
   activeMas: activeMasProp,
   onActiveMasChange,
   drawingsEnabled = false,
+  toolRail = false,
   drawings: drawingsProp,
   onDrawingsChange,
 }: {
@@ -360,6 +430,8 @@ export function PriceChart({
   onActiveMasChange?: (mas: number[]) => void;
   /** Show the drawing toolbar and accept clicks while a tool is active. */
   drawingsEnabled?: boolean;
+  /** Put the drawing tools in a rail left of the chart instead of the toolbar row (M12). */
+  toolRail?: boolean;
   /** The saved drawings. The chart follows this prop, so merges from another window show up. */
   drawings?: ChartDrawing[];
   onDrawingsChange?: (drawings: ChartDrawing[]) => void;
@@ -564,11 +636,11 @@ export function PriceChart({
     const drawingsLayer = attachDrawingsLayer(chart, () => priceSeriesRef.current);
     drawingsLayerRef.current = drawingsLayer;
 
-    const resize = () => chart.applyOptions({ width: container.clientWidth });
-    resize();
-    window.addEventListener('resize', resize);
+    // Follow the container, not the window: a side panel can open beside the chart.
+    const resizer = new ResizeObserver(() => chart.applyOptions({ width: container.clientWidth }));
+    resizer.observe(container);
     return () => {
-      window.removeEventListener('resize', resize);
+      resizer.disconnect();
       drawingsLayerRef.current = null;
       drawingsLayer.detach();
       // `chart.remove()` tears down every series/pane on it in one call. The
@@ -783,6 +855,16 @@ export function PriceChart({
     if (e.key === 'Escape') {
       selectTool(null);
       setSelectedId(null);
+      return;
+    }
+    const tool = e.altKey ? TOOL_KEYS[`${e.shiftKey ? 'Shift+' : ''}${e.code}`] : undefined;
+    if (tool) {
+      e.preventDefault();
+      toggleDrawingTool(tool);
+      return;
+    }
+    if (navigateChart(e)) {
+      e.preventDefault();
       return;
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
@@ -1037,6 +1119,28 @@ export function PriceChart({
 
   const toggleDrawingTool = (kind: DrawingKind) => selectTool(drawingToolRef.current === kind ? null : kind);
 
+  /** Arrow keys pan, Ctrl/⌘ with ↑/↓ (or + and -) zoom, Alt+R resets. True when the key was used. */
+  const navigateChart = (e: React.KeyboardEvent): boolean => {
+    const timeScale = chartRef.current?.timeScale();
+    const range = timeScale?.getVisibleLogicalRange();
+    if (!timeScale || !range) return false;
+    const span = range.to - range.from;
+    const zoom = (factor: number) => {
+      const centre = (range.from + range.to) / 2;
+      const half = Math.max(5, (span * factor) / 2);
+      timeScale.setVisibleLogicalRange({ from: centre - half, to: centre + half });
+    };
+    const pan = (bars: number) => timeScale.setVisibleLogicalRange({ from: range.from + bars, to: range.to + bars });
+    const mod = e.ctrlKey || e.metaKey;
+    if (e.altKey && e.code === 'KeyR') timeScale.fitContent();
+    else if ((mod && e.key === 'ArrowUp') || e.key === '+' || e.key === '=') zoom(0.8);
+    else if ((mod && e.key === 'ArrowDown') || e.key === '-') zoom(1.25);
+    else if (e.key === 'ArrowLeft') pan(-Math.max(1, span / 10));
+    else if (e.key === 'ArrowRight') pan(Math.max(1, span / 10));
+    else return false;
+    return true;
+  };
+
   const clearDrawings = () => {
     commitDrawings([]);
     setSelectedId(null);
@@ -1118,7 +1222,7 @@ export function PriceChart({
                 </label>
               ))}
             </div>
-            {drawingsEnabled && (
+            {drawingsEnabled && !toolRail && (
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-xs text-slate-500">Draw</span>
                 {DRAWING_KINDS.map((kind) => (
@@ -1167,7 +1271,16 @@ export function PriceChart({
           })}
         </div>
       )}
-      <div className="relative">
+      <div className={toolRail && drawingsEnabled ? 'flex gap-2' : undefined}>
+      {toolRail && drawingsEnabled && (
+        <DrawingRail
+          tool={drawingTool}
+          onTool={(kind) => (kind ? toggleDrawingTool(kind) : selectTool(null))}
+          canClear={drawings.length > 0}
+          onClear={clearDrawings}
+        />
+      )}
+      <div className="relative flex-1 min-w-0">
         <div
           ref={containerRef}
           tabIndex={drawingsEnabled ? 0 : undefined}
@@ -1195,6 +1308,7 @@ export function PriceChart({
             ))}
           </div>
         )}
+      </div>
       </div>
       <p className="text-xs text-slate-500 mt-2">
         {isLoading

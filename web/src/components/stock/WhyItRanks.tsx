@@ -10,12 +10,13 @@ import { Badge, Card, StatusDot } from '@/components/shared/Card';
 import type { StockExplanation } from '@/lib/types';
 import { num } from '@/lib/format';
 
-export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
+/** Top passing rules by contribution, and failing rules with gate failures first. */
+export function rankReasons(explanation: StockExplanation, count = 5) {
   const contributors = explanation.rule_explanations
     .filter((r) => r.passed)
     .slice()
     .sort((a, b) => parseFloat(b.contribution) - parseFloat(a.contribution))
-    .slice(0, 5);
+    .slice(0, count);
 
   const detractors = explanation.rule_explanations
     .filter((r) => !r.passed)
@@ -26,7 +27,12 @@ export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
       if (aGate !== bGate) return bGate - aGate;
       return parseFloat(b.contribution) - parseFloat(a.contribution);
     })
-    .slice(0, 5);
+    .slice(0, count);
+  return { contributors, detractors };
+}
+
+export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
+  const { contributors, detractors } = rankReasons(explanation);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

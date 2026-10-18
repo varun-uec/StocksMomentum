@@ -10,6 +10,7 @@ All project documentation lives in this folder. Start with `current/`.
 | [current/design.md](current/design.md) | How the screener and the backtest decide: pipeline, rules, gates, scores, determinism |
 | [current/capabilities.md](current/capabilities.md) | What the product does: every API endpoint, web page and CLI command |
 | [current/state.md](current/state.md) | Where things stand: checks, delivery record, research verdicts, open defects, data gaps |
+| [current/keyboard-shortcuts.md](current/keyboard-shortcuts.md) | Every key the chart workspace answers |
 
 `current/` was verified against the code on 2026-10-18. When the code changes, update it in the same commit.
 

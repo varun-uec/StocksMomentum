@@ -22,6 +22,7 @@ import { TechnicalWorkbench } from '@/components/stock/TechnicalWorkbench';
 import { VolumeAccumulation } from '@/components/stock/VolumeAccumulation';
 import { PatternCard } from '@/components/stock/PatternCard';
 import { WhyItRanks } from '@/components/stock/WhyItRanks';
+import { investmentReadiness, QUALIFIED_LABEL } from '@/components/stock/readiness';
 import { SuggestedStop } from '@/components/stock/SuggestedStop';
 import { RelativeStrengthVsIndex } from '@/components/stock/RelativeStrengthVsIndex';
 import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
@@ -113,20 +114,6 @@ function AnalysisSection({
       </div>
     </Card>
   );
-}
-
-// Setup quality, not a call to act: the platform publishes no buy/sell verdict.
-const QUALIFIED_LABEL = 'Qualified — all gates passed';
-
-function investmentReadiness(explanation: StockExplanation): { label: string; color: 'emerald' | 'amber' | 'rose' } {
-  if (!explanation.overall_passed) {
-    return { label: 'Not Qualified', color: 'rose' };
-  }
-  const buySetup = parseFloat(explanation.buy_setup_score);
-  if (buySetup >= 60) {
-    return { label: QUALIFIED_LABEL, color: 'emerald' };
-  }
-  return { label: 'Qualified — breakout not confirmed', color: 'amber' };
 }
 
 function SectionNav({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {

@@ -115,7 +115,7 @@ describe('legacyCharts', () => {
 });
 
 describe('fillMissingCharts', () => {
-  const ws = { active_chart_id: null, charts: { stock: { ...DEFAULT_CHART, range: '6M' as const } } };
+  const ws = { active_chart_id: null, right_panel: 'watchlist' as const, charts: { stock: { ...DEFAULT_CHART, range: '6M' as const } } };
 
   test('adds only charts the server does not have; the server copy wins', () => {
     const next = fillMissingCharts(ws, { stock: { ...DEFAULT_CHART, range: 'MAX' }, main: { ...DEFAULT_CHART, range: 'MAX' } });

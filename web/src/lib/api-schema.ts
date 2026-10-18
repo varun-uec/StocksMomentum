@@ -3320,6 +3320,11 @@ export interface components {
         WorkspaceV1: {
             /** Active Chart Id */
             active_chart_id?: string | null;
+            /**
+             * Right Panel
+             * @default watchlist
+             */
+            right_panel: ("watchlist" | "details") | null;
             /** Charts */
             charts: {
                 [key: string]: components["schemas"]["ChartV1"];

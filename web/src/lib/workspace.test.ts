@@ -33,7 +33,7 @@ describe('every value the web app saves fits the server schema', () => {
 });
 
 describe('mergeWorkspaces', () => {
-  const ws = (charts: WorkspaceBody['charts'], active: string | null = null): WorkspaceBody => ({ active_chart_id: active, charts });
+  const ws = (charts: WorkspaceBody['charts'], active: string | null = null): WorkspaceBody => ({ active_chart_id: active, right_panel: 'watchlist', charts });
 
   test('charts edited in different windows both survive', () => {
     const base = ws({ stock: DEFAULT_CHART });
@@ -70,6 +70,16 @@ describe('mergeWorkspaces', () => {
     expect(r.conflicted).toBe(false);
     expect(r.mine.charts.main.mas).toEqual([20, 50, 200]);
     expect(mergeWorkspaces(null, mine, ws({ main: { ...DEFAULT_CHART, mas: [200] } })).conflicts).toEqual(['main.mas']);
+  });
+
+  test('the side panel is a setting: changed differently in two windows, it conflicts', () => {
+    const base = ws({});
+    const r = mergeWorkspaces(base, { ...base, right_panel: 'details' }, { ...base, right_panel: null });
+    expect(r.conflicts).toEqual(['right_panel']);
+    const clean = mergeWorkspaces(base, { ...base, right_panel: 'details' }, ws({ main: DEFAULT_CHART }));
+    expect(clean.conflicted).toBe(false);
+    expect(clean.mine.right_panel).toBe('details');
+    expect(clean.mine.charts.main).toEqual(DEFAULT_CHART);
   });
 
   test('two first saves (no base) keep both sides charts', () => {

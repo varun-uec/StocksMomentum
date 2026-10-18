@@ -30,6 +30,13 @@ export const DEFAULT_CHART: ChartSettings = {
   preset_edited: false,
 };
 
+/** A workspace before the owner changes anything. */
+export const DEFAULT_WORKSPACE: WorkspaceBody = { active_chart_id: null, right_panel: 'watchlist', charts: {} };
+
+function withoutCharts(ws: WorkspaceBody): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(ws).filter(([key]) => key !== 'charts'));
+}
+
 /** Where the owner is, not what they set: the newest window wins (see `mergeFields`). */
 const NAVIGATION_FIELDS = ['symbol', 'active_chart_id'] as const;
 
@@ -47,15 +54,12 @@ export function mergeWorkspaces(base: WorkspaceBody | null, mine: WorkspaceBody,
     charts.theirs[id] = r.theirs;
     conflicts.push(...r.conflicts.map((field) => `${id}.${field}`));
   }
-  const active = mergeFields(
-    base ? { active_chart_id: base.active_chart_id } : undefined,
-    { active_chart_id: mine.active_chart_id },
-    { active_chart_id: theirs.active_chart_id },
-    NAVIGATION_FIELDS,
-  ).mine;
+  // Every field outside `charts` (the active chart, the side panel) merges the same way.
+  const top = mergeFields(withoutCharts(base ?? DEFAULT_WORKSPACE), withoutCharts(mine), withoutCharts(theirs), NAVIGATION_FIELDS);
+  conflicts.push(...top.conflicts);
   return {
-    mine: { ...active, charts: charts.mine },
-    theirs: { ...active, charts: charts.theirs },
+    mine: { ...top.mine, charts: charts.mine } as WorkspaceBody,
+    theirs: { ...top.theirs, charts: charts.theirs } as WorkspaceBody,
     conflicted: conflicts.length > 0,
     conflicts,
   };
@@ -64,7 +68,7 @@ export function mergeWorkspaces(base: WorkspaceBody | null, mine: WorkspaceBody,
 export const workspaceSpec: DocumentSpec<WorkspaceBody> = {
   path: `/api/v1/workspaces/${WORKSPACE_ID}`,
   label: 'Your chart settings',
-  defaults: () => ({ active_chart_id: null, charts: {} }),
+  defaults: () => DEFAULT_WORKSPACE,
   merge: mergeWorkspaces,
 };
 
@@ -119,5 +123,17 @@ export function useSymbolDrawings(symbol: string) {
     savedAt: doc.savedAt,
     retry: doc.retry,
     update: (drawings: DrawingsBody['drawings']) => doc.update(() => drawingsBody(drawings)),
+  };
+}
+
+export type RightPanel = WorkspaceBody['right_panel'];
+
+/** The workspace's side panel: which tab is open, or none. */
+export function useRightPanel(): { panel: RightPanel; ready: boolean; setPanel: (panel: RightPanel) => void } {
+  const doc = useServerDocument(workspaceSpec);
+  return {
+    panel: doc.body.right_panel,
+    ready: doc.status !== 'loading',
+    setPanel: (panel) => doc.update((ws) => (ws.right_panel === panel ? ws : { ...ws, right_panel: panel })),
   };
 }

@@ -215,3 +215,12 @@ async def test_drawings_in_any_other_price_basis_are_rejected(client: httpx.Asyn
         headers={"If-None-Match": "*"},
     )
     assert res.status_code == 422
+
+
+async def test_workspace_side_panel_defaults_and_rejects_unknown_tabs(client: httpx.AsyncClient) -> None:
+    created = await client.put(WORKSPACE, json={"charts": {}}, headers={"If-None-Match": "*"})
+    assert created.json()["body"]["right_panel"] == "watchlist"
+    bad = await client.put(
+        WORKSPACE, json={"charts": {}, "right_panel": "orders"}, headers={"If-Match": '"1"'}
+    )
+    assert bad.status_code == 422
