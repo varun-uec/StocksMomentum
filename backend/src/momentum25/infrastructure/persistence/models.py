@@ -26,14 +26,53 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
+
+from momentum25.infrastructure.persistence.history import (
+    PROVENANCE,
+    VERSIONED,
+    history_table,
+    install_on_create,
+)
 
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
 
 
-class SecurityModel(Base):
+def _table_name(cls: object) -> str:
+    return str(vars(cls)["__tablename__"])
+
+
+class Versioned:
+    """Columns the versioning trigger maintains (ADR-014 §7; see ``history.py``).
+
+    Writers never set them: the trigger stamps every insert and real change.
+    """
+
+    revision_id: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @declared_attr
+    def provenance(cls) -> Mapped[str]:  # noqa: N805 - SQLAlchemy passes the class
+        """How far the row can be trusted as point in time; set per table."""
+        return mapped_column(
+            String, nullable=False, server_default=VERSIONED[_table_name(cls)][1]
+        )
+
+    @declared_attr.directive
+    def __table_args__(cls) -> tuple[Any, ...]:  # noqa: N805
+        """The table's own arguments plus the provenance check."""
+        allowed = ", ".join(f"'{p}'" for p in PROVENANCE)
+        return (
+            *getattr(cls, "_extra_table_args", ()),
+            CheckConstraint(
+                f"provenance IN ({allowed})", name=f"ck_{_table_name(cls)}_provenance"
+            ),
+        )
+
+
+class SecurityModel(Versioned, Base):
     """Instrument master row."""
 
     __tablename__ = "securities"
@@ -57,7 +96,7 @@ class SecurityModel(Base):
     )
 
 
-class OHLCVDailyModel(Base):
+class OHLCVDailyModel(Versioned, Base):
     """Daily price bar (optionally a TimescaleDB hypertable)."""
 
     __tablename__ = "ohlcv_daily"
@@ -79,11 +118,11 @@ class OHLCVDailyModel(Base):
     turnover_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
 
 
-class CorporateActionModel(Base):
+class CorporateActionModel(Versioned, Base):
     """Corporate action (split/bonus/dividend) for price adjustment."""
 
     __tablename__ = "corporate_actions"
-    __table_args__ = (UniqueConstraint("security_id", "ex_date", "type"),)
+    _extra_table_args = (UniqueConstraint("security_id", "ex_date", "type"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     security_id: Mapped[int] = mapped_column(
@@ -95,7 +134,7 @@ class CorporateActionModel(Base):
     raw: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
-class HistoricalUniverseModel(Base):
+class HistoricalUniverseModel(Versioned, Base):
     """Point-in-time historical universe eligibility (RP-012 §2).
 
     Immutable audit record: one row per ``(as_of_date, security_id)`` recording
@@ -263,7 +302,7 @@ class ForwardReturnModel(Base):
     )
 
 
-class BenchmarkIndexDailyModel(Base):
+class BenchmarkIndexDailyModel(Versioned, Base):
     """Daily benchmark index close used for relative strength."""
 
     __tablename__ = "benchmark_index_daily"
@@ -436,3 +475,10 @@ class AlertModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# History tables of the versioned inputs, and their triggers in test schemas.
+HISTORY_TABLES = {
+    name: history_table(Base.metadata.tables[name], Base.metadata) for name in VERSIONED
+}
+install_on_create(Base.metadata)

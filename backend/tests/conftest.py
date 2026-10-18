@@ -53,6 +53,9 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
     engine = get_database().engine
     _require_test_database(engine)
     async with engine.begin() as conn:
+        # Rebuilt each session: create_all never alters an existing table, so a
+        # new column (e.g. the versioning columns) would otherwise be missing.
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
 
