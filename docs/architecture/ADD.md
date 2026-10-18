@@ -1,6 +1,7 @@
 # Momentum25 India — Architecture Design Document (ADD)
 
 > **Status:** Approved blueprint (Phase 2). Implementation follows the roadmap in §27.
+> **Proposed amendment:** [A1](./ADD-amendment-A1.md) (2026-10-18, under review): the Wickstreet charting workspace and open-source release.
 > **Audience:** Senior engineers and an implementing LLM. Companion document: [`IMPLEMENTATION_SPEC.md`](./IMPLEMENTATION_SPEC.md).
 > **Repository state at authoring:** greenfield (empty).
 

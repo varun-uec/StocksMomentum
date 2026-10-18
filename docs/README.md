@@ -40,6 +40,8 @@ When documents conflict, CLAUDE.md sets the order: ADD → ADRs → Implementati
 | [history/audits/2026-08-15-ui-ux-audit.md](history/audits/2026-08-15-ui-ux-audit.md) | UI/UX recommendations against an Investing.com benchmark, not applied |
 | [history/plans/2026-08-10-unified-analysis-screen-plan.md](history/plans/2026-08-10-unified-analysis-screen-plan.md) | Plan and user decisions for the analysis screen (shipped) |
 | [history/plans/2026-08-10-signal-engine-proposal.md](history/plans/2026-08-10-signal-engine-proposal.md) | Open proposal: signals as a scoring engine |
+| [history/plans/2026-10-18-wickstreet-milestones.md](history/plans/2026-10-18-wickstreet-milestones.md) | Wickstreet M9–M16: dependencies and exit criteria (proposed) |
+| [history/plans/2026-10-18-m11-vertical-slice-plan.md](history/plans/2026-10-18-m11-vertical-slice-plan.md) | M11 Find → Analyse → Draw → Restore: design, changes, tests (proposed) |
 | [history/backtest-loop/](history/backtest-loop/) | Backtest brief (ground truth for `domain/backtest/`), addenda, loop protocol, round-by-round findings |
 | [history/autonomous-audit/](history/autonomous-audit/) | 2026-08-18 six-batch audit: findings, fixes, verification, final report |
 
