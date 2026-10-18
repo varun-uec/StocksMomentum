@@ -5,9 +5,8 @@ import { BACKEND_DIR, E2E_DATABASE_URL } from './e2e/env';
 /**
  * End-to-end tests run the production build, served by the real API, against a
  * CLONE of the local database, so tests that save data never touch your own
- * workspace. Create the clone once with `make e2e-db`.
- *
- * E2E_DATABASE_URL overrides the clone's address (default: port 5432).
+ * workspace. Create the clone once with `make e2e-db`, and name it in
+ * E2E_DATABASE_URL (required; see e2e/env.ts).
  */
 const PORT = 8765;
 const webDist = fileURLToPath(new URL('./dist', import.meta.url));
@@ -31,7 +30,8 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      M25_DATABASE_URL: databaseUrl,
+      M25_DATABASE_URL: databaseUrl, // the app under test
+      E2E_DATABASE_URL: databaseUrl, // the seed step, the same database
       M25_WEB_DIST_DIR: webDist,
       M25_STRATEGY_DIR: '../docs/architecture/strategies',
       M25_SCHEDULER_ENABLED: 'false',

@@ -63,6 +63,14 @@ class OHLCVBar:
 
 
 @dataclass(frozen=True, slots=True)
+class AdjustmentStep:
+    """One run of equal ``adj_factor``: it applies to bars dated up to ``until``."""
+
+    until: date
+    factor: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class OHLCVSeries:
     """An ordered (ascending by date) price series for one security.
 
@@ -96,6 +104,21 @@ class OHLCVSeries:
     def volumes(self) -> list[int]:
         """Return the volume series."""
         return [b.volume for b in self.bars]
+
+    def adjustment_schedule(self) -> tuple[AdjustmentStep, ...]:
+        """Return the factor of every date, as runs of equal ``adj_factor``.
+
+        A bar dated ``d`` takes the factor of the first step with ``until >= d``.
+        The schedule has one step per corporate action plus one, so a chart can
+        convert a price at any date without loading every bar.
+        """
+        steps: list[AdjustmentStep] = []
+        for bar in self.bars:
+            if steps and steps[-1].factor == bar.adj_factor:
+                steps[-1] = AdjustmentStep(until=bar.date, factor=bar.adj_factor)
+            else:
+                steps.append(AdjustmentStep(until=bar.date, factor=bar.adj_factor))
+        return tuple(steps)
 
 
 def compute_adjustment_factors(

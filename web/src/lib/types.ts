@@ -750,9 +750,18 @@ export interface OHLCVBarDTO {
   volume: number;
 }
 
+/** Bars dated up to `until` (after the previous step) are scaled by `factor`. */
+export interface AdjustmentStepDTO {
+  until: string;
+  factor: string;
+}
+
 export interface SecurityOHLCVDTO {
   symbol: string;
+  /** Adjusted for corporate actions, as screening reads them (ADR-013 §4). */
   bars: OHLCVBarDTO[];
+  /** The factor of every date in the stored history, not only `bars`. */
+  adjustments: AdjustmentStepDTO[];
 }
 
 /** A benchmark index bar. Close only — the source stores no OHLC or volume. */

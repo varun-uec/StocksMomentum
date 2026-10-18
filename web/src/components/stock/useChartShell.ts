@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getIndicatorSeries, getOhlcv } from '@/lib/api-client';
 import { useChartPreferences } from '@/lib/chart-preferences';
+import { toChartPrices, toTradedPrices } from '@/lib/traded-prices';
 import { TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
 
 /** ISO date `days` before today, for the chart's `from` query param. */
@@ -77,6 +78,14 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
     [indicatorSeries]
   );
 
+  // Drawings are saved at traded prices; the chart shows adjusted ones. Until
+  // the schedule loads, no drawing can be placed, so none is shown.
+  const adjustments = ohlcv?.adjustments;
+  const chartDrawings = useMemo(
+    () => (adjustments ? toChartPrices(preferences.drawings, adjustments) : []),
+    [preferences.drawings, adjustments]
+  );
+
   return {
     timeframe,
     ready,
@@ -95,8 +104,10 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       activeMas: preferences.activeMas,
       onActiveMasChange: (mas: number[]) => update({ activeMas: mas }),
       drawingsEnabled: true,
-      drawings: preferences.drawings,
-      onDrawingsChange: (drawings: typeof preferences.drawings) => update({ drawings }),
+      drawings: chartDrawings,
+      onDrawingsChange: (drawings: typeof preferences.drawings) => {
+        if (adjustments) update({ drawings: toTradedPrices(drawings, preferences.drawings, adjustments) });
+      },
     },
   };
 }

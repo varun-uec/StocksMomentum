@@ -39,7 +39,9 @@ Web checks:
 
 ```bash
 cd web && npm test && npm run lint   # Vitest, ESLint
-make e2e-db && make web-test          # also runs Playwright against a clone of your database
+make e2e-db                           # clone your database to momentum25_e2e
+E2E_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_e2e make web-test
+                                      # also runs Playwright against that clone; use your POSTGRES_PORT
 ```
 
 Checks — all four must pass. CI runs the first three; run `lint-imports` by hand:

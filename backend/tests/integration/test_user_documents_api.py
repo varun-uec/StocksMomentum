@@ -78,7 +78,7 @@ async def test_create_then_read_round_trips_with_etag(client: httpx.AsyncClient)
     assert read.status_code == 200
     assert read.headers["etag"] == '"1"'
     assert read.json()["revision"] == 1
-    assert read.json()["body"] == {"drawings": [_drawing()]}
+    assert read.json()["body"] == {"price_basis": "traded", "drawings": [_drawing()]}
 
 
 async def test_create_when_present_is_412_and_keeps_the_server_copy(
@@ -194,3 +194,24 @@ async def test_two_writers_on_one_revision_exactly_one_wins(client: httpx.AsyncC
     final = (await client.get(DRAWINGS)).json()
     assert statuses == [200, 412, 412, 412, 412]
     assert final["revision"] == 2
+
+
+async def test_drawings_record_their_price_basis(client: httpx.AsyncClient) -> None:
+    """Saved drawing prices are traded prices; the document says so (ADR-013 §5)."""
+    created = await client.put(
+        DRAWINGS, json={"drawings": [_drawing()]}, headers={"If-None-Match": "*"}
+    )
+    assert created.status_code == 201
+    assert created.json()["body"]["price_basis"] == "traded"
+    read = await client.get(DRAWINGS)
+    assert read.json()["body"]["price_basis"] == "traded"
+    assert read.json()["body"]["drawings"][0]["points"][0]["price"] == 101.5  # stored as sent
+
+
+async def test_drawings_in_any_other_price_basis_are_rejected(client: httpx.AsyncClient) -> None:
+    res = await client.put(
+        DRAWINGS,
+        json={"price_basis": "adjusted", "drawings": [_drawing()]},
+        headers={"If-None-Match": "*"},
+    )
+    assert res.status_code == 422

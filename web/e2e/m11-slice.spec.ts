@@ -61,6 +61,13 @@ async function serverChart(request: APIRequestContext): Promise<{ range: string;
 
 const checkbox = (page: Page, label: string): Locator => page.getByLabel(label, { exact: true });
 
+test('the app under test and the cleanup use the same E2E database', async ({ request }) => {
+  const res = await request.put('/api/v1/workspaces/default', { data: { charts: {} }, headers: { 'If-None-Match': '*' } });
+  expect(res.status()).toBe(201);
+  resetDocuments();
+  expect((await request.get('/api/v1/workspaces/default')).status()).toBe(404);
+});
+
 test('Find: typing on the chart opens search and Enter opens the symbol', async ({ page }) => {
   await page.goto('/chart');
   await expect(page).toHaveURL(/\/chart\/RELIANCE$/);
@@ -353,4 +360,26 @@ test('a drawing conflict on a research screen shows the same notice', async ({ p
   await notice.getByRole('button', { name: 'Apply mine' }).click();
   await expect.poll(drawingCount(request, 'HDFCBANK')).toBe(0);
   await other.close();
+});
+
+test('drawings are saved at traded prices, so they stay on their bars across a split and a bonus', async ({ page, request }) => {
+  // GOLDIAM: a 1:5 split went ex on 2022-03-28 and a 1:3 bonus on 2026-07-10.
+  // Bars before the split carry factor 0.15; bars between the two carry 0.75.
+  await page.goto('/chart/GOLDIAM');
+  await chartReady(page);
+  await page.getByRole('button', { name: 'MAX', exact: true }).click();
+  await chartReady(page);
+
+  // Both ends at the same height: the same adjusted price on two sides of the split.
+  await drawTrendline(page, [0.15, 0.6], [0.6, 0.6]);
+  await expect.poll(drawingCount(request, 'GOLDIAM')).toBe(1);
+  const [line] = await serverDrawings(request, 'GOLDIAM');
+  const [before, after] = line.points;
+  expect(before.date < '2022-03-28' && after.date > '2022-03-28' && after.date < '2026-07-10').toBe(true);
+  expect(before.price / after.price).toBeCloseTo(0.75 / 0.15, 6);
+
+  // The line shows where it was drawn: a click on its middle selects it.
+  await clickAt(page, 0.375, 0.6);
+  await page.keyboard.press('Delete');
+  await expect.poll(drawingCount(request, 'GOLDIAM')).toBe(0);
 });

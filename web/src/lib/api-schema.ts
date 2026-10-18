@@ -1023,6 +1023,19 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AdjustmentStepDTO
+         * @description Bars dated up to ``until`` (after the previous step) are scaled by ``factor``.
+         */
+        AdjustmentStepDTO: {
+            /**
+             * Until
+             * Format: date
+             */
+            until: string;
+            /** Factor */
+            factor: string;
+        };
+        /**
          * AlphaAnalysisResponse
          * @description Complete alpha analysis report.
          */
@@ -1306,7 +1319,7 @@ export interface components {
         };
         /**
          * DrawingPointV1
-         * @description One anchor: a bar date and a price.
+         * @description One anchor: a date and the traded price on that date, not adjusted (ADR-013 §5).
          */
         DrawingPointV1: {
             /**
@@ -2663,13 +2676,19 @@ export interface components {
         };
         /**
          * SecurityOHLCVDTO
-         * @description A symbol's price series.
+         * @description A symbol's price series, adjusted for corporate actions (ADR-013 §4).
+         *
+         *     ``adjustments`` covers the whole stored history, not only ``bars``. A chart
+         *     uses it to convert a traded price at any date to the adjusted basis, so
+         *     saved drawings stay on their bars after a split or bonus (ADR-013 §5).
          */
         SecurityOHLCVDTO: {
             /** Symbol */
             symbol: string;
             /** Bars */
             bars: components["schemas"]["OHLCVBarDTO"][];
+            /** Adjustments */
+            adjustments: components["schemas"]["AdjustmentStepDTO"][];
         };
         /**
          * SecuritySearchResultDTO
@@ -3013,6 +3032,13 @@ export interface components {
          * @description Every drawing on one symbol.
          */
         SymbolDrawingsV1: {
+            /**
+             * Price Basis
+             * @description Point prices are as printed on each point's date, never adjusted. The chart adjusts them only to draw them (ADR-013 §5).
+             * @default traded
+             * @constant
+             */
+            price_basis: "traded";
             /** Drawings */
             drawings: components["schemas"]["DrawingV1"][];
         };

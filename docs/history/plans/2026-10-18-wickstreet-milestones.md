@@ -51,7 +51,8 @@ M10 ─┘     └─► M11b ──────────┘
   - The screener inside the shell.
   - Advanced screens reachable from a "More" menu.
   - Light and dark themes.
-- **Exit:** E2E tests across every existing route (NFR-13). Shortcuts are documented.
+  - *(Carried from the M11 review.)* Indicator panes follow the price range. Today the RSI, MACD and ADX panes load the whole history, so on a short range they stretch the time axis past the price bars.
+- **Exit:** E2E tests across every existing route (NFR-13). Shortcuts are documented. On every range, the panes span the same dates as the price bars.
 
 ## M13 — Professional charting
 - **Scope:**

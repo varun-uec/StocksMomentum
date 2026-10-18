@@ -54,5 +54,5 @@ clean: ## Remove volumes and build caches
 e2e-db: ## Clone the local database to momentum25_e2e for end-to-end tests (replaces an old clone)
 	docker compose exec -T db psql -U $${POSTGRES_USER:-momentum25} -d postgres -c "DROP DATABASE IF EXISTS momentum25_e2e;" -c "CREATE DATABASE momentum25_e2e TEMPLATE $${POSTGRES_DB:-momentum25};"
 
-web-test: ## Web unit tests, lint and end-to-end tests (needs `make e2e-db`)
-	cd web && npm test && npm run lint && npm run e2e
+web-test: ## Web unit tests, lint and end-to-end tests (needs `make e2e-db` and E2E_DATABASE_URL)
+	cd web && npm test && npm run lint && E2E_DATABASE_URL=$${E2E_DATABASE_URL:?set E2E_DATABASE_URL to the momentum25_e2e clone} npm run e2e

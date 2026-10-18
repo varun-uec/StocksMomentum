@@ -5,7 +5,9 @@
           2019 (about 6.9 years). They exist only in the clone. Idempotent.
 ``reset`` Delete every saved workspace and drawing, so each test starts clean.
 
-The database URL comes from ``M25_DATABASE_URL`` or ``E2E_DATABASE_URL``.
+The database URL comes from ``E2E_DATABASE_URL`` only, never ``M25_DATABASE_URL``.
+Both commands refuse any database whose name does not end in ``_e2e``: a reset
+deletes every saved document, so it must never reach the owner's database.
 """
 
 import asyncio
@@ -53,5 +55,9 @@ async def main(command: str, url: str) -> None:
         await conn.close()
 
 
-url = os.environ.get("M25_DATABASE_URL") or os.environ["E2E_DATABASE_URL"]
+url = os.environ.get("E2E_DATABASE_URL", "")
+if not url:
+    sys.exit("set E2E_DATABASE_URL to the E2E clone (make e2e-db)")
+if not url.rsplit("/", 1)[-1].split("?")[0].endswith("_e2e"):
+    sys.exit(f"refusing to touch {url.rsplit('/', 1)[-1]}: not an E2E clone (name must end in _e2e)")
 asyncio.run(main(sys.argv[1], url))

@@ -49,7 +49,7 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 
 ### 4. Chart data semantics (backend domain)
 - **The backend owns bars, intervals and alert-capable indicators.** The browser draws them.
-- **Daily bars** use the same corporate-action-adjusted series that screening reads. *(M11)* `GET /securities/{symbol}/ohlcv` applies the stored `adj_factor` the same way the indicator pipeline does: price × factor, volume ÷ factor. A split no longer shows as a price jump on the chart.
+- **Daily bars** use the same corporate-action-adjusted series that screening reads. *(M11)* `GET /securities/{symbol}/ohlcv` applies the stored `adj_factor` the same way the indicator pipeline does: price × factor, volume ÷ factor. A split no longer shows as a price jump on the chart. The response also carries `adjustments`, the factor of every date in the stored history, for drawings (§5).
 - **Weekly bars (M11b):** one bar per ISO week of NSE trading sessions, using the existing `TradingCalendar` port.
   - Open = first session's open, High = max high, Low = min low, Close = last session's close, Volume = sum.
   - The bar is dated at its last trading session.
@@ -70,6 +70,7 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 | `symbol_drawings` | `symbol` | Every drawing on that symbol. Each drawing has its own `drawing_id`. |
 
 - **Drawings belong to the symbol.** They appear on every chart that shows that symbol, at any interval. **Presentation belongs to the chart.** Two charts of the same symbol can have different intervals and indicators but share drawings. M11 uses one workspace with one chart. M13 adds slots with no schema change.
+- *(M11)* **Drawing prices are traded prices:** the price as printed on each point's date, not adjusted. Stored prints never change, but factors do: every new split or bonus rescales all earlier bars. The chart converts each point with the factor of its date, from the `adjustments` schedule that `GET /securities/{symbol}/ohlcv` returns for the whole history. A drawing therefore stays on its bars after any corporate action. Drawings made before M11, on the raw chart, were already in this basis, so none needed migrating. A point dated after the last bar takes the latest factor. The document records the basis as `price_basis: "traded"`, and the server rejects any other value. Adjustment happens only when the chart draws.
 - **Table:** `user_documents(kind, key, body JSONB, schema_version, revision BIGINT, tenant_id NULL, updated_at)`, primary key `(kind, key)`. It follows the watchlist pattern: a port in `domain/ports/repositories.py`, a repository, use cases and a router. Pydantic validates `body` at the boundary, with a size cap.
 - **Schema evolution:** `schema_version` plus pure upgrade functions applied on read, with golden tests for each version. *(M11)* Only version 1 exists, so no upgrade function exists yet; the first v2 adds one.
 

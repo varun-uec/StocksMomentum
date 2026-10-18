@@ -103,3 +103,28 @@ async def test_chart_bars_match_the_screening_pipeline_bar_for_bar() -> None:
         for field in ("open", "high", "low", "close"):
             assert float(getattr(bar, field)) == pytest.approx(row[field], abs=1e-4)
         assert bar.volume == pytest.approx(row["volume"], abs=0.5)
+
+
+def test_adjusting_twice_changes_nothing() -> None:
+    """An adjusted bar carries factor 1, so no path can scale it a second time."""
+    once = _bar(_SPLIT, "500.10", "0.2").adjusted()
+    assert once.adjusted() is once
+
+
+async def test_the_schedule_covers_dates_before_the_requested_range() -> None:
+    """A drawing can sit before the visible range; its factor must still be known."""
+    result = await GetSecurityOHLCV(_Securities(), _Ohlcv()).execute(  # type: ignore[arg-type]
+        "TEST", from_=_SPLIT, to=date(2030, 1, 1)
+    )
+    assert result.bars[0].date == _SPLIT
+    assert [(s.until, s.factor) for s in result.adjustments] == [
+        (_SPLIT - timedelta(days=1), Decimal("0.2")),
+        (_SPLIT + timedelta(days=2), Decimal(1)),
+    ]
+
+
+def test_a_series_with_no_action_has_one_step() -> None:
+    series = OHLCVSeries(security_id=1, bars=_BARS[3:])
+    assert [(s.until, s.factor) for s in series.adjustment_schedule()] == [
+        (_SPLIT + timedelta(days=2), Decimal(1))
+    ]

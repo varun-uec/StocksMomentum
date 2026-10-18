@@ -35,7 +35,7 @@ class _Strict(BaseModel):
 
 
 class DrawingPointV1(_Strict):
-    """One anchor: a bar date and a price."""
+    """One anchor: a date and the traded price on that date, not adjusted (ADR-013 §5)."""
 
     date: date
     price: FiniteFloat
@@ -53,6 +53,11 @@ class DrawingV1(_Strict):
 class SymbolDrawingsV1(_Strict):
     """Every drawing on one symbol."""
 
+    price_basis: Literal["traded"] = Field(
+        default="traded",
+        description="Point prices are as printed on each point's date, never adjusted. "
+        "The chart adjusts them only to draw them (ADR-013 §5).",
+    )
     drawings: list[DrawingV1] = Field(max_length=1000)
 
 

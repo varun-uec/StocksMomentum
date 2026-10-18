@@ -37,7 +37,7 @@ describe('importLocalDrawings', () => {
     const [url, init] = http.mock.calls[0];
     expect(url).toBe('/api/v1/drawings/TCS');
     expect(init.headers['If-None-Match']).toBe('*');
-    expect(JSON.parse(init.body)).toEqual({ drawings: [line] });
+    expect(JSON.parse(init.body)).toEqual({ price_basis: 'traded', drawings: [line] });
     expect(localStorage.getItem('chart-prefs:TCS')).not.toBeNull();
 
     expect(await importLocalDrawings(http)).toBe(0);

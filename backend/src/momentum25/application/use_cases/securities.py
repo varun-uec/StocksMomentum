@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from momentum25.application.dto.market_data import (
+    AdjustmentStepDTO,
     IndexCloseBarDTO,
     IndexOHLCVDTO,
     OHLCVBarDTO,
@@ -60,21 +61,15 @@ class GetSecurityOHLCV:
         from_: date | None = None,
         to: date | None = None,
     ) -> SecurityOHLCVDTO:
-        """Return bars in ``[from_, to]``, honouring the full requested range.
-
-        ``lookback_days`` on the repository is a row-count cap, not a calendar
-        window, so it is sized from the requested ``from_`` date rather than a
-        fixed constant -- otherwise a range older than the default window would
-        silently come back truncated instead of covering what was asked for.
-        """
+        """Return bars in ``[from_, to]`` and the adjustment schedule of the whole history."""
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
 
-        as_of = to or date.today()
-        lookback_days = (as_of - from_).days + 1 if from_ else ALL_HISTORY_SESSIONS
+        # The whole history, even for a short range: the adjustment schedule
+        # must cover every date a saved drawing can sit on.
         series = await self._ohlcv.get_series(
-            security.id, lookback_days=lookback_days, as_of=as_of
+            security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=to or date.today()
         )
         bars = [
             OHLCVBarDTO(
@@ -83,7 +78,11 @@ class GetSecurityOHLCV:
             for a in (b.adjusted() for b in series.bars)
             if from_ is None or a.date >= from_
         ]
-        return SecurityOHLCVDTO(symbol=str(security.symbol), bars=bars)
+        adjustments = [
+            AdjustmentStepDTO(until=s.until, factor=s.factor)
+            for s in series.adjustment_schedule()
+        ]
+        return SecurityOHLCVDTO(symbol=str(security.symbol), bars=bars, adjustments=adjustments)
 
 
 class GetIndexCloseSeries:

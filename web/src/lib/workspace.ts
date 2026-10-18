@@ -67,6 +67,9 @@ export const workspaceSpec: DocumentSpec<WorkspaceBody> = {
   merge: mergeWorkspaces,
 };
 
+/** A drawings document: point prices are traded prices, adjusted only to draw (ADR-013 §5). */
+export const drawingsBody = (drawings: DrawingsBody['drawings']): DrawingsBody => ({ price_basis: 'traded', drawings });
+
 const drawingSpecs = new Map<string, DocumentSpec<DrawingsBody>>();
 
 export function drawingsSpec(symbol: string): DocumentSpec<DrawingsBody> {
@@ -75,10 +78,10 @@ export function drawingsSpec(symbol: string): DocumentSpec<DrawingsBody> {
     spec = {
       path: `/api/v1/drawings/${encodeURIComponent(symbol)}`,
       label: `Your drawings on ${symbol}`,
-      defaults: () => ({ drawings: [] }),
+      defaults: () => drawingsBody([]),
       merge: (base, mine, theirs) => {
         const r = mergeById(base?.drawings ?? [], mine.drawings, theirs.drawings);
-        return { mine: { drawings: r.mine }, theirs: { drawings: r.theirs }, conflicted: r.conflicts.length > 0 };
+        return { mine: drawingsBody(r.mine), theirs: drawingsBody(r.theirs), conflicted: r.conflicts.length > 0 };
       },
     };
     drawingSpecs.set(symbol, spec);
@@ -114,6 +117,6 @@ export function useSymbolDrawings(symbol: string) {
     status: doc.status,
     savedAt: doc.savedAt,
     retry: doc.retry,
-    update: (drawings: DrawingsBody['drawings']) => doc.update(() => ({ drawings })),
+    update: (drawings: DrawingsBody['drawings']) => doc.update(() => drawingsBody(drawings)),
   };
 }

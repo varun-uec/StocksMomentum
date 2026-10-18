@@ -11,7 +11,7 @@ import { LEGACY_KEY_PREFIX, parseLegacyPreferences } from '@/lib/chart-preferenc
 import { sameJson } from '@/lib/merge';
 import { defaultOverlays, LEGACY_OVERLAY_KEY_PREFIX, parseLegacyOverlays } from '@/lib/overlay-preferences';
 import { documentStore, reloadIfPristine } from '@/lib/server-document';
-import { DEFAULT_CHART, drawingsSpec, workspaceSpec, type ChartSettings, type WorkspaceBody } from '@/lib/workspace';
+import { DEFAULT_CHART, drawingsBody, drawingsSpec, workspaceSpec, type ChartSettings, type WorkspaceBody } from '@/lib/workspace';
 
 const MARKER_PREFIX = 'wickstreet:imported:';
 
@@ -45,7 +45,7 @@ export async function importLocalDrawings(http: typeof fetch = (...a) => fetch(.
       const res = await http(drawingsSpec(symbol).path, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'If-None-Match': '*' },
-        body: JSON.stringify({ drawings }),
+        body: JSON.stringify(drawingsBody(drawings)), // as drawn on the raw chart: traded prices
       }).catch(() => null);
       // 201 imported; 412 the server already had them (server wins). Anything else: retry next start.
       if (!res || (res.status !== 201 && res.status !== 412)) continue;

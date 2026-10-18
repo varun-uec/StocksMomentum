@@ -21,11 +21,24 @@ class OHLCVBarDTO(BaseModel):
     volume: int
 
 
+class AdjustmentStepDTO(BaseModel):
+    """Bars dated up to ``until`` (after the previous step) are scaled by ``factor``."""
+
+    until: date
+    factor: Decimal
+
+
 class SecurityOHLCVDTO(BaseModel):
-    """A symbol's price series."""
+    """A symbol's price series, adjusted for corporate actions (ADR-013 §4).
+
+    ``adjustments`` covers the whole stored history, not only ``bars``. A chart
+    uses it to convert a traded price at any date to the adjusted basis, so
+    saved drawings stay on their bars after a split or bonus (ADR-013 §5).
+    """
 
     symbol: str
     bars: list[OHLCVBarDTO]
+    adjustments: list[AdjustmentStepDTO]
 
 
 class IndexCloseBarDTO(BaseModel):
