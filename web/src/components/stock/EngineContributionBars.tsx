@@ -1,5 +1,3 @@
-'use client';
-
 import type { EngineExplanation } from '@/lib/types';
 import { chartPalette } from '@/lib/theme';
 

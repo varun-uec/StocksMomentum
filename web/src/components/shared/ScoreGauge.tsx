@@ -1,5 +1,3 @@
-'use client';
-
 import { RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { useTheme } from '@/app/theme-provider';
 import { chartPalette } from '@/lib/theme';

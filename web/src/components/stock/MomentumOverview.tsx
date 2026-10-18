@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.1 — overview header.
  *

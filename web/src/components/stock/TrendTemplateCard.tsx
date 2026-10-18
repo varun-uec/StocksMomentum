@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Trend Template presentation (display only).
  *

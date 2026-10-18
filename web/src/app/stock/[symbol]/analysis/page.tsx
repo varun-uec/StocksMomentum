@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The unified analysis screen.
  *
@@ -15,8 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   Badge,
@@ -140,9 +137,9 @@ interface Target {
 }
 
 export default function UnifiedAnalysisPage() {
-  const { symbol } = useParams<{ symbol: string }>();
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const symbol = useParams().symbol!;
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const strategyQuery = searchParams.get('strategy');
   const strategyName = strategyQuery ?? DEFAULT_STRATEGY;
   const horizonLabel = strategyDisplayName(strategyName);
@@ -154,7 +151,7 @@ export default function UnifiedAnalysisPage() {
   const setMode = (next: Mode) => {
     const params = new URLSearchParams({ mode: next });
     if (strategyQuery) params.set('strategy', strategyQuery);
-    router.replace(`/stock/${symbol}/analysis?${params.toString()}`, { scroll: false });
+    navigate(`/stock/${symbol}/analysis?${params.toString()}`, { replace: true, preventScrollReset: true });
   };
   // Screen-level, never derived from mode: the chart calls `fitContent()`
   // whenever this is falsy, so a null/undefined flip on a mode switch would
@@ -494,7 +491,7 @@ export default function UnifiedAnalysisPage() {
         {explanation && <Badge color="indigo">Momentum {num(explanation.momentum_score, 0)}</Badge>}
         <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="analysis" />
         <Link
-          href={backHref}
+          to={backHref}
           className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
         >
           ← Back to research
@@ -920,7 +917,7 @@ export default function UnifiedAnalysisPage() {
                   {wave.count && <CountSummary count={wave.count} color={wave.color} />}
 
                   <Link
-                    href={`/stock/${symbol}/elliott-wave${strategyQuery ? `?strategy=${strategyQuery}` : ''}`}
+                    to={`/stock/${symbol}/elliott-wave${strategyQuery ? `?strategy=${strategyQuery}` : ''}`}
                     className={`text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
                   >
                     Full ranking panel and pivot table →

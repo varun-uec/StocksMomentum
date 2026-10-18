@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The Elliott Wave explanation panels, moved out of the page module so both
  * the Elliott Wave route and the unified analysis screen render the same ones.

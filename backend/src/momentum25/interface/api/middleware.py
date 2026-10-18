@@ -1,7 +1,7 @@
 """HTTP middleware.
 
-Correlation ID propagation, access logging, metrics, rate limiting, and
-security headers.
+Correlation ID propagation, access logging, metrics, rate limiting, security
+headers, and the Host/Origin guard.
 
 Binds a per-request id and correlation ID into the structlog context so all logs
 emitted while handling a request are correlated (NFR-10). Also records Prometheus
@@ -26,6 +26,7 @@ from momentum25.infrastructure.observability.metrics import (
     http_requests_total,
 )
 from momentum25.infrastructure.observability.tracing import generate_correlation_id
+from momentum25.interface.api.errors import problem_response
 
 _logger = get_logger("api.access")
 
@@ -159,8 +160,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         """Enforce rate limit for the client IP."""
-        # Skip rate limiting for health/metrics endpoints
-        if request.url.path.startswith(("/api/v1/health", "/metrics", "/docs", "/openapi")):
+        # Limit API calls only: health checks and the web app's static files
+        # (one page load fetches many) are not API traffic.
+        path = request.url.path
+        if not path.startswith("/api/") or path.startswith("/api/v1/health"):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
@@ -187,4 +190,62 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
 
         self._requests.setdefault(client_ip, []).append(now)
+        return await call_next(request)
+
+
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def host_name(authority: str) -> str:
+    """Return the host part of ``host[:port]``, keeping IPv6 brackets."""
+    if authority.startswith("["):
+        return authority[: authority.find("]") + 1].lower()
+    return authority.split(":", 1)[0].lower()
+
+
+class HostOriginGuardMiddleware(BaseHTTPMiddleware):
+    """Reject requests from the wrong host or from another site (ADR-012).
+
+    Defence in depth for a no-login instance; it does not replace authentication.
+
+    - ``Host`` not in the allowlist -> ``421``. This blocks DNS rebinding.
+    - A state-changing request whose ``Origin`` is not this request's own origin
+      (including ``Origin: null``) -> ``403``. This blocks cross-site request forgery.
+    - A state-changing request with no ``Origin`` passes: browsers always send
+      ``Origin`` on cross-origin writes, so only non-browser clients omit it.
+    """
+
+    def __init__(self, app: Any, allowed_hosts: list[str]) -> None:
+        """Create the guard with the allowed host names (no ports)."""
+        super().__init__(app)
+        self._allowed_hosts = frozenset(h.lower() for h in allowed_hosts)
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Apply the Host rule to every request and the Origin rule to writes."""
+        host = request.headers.get("host", "")
+        if host_name(host) not in self._allowed_hosts:
+            _logger.warning("host_rejected", host=host, path=request.url.path)
+            return problem_response(
+                421,
+                "Misdirected request",
+                "This host name is not allowed. Add it to M25_ALLOWED_HOSTS to serve it.",
+                "urn:momentum25:error:host_not_allowed",
+                request.url.path,
+            )
+
+        origin = request.headers.get("origin")
+        if request.method not in _SAFE_METHODS and origin is not None:
+            scheme, _, authority = origin.partition("://")
+            same_origin = scheme in ("http", "https") and authority.lower() == host.lower()
+            if not authority or not same_origin:
+                _logger.warning("origin_rejected", origin=origin, path=request.url.path)
+                return problem_response(
+                    403,
+                    "Cross-origin request rejected",
+                    "State-changing requests must come from this app's own origin.",
+                    "urn:momentum25:error:origin_not_allowed",
+                    request.url.path,
+                )
         return await call_next(request)

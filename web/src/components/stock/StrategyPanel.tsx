@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The strategy rail: which preset is active, what its rules currently say, and
  * every bar where one of them fired.

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.9 — watchlist table.
  *
@@ -14,7 +12,7 @@
  * the same TanStack Table setup as the dashboard.
  */
 
-import Link from 'next/link';
+import { Link } from 'react-router';
 import { useMemo, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -134,7 +132,7 @@ export function WatchlistTable({ strategy = DEFAULT_STRATEGY }: { strategy?: str
           return (
             <>
               <Link
-                href={`/stock/${item.symbol}?strategy=${strategy}`}
+                to={`/stock/${item.symbol}?strategy=${strategy}`}
                 className={`font-semibold text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
               >
                 {item.symbol}

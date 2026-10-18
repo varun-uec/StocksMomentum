@@ -9,11 +9,11 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Node / Next.js
+# Node / web
 node_modules/
-web/.next/
-web/out/
-web/.turbo/
+web/dist/
+web/test-results/
+web/playwright-report/
 
 # Env / secrets
 .env

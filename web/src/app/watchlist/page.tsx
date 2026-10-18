@@ -1,5 +1,3 @@
-'use client';
-
 import { PageHeader } from '@/components/shared/Card';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import { WatchlistTable } from '@/components/stock/WatchlistTable';

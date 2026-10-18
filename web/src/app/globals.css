@@ -5,6 +5,7 @@
 /* Smooth theme transitions */
 html {
   scroll-behavior: smooth;
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 }
 
 body {

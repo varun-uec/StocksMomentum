@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Per-symbol indicator preferences for the unified analysis screen.
  *

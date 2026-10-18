@@ -94,6 +94,8 @@ env = [
     # every developer machine (another project may own it), making the 38 integration
     # tests unrunnable rather than merely differently-configured.
     "D:M25_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_test",
+    # Starlette's TestClient sends `Host: testserver`.
+    'M25_ALLOWED_HOSTS=["localhost","127.0.0.1","[::1]","testserver"]',
 ]
 
 [tool.importlinter]

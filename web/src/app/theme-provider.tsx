@@ -1,9 +1,8 @@
-'use client';
-
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+// Also read by public/theme-init.js before first paint. Keep the two in step.
 const STORAGE_KEY = 'm25-theme';
 
 interface ThemeContextValue {
@@ -20,25 +19,6 @@ function systemPrefersDark(): boolean {
 
 function applyTheme(resolved: 'light' | 'dark') {
   document.documentElement.classList.toggle('dark', resolved === 'dark');
-}
-
-/**
- * Inline script injected into <head>, run before hydration, so the correct
- * theme class is applied before first paint (no flash of the wrong theme).
- */
-export function ThemeInitScript() {
-  const script = `
-(function() {
-  try {
-    var stored = localStorage.getItem('${STORAGE_KEY}');
-    var mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
-    var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.classList.toggle('dark', dark);
-  } catch (e) {}
-})();
-`;
-  // eslint-disable-next-line react/no-danger
-  return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

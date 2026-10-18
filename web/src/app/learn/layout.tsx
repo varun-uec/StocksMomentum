@@ -1,8 +1,5 @@
-'use client';
-
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { Link, Outlet, useLocation } from 'react-router';
+import { useState } from 'react';
 import { focusRing } from '@/lib/theme';
 
 const SECTIONS = [
@@ -15,8 +12,8 @@ const SECTIONS = [
   { href: '/learn/faq', label: 'FAQ' },
 ];
 
-export default function LearnLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+export default function LearnLayout() {
+  const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -51,7 +48,7 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
                 return (
                   <Link
                     key={s.href}
-                    href={s.href}
+                    to={s.href}
                     onClick={() => setMobileOpen(false)}
                     aria-current={active ? 'page' : undefined}
                     className={`block px-4 py-2.5 text-sm transition-colors ${
@@ -78,7 +75,7 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
                 return (
                   <Link
                     key={s.href}
-                    href={s.href}
+                    to={s.href}
                     aria-current={active ? 'page' : undefined}
                     className={`block px-3 py-2 rounded-md text-sm transition-colors ${focusRing} ${
                       active
@@ -94,7 +91,9 @@ export default function LearnLayout({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <div className="flex-1 min-w-0">{children}</div>
+        <div className="flex-1 min-w-0">
+          <Outlet />
+        </div>
       </div>
     </main>
   );

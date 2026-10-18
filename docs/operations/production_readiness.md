@@ -66,7 +66,8 @@ observability, reliability, security, performance, and DevOps dimensions.
 |---|---|---|
 | Security headers | ✅ | HSTS, CSP, X-Frame-Options, etc. |
 | Rate limiting | ✅ | In-process sliding window (configurable) |
-| CORS | ✅ | Configurable origins |
+| Host/Origin guard | ✅ | `Host` allowlist (`421`) and same-origin check on writes (`403`). Defence in depth, not authentication (ADR-012). |
+| Loopback by default | ✅ | Compose binds every port to `127.0.0.1` |
 | Input validation | ✅ | Symbol, date range, pagination, strategy name |
 | Non-root container | ✅ | `momentum25` user in Docker |
 | Secrets via env | ✅ | No hardcoded secrets in code |
@@ -114,7 +115,7 @@ observability, reliability, security, performance, and DevOps dimensions.
 | CI/CD | ✅ | GitHub Actions (lint, test, build) |
 | Automated migrations | ✅ | Alembic in startup command |
 | Health checks | ✅ | Container-level HEALTHCHECK |
-| Non-root user | ✅ | Both backend and web containers |
+| Non-root user | ✅ | One image; the API serves the web app |
 
 ### ⚠️ Gaps
 

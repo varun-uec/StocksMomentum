@@ -1,7 +1,5 @@
-'use client';
-
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { getIndexCloses, getLiveStockAnalysis, getStockExplanation, getStockHistory } from '@/lib/api-client';
 import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, EmptyState, PageHeader } from '@/components/shared/Card';
@@ -160,8 +158,8 @@ function SectionNav({ active, onSelect }: { active: string; onSelect: (id: strin
 }
 
 export default function StockResearchPage() {
-  const { symbol } = useParams<{ symbol: string }>();
-  const searchParams = useSearchParams();
+  const symbol = useParams().symbol!;
+  const [searchParams] = useSearchParams();
   const strategyName = searchParams.get('strategy') || DEFAULT_STRATEGY;
   const horizonLabel = strategyDisplayName(strategyName);
   const chartColors = useChartColors();

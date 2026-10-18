@@ -1,5 +1,3 @@
-'use client';
-
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 const STORAGE_KEY = 'momentum25.selectedStrategy';

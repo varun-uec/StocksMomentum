@@ -14,9 +14,10 @@ _logger = get_logger("api.errors")
 _PROBLEM_MEDIA_TYPE = "application/problem+json"
 
 
-def _problem(
+def problem_response(
     status: int, title: str, detail: str | None, type_: str, instance: str
 ) -> JSONResponse:
+    """Build an RFC-7807 ``application/problem+json`` response."""
     body = ProblemDetail(type=type_, title=title, status=status, detail=detail, instance=instance)
     return JSONResponse(
         status_code=status, content=body.model_dump(), media_type=_PROBLEM_MEDIA_TYPE
@@ -28,7 +29,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Momentum25Error)
     async def _handle_domain(request: Request, exc: Momentum25Error) -> JSONResponse:
-        return _problem(
+        return problem_response(
             status=exc.http_status,
             title=exc.code,
             detail=str(exc),
@@ -40,7 +41,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _handle_validation(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        return _problem(
+        return problem_response(
             status=422,
             title="validation_error",
             detail=str(exc.errors()),
@@ -51,7 +52,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
         _logger.error("unhandled_exception", error=str(exc), path=str(request.url.path))
-        return _problem(
+        return problem_response(
             status=500,
             title="internal_error",
             detail="An unexpected error occurred.",

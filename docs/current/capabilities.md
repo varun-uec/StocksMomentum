@@ -1,6 +1,6 @@
 # Capabilities
 
-Verified against the routers, pages and use cases at commit `f492f81` on 2026-10-18. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
+Verified against the routers, pages and use cases on branch `wickstreet/m10-m11` (M10) on 2026-10-18. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
 
 ## Summary
 
@@ -50,7 +50,7 @@ The web client calls every endpoint except the health probes, `/metrics`, `POST 
 
 ## Web UI
 
-Next.js 14 App Router, React 18, TypeScript, Tailwind. Charts: `lightweight-charts` 5 and `recharts`. Data: TanStack Query through one client, `web/src/lib/api-client.ts`. Light, dark and system themes.
+A Vite single-page app: React 18, React Router 7, TypeScript, Tailwind. The API serves the build and the app calls same-origin `/api/v1`. Routes are code-split (`web/src/main.tsx`). Charts: `lightweight-charts` 5 and `recharts`. Data: TanStack Query through one client, `web/src/lib/api-client.ts`. Light, dark and system themes. Every page footer credits the chart library.
 
 | Route | Purpose |
 |---|---|
@@ -68,6 +68,8 @@ Next.js 14 App Router, React 18, TypeScript, Tailwind. Charts: `lightweight-char
 | `/backtest` | Walk-forward backtest with the data caveat shown first |
 | `/data` | Refresh the latest market session |
 | `/learn`, `/learn/{minervini-methodology, momentum25-methodology, momentum-investing, scoring-guide, rule-guide, faq}` | Methodology and education |
+| `/about` | What Wickstreet is; the chart-library licence notice |
+| `/lab/chart-grid?n=&symbol=` | Engineering diagnostic: `n` charts on one symbol (multi-chart smoke check). Not in the navigation. |
 
 ## CLI
 

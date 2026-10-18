@@ -24,7 +24,7 @@ All configuration is via environment variables prefixed with `M25_`.
 | `M25_DATABASE_URL` | PostgreSQL async connection string | `postgresql+asyncpg://user:pass@host:5432/momentum25` |
 | `M25_REDIS_URL` | Redis connection string | `redis://redis:6379/0` |
 | `M25_ENVIRONMENT` | Runtime environment | `production` |
-| `M25_CORS_ORIGINS` | Allowed CORS origins | `["https://app.momentum25.com"]` |
+| `M25_ALLOWED_HOSTS` | Host names (no ports) the API answers to. Anything else gets `421`. Default: loopback names. | `["localhost","127.0.0.1","[::1]","wickstreet.lan"]` |
 
 ### Optional
 
@@ -38,6 +38,8 @@ All configuration is via environment variables prefixed with `M25_`.
 | `M25_DB_MAX_OVERFLOW` | `5` | Database connection pool overflow |
 | `M25_RATE_LIMIT_MAX_REQUESTS` | `200` | API rate limit per window |
 | `M25_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window in seconds |
+| `M25_WEB_DIST_DIR` | `""` (image: `/app/web`) | Built web app to serve at `/`. Empty = API only. |
+| `APP_BIND` (Compose) | `127.0.0.1` | Interface the app port binds to. `0.0.0.0` opens it to the LAN with full access and no login (ADR-012). |
 | `M25_RETRY_MAX_ATTEMPTS` | `3` | Max retry attempts for external calls |
 | `M25_REQUEST_TIMEOUT_SECONDS` | `30.0` | Request timeout for external calls |
 
@@ -87,7 +89,8 @@ curl http://localhost:8000/metrics
 - [ ] Database connection uses TLS
 - [ ] Redis connection uses TLS (rediss://)
 - [ ] Secrets managed via environment or vault (not .env files)
-- [ ] CORS origins restricted to known domains
+- [ ] `M25_ALLOWED_HOSTS` lists only the names this instance serves
+- [ ] Exposed beyond a trusted local network only behind an authenticating reverse proxy (ADR-012)
 - [ ] Rate limiting configured appropriately
 - [ ] Log level set to `INFO` or `WARNING` (not `DEBUG`)
 - [ ] Scheduler enabled only on one instance (or use distributed locking)

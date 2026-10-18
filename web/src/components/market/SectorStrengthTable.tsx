@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.7 — sector relative-strength ranking, bound to `/market/context` →
  * `sectors`.

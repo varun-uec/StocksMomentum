@@ -70,11 +70,11 @@ def validate_configuration(settings: Settings) -> None:
             f"got: {settings.redis_url[:20]}..."
         )
 
-    # CORS origins
-    for origin in settings.cors_origins:
-        if not origin.startswith(("http://", "https://")):
+    # Allowed hosts are bare names: a port or scheme would never match a Host header.
+    for host in settings.allowed_hosts:
+        if "://" in host or (":" in host and not host.startswith("[")):
             errors.append(
-                f"cors_origin must start with http:// or https://, got: {origin}"
+                f"allowed_hosts entries are host names without scheme or port, got: {host}"
             )
 
     # Retry configuration

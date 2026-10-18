@@ -1,5 +1,3 @@
-'use client';
-
 /** Star toggle bound to `POST/DELETE /watchlist/{symbol}` and `GET /watchlist`. */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

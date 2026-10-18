@@ -1,7 +1,4 @@
-'use client';
-
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
 import { searchSecurities } from '@/lib/api-client';
@@ -159,7 +156,7 @@ function ThemeToggle() {
  * not qualify in the latest run.
  */
 function SymbolSearch({ className = '', inputClassName = 'w-28 lg:w-44' }: { className?: string; inputClassName?: string }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [value, setValue] = useState('');
   const [results, setResults] = useState<SecuritySearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -200,7 +197,7 @@ function SymbolSearch({ className = '', inputClassName = 'w-28 lg:w-44' }: { cla
     setValue('');
     setResults([]);
     setOpen(false);
-    router.push(`/stock/${encodeURIComponent(symbol.toUpperCase())}`);
+    navigate(`/stock/${encodeURIComponent(symbol.toUpperCase())}`);
   };
 
   return (
@@ -310,7 +307,7 @@ function NavLink({
   return (
     <Link
       key={item.href}
-      href={item.href}
+      to={item.href}
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       // The visible label is hidden below `lg`, leaving an icon-only link.
@@ -331,7 +328,7 @@ function NavLink({
 
 /** Roving-focus dropdown: Arrow/Home/End move, Escape closes and restores focus. */
 function ResearchToolsMenu() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -417,7 +414,7 @@ function ResearchToolsMenu() {
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
-                href={item.href}
+                to={item.href}
                 role="menuitem"
                 tabIndex={i === active ? 0 : -1}
                 aria-current={pathname === item.href ? 'page' : undefined}
@@ -515,7 +512,7 @@ function MobileSheet({
 }
 
 export function NavBar() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -536,13 +533,13 @@ export function NavBar() {
           <div className="flex items-center h-14 gap-1">
             {/* Brand */}
             <Link
-              href="/"
+              to="/"
               className="flex items-center gap-2 mr-4 text-sm font-bold tracking-tight text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
             >
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-extrabold">
-                M25
+                W
               </span>
-              <span className="hidden sm:inline">Momentum25</span>
+              <span className="hidden sm:inline">Wickstreet</span>
             </Link>
 
             {/* Desktop Nav */}
@@ -577,7 +574,7 @@ export function NavBar() {
             return (
               <li key={item.href} className="flex-1">
                 <Link
-                  href={item.href}
+                  to={item.href}
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${focusRing} ${
                     isActive

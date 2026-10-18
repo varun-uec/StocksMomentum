@@ -1,0 +1,19 @@
+import { expect, test as base, type Page } from '@playwright/test';
+
+/** Every test fails on a browser console error, an uncaught page error or a CSP violation. */
+export const test = base.extend<{ page: Page }>({
+  page: async ({ page }, run) => {
+    const problems: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') problems.push(`console: ${msg.text()}`);
+    });
+    page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
+    await run(page);
+    expect(problems, 'browser errors').toEqual([]);
+  },
+});
+
+export { expect };
+
+/** A symbol present in every local dataset since 2019. */
+export const SYMBOL = 'RELIANCE';

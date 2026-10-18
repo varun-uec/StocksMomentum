@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The symbol-scoped actions, identical on every `/stock/[symbol]/*` route so a
  * reader never loses the way back to the chart, the analysis screen, the wave
@@ -11,7 +9,7 @@
  * of navigating away to another page.
  */
 
-import Link from 'next/link';
+import { Link } from 'react-router';
 import { focusRing } from '@/lib/theme';
 import { WatchlistStar } from '@/components/stock/WatchlistStar';
 
@@ -74,7 +72,7 @@ export function SymbolActionBar({
         ) : (
           <Link
             key={action.id}
-            href={action.href}
+            to={action.href}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
           >
             {action.label}

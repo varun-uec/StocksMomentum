@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.3 — Momentum view: the Trend Template checklist plus per-engine
  * sub-scores, both from the *live* explanation

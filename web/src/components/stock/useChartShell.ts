@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The shared chart shell (audit 2026-08-09, U3).
  *

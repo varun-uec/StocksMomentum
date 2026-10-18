@@ -1,5 +1,3 @@
-'use client';
-
 import { useTheme } from '@/app/theme-provider';
 
 /** Chart colors that follow the resolved theme (recharts styling is inline, not Tailwind). */

@@ -65,7 +65,11 @@ class Settings(BaseSettings):
 
     # --- API / web ---
     api_v1_prefix: str = "/api/v1"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # Host names (no ports) this instance answers to. Loopback only by default;
+    # add a LAN name or address to opt in to LAN access (ADR-012).
+    allowed_hosts: list[str] = Field(default_factory=lambda: ["localhost", "127.0.0.1", "[::1]"])
+    # Built web app to serve at ``/``. Empty = API only (the Vite dev server serves the app).
+    web_dist_dir: str = ""
 
     # --- Observability ---
     log_level: str = "INFO"

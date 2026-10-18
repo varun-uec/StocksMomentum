@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listStrategies } from '@/lib/api-client';

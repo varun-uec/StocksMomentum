@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.6 — pattern recognition, plus Phase 8 classical chart-pattern
  * detection.

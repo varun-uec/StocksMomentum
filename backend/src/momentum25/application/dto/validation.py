@@ -239,6 +239,7 @@ class EngineEffectivenessResponse(BaseModel):
     worst_engine: str
     recommended_exclusions: list[str]
     summary: str
+    measurability: MeasurabilityDTO
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

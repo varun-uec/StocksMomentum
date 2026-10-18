@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The indicator picker: a searchable list rendered from the catalogue, the
  * parameter inputs for whatever is active, and the legend with each active

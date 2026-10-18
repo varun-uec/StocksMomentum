@@ -38,6 +38,7 @@ When documents conflict, CLAUDE.md sets the order: ADD → ADRs → Implementati
 | [history/audits/2026-08-11-ui-ux-audit.md](history/audits/2026-08-11-ui-ux-audit.md) | UI/UX audit, fixes applied |
 | [history/audits/2026-08-15-functional-audit.md](history/audits/2026-08-15-functional-audit.md) | Comprehensive functional audit, F1–F20 |
 | [history/audits/2026-08-15-ui-ux-audit.md](history/audits/2026-08-15-ui-ux-audit.md) | UI/UX recommendations against an Investing.com benchmark, not applied |
+| [history/audits/2026-10-18-m10-stack-spike-report.md](history/audits/2026-10-18-m10-stack-spike-report.md) | Wickstreet M10: Vite spike evidence (S1–S7), security-boundary tests, defects fixed |
 | [history/plans/2026-08-10-unified-analysis-screen-plan.md](history/plans/2026-08-10-unified-analysis-screen-plan.md) | Plan and user decisions for the analysis screen (shipped) |
 | [history/plans/2026-08-10-signal-engine-proposal.md](history/plans/2026-08-10-signal-engine-proposal.md) | Open proposal: signals as a scoring engine |
 | [history/plans/2026-10-18-wickstreet-milestones.md](history/plans/2026-10-18-wickstreet-milestones.md) | Wickstreet M9–M16: dependencies and exit criteria (proposed) |

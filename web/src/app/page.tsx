@@ -1,8 +1,6 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
@@ -68,7 +66,7 @@ function buildSummary(data: RankingsResponse): ScreeningRunSummary {
 }
 
 export default function Home() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { strategyName } = useStrategy();
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
@@ -135,7 +133,7 @@ export default function Home() {
   const isRefreshing = runFetching || rankingsFetching || isScreening;
 
   const handleSymbolClick = (symbol: string) => {
-    router.push(`/stock/${symbol}?strategy=${strategyName}`);
+    navigate(`/stock/${symbol}?strategy=${strategyName}`);
   };
 
   return (

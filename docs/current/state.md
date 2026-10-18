@@ -1,6 +1,6 @@
 # State
 
-As of 2026-10-18, commit `f492f81` (2026-08-18). No code commits since.
+As of 2026-10-18, branch `wickstreet/m10-m11` (Wickstreet M10: Vite web app served by the API). Before that, the last code commit was `f492f81` (2026-08-18).
 
 ## Verdict
 
@@ -16,12 +16,11 @@ Deploy only on a private network. There is no authentication.
 |---|---|
 | `lint-imports` | 2 contracts kept, 0 broken |
 | `ruff check src tests` | clean |
-| `mypy src` (strict) | clean, 227 files |
-| `pytest tests/unit tests/golden` | 522 passed, 1 skipped |
-| `pytest tests/integration` | **not run** — needs the PostgreSQL container, which was down |
-| Web `lint` / `build` | not run |
-
-The last recorded full-suite run was 573 passed (2026-08-10, RP-014 report).
+| `mypy src` (strict) | clean, 228 files |
+| `pytest` (full suite, PostgreSQL up) | 659 passed (638 before M10, plus 21 new) |
+| Web `npm test` (Vitest) | 14 passed |
+| Web `npm run lint` / `npm run build` | clean |
+| Web `npm run e2e` (Playwright, against a database clone) | 28 passed |
 
 ## Delivery record
 
@@ -69,7 +68,15 @@ Found while writing these docs. Not fixed.
 | 4 | `lint-imports` is not in CI. | `.github/workflows/ci.yml` |
 | 5 | The research harness cannot apply parameter overrides: `apply_parameter_overrides` is never called. Every variant test so far was a one-off script. | `domain/research/services.py` |
 | 6 | `rs_sector_relative`, `rs_industry_relative`, `rs_line_uptrend` are still registered after v3 removed them. The v3 description names a high-tight-flag detector that does not exist. | `domain/engines/relative_strength.py`, strategy JSON |
-| 7 | Chart attribution: `PriceChart.tsx` sets `attributionLogo: false` and gives no TradingView credit. The lightweight-charts licence requires it before any public release. | `web/src/components/stock/PriceChart.tsx` |
+| 8 | Historical screening applies today's cumulative `adj_factor` to past dates, so a later split rescales earlier prices that price-level gates read. | `infrastructure/pipelines/indicator_pipeline.py::_to_dataframe` (ADR-014 §7) |
+| 9 | Historical screening reads bars only for `is_active` securities, which may drop names delisted after the decision date. Not yet verified against past runs. | `indicator_pipeline.py::_fetch_bars` (ADR-014 §7) |
+
+Fixed in M10 (2026-10-18):
+
+- **Chart attribution** (was defect 7). Every page footer now credits TradingView Lightweight Charts™ and links to tradingview.com. `/about` shows the NOTICE text.
+- **The Docker image had no strategy configs.** `strategy_dir` pointed outside the image, so a fresh `docker compose up` skipped strategy sync with only a warning. The image now copies `docs/architecture/strategies/`; startup syncs 7 strategies.
+- **Engine effectiveness dropped its `measurability` block.** The DTO had no such field, so Pydantic discarded it silently, and `/validation` crashed whenever engine rows existed. Regression test: `tests/unit/test_validation_dto_measurability.py`.
+- **The web app's API URL setting never worked.** The client read `NEXT_PUBLIC_API_BASE`; Compose set `NEXT_PUBLIC_API_BASE_URL`. The app now calls same-origin `/api/v1`, so no setting exists.
 
 Architecture-level differences from the ADD are listed in [architecture.md](architecture.md#drift-from-the-add).
 
@@ -93,4 +100,4 @@ Ready for private deployment. Missing for public deployment: authentication, a m
 
 ## In flight
 
-**TradingView-style UI program** (started 2026-10-17). Goal: grow the UI into an open-source, self-hosted charting platform on daily data, with the screener as one screen. Draft ADD Amendment A1 (milestones M9–M14), ADR-011 (keep lightweight-charts — accepted) and ADR-012 (self-hosted, each copy fetches its own bhavcopy) exist as drafts outside the repository. They await review. Open questions: licence, public name, chart-speed target (NFR-11). Defect 7 blocks release.
+**Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) and ADR-012 to ADR-014 are Proposed; ADR-011 is accepted. M10 (stack spike) is done on branch `wickstreet/m10-m11`; its evidence is in the [spike report](../history/audits/2026-10-18-m10-stack-spike-report.md). ADR-013 stays Proposed until the owner accepts it. Next: M9 reference study, then the M11 vertical slice. Open: ADR-015 licence.

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.6 — market breadth, bound to `/market/context` → `breadth`.
  *

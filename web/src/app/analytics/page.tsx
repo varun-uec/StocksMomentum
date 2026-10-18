@@ -1,5 +1,3 @@
-'use client';
-
 import { useQuery } from '@tanstack/react-query';
 import { getRuns, evaluateStrategy, getContributionAnalysis } from '@/lib/api-client';
 import { Card, MetricCard, LoadingSpinner, PageHeader, EmptyState } from '@/components/shared/Card';

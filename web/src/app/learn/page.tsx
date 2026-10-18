@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router';
 import { PageHeader } from '@/components/shared/Card';
 import { Prose, SectionHeading } from '@/components/learn/MethodologyNote';
 import { focusRing } from '@/lib/theme';
@@ -68,7 +68,7 @@ export default function LearnOverviewPage() {
         {CARDS.map((c) => (
           <Link
             key={c.href}
-            href={c.href}
+            to={c.href}
             className={`group block rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 p-4 hover:border-indigo-400 dark:hover:border-indigo-600/60 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm hover:shadow-md ${focusRing}`}
           >
             <div className="flex items-start justify-between gap-3">

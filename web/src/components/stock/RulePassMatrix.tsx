@@ -1,5 +1,3 @@
-'use client';
-
 import type { RuleExplanation } from '@/lib/types';
 
 /**

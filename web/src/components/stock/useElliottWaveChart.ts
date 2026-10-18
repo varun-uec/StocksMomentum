@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Elliott Wave chart state, extracted unchanged from the Elliott Wave page so
  * the unified analysis screen can render the same annotation without a second

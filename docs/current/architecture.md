@@ -1,6 +1,6 @@
 # Architecture — as built
 
-Verified against the code at commit `f492f81` on 2026-10-18.
+Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18.
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
@@ -8,15 +8,14 @@ The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../ar
 
 ```mermaid
 flowchart LR
-  user(["Investor / operator"]) --> web["web — Next.js 14<br/>:3000"]
-  web -->|JSON /api/v1| api["api — FastAPI + APScheduler<br/>:8000"]
+  user(["Investor / operator"]) -->|"web app and JSON /api/v1, same origin"| api["api — FastAPI + APScheduler<br/>serves the Vite build · 127.0.0.1:8000"]
   api --> db[("PostgreSQL 16")]
   api --> redis[("Redis 7")]
   api -->|EOD bhavcopy, corporate actions| nse[("NSE archives + API")]
   api -->|legacy EOD| bse[("BSE archives")]
 ```
 
-Docker Compose runs four services: `db`, `redis`, `api`, `web`. `make up-dev` adds Adminer (8080) and RedisInsight (5540). The `api` container runs migrations on start. One process serves HTTP and runs the scheduler (ADR-007).
+Docker Compose runs three services: `db`, `redis`, `api`. One image (root `Dockerfile`) builds the web app with Node and serves it from the API at `/`, so the browser calls `/api/v1` on the same origin (ADR-013). Every published port binds to `127.0.0.1`; `APP_BIND` opts the app port in to LAN access (ADR-012). `make up-dev` adds Adminer (8080) and RedisInsight (5540). The `api` container runs migrations on start. One process serves HTTP and runs the scheduler (ADR-007).
 
 ## Layers
 
@@ -27,7 +26,7 @@ Hexagonal architecture (ADR-001). Code lives in `backend/src/momentum25/`.
 | Domain | `domain/` | Entities, value objects, ports, the 8 evaluation engines, pattern detectors, strategy engine, scoring, ranking, explainability, walk-forward backtest math (`backtest/`), Elliott Wave and chart-pattern analytics (`analytics/`), research math (`research/`: forward returns, data quality, stop-loss, swing targets, survivorship). No I/O. |
 | Application | `application/` | Use cases (`use_cases/`, `use_cases/research/`), DTOs, two shared services (`services/corporate_actions.py`, `services/rs_ratings.py`). |
 | Infrastructure | `infrastructure/` | SQLAlchemy models and repositories, Alembic migrations, NSE/BSE/Kite providers, NSE trading calendar, indicator and RS pipelines (pandas/numpy), Redis cache/lock/refresh gate, APScheduler, settings, structlog, Prometheus metrics, tracing, retry/circuit breaker. |
-| Interface | `interface/` | FastAPI routers (15), dependency wiring, error handlers, middleware, input validation, Typer CLI, walk-forward wiring shared by CLI and API. |
+| Interface | `interface/` | FastAPI routers (15), dependency wiring, error handlers, middleware (including the `Host`/`Origin` guard), web-app serving (`api/spa.py`), input validation, Typer CLI, walk-forward wiring shared by CLI and API. |
 | Composition | `main.py`, `app/services/` | App factory, startup/shutdown, daily job. `app/services/` holds the screening job and a bulk market-sync service. |
 
 ### Enforcement
@@ -71,7 +70,7 @@ Run tables are append-only per `run_id` (ADR-006).
 
 ## Configuration
 
-All settings come from `M25_*` environment variables (`infrastructure/config/settings.py`). Key ones: `M25_DATABASE_URL`, `M25_REDIS_URL`, `M25_SCHEDULER_ENABLED` (default `false`; `.env.example` sets `true`), `M25_SCHEDULE_CRON` (default `30 18 * * 1-5`, Asia/Kolkata), `M25_STRATEGY_DIR`. See [operations/deployment.md](../operations/deployment.md).
+All settings come from `M25_*` environment variables (`infrastructure/config/settings.py`). Key ones: `M25_DATABASE_URL`, `M25_REDIS_URL`, `M25_SCHEDULER_ENABLED` (default `false`; `.env.example` sets `true`), `M25_SCHEDULE_CRON` (default `30 18 * * 1-5`, Asia/Kolkata), `M25_STRATEGY_DIR`, `M25_ALLOWED_HOSTS` (host names the API answers to; default loopback), `M25_WEB_DIST_DIR` (built web app to serve; empty = API only). See [operations/deployment.md](../operations/deployment.md).
 
 ## Drift from the ADD
 
@@ -90,4 +89,4 @@ The ADD was written for a greenfield MVP (milestones M0–M8). The code has grow
 | D9 | Import contracts run in CI (README claimed this). | CI runs ruff, mypy, pytest, `npm run lint`, `npm run build`. Not `lint-imports`. | Add `lint-imports` to `.github/workflows/ci.yml`. |
 | D10 | `POST /runs` triggers a refresh (ADD §16). | `POST /runs` only creates a `PENDING` row. Nothing executes it. `POST /runs/execute` runs the pipeline; the web UI and the scheduler use that path. | Make `POST /runs` execute, or remove it. |
 
-A separate program to grow the UI into a TradingView-style charting platform (draft ADD Amendment A1, ADR-011, ADR-012) began on 2026-10-17. Its drafts are not in the repository yet. See [state.md](state.md#in-flight).
+The Wickstreet program ([ADD Amendment A1](../architecture/ADD-amendment-A1.md), ADR-011 to ADR-014) began on 2026-10-17. See [state.md](state.md#in-flight).

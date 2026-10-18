@@ -1,6 +1,17 @@
-# Backend image — Python 3.12 + uv. Multi-stage for a slim runtime.
+# Wickstreet image: the API serves the built web app from its own origin (ADR-013).
+# Build context is the repository root. Multi-stage for a slim runtime.
 # =============================================================================
-# Stage 1: Build dependencies
+# Stage 1: Build the web app
+# =============================================================================
+FROM node:22-alpine AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
+# =============================================================================
+# Stage 2: Build Python dependencies
 # =============================================================================
 FROM python:3.12-slim AS builder
 ENV PYTHONUNBUFFERED=1 \
@@ -18,17 +29,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies first for better layer caching.
-COPY pyproject.toml README.md ./
+COPY backend/pyproject.toml backend/README.md ./
 RUN uv pip install --system --no-cache .
 
 # =============================================================================
-# Stage 2: Runtime image (slim)
+# Stage 3: Runtime image (slim)
 # =============================================================================
 FROM python:3.12-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src \
+    M25_STRATEGY_DIR=/app/strategies \
+    M25_WEB_DIST_DIR=/app/web
 WORKDIR /app
 
 # Install only runtime system dependencies.
@@ -40,9 +53,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application source and migration config.
-COPY src ./src
-COPY alembic.ini ./
+# Copy application source, migration config, strategy configs and the web build.
+COPY backend/src ./src
+COPY backend/alembic.ini ./
+COPY docs/architecture/strategies ./strategies
+COPY --from=web /web/dist ./web
 
 # Run as non-root user for security.
 RUN addgroup --system --gid 1001 momentum25 && \

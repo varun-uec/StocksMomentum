@@ -1,5 +1,3 @@
-'use client';
-
 import { useQuery } from '@tanstack/react-query';
 import { getStrategyDetail } from '@/lib/api-client';
 import { PageHeader, LoadingSpinner, ErrorMessage } from '@/components/shared/Card';

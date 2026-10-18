@@ -13,7 +13,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from momentum25 import __version__
 from momentum25.app.services.screening_job import run_screening_pipeline
@@ -34,11 +33,13 @@ from momentum25.infrastructure.redis.lock import RedisLockFactory
 from momentum25.infrastructure.scheduler.scheduler import SchedulerService
 from momentum25.interface.api.errors import register_exception_handlers
 from momentum25.interface.api.middleware import (
+    HostOriginGuardMiddleware,
     RateLimitMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
 )
 from momentum25.interface.api.routers import api_router
+from momentum25.interface.api.spa import mount_spa
 
 _logger = get_logger("startup")
 
@@ -201,17 +202,14 @@ def create_app() -> FastAPI:
         max_requests=settings.rate_limit_max_requests,
         window_seconds=settings.rate_limit_window_seconds,
     )
+    # Inside the request logger, so rejected requests are still logged.
+    app.add_middleware(HostOriginGuardMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(RequestContextMiddleware)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     register_exception_handlers(app)
     app.include_router(api_router)
+    if settings.web_dist_dir:
+        mount_spa(app, Path(settings.web_dist_dir))
     return app
 
 

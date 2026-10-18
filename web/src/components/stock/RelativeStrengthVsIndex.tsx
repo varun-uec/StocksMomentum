@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.2 — relative strength versus the benchmark index, bound to
  * `/stocks/{symbol}/live` → `relative_strength_vs_index`.

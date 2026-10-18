@@ -1,0 +1,15 @@
+# The image needs backend/, web/ and docs/architecture/strategies/ only.
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+.git
+.env
+.dashboard
+web/dist
+web/test-results
+web/playwright-report
+backend/data
+data

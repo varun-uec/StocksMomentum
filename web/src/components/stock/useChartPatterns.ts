@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Pattern detection state, extracted unchanged from `PatternCard` so the
  * detail page and the unified analysis screen run the same detection with the

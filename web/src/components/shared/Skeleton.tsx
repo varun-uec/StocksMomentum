@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Loading placeholders that match the shape of the page they stand in for.
  * A skeleton shows the structure immediately, so the reader knows what is

@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { runWalkForwardBacktest } from '@/lib/api-client';
 import { Card, MetricCard, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';

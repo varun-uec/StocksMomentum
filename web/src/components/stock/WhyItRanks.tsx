@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.7 — "why this stock ranks" / "what could invalidate it".
  *

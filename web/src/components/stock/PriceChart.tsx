@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.2 — price chart bound to `GET /securities/{symbol}/ohlcv`.
  *

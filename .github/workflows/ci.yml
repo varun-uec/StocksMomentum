@@ -12,7 +12,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.12"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
   lint-backend:
@@ -102,6 +102,8 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Unit tests
+        run: npm test
 
   build-web:
     name: Build (Web)

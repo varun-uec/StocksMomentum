@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-momentum25}
       POSTGRES_DB: ${POSTGRES_DB:-momentum25}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -30,16 +30,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # The API also serves the web app at http://localhost:${API_PORT} (ADR-013).
   api:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     env_file: .env
     environment:
       M25_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-momentum25}:${POSTGRES_PASSWORD:-momentum25}@db:5432/${POSTGRES_DB:-momentum25}
       M25_REDIS_URL: redis://redis:6379/0
+      # Paths inside the image; they override any local-run values in .env.
+      M25_STRATEGY_DIR: /app/strategies
+      M25_WEB_DIST_DIR: /app/web
+    # Loopback only. APP_BIND=0.0.0.0 opts in to LAN access: anyone on that
+    # network then has full read and write access (ADR-012). Also list the LAN
+    # host name in M25_ALLOWED_HOSTS.
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${APP_BIND:-127.0.0.1}:${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -48,23 +55,12 @@ services:
     # Runs migrations then starts the API. Override for production.
     command: ["sh", "-c", "alembic upgrade head && uvicorn momentum25.main:app --host 0.0.0.0 --port 8000"]
 
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-8000}/api/v1
-    ports:
-      - "${WEB_PORT:-3000}:3000"
-    depends_on:
-      - api
-
   # ---- Development tooling (profile: dev) ----
   adminer:
     image: adminer:4
     profiles: ["dev"]
     ports:
-      - "${ADMINER_PORT:-8080}:8080"
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
     depends_on:
       - db
 
@@ -72,7 +68,7 @@ services:
     image: redis/redisinsight:latest
     profiles: ["dev"]
     ports:
-      - "${REDISINSIGHT_PORT:-5540}:5540"
+      - "127.0.0.1:${REDISINSIGHT_PORT:-5540}:5540"
     depends_on:
       - redis
 

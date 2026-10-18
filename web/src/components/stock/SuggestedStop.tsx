@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Phase 6.8 — suggested stop-loss, bound to `/stocks/{symbol}/live` →
  * `suggested_stop.{level,method}`, and Phase 6.5 — the trailing (chandelier)

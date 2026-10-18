@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Elliott Wave analysis screen (separate research surface).
  *
@@ -11,8 +9,7 @@
  */
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { Card, Badge, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
 import { useChartShell } from '@/components/stock/useChartShell';
@@ -97,8 +94,8 @@ function RankingPanel({
 }
 
 export default function ElliottWavePage() {
-  const { symbol } = useParams<{ symbol: string }>();
-  const searchParams = useSearchParams();
+  const symbol = useParams().symbol!;
+  const [searchParams] = useSearchParams();
   const strategyQuery = searchParams.get('strategy');
   // Same chart shell as /stock/[symbol]: indicator panes, moving averages and
   // drawing tools all carry across, persisted per symbol.
@@ -166,7 +163,7 @@ export default function ElliottWavePage() {
         {count && <Badge color="indigo">{count.degree} degree</Badge>}
         <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="elliott-wave" />
         <Link
-          href={backHref}
+          to={backHref}
           className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
         >
           ← Back to research

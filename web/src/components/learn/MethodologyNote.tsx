@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router';
 import type { ReactNode } from 'react';
 
 type Kind = 'published' | 'approximation' | 'implementation';
@@ -72,7 +72,7 @@ export function ScoreSeriesDisclaimer({ className = '' }: { className?: string }
       rating, not a return. Score Stability, Score Downside Stability and Score Gain/Loss Ratio
       are shaped like Sharpe, Sortino and profit factor but carry no profit or return meaning.
       Realised performance metrics live on the{' '}
-      <Link href="/validation" className="underline hover:text-slate-700 dark:hover:text-slate-300">
+      <Link to="/validation" className="underline hover:text-slate-700 dark:hover:text-slate-300">
         Validation
       </Link>{' '}
       page and require ingested forward returns.

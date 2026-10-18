@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useMemo, useEffect } from 'react';
 import { keepPreviousData, useQueries } from '@tanstack/react-query';
 import {

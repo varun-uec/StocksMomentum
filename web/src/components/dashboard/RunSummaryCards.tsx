@@ -1,5 +1,3 @@
-'use client';
-
 import type { ScreeningRunSummary } from '@/lib/types';
 import { typography } from '@/lib/theme';
 
