@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fillMissingCharts, importLocalDrawings, legacyCharts } from './local-import';
-import { DEFAULT_CHART } from './workspace';
+import { DEFAULT_CHART, DEFAULT_WORKSPACE } from './workspace';
 
 class MemoryStorage {
   private items = new Map<string, string>();
@@ -115,7 +115,7 @@ describe('legacyCharts', () => {
 });
 
 describe('fillMissingCharts', () => {
-  const ws = { active_chart_id: null, right_panel: 'watchlist' as const, charts: { stock: { ...DEFAULT_CHART, range: '6M' as const } } };
+  const ws = { ...DEFAULT_WORKSPACE, charts: { stock: { ...DEFAULT_CHART, range: '6M' as const } } };
 
   test('adds only charts the server does not have; the server copy wins', () => {
     const next = fillMissingCharts(ws, { stock: { ...DEFAULT_CHART, range: 'MAX' }, main: { ...DEFAULT_CHART, range: 'MAX' } });

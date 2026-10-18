@@ -97,11 +97,23 @@ class ChartV1(_Strict):
     )
 
 
+class SyncV1(_Strict):
+    """What the charts of a multi-chart layout share (M13)."""
+
+    symbol: bool = False
+    interval: bool = False
+    crosshair: bool = True
+
+
 class WorkspaceV1(_Strict):
     """The owner's workspace: which chart is active and how each chart looks."""
 
     active_chart_id: Identifier | None = None
     right_panel: Literal["watchlist", "details"] | None = "watchlist"
+    layout: Literal["1x1", "2x1", "1x2", "2x2", "3x3", "4x4"] = Field(
+        default="1x1", description="Chart grid, columns x rows (M13)."
+    )
+    sync: SyncV1 = Field(default_factory=SyncV1)
     charts: dict[Identifier, ChartV1] = Field(max_length=32)
 
 

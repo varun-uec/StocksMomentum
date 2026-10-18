@@ -3,7 +3,7 @@ import { INDICATORS } from '@/lib/indicators/catalogue';
 import { PRESETS } from '@/lib/strategies';
 import { DRAWING_COLOR, DRAWING_KINDS, drawingId } from '@/components/stock/chart-drawings';
 import { newUid } from '@/lib/overlay-preferences';
-import { mergeWorkspaces, DEFAULT_CHART, type WorkspaceBody } from '@/lib/workspace';
+import { mergeWorkspaces, DEFAULT_CHART, DEFAULT_WORKSPACE, type WorkspaceBody } from '@/lib/workspace';
 
 // Copies of the server's patterns in backend/.../application/dto/user_documents.py.
 // If this test fails, a value the web app saves would be rejected with 422.
@@ -33,7 +33,7 @@ describe('every value the web app saves fits the server schema', () => {
 });
 
 describe('mergeWorkspaces', () => {
-  const ws = (charts: WorkspaceBody['charts'], active: string | null = null): WorkspaceBody => ({ active_chart_id: active, right_panel: 'watchlist', charts });
+  const ws = (charts: WorkspaceBody['charts'], active: string | null = null): WorkspaceBody => ({ ...DEFAULT_WORKSPACE, active_chart_id: active, charts });
 
   test('charts edited in different windows both survive', () => {
     const base = ws({ stock: DEFAULT_CHART });

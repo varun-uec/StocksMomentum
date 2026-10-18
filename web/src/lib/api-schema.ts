@@ -3100,6 +3100,27 @@ export interface components {
             drawings: components["schemas"]["DrawingV1"][];
         };
         /**
+         * SyncV1
+         * @description What the charts of a multi-chart layout share (M13).
+         */
+        SyncV1: {
+            /**
+             * Symbol
+             * @default false
+             */
+            symbol: boolean;
+            /**
+             * Interval
+             * @default false
+             */
+            interval: boolean;
+            /**
+             * Crosshair
+             * @default true
+             */
+            crosshair: boolean;
+        };
+        /**
          * TradeDTO
          * @description One fill in the trade log.
          */
@@ -3349,6 +3370,14 @@ export interface components {
              * @default watchlist
              */
             right_panel: ("watchlist" | "details") | null;
+            /**
+             * Layout
+             * @description Chart grid, columns x rows (M13).
+             * @default 1x1
+             * @enum {string}
+             */
+            layout: "1x1" | "2x1" | "1x2" | "2x2" | "3x3" | "4x4";
+            sync?: components["schemas"]["SyncV1"];
             /** Charts */
             charts: {
                 [key: string]: components["schemas"]["ChartV1"];

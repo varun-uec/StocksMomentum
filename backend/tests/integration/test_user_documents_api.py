@@ -273,3 +273,22 @@ async def test_a_chart_keeps_its_compare_symbols_within_bounds(client: httpx.Asy
             headers={"If-Match": '"2"'},
         )
         assert res.status_code == 422
+
+
+async def test_the_layout_and_its_sync_flags_default_and_validate(
+    client: httpx.AsyncClient,
+) -> None:
+    created = await client.put(WORKSPACE, json={"charts": {}}, headers={"If-None-Match": "*"})
+    body = created.json()["body"]
+    assert (body["layout"], body["sync"]) == (
+        "1x1",
+        {"symbol": False, "interval": False, "crosshair": True},
+    )
+    grid = {"charts": {}, "layout": "4x4", "sync": {"symbol": True}}
+    saved = await client.put(WORKSPACE, json=grid, headers={"If-Match": '"1"'})
+    assert saved.json()["body"]["sync"] == {"symbol": True, "interval": False, "crosshair": True}
+    for bad in ({"layout": "5x5"}, {"sync": {"drawings": True}}):
+        res = await client.put(
+            WORKSPACE, json={"charts": {}, **bad}, headers={"If-Match": '"2"'}
+        )
+        assert res.status_code == 422

@@ -43,13 +43,14 @@ export function withinPriceSpan<T extends { date: string }>(indicatorBars: T[], 
 
 /**
  * `chartId` names this screen's chart slot in the saved workspace (ADR-013 §5).
- * `intervals` offers the daily / weekly / monthly switch. Screens that mark daily signals on the
+ * `intervals` offers the daily / weekly / monthly switch; `interval` overrides
+ * the saved one (a layout that syncs intervals). Screens that mark daily signals on the
  * chart leave it off, so they always show daily bars.
  */
-export function useChartShell(symbol: string, strategyName: string, chartId: string, { intervals = false } = {}) {
+export function useChartShell(symbol: string, strategyName: string, chartId: string, { intervals = false, interval: intervalOverride }: { intervals?: boolean; interval?: ChartInterval } = {}) {
   const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
   const { preferences, ready, update } = useChartPreferences(symbol, chartId);
-  const interval: ChartInterval = intervals ? preferences.interval : '1D';
+  const interval: ChartInterval = intervals ? (intervalOverride ?? preferences.interval) : '1D';
 
   // Apply the persisted timeframe once prefs are loaded; callers render the
   // chart only after `ready`, so it mounts with final values.

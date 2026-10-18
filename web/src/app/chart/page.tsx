@@ -4,38 +4,41 @@
  * Chart first: the chart takes the free height. Everything the owner sets here
  * (range, moving averages, panes, drawings) is saved on the server as they
  * work, and comes back on reload or in another browser (ADR-013 §5).
+ *
+ * M13 adds layouts of up to 4 × 4 charts. The route's symbol is the active
+ * chart's. Grid cells are compact charts; a click makes one active, and the
+ * header, the dialogs and the keys act on it.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { DEFAULT_STRATEGY, useStrategy } from '@/app/strategy-context';
+import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
-import { useChartShell } from '@/components/stock/useChartShell';
-import {
-  MAX_PANES,
-  needsBenchmark,
-  useBenchmarkCloses,
-  useCatalogueIndicators,
-} from '@/components/stock/useCatalogueIndicators';
+import { MAX_PANES } from '@/components/stock/useCatalogueIndicators';
 import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
 import { SaveState } from '@/components/workspace/SaveState';
 import { ShortcutsDialog } from '@/components/workspace/ShortcutsDialog';
 import { SidePanel, useWatchlistDetail, useWatchlistToggle } from '@/components/workspace/SidePanel';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
-import { MAX_COMPARE, useCompare } from '@/components/workspace/useCompare';
+import { MAX_COMPARE, type CompareLine } from '@/components/workspace/useCompare';
+import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
-import { toBars } from '@/lib/indicators/overlays';
-import { useOverlayPreferences } from '@/lib/overlay-preferences';
+import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
 import { focusRing } from '@/lib/theme';
-import { useRightPanel, useSymbolDrawings, useWorkspaceChart } from '@/lib/workspace';
+import type { ChartInterval } from '@/lib/types';
+import { LAYOUTS, useLayout, useRightPanel, useSymbolDrawings, useWorkspaceChart, type Layout } from '@/lib/workspace';
 
-const CHART_ID = 'main';
-const NO_SYMBOLS: string[] = [];
 /** Shown on a fresh install, before the owner has opened any symbol. */
 const FIRST_SYMBOL = 'RELIANCE';
 /** Header, toolbar and footer around the chart, in px. */
 const CHROME_HEIGHT = 300;
+/** A grid cell's own header and range row, in px. */
+const CELL_CHROME = 56;
+const GRID_GAP = 8;
+/** The single chart's toolbar rows and footnote, which a grid does not have, in px. */
+const GRID_EXTRA = 90;
 
 function useChartHeight(): number {
   const measure = () => Math.max(320, window.innerHeight - CHROME_HEIGHT);
@@ -66,39 +69,116 @@ function opensSearch(e: KeyboardEvent): { initial: string } | null {
 
 export default function ChartPage() {
   const { symbol: routeSymbol } = useParams();
-  const workspace = useWorkspaceChart(CHART_ID);
+  const grid = useLayout();
+  const active = useWorkspaceChart(grid.active);
 
   if (!routeSymbol) {
-    if (!workspace.ready) return <LoadingSpinner />;
-    return <Navigate replace to={`/chart/${workspace.chart.symbol ?? FIRST_SYMBOL}`} />;
+    if (!grid.ready) return <LoadingSpinner />;
+    return <Navigate replace to={`/chart/${active.chart.symbol ?? FIRST_SYMBOL}`} />;
   }
   return <ChartWorkspace symbol={routeSymbol.toUpperCase()} />;
+}
+
+const btn = `px-2 py-0.5 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 disabled:opacity-40 ${focusRing}`;
+
+function CompareChips({ symbol, compare, onRemove }: { symbol: string; compare: CompareLine[]; onRemove: (symbol: string) => void }) {
+  return compare.map((c) => (
+    <span key={c.symbol} className="inline-flex items-center gap-1 text-xs tabular-nums" style={{ color: c.color }}>
+      <span title={c.from ? `Rebased to ${symbol} on ${c.from}` : 'No shared bars in this range'}>
+        {c.symbol}
+        {c.change !== null && ` ${c.change >= 0 ? '+' : ''}${c.change.toFixed(2)}%`}
+      </span>
+      <button
+        type="button"
+        aria-label={`Stop comparing ${c.symbol}`}
+        onClick={() => onRemove(c.symbol)}
+        className={`text-slate-400 hover:text-rose-600 ${focusRing}`}
+      >
+        ×
+      </button>
+    </span>
+  ));
+}
+
+type Slot = ReturnType<typeof useChartSlot>;
+
+/** One grid cell: its symbol, compare chips and a compact chart. */
+function CellFrame({
+  chartId,
+  symbol,
+  slot,
+  active,
+  height,
+  crosshair,
+  onActivate,
+  onSearch,
+}: {
+  chartId: string;
+  symbol: string;
+  slot: Slot;
+  active: boolean;
+  height: number;
+  crosshair?: CrosshairSync;
+  onActivate: () => void;
+  onSearch: () => void;
+}) {
+  return (
+    <section
+      aria-label={`Chart ${chartId}: ${symbol}`}
+      aria-current={active ? 'true' : undefined}
+      onPointerDownCapture={onActivate}
+      onFocusCapture={onActivate}
+      className={`min-w-0 rounded-lg border p-1.5 ${
+        active ? 'border-indigo-500 ring-1 ring-indigo-500/40' : 'border-slate-200 dark:border-slate-800'
+      }`}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2 text-xs mb-0.5">
+        <button type="button" onClick={onSearch} className={`font-semibold ${focusRing}`} title="Change this chart's symbol">
+          {symbol}
+        </button>
+        <CompareChips
+          symbol={symbol}
+          compare={slot.compare}
+          onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))}
+        />
+      </div>
+      {slot.shell.ready ? (
+        <PriceChart {...slot.chartProps} height={height} compact crosshairSync={crosshair} />
+      ) : (
+        <div style={{ height }} />
+      )}
+    </section>
+  );
+}
+
+/** A grid cell other than the active one: it loads its own chart. */
+function GridCell(
+  props: Omit<Parameters<typeof CellFrame>[0], 'slot'> & {
+    strategyName: string;
+    syncedInterval?: { interval: ChartInterval; onChange: (next: ChartInterval) => void };
+  },
+) {
+  const slot = useChartSlot(props.chartId, props.symbol, props.strategyName, props.syncedInterval);
+  return <CellFrame {...props} slot={slot} />;
 }
 
 function ChartWorkspace({ symbol }: { symbol: string }) {
   const navigate = useNavigate();
   const height = useChartHeight();
-  const shell = useChartShell(symbol, DEFAULT_STRATEGY, CHART_ID, { intervals: true });
-  const workspace = useWorkspaceChart(CHART_ID);
+  const { strategyName } = useStrategy();
+  const grid = useLayout();
+  const activeId = grid.active;
+  const multi = grid.slots.length > 1;
+  const slot = useChartSlot(activeId, symbol, strategyName);
+  const { shell, chart: workspace, overlays, updateOverlays, catalogue, compare, compareSymbols, setCompare } = slot;
   const drawings = useSymbolDrawings(symbol);
+  const crosshair = useMemo(createCrosshairSync, []);
   const [search, setSearch] = useState<{ open: boolean; initial: string; compare?: boolean }>({
     open: false,
     initial: '',
   });
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
-  const { strategyName } = useStrategy();
-  const { overlays, update: updateOverlays } = useOverlayPreferences(CHART_ID);
-  const bars = useMemo(() => toBars(shell.bars), [shell.bars]);
-  const benchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
-  const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark);
-  const compareSymbols = workspace.chart.compare ?? NO_SYMBOLS;
-  const compare = useCompare(compareSymbols, bars, shell.timeframe, shell.chartProps.interval);
-  const overlayLines = useMemo(
-    () => [...catalogue.lines, ...compare.flatMap((c) => (c.line ? [c.line] : []))],
-    [catalogue.lines, compare],
-  );
-  const setCompare = (next: string[]) => workspace.update({ compare: next });
   const { panel, setPanel } = useRightPanel();
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
@@ -107,10 +187,32 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const keyState = useRef({ symbol, listed, ready: !!watchlist.data, toggle: toggleWatchlist.mutate });
   keyState.current = { symbol, listed, ready: !!watchlist.data, toggle: toggleWatchlist.mutate };
 
-  // Remember the open symbol, so `/chart` and the next visit reopen it.
+  // Remember a symbol the route opens on the active chart, so `/chart` and the
+  // next visit reopen it. Only a route change writes: activating a cell changes
+  // the active chart first (see `activate`), and must not copy the old symbol in.
+  const routed = useRef<string | null>(null);
   useEffect(() => {
-    if (workspace.ready && workspace.chart.symbol !== symbol) workspace.update({ symbol });
+    if (!workspace.ready || routed.current === symbol) return;
+    routed.current = symbol;
+    if (workspace.chart.symbol !== symbol) workspace.update({ symbol });
   }, [workspace.ready, workspace.chart.symbol, symbol]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** A cell's symbol: the route's when it is active or symbols are synced, else its own. */
+  const symbolOf = (chartId: string) =>
+    chartId === activeId || grid.sync.symbol ? symbol : (grid.charts[chartId]?.symbol ?? symbol);
+  const activate = (chartId: string) => {
+    if (chartId === activeId) return;
+    const next = symbolOf(chartId);
+    flushSync(() => grid.setActive(chartId));
+    if (next !== symbol) navigate(`/chart/${encodeURIComponent(next)}`);
+  };
+  const syncedInterval = grid.sync.interval
+    ? { interval: shell.chartProps.interval, onChange: (next: ChartInterval) => workspace.update({ interval: next }) }
+    : undefined;
+  const cellHeight = Math.max(
+    90,
+    Math.floor((height + GRID_EXTRA - (grid.layout.rows - 1) * GRID_GAP) / grid.layout.rows) - CELL_CHROME,
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -165,39 +267,49 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
             {change.toFixed(2)}%
           </span>
         )}
-        {compare.map((c) => (
-          <span key={c.symbol} className="inline-flex items-center gap-1 text-xs tabular-nums" style={{ color: c.color }}>
-            <span title={c.from ? `Rebased to ${symbol} on ${c.from}` : 'No shared bars in this range'}>
-              {c.symbol}
-              {c.change !== null && ` ${c.change >= 0 ? '+' : ''}${c.change.toFixed(2)}%`}
-            </span>
-            <button
-              type="button"
-              aria-label={`Stop comparing ${c.symbol}`}
-              onClick={() => setCompare(compareSymbols.filter((s) => s !== c.symbol))}
-              className={`text-slate-400 hover:text-rose-600 ${focusRing}`}
-            >
-              ×
-            </button>
-          </span>
-        ))}
+        {!multi && (
+          <CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} />
+        )}
         <span className="flex-1" />
+        <select
+          aria-label="Layout"
+          value={grid.layout.id}
+          onChange={(e) => grid.setLayout(e.target.value as Layout)}
+          className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 text-xs ${focusRing}`}
+        >
+          {LAYOUTS.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        {multi && (
+          <span role="group" aria-label="Sync" className="inline-flex items-center gap-2 text-xs text-slate-500">
+            Sync
+            {(['symbol', 'interval', 'crosshair'] as const).map((key) => (
+              <label key={key} className="inline-flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={grid.sync[key]}
+                  onChange={(e) => grid.setSync({ [key]: e.target.checked })}
+                  className="w-3 h-3 accent-indigo-500"
+                />
+                {key[0].toUpperCase() + key.slice(1)}
+              </label>
+            ))}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setSearch({ open: true, initial: '', compare: true })}
           disabled={compareSymbols.length >= MAX_COMPARE}
           title={`Compare with another symbol (up to ${MAX_COMPARE})`}
-          className={`px-2 py-0.5 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 disabled:opacity-40 ${focusRing}`}
+          className={btn}
         >
           Compare
         </button>
         <SaveState documents={[workspace, drawings]} />
-        <button
-          type="button"
-          onClick={() => setIndicatorsOpen(true)}
-          title="Indicators (Alt+I)"
-          className={`px-2 py-0.5 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 ${focusRing}`}
-        >
+        <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={btn}>
           Indicators{overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}
         </button>
         <button
@@ -223,16 +335,35 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
 
       <div className="flex gap-3">
         <div className="flex-1 min-w-0">
-          {shell.ready ? (
-            <PriceChart
-              {...shell.chartProps}
-              {...catalogue.paneProps}
-              overlayLines={overlayLines}
-              onOpenIndicators={() => setIndicatorsOpen(true)}
-              height={height}
-              toolRail
-            />
-          ) : <LoadingSpinner />}
+          {!multi ? (
+            shell.ready ? (
+              <PriceChart {...slot.chartProps} onOpenIndicators={() => setIndicatorsOpen(true)} height={height} toolRail />
+            ) : (
+              <LoadingSpinner />
+            )
+          ) : (
+            <div
+              className="grid"
+              style={{ gap: GRID_GAP, gridTemplateColumns: `repeat(${grid.layout.cols}, minmax(0, 1fr))` }}
+            >
+              {grid.slots.map((chartId) => {
+                const cell = {
+                  chartId,
+                  symbol: symbolOf(chartId),
+                  active: chartId === activeId,
+                  height: cellHeight,
+                  crosshair: grid.sync.crosshair ? crosshair : undefined,
+                  onActivate: () => activate(chartId),
+                  onSearch: () => setSearch({ open: true, initial: '' }),
+                };
+                return chartId === activeId ? (
+                  <CellFrame key={chartId} {...cell} slot={slot} />
+                ) : (
+                  <GridCell key={chartId} {...cell} strategyName={strategyName} syncedInterval={syncedInterval} />
+                );
+              })}
+            </div>
+          )}
         </div>
         {panel && (
           <div className="hidden lg:block w-72 shrink-0">

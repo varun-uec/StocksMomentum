@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { focusRing } from '@/lib/theme';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 
@@ -29,7 +29,9 @@ export function SymbolSearchDialog({
 
   useEffect(() => setActive(0), [results]);
 
-  useEffect(() => {
+  // A layout effect: the opening text must be in the box before the next key
+  // arrives, or a fast typist's second letter replaces the first.
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (open && !dialog.open) {

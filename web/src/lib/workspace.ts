@@ -34,7 +34,13 @@ export const DEFAULT_CHART: ChartSettings = {
 };
 
 /** A workspace before the owner changes anything. */
-export const DEFAULT_WORKSPACE: WorkspaceBody = { active_chart_id: null, right_panel: 'watchlist', charts: {} };
+export const DEFAULT_WORKSPACE: WorkspaceBody = {
+  active_chart_id: null,
+  right_panel: 'watchlist',
+  layout: '1x1',
+  sync: { symbol: false, interval: false, crosshair: true },
+  charts: {},
+};
 
 function withoutCharts(ws: WorkspaceBody): Record<string, unknown> {
   return Object.fromEntries(Object.entries(ws).filter(([key]) => key !== 'charts'));
@@ -149,5 +155,45 @@ export function useRightPanel(): { panel: RightPanel; ready: boolean; setPanel: 
     panel: doc.body.right_panel,
     ready: doc.status !== 'loading',
     setPanel: (panel) => doc.update((ws) => (ws.right_panel === panel ? ws : { ...ws, right_panel: panel })),
+  };
+}
+
+export type Layout = WorkspaceBody['layout'];
+export type LayoutSync = NonNullable<WorkspaceBody['sync']>;
+
+/** The chart grids, columns × rows (M13). */
+export const LAYOUTS: { id: Layout; label: string; cols: number; rows: number }[] = [
+  { id: '1x1', label: 'One chart', cols: 1, rows: 1 },
+  { id: '2x1', label: 'Two, side by side', cols: 2, rows: 1 },
+  { id: '1x2', label: 'Two, stacked', cols: 1, rows: 2 },
+  { id: '2x2', label: 'Four (2 × 2)', cols: 2, rows: 2 },
+  { id: '3x3', label: 'Nine (3 × 3)', cols: 3, rows: 3 },
+  { id: '4x4', label: 'Sixteen (4 × 4)', cols: 4, rows: 4 },
+];
+
+/** The stable chart id of grid slot `index`: the first slot is the single chart's own. */
+export const slotChartId = (index: number): string => (index === 0 ? 'main' : `c${index + 1}`);
+
+/**
+ * The workspace's chart grid: its slots, which one is active, and what the
+ * charts share. Any chart update marks its chart active, including the
+ * research screens' charts, so an active id outside the grid means `main`.
+ */
+export function useLayout() {
+  const doc = useServerDocument(workspaceSpec);
+  const layout = LAYOUTS.find((l) => l.id === doc.body.layout) ?? LAYOUTS[0];
+  const slots = Array.from({ length: layout.cols * layout.rows }, (_, i) => slotChartId(i));
+  const activeId = doc.body.active_chart_id;
+  return {
+    layout,
+    slots,
+    active: activeId && slots.includes(activeId) ? activeId : 'main',
+    sync: doc.body.sync ?? DEFAULT_WORKSPACE.sync!,
+    charts: doc.body.charts,
+    ready: doc.status !== 'loading',
+    setLayout: (id: Layout) => doc.update((ws) => (ws.layout === id ? ws : { ...ws, layout: id })),
+    setSync: (patch: Partial<LayoutSync>) =>
+      doc.update((ws) => ({ ...ws, sync: { ...(ws.sync ?? DEFAULT_WORKSPACE.sync!), ...patch } })),
+    setActive: (id: string) => doc.update((ws) => (ws.active_chart_id === id ? ws : { ...ws, active_chart_id: id })),
   };
 }

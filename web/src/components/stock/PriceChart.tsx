@@ -44,6 +44,7 @@ import {
 import type { ChartInterval, OHLCVBarDTO } from '@/lib/types';
 import { CHART_TYPES, heikinAshi, type ChartType, type PriceScale } from '@/components/stock/chart-types';
 import { ChartMenu, DrawingMenu } from '@/components/stock/DrawingMenu';
+import { barAtOrAfter, type CrosshairSync } from '@/lib/crosshair-sync';
 import { focusRing } from '@/lib/theme';
 import {
   DRAWING_COLOR,
@@ -387,6 +388,8 @@ export function PriceChart({
   scale: scaleProp,
   onScaleChange,
   onOpenIndicators,
+  compact = false,
+  crosshairSync,
   isLoading = false,
   height = 380,
   footnote,
@@ -423,6 +426,10 @@ export function PriceChart({
   onScaleChange?: (scale: PriceScale) => void;
   /** Adds "Indicators…" to the chart's context menu. */
   onOpenIndicators?: () => void;
+  /** A grid cell (M13): only the range and interval controls; no legend or footnote. */
+  compact?: boolean;
+  /** Shares the crosshair date with the other charts of a layout. */
+  crosshairSync?: CrosshairSync;
   isLoading?: boolean;
   /** Chart height in px; the Elliott Wave screen renders a much taller chart. */
   height?: number;
@@ -516,8 +523,10 @@ export function PriceChart({
   const onDrawingsChangeRef = useRef(onDrawingsChange);
   const drawingsRef = useRef(drawings);
   const barDatesRef = useRef<string[]>([]);
+  const crosshairSyncRef = useRef(crosshairSync);
   useEffect(() => {
     drawingsEnabledRef.current = drawingsEnabled;
+    crosshairSyncRef.current = crosshairSync;
     drawingToolRef.current = drawingTool;
     draftPointsRef.current = draftPoints;
     onDrawingsChangeRef.current = onDrawingsChange;
@@ -739,6 +748,7 @@ export function PriceChart({
     if (!chart) return;
 
     const onCrosshairMove = (param: MouseEventParams<Time>) => {
+      crosshairSyncRef.current?.publish(chart, param.time ? fromTime(param.time as UTCTimestamp) : null);
       const tool = drawingToolRef.current;
       const draft = draftPointsRef.current;
       if (drawingsEnabledRef.current && tool && param.point) {
@@ -784,6 +794,19 @@ export function PriceChart({
     // Mounted once; everything stateful is read through the mirroring refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Follow the crosshair of the other charts in the layout.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!crosshairSync || !chart) return;
+    return crosshairSync.subscribe(chart, (date) => {
+      const at = date ? barAtOrAfter(barDatesRef.current, date) : undefined;
+      const bar = at ? readoutMapsRef.current.barByDate.get(at) : undefined;
+      const series = priceSeriesRef.current;
+      if (at && bar && series) chart.setCrosshairPosition(bar.close, toTime(at), series);
+      else chart.clearCrosshairPosition();
+    });
+  }, [crosshairSync]);
 
   // Push the latest drawing/draft state into the pane primitive.
   const drawingsLayerRef = useRef<ReturnType<typeof attachDrawingsLayer> | null>(null);
@@ -1311,18 +1334,33 @@ export function PriceChart({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
-          {TIMEFRAMES.map((tf) => (
-            <ToggleButton
-              key={tf.id}
-              active={timeframe === tf.id}
-              onClick={() => onTimeframeChange(tf.id)}
-            >
-              {tf.label}
-            </ToggleButton>
-          ))}
-        </div>
+      <div className={`flex flex-wrap items-center ${compact ? 'gap-1 mb-1' : 'gap-3 mb-3'}`}>
+        {compact ? (
+          <select
+            aria-label="Range"
+            value={timeframe}
+            onChange={(e) => onTimeframeChange(e.target.value as TimeframeId)}
+            className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1 py-0.5 text-xs ${focusRing}`}
+          >
+            {TIMEFRAMES.map((tf) => (
+              <option key={tf.id} value={tf.id}>
+                {tf.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
+            {TIMEFRAMES.map((tf) => (
+              <ToggleButton
+                key={tf.id}
+                active={timeframe === tf.id}
+                onClick={() => onTimeframeChange(tf.id)}
+              >
+                {tf.label}
+              </ToggleButton>
+            ))}
+          </div>
+        )}
         {onIntervalChange && (
           <div role="group" aria-label="Interval" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
             {INTERVALS.map((iv) => (
@@ -1332,6 +1370,8 @@ export function PriceChart({
             ))}
           </div>
         )}
+        {!compact && (
+          <>
         <select
           aria-label="Chart type"
           value={chartType}
@@ -1417,10 +1457,12 @@ export function PriceChart({
             )}
           </>
         )}
+          </>
+        )}
       </div>
       {/* Legend: what is currently drawn, with each line's latest value, so
           the colours on the chart need no decoding. */}
-      {activeMas.length > 0 && (
+      {!compact && activeMas.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 mb-2">
           {activeMas.map((period) => {
             const series = maSeriesData.get(period);
@@ -1493,15 +1535,18 @@ export function PriceChart({
           className={`w-full ${drawingsEnabled ? `rounded-sm ${focusRing}` : ''}`}
         />
         {readout && (
-          <div className="pointer-events-none absolute top-2 right-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">
-            <div className="font-medium text-slate-700 dark:text-slate-300">{readout.date}</div>
-            {readout.bar && (
+          <div className={`pointer-events-none absolute top-2 ${compact ? 'left-2' : 'right-2'} rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm`}>
+            <div className="font-medium text-slate-700 dark:text-slate-300">
+              {readout.date}
+              {compact && readout.bar && <span className="font-normal tabular-nums"> · C {readout.bar.close.toFixed(2)}</span>}
+            </div>
+            {!compact && readout.bar && (
               <div className="text-slate-500 dark:text-slate-400 tabular-nums">
                 O {readout.bar.open.toFixed(2)} · H {readout.bar.high.toFixed(2)} · L{' '}
                 {readout.bar.low.toFixed(2)} · C {readout.bar.close.toFixed(2)}
               </div>
             )}
-            {readout.panes.map((p) => (
+            {!compact && readout.panes.map((p) => (
               <div key={p.id} className="tabular-nums" style={{ color: p.color }}>
                 {p.label}: {p.value}
               </div>
@@ -1510,14 +1555,16 @@ export function PriceChart({
         )}
       </div>
       </div>
+      {!compact && (
       <p className="text-xs text-slate-500 mt-2">
         {isLoading
           ? 'Loading price series…'
           : (footnote ??
             `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the closes shown.${
-              bars.at(-1)?.partial ? ' The last week is not complete.' : ''
+              bars.at(-1)?.partial ? ` The last ${interval === '1M' ? 'month' : 'week'} is not complete.` : ''
             }${dataVersion ? ` Data version ${dataVersion}.` : ''}`)}
       </p>
+      )}
     </div>
   );
 }

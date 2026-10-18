@@ -87,6 +87,11 @@ test('Find: typing on the chart opens search and Enter opens the symbol', async 
   await expect(box).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(box).toBeHidden();
+
+  // A second search, typed at full speed: the opening letter stays and the last search's text is gone.
+  await page.getByTestId('price-chart').focus();
+  await page.keyboard.type('INFY', { delay: 0 });
+  await expect(box).toHaveValue('INFY');
 });
 
 test('Analyse → Draw → Restore: state survives a reload and a second browser', async ({ page, browser, request }) => {
