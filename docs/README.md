@@ -1,0 +1,46 @@
+# Momentum25 documentation
+
+All project documentation lives in this folder. Start with `current/`.
+
+## Read first
+
+| Page | Answers |
+|---|---|
+| [current/architecture.md](current/architecture.md) | What runs, how the layers fit, where the code differs from the approved ADD |
+| [current/design.md](current/design.md) | How the screener and the backtest decide: pipeline, rules, gates, scores, determinism |
+| [current/capabilities.md](current/capabilities.md) | What the product does: every API endpoint, web page and CLI command |
+| [current/state.md](current/state.md) | Where things stand: checks, delivery record, research verdicts, open defects, data gaps |
+
+`current/` was verified against the code on 2026-10-18. When the code changes, update it in the same commit.
+
+## Folders
+
+| Folder | Role | Changes how |
+|---|---|---|
+| [architecture/](architecture/) | Approved blueprint: [ADD](architecture/ADD.md), [Implementation Spec](architecture/IMPLEMENTATION_SPEC.md), [ADRs](architecture/adr/), [strategy configs](architecture/strategies/) | Only by approved amendment or new ADR. The API reads `strategies/` at startup — do not move it. |
+| [current/](current/) | As-built view | Kept in step with the code |
+| [operations/](operations/) | Runbooks: deployment, backup, production readiness | When operations change |
+| [research/](research/) | Research reports and the frozen dataset spec, dated | Append only. New report per study. |
+| [history/](history/) | Point-in-time audits, plans and the backtest Builder/Reviewer loop | Never edited. Evidence only. |
+| [ENGINEERING_GUIDELINES.md](ENGINEERING_GUIDELINES.md) | Engineering, quantitative and product principles | Rarely |
+
+Outside this folder: [README.md](../README.md) (run the app), [CLAUDE.md](../Claude.md) (engineering rules for agents), [backend/README.md](../backend/README.md) (backend dev loop), `.claude/agents/` (agent definitions).
+
+## Precedence
+
+When documents conflict, CLAUDE.md sets the order: ADD → ADRs → Implementation Spec → CLAUDE.md → task → code. `current/` describes the code; it does not override the ADD. Its [drift table](current/architecture.md#drift-from-the-add) lists where the two disagree.
+
+## History index
+
+| Record | What it is |
+|---|---|
+| [history/audits/2026-08-09-functional-audit.md](history/audits/2026-08-09-functional-audit.md) | Full app audit against real data, diagnosis only |
+| [history/audits/2026-08-11-ui-ux-audit.md](history/audits/2026-08-11-ui-ux-audit.md) | UI/UX audit, fixes applied |
+| [history/audits/2026-08-15-functional-audit.md](history/audits/2026-08-15-functional-audit.md) | Comprehensive functional audit, F1–F20 |
+| [history/audits/2026-08-15-ui-ux-audit.md](history/audits/2026-08-15-ui-ux-audit.md) | UI/UX recommendations against an Investing.com benchmark, not applied |
+| [history/plans/2026-08-10-unified-analysis-screen-plan.md](history/plans/2026-08-10-unified-analysis-screen-plan.md) | Plan and user decisions for the analysis screen (shipped) |
+| [history/plans/2026-08-10-signal-engine-proposal.md](history/plans/2026-08-10-signal-engine-proposal.md) | Open proposal: signals as a scoring engine |
+| [history/backtest-loop/](history/backtest-loop/) | Backtest brief (ground truth for `domain/backtest/`), addenda, loop protocol, round-by-round findings |
+| [history/autonomous-audit/](history/autonomous-audit/) | 2026-08-18 six-batch audit: findings, fixes, verification, final report |
+
+Removed on 2026-10-18 as superseded (recoverable from git at `f492f81`): `capabilities-summary.md`, `Momentum25_Autonomous_Review_Build_Loop_Prompt.md`, `docs/momentum25-backlog.md`, `docs/2026-08-09-functional-audit-plan.md`, `docs/2026-08-10-ui-ux-audit-plan.md`, `autonomous-audit/AUDIT_PLAN.md`, `autonomous-audit/CAPABILITY_REGISTRY.md`. Their live content is in `current/`.

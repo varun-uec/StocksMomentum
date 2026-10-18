@@ -4,7 +4,7 @@ These are the seam between the frozen backtest math (``domain/backtest/``) and
 real, point-in-time historical data.
 
 Each port carries an explicit ``as_of`` decision date. The contract every
-implementation must honour is the single rule of ``handoff/brief.md`` §9: no
+implementation must honour is the single rule of ``docs/history/backtest-loop/brief.md`` §9: no
 information dated on or after the decision date may influence that rebalance.
 The runner does not trust a provider to obey this — it re-checks the date on
 every price it receives (see ``application/use_cases/walk_forward.py``).

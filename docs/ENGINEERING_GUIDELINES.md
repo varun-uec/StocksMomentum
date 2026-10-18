@@ -36,15 +36,7 @@ Optimize for lifetime maintainability rather than implementation speed.
 
 # Authority
 
-Project decisions must follow this order:
-
-1. Architecture Design Document
-2. ADRs
-3. Implementation Specification
-4. CLAUDE.md
-5. Engineering Guidelines
-6. Current Milestone
-7. Existing Code
+[CLAUDE.md](../Claude.md) sets the precedence order: ADD, ADRs, Implementation Specification, CLAUDE.md, current task, existing code. These guidelines add to CLAUDE.md. They never override it.
 
 ---
 

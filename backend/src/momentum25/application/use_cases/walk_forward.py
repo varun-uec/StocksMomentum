@@ -3,7 +3,7 @@
 Wires the frozen ``domain/backtest/`` math to real, point-in-time historical
 data.
 
-This is the seam Loop 2 exists to build (see ``handoff/brief-addendum-loop2.md``
+This is the seam Loop 2 exists to build (see ``docs/history/backtest-loop/brief-addendum-loop2.md``
 §2). It is the first place "as of date X" becomes an *enforced* constraint
 rather than a documented intention: the runner re-checks the session date on
 every price it receives and refuses any dated on or after the decision date

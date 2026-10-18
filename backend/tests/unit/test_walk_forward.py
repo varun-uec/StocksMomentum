@@ -1,5 +1,5 @@
 """Walk-forward runner tests — make reviewer checklist items 7, 8, 10, 13, 14
-runnable (see handoff/brief-addendum-loop2.md §4).
+runnable (see docs/history/backtest-loop/brief-addendum-loop2.md §4).
 
 Every provider here is a deterministic in-memory fake. No network, no DB, no
 clock. The point is to exercise the *seam* — as-of enforcement, fill timing,

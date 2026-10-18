@@ -1,9 +1,8 @@
 # Momentum25 India — Backend
 
-Python 3.12 / FastAPI backend implementing the Clean/Hexagonal architecture described in
-[`docs/architecture`](../docs/architecture). This phase delivers the **foundation**: complete
-module hierarchy, stable interfaces, persistence, Redis infrastructure, and API contracts.
-Business logic (indicators, rules, scoring) is intentionally deferred — see module docstrings.
+Python 3.12 / FastAPI backend. Hexagonal architecture: see
+[`docs/current/architecture.md`](../docs/current/architecture.md) for the as-built view and
+[`docs/architecture/`](../docs/architecture) for the approved blueprint.
 
 ## Layout
 ```
@@ -12,6 +11,7 @@ src/momentum25/
   application/    use cases + DTOs (orchestration)
   infrastructure/ adapters — persistence, redis, providers, scheduler, config, logging
   interface/      adapters — FastAPI app, routers, CLI
+  app/services/   daily screening job, bulk market sync
   main.py         ASGI app factory
 ```
 The dependency rule is enforced by import-linter (`uv run lint-imports`).

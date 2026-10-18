@@ -1,0 +1,85 @@
+# Capabilities
+
+Verified against the routers, pages and use cases at commit `f492f81` on 2026-10-18. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
+
+## Summary
+
+| # | Capability | Status | Web page |
+|---|---|---|---|
+| 1 | Daily momentum screening and Top-25 ranking | Shipped | `/` |
+| 2 | Per-stock score explanation and history | Shipped | `/stock/[symbol]` |
+| 3 | Single-stock live analysis (any symbol, not only ranked ones) | Shipped | `/stock/[symbol]`, `/stock/[symbol]/analysis` |
+| 4 | Charting and indicators (price panes, overlays, oscillators) | Shipped | `/stock/[symbol]/analysis` |
+| 5 | Chart-pattern recognition | Shipped, research surface | `/stock/[symbol]/analysis` |
+| 6 | Elliott Wave analysis | Shipped, research surface | `/stock/[symbol]/elliott-wave` |
+| 7 | Suggested stop-loss (risk only) | Shipped | stock pages, dashboard |
+| 8 | Watchlist | Shipped | `/watchlist` |
+| 9 | Market context (breadth, index) | Shipped; sector panel empty (no sector data) | `/market` |
+| 10 | Strategies: list, inspect, compare | Shipped | `/strategies` |
+| 11 | Validation: scorecard, alpha, rule and engine IC | Shipped | `/validation` |
+| 12 | Research: historical screening, run comparison, contribution, experiments, determinism check | Shipped | `/analytics`, `/historical`, `/experiment` |
+| 13 | Walk-forward backtest (3/6/12M, monthly) | Shipped with labelled approximations | `/backtest` |
+| 14 | Market-data refresh (NSE/BSE latest session) | Shipped | `/data` |
+| 15 | Health, data freshness, Prometheus metrics | Shipped | — |
+| 16 | Learn hub (methodology, scoring, rules, FAQ) | Shipped | `/learn/*` |
+| — | Fundamentals screening | Not built. Port and disabled engine only. | — |
+| — | Authentication, multi-tenancy | Not built (ADR-010). | — |
+| — | Intraday data, alerts, broker trading | Not built. | — |
+
+## API
+
+| Area | Method and path | Notes |
+|---|---|---|
+| Health | `GET /health`, `/health/live`, `/health/ready`, `/health/startup`, `/health/data-freshness` | Freshness reports sessions missed since the latest bar. |
+| Metrics | `GET /metrics` | Prometheus format. |
+| Runs | `GET /runs`, `GET /runs/latest`, `GET /runs/{run_id}` | |
+| | `POST /runs/execute` | Runs the full pipeline. Background by default; poll `GET /runs/{id}`. |
+| | `POST /runs` | Creates a `PENDING` row only. Nothing executes it. |
+| Rankings | `GET /rankings/runs/{run_id}`, `GET /rankings/runs/{run_id}/stocks/{security_id}/explanation` | |
+| Stocks | `GET /stocks/{symbol}`, `/history`, `/live`, `/indicators/series`, `/elliott-wave`; `POST /stocks/{symbol}/chart-patterns` | `/live` evaluates any symbol on demand. |
+| Securities | `GET /securities` (search), `GET /securities/{symbol}/ohlcv` | |
+| Market | `GET /market/context`, `GET /indices/{index_code}/closes` | |
+| Market data | `POST /market-data/refresh` | Fetches the latest NSE/BSE session. No backfill, no screening. |
+| Watchlist | `GET /watchlist`, `GET /watchlist/detail`, `POST /watchlist/{symbol}`, `DELETE /watchlist/{symbol}` | |
+| Strategies | `GET /strategies`, `GET /strategies/{name}` | |
+| Validation | `GET /validation/historical/{name}`, `/alpha/{name}`, `/scorecard/{name}`, `/rules/{name}`, `/engines/{name}`; `POST /validation/experiment/run`, `POST /validation/dashboard` | Return-derived metrics carry a `measurability` block. |
+| Research | `POST /research/historical/screen`, `/compare/runs`, `/verify/determinism`, `/experiment/run`, `/corporate-actions/refresh`; `GET /research/evaluate/{name}`, `/contribution/{name}`, `/compare/strategies` | Two experiment endpoints exist: `/research/experiment/run` and `/validation/experiment/run`. |
+| Backtest | `POST /backtest/walk-forward` | Every response carries `benchmark_label` and `survivorship_warning`. |
+
+The web client calls every endpoint except the health probes, `/metrics`, `POST /runs`, the ranking explanation endpoint and `POST /research/corporate-actions/refresh`.
+
+## Web UI
+
+Next.js 14 App Router, React 18, TypeScript, Tailwind. Charts: `lightweight-charts` 5 and `recharts`. Data: TanStack Query through one client, `web/src/lib/api-client.ts`. Light, dark and system themes.
+
+| Route | Purpose |
+|---|---|
+| `/` | Dashboard: run summary, Top-25 table, strategy selector, "run screening" |
+| `/stock/[symbol]` | Score breakdown, rule matrix, engine contributions, history, live analysis, stop-loss |
+| `/stock/[symbol]/analysis` | Unified analysis screen: multi-pane chart, indicator catalogue, patterns, in-browser signal score |
+| `/stock/[symbol]/elliott-wave` | Elliott Wave counts and Fibonacci zones |
+| `/watchlist` | Saved symbols with live detail |
+| `/market` | Breadth and index context |
+| `/strategies` | Strategy list, comparison, contribution |
+| `/validation` | Research dashboard: scorecard, alpha, rule and engine metrics |
+| `/analytics` | Contribution analysis across runs |
+| `/historical` | Browse past runs and their rankings |
+| `/experiment` | Run a strategy experiment |
+| `/backtest` | Walk-forward backtest with the data caveat shown first |
+| `/data` | Refresh the latest market session |
+| `/learn`, `/learn/{minervini-methodology, momentum25-methodology, momentum-investing, scoring-guide, rule-guide, faq}` | Methodology and education |
+
+## CLI
+
+`cd backend && uv run momentum25 <command>` (Typer).
+
+| Command | Status |
+|---|---|
+| `engines` | Lists registered engines. |
+| `strategies` | Lists strategy files with config hash. |
+| `walk-forward --start --end --initial-capital` | Runs the backtest. Same wiring as the API. |
+| `ingest`, `screen` | Stubs. They print a message and exit. |
+
+## Operational scripts
+
+`backend/scripts/` holds one-off research and backfill scripts: `reingest_history.py`, `monthly_forward_returns_backfill.py`, the `rp012_*`, `rp013_*` and `rp014_*` data backfills, `phase3_swing_backtest.py`, `phase3b_swing_backtest.py`, `benchmark.py` and `seed_demo_data.py`. Each script's docstring states its purpose. The research reports in [docs/research/](../research/) say which ones produced which dataset.

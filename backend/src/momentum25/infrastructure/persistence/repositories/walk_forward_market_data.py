@@ -1,7 +1,8 @@
 """Real, Postgres-backed adapters for the walk-forward runner's data ports.
 
 Implements :class:`PriceHistoryProvider` and :class:`BenchmarkProvider` from
-``domain/ports/walk_forward.py`` (see ``handoff/brief-addendum-approximations.md``,
+``domain/ports/walk_forward.py`` (see
+``docs/history/backtest-loop/brief-addendum-approximations.md``,
 which points at real data already sitting in ``ohlcv_daily`` and
 ``benchmark_index_daily`` for these two ports).
 
@@ -16,7 +17,7 @@ per-key sorted list via binary search.
 ``EligibilityFactsProvider`` has two adapters here. Membership/surveillance
 (Nifty 500 constituency, T2T, ASM/GSM) is still STUB — re-verified 2026-08-17
 against this database and against live nseindia.com endpoints (see
-``handoff/builder-notes/round-1.md`` for exactly what was tried): no table,
+``docs/history/backtest-loop/builder-notes/round-1.md`` for exactly what was tried): no table,
 column, or reachable NSE endpoint in this environment carries point-in-time
 Nifty 500 membership or T2T/ASM/GSM status. ``universe_membership`` looks
 like a candidate but its ``reason`` values (``below_liquidity_floor``,
@@ -25,7 +26,7 @@ different production strategy's screening gates, not Nifty 500 constituency
 or surveillance status — treating it as such would fabricate the universe
 rather than approximate it. This remains the same documented,
 human-decision-blocked gap recorded in
-``handoff/reviewer-findings/loop2/round-1.md``.
+``docs/history/backtest-loop/reviewer-findings/loop2/round-1.md``.
 
 Survivorship (checklist item 8) is now REAL: ``securities.delisting_date``/
 ``last_trade_date`` are populated from observed bar coverage (see
@@ -224,7 +225,7 @@ SURVIVORSHIP_ELIGIBILITY_WARNING = (
     "Nifty 500 membership and T2T/ASM surveillance status are still STUB "
     "(is_t2t=False, is_under_surveillance=False, in_nifty_500=True for every "
     "security) -- see this module's docstring, no adapter for that data "
-    "exists yet (handoff/brief-addendum-loop3.md Item 13, NSE reconstitution/ "
+    "exists yet (docs/history/backtest-loop/brief-addendum-loop3.md Item 13, NSE reconstitution/ "
     "circular endpoints attempted and blocked, see builder-notes/round-1.md). "
     "Survivorship IS real: securities.delisting_date/last_trade_date are "
     "populated from observed ohlcv_daily/legacy_ohlcv_daily bar coverage "

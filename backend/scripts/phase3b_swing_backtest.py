@@ -11,7 +11,7 @@ results first -- that is the exact curve-fitting failure mode Phase 3b is
 required to avoid.
 
 Every configuration attempted is printed and appended to
-docs/research/phase3b-target-methodology-log.md, including failures,
+docs/research/2026-08-phase3b-target-methodology-log.md, including failures,
 so the search is auditable and not silently cherry-picked.
 
 Six configurations (capped at 5-8 per the backlog), each with an a-priori

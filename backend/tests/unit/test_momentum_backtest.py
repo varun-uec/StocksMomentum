@@ -1,4 +1,4 @@
-"""Unit tests for domain.backtest — hand-computed against handoff/brief.md."""
+"""Unit tests for domain.backtest — hand-computed against docs/history/backtest-loop/brief.md."""
 
 from dataclasses import replace
 from decimal import Decimal

@@ -1,7 +1,7 @@
 """Walk-forward backtest DTOs — stable API contract for the backtest surface.
 
 These Pydantic models are the boundary between the walk-forward runner and the
-transport layer. Two rules from ``handoff/`` are carried in the shapes below
+transport layer. Two rules from ``docs/history/backtest-loop/`` are carried in the shapes below
 and must survive any future edit:
 
 * ``benchmark_return`` never travels without ``benchmark_label`` next to it
