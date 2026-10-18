@@ -1,7 +1,16 @@
 import { describe, expect, test } from 'vitest';
-import { mergeById, mergeFields } from './merge';
+import { mergeById, mergeFields, sameJson } from './merge';
 
 const d = (id: string, price = 1) => ({ id, price });
+
+describe('sameJson', () => {
+  test('key order does not matter, values do', () => {
+    expect(sameJson({ a: 1, b: { c: [1, { d: 2, e: 3 }] } }, { b: { c: [1, { e: 3, d: 2 }] }, a: 1 })).toBe(true);
+    expect(sameJson({ a: 1 }, { a: 2 })).toBe(false);
+    expect(sameJson({ a: null }, {})).toBe(false); // null is a value; a missing key is not
+    expect(sameJson([1, 2], [2, 1])).toBe(false); // array order does matter
+  });
+});
 
 describe('mergeById', () => {
   test('edits to different items both survive', () => {

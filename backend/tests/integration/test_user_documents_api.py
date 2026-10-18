@@ -30,6 +30,11 @@ def _drawing(drawing_id: str = "d1", price: float = 101.5) -> dict[str, Any]:
     }
 
 
+def _stored(drawing: dict[str, Any]) -> dict[str, Any]:
+    """A drawing as the server returns it: style defaults filled."""
+    return {"width": 2, "text": None, **drawing}
+
+
 def _workspace(range_: str = "1Y") -> dict[str, Any]:
     return {
         "active_chart_id": "main",
@@ -78,7 +83,7 @@ async def test_create_then_read_round_trips_with_etag(client: httpx.AsyncClient)
     assert read.status_code == 200
     assert read.headers["etag"] == '"1"'
     assert read.json()["revision"] == 1
-    assert read.json()["body"] == {"price_basis": "traded", "drawings": [_drawing()]}
+    assert read.json()["body"] == {"price_basis": "traded", "drawings": [_stored(_drawing())]}
 
 
 async def test_create_when_present_is_412_and_keeps_the_server_copy(
@@ -87,8 +92,8 @@ async def test_create_when_present_is_412_and_keeps_the_server_copy(
     await _create(client)
     again = await client.put(DRAWINGS, json={"drawings": []}, headers={"If-None-Match": "*"})
     assert again.status_code == 412
-    assert again.json()["current"]["body"]["drawings"] == [_drawing()]
-    assert (await client.get(DRAWINGS)).json()["body"]["drawings"] == [_drawing()]
+    assert again.json()["current"]["body"]["drawings"] == [_stored(_drawing())]
+    assert (await client.get(DRAWINGS)).json()["body"]["drawings"] == [_stored(_drawing())]
 
 
 async def test_matching_if_match_saves_and_bumps_revision(client: httpx.AsyncClient) -> None:
@@ -226,3 +231,28 @@ async def test_workspace_side_panel_defaults_and_rejects_unknown_tabs(
         WORKSPACE, json={"charts": {}, "right_panel": "orders"}, headers={"If-Match": '"1"'}
     )
     assert bad.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "extra", [{"width": 0}, {"width": 5}, {"text": "x" * 201}, {"kind": "Not-A-Kind"}]
+)
+async def test_drawing_style_out_of_bounds_is_rejected(
+    client: httpx.AsyncClient, extra: dict[str, Any]
+) -> None:
+    res = await client.put(
+        DRAWINGS, json={"drawings": [{**_drawing(), **extra}]}, headers={"If-None-Match": "*"}
+    )
+    assert res.status_code == 422
+
+
+async def test_a_text_note_keeps_its_text_and_width(client: httpx.AsyncClient) -> None:
+    note = {
+        **_drawing(),
+        "kind": "text",
+        "points": [_drawing()["points"][0]],
+        "width": 3,
+        "text": "Base",
+    }
+    await client.put(DRAWINGS, json={"drawings": [note]}, headers={"If-None-Match": "*"})
+    saved = (await client.get(DRAWINGS)).json()["body"]["drawings"][0]
+    assert (saved["kind"], saved["width"], saved["text"]) == ("text", 3, "Base")

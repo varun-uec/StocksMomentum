@@ -7,9 +7,18 @@
  * edits where they touch different things.
  */
 
-/** Structural equality for plain JSON values. */
+/** The value with object keys sorted, so key order never decides equality. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((k) => [k, canonical((value as Record<string, unknown>)[k])]));
+  }
+  return value;
+}
+
+/** Structural equality for plain JSON values, whatever the key order (the server's may differ). */
 export function sameJson(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 }
 
 export interface FieldMerge<T> {

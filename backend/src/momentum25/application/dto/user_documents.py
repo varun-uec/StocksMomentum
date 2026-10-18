@@ -48,6 +48,8 @@ class DrawingV1(_Strict):
     kind: ShortName
     points: list[DrawingPointV1] = Field(min_length=1, max_length=8)
     color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+    width: int = Field(default=2, ge=1, le=4)
+    text: str | None = Field(default=None, max_length=200)
 
 
 class SymbolDrawingsV1(_Strict):

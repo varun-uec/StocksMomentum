@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest';
-import { hitTest, hitTestAll, moveDrawing, type ChartDrawing } from './chart-drawings';
+import {
+  applyDrawingChanges,
+  channelOffset,
+  diffDrawings,
+  hitTest,
+  hitTestAll,
+  moveDrawing,
+  type ChartDrawing,
+} from './chart-drawings';
 
 const trend = { kind: 'trendline' as const, points: [{ x: 0, y: 0 }, { x: 100, y: 100 }] };
 
@@ -83,5 +91,67 @@ describe('moveDrawing', () => {
   test('the original drawing is not mutated', () => {
     moveDrawing(drawing, 'body', 1, [0, 0], dates);
     expect(drawing.points[0]).toEqual({ date: '2026-08-04', price: 10 });
+  });
+});
+
+describe('the M13 tools', () => {
+  const ab = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+
+  test('a ray reaches past its second anchor but not behind its first', () => {
+    expect(hitTest('ray', ab, { x: 400, y: 3 })).toBe('body');
+    expect(hitTest('ray', ab, { x: -50, y: 0 })).toBeNull();
+  });
+
+  test('an extended line reaches both ways', () => {
+    expect(hitTest('extended', ab, { x: -400, y: 2 })).toBe('body');
+    expect(hitTest('extended', ab, { x: 400, y: -2 })).toBe('body');
+    expect(hitTest('extended', ab, { x: 50, y: 20 })).toBeNull();
+  });
+
+  test('horizontal, vertical and cross lines span the whole pane', () => {
+    const at = [{ x: 50, y: 40 }];
+    expect(hitTest('hline', at, { x: -900, y: 42 })).toBe('body');
+    expect(hitTest('vline', at, { x: 52, y: 900 })).toBe('body');
+    expect(hitTest('crossline', at, { x: 52, y: -900 })).toBe('body');
+    expect(hitTest('crossline', at, { x: 900, y: 38 })).toBe('body');
+    expect(hitTest('crossline', at, { x: 200, y: 200 })).toBeNull();
+  });
+
+  test('a channel is hit on either of its parallel lines', () => {
+    const pts = [{ x: 0, y: 0 }, { x: 100, y: 100 }, { x: 50, y: 10 }]; // c sits 40 px above the a-b line
+    expect(channelOffset(pts[0], pts[1], pts[2])).toEqual({ a: { x: 0, y: -40 }, b: { x: 100, y: 60 } });
+    expect(hitTest('channel', pts, { x: 25, y: 26 })).toBe('body');
+    expect(hitTest('channel', pts, { x: 75, y: 36 })).toBe('body');
+    expect(hitTest('channel', pts, { x: 75, y: 55 })).toBeNull(); // between the lines, not on one
+  });
+
+  test('a price range is hit inside its box; a text note inside its label', () => {
+    expect(hitTest('price_range', [{ x: 10, y: 10 }, { x: 60, y: 90 }], { x: 30, y: 50 })).toBe('body');
+    expect(hitTest('text', [{ x: 100, y: 100 }], { x: 130, y: 95 }, 'Breakout')).toBe('body');
+    expect(hitTest('text', [{ x: 100, y: 100 }], { x: 130, y: 120 }, 'Breakout')).toBeNull();
+  });
+});
+
+describe('undo and redo', () => {
+  const d = (id: string, price = 1): ChartDrawing => ({ id, kind: 'horizontal', color: '#6366f1', points: [{ date: '2026-08-03', price }] });
+
+  test('a change records only the drawings it touched, and undoes and redoes exactly', () => {
+    const before = [d('a'), d('b')];
+    const after = [d('a', 5), d('b'), d('c')];
+    const changes = diffDrawings(before, after);
+    expect(changes.map((c) => c.id)).toEqual(['a', 'c']);
+    expect(applyDrawingChanges(after, changes, 'before')).toEqual(before);
+    expect(applyDrawingChanges(before, changes, 'after')).toEqual(after);
+  });
+
+  test('undo leaves alone what another window changed meanwhile', () => {
+    const changes = diffDrawings([d('a')], [d('a', 5)]); // this window moved a
+    const now = [d('a', 5), d('theirs', 9)]; // another window added a drawing since
+    expect(applyDrawingChanges(now, changes, 'before')).toEqual([d('a'), d('theirs', 9)]);
+  });
+
+  test('undoing a delete brings the drawing back', () => {
+    const changes = diffDrawings([d('a'), d('b')], [d('b')]);
+    expect(applyDrawingChanges([d('b')], changes, 'before').map((x) => x.id).sort()).toEqual(['a', 'b']);
   });
 });

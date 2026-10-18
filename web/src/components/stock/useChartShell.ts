@@ -132,6 +132,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       activeMas: preferences.activeMas,
       onActiveMasChange: (mas: number[]) => update({ activeMas: mas }),
       drawingsEnabled: true,
+      drawingsKey: symbol,
       drawings: chartDrawings,
       onDrawingsChange: (drawings: typeof preferences.drawings) => {
         if (adjustments) update({ drawings: toTradedPrices(drawings, preferences.drawings, adjustments, weekBars) });

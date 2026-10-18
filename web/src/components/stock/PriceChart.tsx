@@ -43,13 +43,17 @@ import {
 } from 'lightweight-charts';
 import type { ChartInterval, OHLCVBarDTO } from '@/lib/types';
 import { CHART_TYPES, heikinAshi, type ChartType, type PriceScale } from '@/components/stock/chart-types';
+import { DrawingMenu } from '@/components/stock/DrawingMenu';
 import { focusRing } from '@/lib/theme';
 import {
   DRAWING_COLOR,
   DRAWING_KINDS,
   DRAWING_LABELS,
   DRAWING_REQUIRED_POINTS,
+  applyDrawingChanges,
   attachDrawingsLayer,
+  diffDrawings,
+  type DrawingChange,
   type PriceSeries,
   drawingId,
   fromTime,
@@ -78,22 +82,32 @@ export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
 const TOOL_KEYS: Record<string, DrawingKind> = {
   KeyT: 'trendline',
   KeyH: 'horizontal',
+  KeyV: 'vline',
   'Shift+KeyR': 'rectangle',
   KeyF: 'fib',
 };
 
-/** Shortcut hint shown on each rail button. */
-const TOOL_HINT: Record<DrawingKind, string> = {
+/** Shortcut hint shown on the rail buttons that have one. */
+const TOOL_HINT: Partial<Record<DrawingKind, string>> = {
   trendline: 'Alt+T',
   horizontal: 'Alt+H',
   rectangle: 'Alt+Shift+R',
   fib: 'Alt+F',
+  vline: 'Alt+V',
 };
 
 const RAIL_ICONS: Record<DrawingKind | 'select' | 'clear', React.ReactNode> = {
   select: <path d="M5 3l10 6-4.5 1.2L13 16l-2 1-2.5-5.8L5 14z" fill="currentColor" />,
   trendline: <path d="M4 16L16 4M4 16h0M16 4h0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  ray: <path d="M4 16L18 2M4 16h0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  extended: <path d="M2 18L18 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
   horizontal: <path d="M3 10h14M6 10h0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  hline: <path d="M1 10h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  vline: <path d="M10 1v18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  crossline: <path d="M1 10h18M10 1v18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />,
+  channel: <path d="M3 12L15 4M5 17L17 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />,
+  price_range: <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />,
+  text: <path d="M4 5h12M10 5v11M7 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
   rectangle: <rect x="4" y="5" width="12" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" />,
   fib: <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />,
   clear: <path d="M6 6l1 11h6l1-11M4 6h12M8 6V4h4v2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />,
@@ -387,6 +401,7 @@ export function PriceChart({
   onActiveMasChange,
   drawingsEnabled = false,
   toolRail = false,
+  drawingsKey,
   drawings: drawingsProp,
   onDrawingsChange,
 }: {
@@ -447,6 +462,8 @@ export function PriceChart({
   drawingsEnabled?: boolean;
   /** Put the drawing tools in a rail left of the chart instead of the toolbar row (M12). */
   toolRail?: boolean;
+  /** Whose drawings these are (the symbol). Undo history starts afresh when it changes. */
+  drawingsKey?: string;
   /** The saved drawings. The chart follows this prop, so merges from another window show up. */
   drawings?: ChartDrawing[];
   onDrawingsChange?: (drawings: ChartDrawing[]) => void;
@@ -506,11 +523,35 @@ export function PriceChart({
 
   /** Show and save a new drawing list. The ref moves at once, so an event that
    * arrives before React re-renders still sees the new list. */
-  const commitDrawings = (next: ChartDrawing[]) => {
+  // Undo history: per-drawing changes, so undo never reverts another window's edit.
+  const historyRef = useRef<{ past: DrawingChange[][]; future: DrawingChange[][] }>({ past: [], future: [] });
+  useEffect(() => {
+    historyRef.current = { past: [], future: [] };
+  }, [drawingsKey]);
+
+  const commitDrawings = (next: ChartDrawing[], record = true) => {
+    if (record) {
+      const changes = diffDrawings(drawingsRef.current, next);
+      if (changes.length) historyRef.current = { past: [...historyRef.current.past.slice(-99), changes], future: [] };
+    }
     drawingsRef.current = next;
     setDrawings(next);
     onDrawingsChangeRef.current?.(next);
   };
+
+  /** Step back ('before') or forward ('after') through this window's drawing edits. */
+  const stepHistory = (side: 'before' | 'after') => {
+    const { past, future } = historyRef.current;
+    const changes = side === 'before' ? past.at(-1) : future.at(-1);
+    if (!changes) return;
+    historyRef.current =
+      side === 'before'
+        ? { past: past.slice(0, -1), future: [...future, changes] }
+        : { past: [...past, changes], future: future.slice(0, -1) };
+    commitDrawings(applyDrawingChanges(drawingsRef.current, changes, side), false);
+  };
+
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   /** Arm or disarm a drawing tool, dropping any half-placed anchors. */
   const selectTool = (tool: DrawingKind | null) => {
@@ -745,6 +786,7 @@ export function PriceChart({
     drawingsLayerRef.current?.update({
       drawings,
       draft: drawingTool && draftPoints.length ? draftPoints : null,
+      draftKind: drawingTool,
       cursor:
         drawingTool && draftPoints.length > 0 && draftPoints.length < DRAWING_REQUIRED_POINTS[drawingTool]
           ? cursorPoint
@@ -814,7 +856,13 @@ export function PriceChart({
       const next = [...draftPointsRef.current, point];
       draftPointsRef.current = next;
       if (next.length >= DRAWING_REQUIRED_POINTS[tool]) {
-        const drawing: ChartDrawing = { id: drawingId(), kind: tool, points: next, color: DRAWING_COLOR };
+        const text = tool === 'text' ? window.prompt('Note text')?.trim().slice(0, 200) : undefined;
+        if (tool === 'text' && !text) {
+          selectTool(null);
+          return;
+        }
+        // Every field the server stores, so the saved copy and this one compare equal.
+        const drawing: ChartDrawing = { id: drawingId(), kind: tool, points: next, color: DRAWING_COLOR, width: 2, text: text ?? null };
         commitDrawings([...drawingsRef.current, drawing]);
         setSelectedId(drawing.id);
         selectTool(null);
@@ -827,7 +875,7 @@ export function PriceChart({
       if (!drawingsEnabledRef.current || drawingToolRef.current || e.button !== 0) return;
       const at = localPoint(e);
       const hit = hitTestAll(
-        drawingsRef.current.map((d) => ({ id: d.id, kind: d.kind, points: d.points.map(toScreen) })),
+        drawingsRef.current.map((d) => ({ id: d.id, kind: d.kind, points: d.points.map(toScreen), text: d.text ?? '' })),
         at,
       );
       if (!hit) {
@@ -861,10 +909,25 @@ export function PriceChart({
       drag = null;
     };
 
+    const onContextMenu = (e: MouseEvent) => {
+      if (!drawingsEnabledRef.current) return;
+      const at = localPoint(e);
+      const hit = hitTestAll(
+        drawingsRef.current.map((d) => ({ id: d.id, kind: d.kind, points: d.points.map(toScreen), text: d.text ?? '' })),
+        at,
+      );
+      if (!hit) return;
+      e.preventDefault();
+      setSelectedId(hit.id);
+      setMenu({ id: hit.id, x: at.x, y: at.y });
+    };
+
     container.addEventListener('pointerdown', onPointerDown, { capture: true });
     container.addEventListener('click', onPlace);
+    container.addEventListener('contextmenu', onContextMenu);
     return () => {
       container.removeEventListener('pointerdown', onPointerDown, { capture: true });
+      container.removeEventListener('contextmenu', onContextMenu);
       container.removeEventListener('click', onPlace);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
@@ -877,6 +940,28 @@ export function PriceChart({
     if (e.key === 'Escape') {
       selectTool(null);
       setSelectedId(null);
+      return;
+    }
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.code === 'KeyZ') {
+      e.preventDefault();
+      stepHistory(e.shiftKey ? 'after' : 'before');
+      return;
+    }
+    if (mod && e.code === 'KeyY') {
+      e.preventDefault();
+      stepHistory('after');
+      return;
+    }
+    if (selectedId && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+      e.preventDefault();
+      const d = drawings.find((x) => x.id === selectedId);
+      const p = d && d.points[0] ? screenOf(d.points[0]) : null;
+      setMenu({ id: selectedId, x: p?.x ?? 40, y: p?.y ?? 40 });
+      return;
+    }
+    if (selectedId && !mod && !e.altKey && moveSelected(e.key)) {
+      e.preventDefault();
       return;
     }
     const tool = e.altKey ? TOOL_KEYS[`${e.shiftKey ? 'Shift+' : ''}${e.code}`] : undefined;
@@ -1161,6 +1246,33 @@ export function PriceChart({
 
   const toggleDrawingTool = (kind: DrawingKind) => selectTool(drawingToolRef.current === kind ? null : kind);
 
+  const screenOf = (point: DrawingPoint): ScreenPoint | null => {
+    const x = chartRef.current?.timeScale().timeToCoordinate(toTime(point.date));
+    const y = priceSeriesRef.current?.priceToCoordinate(point.price);
+    return x == null || y == null ? null : { x, y };
+  };
+
+  /** Arrow keys move the selected drawing: one bar sideways, 4 px of price up or down. */
+  const moveSelected = (key: string): boolean => {
+    const d = drawings.find((x) => x.id === selectedId);
+    const series = priceSeriesRef.current;
+    if (!d || !series) return false;
+    let shift = 0;
+    let prices = d.points.map((p) => p.price);
+    if (key === 'ArrowLeft') shift = -1;
+    else if (key === 'ArrowRight') shift = 1;
+    else if (key === 'ArrowUp' || key === 'ArrowDown') {
+      const dy = key === 'ArrowUp' ? -4 : 4;
+      prices = d.points.map((p) => {
+        const y = series.priceToCoordinate(p.price);
+        return (y == null ? null : series.coordinateToPrice(y + dy)) ?? p.price;
+      });
+    } else return false;
+    const moved = moveDrawing(d, 'body', shift, prices, barDatesRef.current);
+    commitDrawings(drawings.map((x) => (x.id === d.id ? moved : x)));
+    return true;
+  };
+
   /** Arrow keys pan, Ctrl/⌘ with ↑/↓ (or + and -) zoom, Alt+R resets. True when the key was used. */
   const navigateChart = (e: React.KeyboardEvent): boolean => {
     const timeScale = chartRef.current?.timeScale();
@@ -1335,6 +1447,23 @@ export function PriceChart({
         />
       )}
       <div className="relative flex-1 min-w-0">
+        {menu && drawings.some((d) => d.id === menu.id) && (
+          <DrawingMenu
+            drawing={drawings.find((d) => d.id === menu.id)!}
+            at={menu}
+            onChange={(next) => commitDrawings(drawings.map((d) => (d.id === next.id ? next : d)))}
+            onDelete={() => {
+              commitDrawings(drawings.filter((d) => d.id !== menu.id));
+              setSelectedId(null);
+              setMenu(null);
+              containerRef.current?.focus();
+            }}
+            onClose={() => {
+              setMenu(null);
+              containerRef.current?.focus();
+            }}
+          />
+        )}
         <div
           ref={containerRef}
           tabIndex={drawingsEnabled ? 0 : undefined}

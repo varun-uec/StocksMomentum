@@ -74,8 +74,19 @@ export const workspaceSpec: DocumentSpec<WorkspaceBody> = {
   merge: mergeWorkspaces,
 };
 
-/** A drawings document: point prices are traded prices, adjusted only to draw (ADR-013 §5). */
-export const drawingsBody = (drawings: DrawingsBody['drawings']): DrawingsBody => ({ price_basis: 'traded', drawings });
+type Drawing = DrawingsBody['drawings'][number];
+/** A drawing as the app builds it; the server fills `width` and `text` when absent. */
+export type DrawingInput = Omit<Drawing, 'width' | 'text'> & Partial<Pick<Drawing, 'width' | 'text'>>;
+
+/**
+ * A drawings document: point prices are traded prices, adjusted only to draw
+ * (ADR-013 §5). Each drawing carries the server's defaults written out, so
+ * the saved copy and this one compare equal in a merge.
+ */
+export const drawingsBody = (drawings: DrawingInput[]): DrawingsBody => ({
+  price_basis: 'traded',
+  drawings: drawings.map((d) => ({ ...d, width: d.width ?? 2, text: d.text ?? null })),
+});
 
 const drawingSpecs = new Map<string, DocumentSpec<DrawingsBody>>();
 
@@ -124,7 +135,7 @@ export function useSymbolDrawings(symbol: string) {
     status: doc.status,
     savedAt: doc.savedAt,
     retry: doc.retry,
-    update: (drawings: DrawingsBody['drawings']) => doc.update(() => drawingsBody(drawings)),
+    update: (drawings: DrawingInput[]) => doc.update(() => drawingsBody(drawings)),
   };
 }
 

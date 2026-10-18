@@ -37,3 +37,81 @@ test('every chart type and price scale draws, and the choice is saved with the c
   await expect(page.getByLabel('Chart type')).toHaveValue('heikin_ashi');
   await expect(page.getByRole('button', { name: 'Percent scale' })).toHaveAttribute('aria-pressed', 'true');
 });
+
+type Drawing = { id: string; kind: string; color: string; width: number; text: string | null; points: { date: string; price: number }[] };
+
+async function drawings(request: APIRequestContext, symbol: string): Promise<Drawing[]> {
+  const res = await request.get(`/api/v1/drawings/${symbol}`);
+  return res.ok() ? (await res.json()).body.drawings : [];
+}
+
+async function clickAt(page: Page, fx: number, fy: number): Promise<void> {
+  const box = (await page.getByTestId('price-chart').boundingBox())!;
+  await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+}
+
+test('every M13 tool draws and is saved', async ({ page, request }) => {
+  await page.goto('/chart/INFY');
+  await ready(page);
+  const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
+  page.on('dialog', (d) => void d.accept('Base breakout'));
+  const tools: [string, [number, number][]][] = [
+    ['Ray', [[0.2, 0.2], [0.3, 0.25]]],
+    ['Extended line', [[0.2, 0.3], [0.3, 0.35]]],
+    ['Horizontal line', [[0.5, 0.15]]],
+    ['Vertical line', [[0.45, 0.5]]],
+    ['Cross line', [[0.55, 0.55]]],
+    ['Parallel channel', [[0.6, 0.3], [0.8, 0.2], [0.7, 0.35]]],
+    ['Price range', [[0.62, 0.6], [0.7, 0.45]]],
+    ['Text note', [[0.3, 0.6]]],
+  ];
+  for (const [name, clicks] of tools) {
+    await rail.getByRole('button', { name, exact: true }).click();
+    for (const [x, y] of clicks) await clickAt(page, x, y);
+    await expect(rail.getByRole('button', { name: 'Select' })).toHaveAttribute('aria-pressed', 'true'); // the tool finished
+  }
+  await expect.poll(async () => (await drawings(request, 'INFY')).map((d) => d.kind).sort()).toEqual(
+    ['channel', 'crossline', 'extended', 'hline', 'price_range', 'ray', 'text', 'vline'],
+  );
+  const saved = await drawings(request, 'INFY');
+  expect(saved.find((d) => d.kind === 'channel')!.points).toHaveLength(3);
+  expect(saved.find((d) => d.kind === 'text')!.text).toBe('Base breakout');
+});
+
+test('the drawing menu restyles a drawing; undo and redo step through edits; arrows move it', async ({ page, request }) => {
+  await page.goto('/chart/INFY');
+  await ready(page);
+  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await clickAt(page, 0.5, 0.4);
+  await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
+  const original = (await drawings(request, 'INFY'))[0];
+
+  // Right-click the line: the menu opens on it.
+  const box = (await page.getByTestId('price-chart').boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.4, { button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Drawing' });
+  await menu.getByRole('menuitemradio', { name: 'Rose' }).click();
+  await menu.getByRole('menuitemradio', { name: 'Width 4' }).click();
+  await expect.poll(async () => (await drawings(request, 'INFY'))[0]).toMatchObject({ color: '#ef4444', width: 4 });
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+
+  // Undo twice: width, then colour. Redo once: colour.
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await drawings(request, 'INFY'))[0]).toMatchObject({ color: original.color, width: 2 });
+  await page.keyboard.press('Control+Shift+z');
+  await expect.poll(async () => (await drawings(request, 'INFY'))[0].color).toBe('#ef4444');
+
+  // The line is still selected: ↑ raises it.
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(async () => (await drawings(request, 'INFY'))[0].points[0].price).toBeGreaterThan(original.points[0].price);
+
+  // The menu deletes it, and undo brings it back.
+  await page.keyboard.press('Shift+F10');
+  await menu.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(0);
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
+});

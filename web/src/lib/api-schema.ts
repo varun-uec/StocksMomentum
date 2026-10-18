@@ -1362,6 +1362,13 @@ export interface components {
             points: components["schemas"]["DrawingPointV1"][];
             /** Color */
             color: string;
+            /**
+             * Width
+             * @default 2
+             */
+            width: number;
+            /** Text */
+            text?: string | null;
         };
         /**
          * ElliottWaveAnalysis

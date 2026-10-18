@@ -119,7 +119,7 @@ export function useChartPreferences(
       scale: chart.chart.scale ?? 'normal',
       activeMas: chart.chart.mas,
       activePanes: chart.chart.panes.filter((p) => VALID_PANES.includes(p)),
-      drawings: drawings.drawings.filter(isValidDrawing),
+      drawings: (drawings.drawings as unknown[]).filter(isValidDrawing),
     }),
     [chart.chart, drawings.drawings],
   );
