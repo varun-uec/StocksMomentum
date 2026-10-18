@@ -190,3 +190,22 @@ test('monthly bars draw with monthly indicators and are saved with the chart', a
   await expect(page.getByRole('button', { name: 'Monthly bars' })).toHaveAttribute('aria-pressed', 'true');
   await expect(monthly).toBeVisible();
 });
+
+test('a compared symbol draws as a rebased line, is saved with the chart, and can be removed', async ({ page, request }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Compare with' });
+  await dialog.getByRole('combobox').fill('INFY');
+  await expect(dialog.getByRole('option', { name: /INFY/ }).first()).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(/^INFY [+-]\d+\.\d{2}%$/)).toBeVisible(); // the change since the first shared bar
+  await expect(page).toHaveURL(/\/chart\/TCS$/); // comparing does not open the symbol
+  await expect.poll(() => mainChart(request)).toMatchObject({ compare: ['INFY'] });
+
+  await page.reload();
+  await ready(page);
+  await expect(page.getByText(/^INFY [+-]\d+\.\d{2}%$/)).toBeVisible();
+  await page.getByRole('button', { name: 'Stop comparing INFY' }).click();
+  await expect.poll(() => mainChart(request)).toMatchObject({ compare: [] });
+});

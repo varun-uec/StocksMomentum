@@ -256,3 +256,20 @@ async def test_a_text_note_keeps_its_text_and_width(client: httpx.AsyncClient) -
     await client.put(DRAWINGS, json={"drawings": [note]}, headers={"If-None-Match": "*"})
     saved = (await client.get(DRAWINGS)).json()["body"]["drawings"][0]
     assert (saved["kind"], saved["width"], saved["text"]) == ("text", 3, "Base")
+
+
+async def test_a_chart_keeps_its_compare_symbols_within_bounds(client: httpx.AsyncClient) -> None:
+    created = await client.put(WORKSPACE, json=_workspace(), headers={"If-None-Match": "*"})
+    assert created.json()["body"]["charts"]["main"]["compare"] == []
+    chart = {**_workspace()["charts"]["main"], "compare": ["TCS", "INFY"]}
+    saved = await client.put(
+        WORKSPACE, json={"charts": {"main": chart}}, headers={"If-Match": '"1"'}
+    )
+    assert saved.json()["body"]["charts"]["main"]["compare"] == ["TCS", "INFY"]
+    for bad in (["A", "B", "C", "D", "E"], ["tcs"]):
+        res = await client.put(
+            WORKSPACE,
+            json={"charts": {"main": {**chart, "compare": bad}}},
+            headers={"If-Match": '"2"'},
+        )
+        assert res.status_code == 422

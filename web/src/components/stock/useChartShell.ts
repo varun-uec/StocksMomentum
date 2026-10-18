@@ -18,7 +18,7 @@ import type { ChartInterval } from '@/lib/types';
 import { TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
 
 /** ISO date `days` before today, for the chart's `from` query param. */
-function fromDateFor(timeframe: TimeframeId): string | undefined {
+export function fromDateFor(timeframe: TimeframeId): string | undefined {
   const days = TIMEFRAMES.find((t) => t.id === timeframe)?.days;
   if (!days) return undefined;
   const d = new Date();

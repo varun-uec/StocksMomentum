@@ -90,6 +90,11 @@ class ChartV1(_Strict):
     preset_id: ShortName | None = None
     show_signals: bool = True
     preset_edited: bool = False
+    compare: list[Symbol] = Field(
+        default_factory=list,
+        max_length=4,
+        description="Symbols drawn as lines rebased to this chart's symbol (M13).",
+    )
 
 
 class WorkspaceV1(_Strict):

@@ -30,6 +30,7 @@ export const DEFAULT_CHART: ChartSettings = {
   preset_id: null,
   show_signals: true,
   preset_edited: false,
+  compare: [],
 };
 
 /** A workspace before the owner changes anything. */

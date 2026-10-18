@@ -13,8 +13,11 @@ export function SymbolSearchDialog({
   initialText,
   onChoose,
   onClose,
+  label = 'Search symbols',
 }: {
   open: boolean;
+  /** The dialog's accessible name, for a search with another purpose (compare). */
+  label?: string;
   initialText: string;
   onChoose: (symbol: string) => void;
   onClose: () => void;
@@ -45,7 +48,7 @@ export function SymbolSearchDialog({
   return (
     <dialog
       ref={dialogRef}
-      aria-label="Search symbols"
+      aria-label={label}
       onClose={onClose}
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose(); // a click on the backdrop

@@ -23,6 +23,7 @@ import { SaveState } from '@/components/workspace/SaveState';
 import { ShortcutsDialog } from '@/components/workspace/ShortcutsDialog';
 import { SidePanel, useWatchlistDetail, useWatchlistToggle } from '@/components/workspace/SidePanel';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
+import { MAX_COMPARE, useCompare } from '@/components/workspace/useCompare';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { toBars } from '@/lib/indicators/overlays';
 import { useOverlayPreferences } from '@/lib/overlay-preferences';
@@ -30,6 +31,7 @@ import { focusRing } from '@/lib/theme';
 import { useRightPanel, useSymbolDrawings, useWorkspaceChart } from '@/lib/workspace';
 
 const CHART_ID = 'main';
+const NO_SYMBOLS: string[] = [];
 /** Shown on a fresh install, before the owner has opened any symbol. */
 const FIRST_SYMBOL = 'RELIANCE';
 /** Header, toolbar and footer around the chart, in px. */
@@ -79,7 +81,10 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const shell = useChartShell(symbol, DEFAULT_STRATEGY, CHART_ID, { intervals: true });
   const workspace = useWorkspaceChart(CHART_ID);
   const drawings = useSymbolDrawings(symbol);
-  const [search, setSearch] = useState<{ open: boolean; initial: string }>({ open: false, initial: '' });
+  const [search, setSearch] = useState<{ open: boolean; initial: string; compare?: boolean }>({
+    open: false,
+    initial: '',
+  });
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { strategyName } = useStrategy();
@@ -87,6 +92,13 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const bars = useMemo(() => toBars(shell.bars), [shell.bars]);
   const benchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
   const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark);
+  const compareSymbols = workspace.chart.compare ?? NO_SYMBOLS;
+  const compare = useCompare(compareSymbols, bars, shell.timeframe, shell.chartProps.interval);
+  const overlayLines = useMemo(
+    () => [...catalogue.lines, ...compare.flatMap((c) => (c.line ? [c.line] : []))],
+    [catalogue.lines, compare],
+  );
+  const setCompare = (next: string[]) => workspace.update({ compare: next });
   const { panel, setPanel } = useRightPanel();
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
@@ -121,7 +133,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       const open = opensSearch(e);
       if (!open) return;
       e.preventDefault();
-      setSearch({ open: true, initial: open.initial });
+      setSearch({ open: true, initial: open.initial, compare: false });
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -153,7 +165,32 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
             {change.toFixed(2)}%
           </span>
         )}
+        {compare.map((c) => (
+          <span key={c.symbol} className="inline-flex items-center gap-1 text-xs tabular-nums" style={{ color: c.color }}>
+            <span title={c.from ? `Rebased to ${symbol} on ${c.from}` : 'No shared bars in this range'}>
+              {c.symbol}
+              {c.change !== null && ` ${c.change >= 0 ? '+' : ''}${c.change.toFixed(2)}%`}
+            </span>
+            <button
+              type="button"
+              aria-label={`Stop comparing ${c.symbol}`}
+              onClick={() => setCompare(compareSymbols.filter((s) => s !== c.symbol))}
+              className={`text-slate-400 hover:text-rose-600 ${focusRing}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
         <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setSearch({ open: true, initial: '', compare: true })}
+          disabled={compareSymbols.length >= MAX_COMPARE}
+          title={`Compare with another symbol (up to ${MAX_COMPARE})`}
+          className={`px-2 py-0.5 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 disabled:opacity-40 ${focusRing}`}
+        >
+          Compare
+        </button>
         <SaveState documents={[workspace, drawings]} />
         <button
           type="button"
@@ -190,7 +227,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
             <PriceChart
               {...shell.chartProps}
               {...catalogue.paneProps}
-              overlayLines={catalogue.lines}
+              overlayLines={overlayLines}
               onOpenIndicators={() => setIndicatorsOpen(true)}
               height={height}
               toolRail
@@ -224,8 +261,12 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       <SymbolSearchDialog
         open={search.open}
         initialText={search.initial}
-        onChoose={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
-        onClose={() => setSearch((s) => ({ ...s, open: false }))}
+        label={search.compare ? 'Compare with' : undefined}
+        onChoose={(next) => {
+          if (!search.compare) navigate(`/chart/${encodeURIComponent(next)}`);
+          else if (next !== symbol && !compareSymbols.includes(next)) setCompare([...compareSymbols, next]);
+        }}
+        onClose={() => setSearch((s) => ({ ...s, open: false, compare: false }))}
       />
     </main>
   );

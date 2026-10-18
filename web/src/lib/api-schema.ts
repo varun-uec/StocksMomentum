@@ -1224,6 +1224,11 @@ export interface components {
              * @default false
              */
             preset_edited: boolean;
+            /**
+             * Compare
+             * @description Symbols drawn as lines rebased to this chart's symbol (M13).
+             */
+            compare?: string[];
         };
         /**
          * ConfidenceComponent
