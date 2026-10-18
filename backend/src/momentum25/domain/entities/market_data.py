@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -147,3 +149,75 @@ def compute_adjustment_factors(
                 factor *= action.ratio  # type: ignore[operator]  # ratio is not None here
         factors[d] = factor
     return factors
+
+
+@dataclass(frozen=True, slots=True)
+class WeeklyBar:
+    """One ISO week of trading sessions as a single bar (ADR-013 §4).
+
+    ``partial`` is true when the exchange calendar has a session in the week
+    after the bar's last session: the week is still running, or the security
+    did not trade to the end of it.
+    """
+
+    bar: OHLCVBar
+    partial: bool
+
+
+def _week_of(day: date) -> tuple[int, int]:
+    iso = day.isocalendar()
+    return iso.year, iso.week
+
+
+def weekly_bars(daily: Sequence[OHLCVBar], sessions: Iterable[date]) -> list[WeeklyBar]:
+    """Aggregate adjusted daily bars into one bar per ISO week of sessions.
+
+    Open is the first session's open, high the highest high, low the lowest
+    low, close the last session's close and volume the sum. The bar is dated
+    at its last session. A week with holidays still has one bar; a week with
+    no bars has none. ``sessions`` is the exchange calendar over the bars'
+    weeks, used only for the ``partial`` flag.
+
+    The daily bars must already be adjusted (``adj_factor`` 1). Aggregating raw
+    prints across an ex-date would mix two price bases in one bar.
+    """
+    if any(b.adj_factor != 1 for b in daily):
+        raise ValueError("weekly_bars needs adjusted daily bars (adj_factor 1)")
+    last_session: dict[tuple[int, int], date] = {}
+    for day in sessions:
+        week = _week_of(day)
+        last_session[week] = max(day, last_session.get(week, day))
+
+    weeks: dict[tuple[int, int], list[OHLCVBar]] = {}
+    for bar in daily:
+        weeks.setdefault(_week_of(bar.date), []).append(bar)
+
+    out: list[WeeklyBar] = []
+    for week, bars in weeks.items():
+        last = bars[-1]
+        bar = OHLCVBar(
+            date=last.date,
+            open=bars[0].open,
+            high=max(b.high for b in bars),
+            low=min(b.low for b in bars),
+            close=last.close,
+            volume=sum(b.volume for b in bars),
+        )
+        out.append(WeeklyBar(bar=bar, partial=last_session.get(week, last.date) > last.date))
+    return out
+
+
+def series_data_version(bars: Iterable[OHLCVBar], indicator_version: int) -> str:
+    """Return a short, deterministic hash of every stored input to a chart series.
+
+    It covers each bar's raw prices, volume and ``adj_factor``, so a new
+    session, a corrected print or a refreshed factor each give a new version,
+    plus the indicator version. Until the history tables of ADR-014 §7 exist,
+    this content hash is the data version that chart and alert responses
+    share (ADR-013 §4).
+    """
+    digest = hashlib.sha256(f"indicators:{indicator_version}".encode())
+    for b in bars:
+        row = f"|{b.date}:{b.open}:{b.high}:{b.low}:{b.close}:{b.volume}:{b.adj_factor.normalize()}"
+        digest.update(row.encode())
+    return digest.hexdigest()[:12]

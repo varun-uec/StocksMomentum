@@ -79,6 +79,7 @@ class ChartV1(_Strict):
 
     symbol: Symbol | None = None
     range: Literal["1W", "1M", "3M", "6M", "1Y", "MAX"]
+    interval: Literal["1D", "1W"] = "1D"
     mas: list[Annotated[int, Field(ge=0, le=1000)]] = Field(max_length=8)
     panes: list[ShortName] = Field(max_length=8)
     indicators: list[IndicatorV1] = Field(max_length=32)

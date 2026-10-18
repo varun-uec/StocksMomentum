@@ -21,6 +21,7 @@ export const WORKSPACE_ID = 'default';
 export const DEFAULT_CHART: ChartSettings = {
   symbol: null,
   range: '1Y',
+  interval: '1D',
   mas: [50, 200],
   panes: [],
   indicators: [],

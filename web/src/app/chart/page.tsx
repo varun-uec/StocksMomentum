@@ -59,7 +59,7 @@ export default function ChartPage() {
 function ChartWorkspace({ symbol }: { symbol: string }) {
   const navigate = useNavigate();
   const height = useChartHeight();
-  const shell = useChartShell(symbol, DEFAULT_STRATEGY, CHART_ID);
+  const shell = useChartShell(symbol, DEFAULT_STRATEGY, CHART_ID, { weekly: true });
   const workspace = useWorkspaceChart(CHART_ID);
   const drawings = useSymbolDrawings(symbol);
   const [search, setSearch] = useState<{ open: boolean; initial: string }>({ open: false, initial: '' });

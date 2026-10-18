@@ -38,7 +38,7 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import type { OHLCVBarDTO } from '@/lib/types';
+import type { ChartInterval, OHLCVBarDTO } from '@/lib/types';
 import { focusRing } from '@/lib/theme';
 import {
   DRAWING_COLOR,
@@ -68,6 +68,12 @@ export const TIMEFRAMES = [
 ] as const;
 
 export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
+
+/** The bar interval, separate from the visible range (M11b). */
+const INTERVALS: { id: ChartInterval; label: string; name: string }[] = [
+  { id: '1D', label: 'D', name: 'Daily bars' },
+  { id: '1W', label: 'W', name: 'Weekly bars' },
+];
 
 /**
  * Phase 9 — indicator sub-panes.
@@ -215,16 +221,20 @@ function ToggleButton({
   active,
   onClick,
   children,
+  ariaLabel,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  ariaLabel?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      aria-label={ariaLabel}
+      title={ariaLabel}
       className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${focusRing} ${
         active
           ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
@@ -280,6 +290,9 @@ export function PriceChart({
   bars,
   timeframe,
   onTimeframeChange,
+  interval = '1D',
+  onIntervalChange,
+  dataVersion,
   isLoading = false,
   height = 380,
   footnote,
@@ -301,6 +314,11 @@ export function PriceChart({
   bars: OHLCVBarDTO[];
   timeframe: TimeframeId;
   onTimeframeChange: (id: TimeframeId) => void;
+  /** Daily or weekly bars. The switch shows only when `onIntervalChange` is given. */
+  interval?: ChartInterval;
+  onIntervalChange?: (interval: ChartInterval) => void;
+  /** The series' data version, shown in the footnote (ADR-013 §4). */
+  dataVersion?: string;
   isLoading?: boolean;
   /** Chart height in px; the Elliott Wave screen renders a much taller chart. */
   height?: number;
@@ -357,6 +375,7 @@ export function PriceChart({
   const [candlestick, setCandlestick] = useState(true);
   const [internalMas, setInternalMas] = useState<number[]>([50, 200]);
   const activeMas = activeMasProp ?? internalMas;
+  const barWord = interval === '1W' ? 'weekly' : 'daily';
   const [drawingTool, setDrawingTool] = useState<DrawingKind | null>(null);
   const [draftPoints, setDraftPoints] = useState<DrawingPoint[]>([]);
   const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);
@@ -1042,6 +1061,15 @@ export function PriceChart({
             </ToggleButton>
           ))}
         </div>
+        {onIntervalChange && (
+          <div role="group" aria-label="Interval" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
+            {INTERVALS.map((iv) => (
+              <ToggleButton key={iv.id} active={interval === iv.id} onClick={() => onIntervalChange(iv.id)} ariaLabel={iv.name}>
+                {iv.label}
+              </ToggleButton>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
           <ToggleButton active={candlestick} onClick={() => setCandlestick(true)}>
             Candles
@@ -1146,7 +1174,7 @@ export function PriceChart({
           onKeyDown={drawingsEnabled ? onChartKeyDown : undefined}
           data-testid="price-chart"
           role={drawingsEnabled ? 'application' : 'img'}
-          aria-label={`Price chart, ${bars.length} daily bars${
+          aria-label={`Price chart, ${bars.length} ${barWord} bars${
             bars.length ? ` from ${bars[0].date} to ${bars[bars.length - 1].date}` : ''
           }. Moving averages shown: ${activeMas.length ? activeMas.map((p) => `MA${p}`).join(', ') : 'none'}.`}
           className={`w-full ${drawingsEnabled ? `rounded-sm ${focusRing}` : ''}`}
@@ -1172,7 +1200,9 @@ export function PriceChart({
         {isLoading
           ? 'Loading price series…'
           : (footnote ??
-            `${bars.length} daily bars from the stored NSE series. Moving averages are simple rolling means of the closes shown.`)}
+            `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the closes shown.${
+              bars.at(-1)?.partial ? ' The last week is not complete.' : ''
+            }${dataVersion ? ` Data version ${dataVersion}.` : ''}`)}
       </p>
     </div>
   );

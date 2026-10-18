@@ -60,6 +60,14 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
   - Until the history tables exist (M14), the manifest holds the last ingested session, the latest ingest run and `INDICATOR_VERSION`. That is enough to prove chart and alert parity on one instance. It is not enough for historical replay, so no result before M14 claims it.
 - **Indicator spec:** `(indicator_id, params, interval)`. The API serves a series for any spec in the server catalogue. Alerts (M15) store a spec, and the chart requests the same spec. One function computes both, so the chart and the alert cannot disagree.
 - **API changes:** `GET /securities/{symbol}/ohlcv?interval=1D|1W` and `GET /stocks/{symbol}/indicators/series?interval=&spec=`. The defaults keep today's behaviour (NFR-13).
+- *(M11b, as built)*
+  - Weekly bars aggregate the **adjusted** daily bars. Raw prints never enter a weekly bar, so a week with a split or bonus has no jump inside it. The domain function refuses unadjusted input.
+  - `partial` is true when the calendar has a session in the bar's week after the bar's last session. It depends only on the data and the calendar, never on the clock, so it is deterministic. It covers the running week, and also a week the security stopped trading in.
+  - `data_version`: no ingest-run record exists, so the interim manifest is a content hash of the inputs. It hashes every stored bar of the symbol (raw prices, volume and `adj_factor`) plus `INDICATOR_VERSION`, and the response carries its first 12 hex characters. A new session, a corrected print or a refreshed factor each give a new version. The price series and the indicator series of one symbol carry the same version when they use the same data. ADR-014's manifest replaces it in M14.
+  - Daily indicator series keep the snapshot's own bar window, so their last value still equals `/stocks/{symbol}/live`. Weekly series run the same functions on weekly bars built from the whole history.
+  - The interval is saved per chart (`ChartV1.interval`, default `1D`). Only the chart workspace offers the switch. The research screens mark daily signals, so they stay daily.
+  - On weekly bars, a drawing point shows on the bar of its ISO week. It keeps its saved date and price until the owner moves it.
+  - `spec=` is not built yet. M13's indicator dialog and M15's alerts need it; M11b serves the four existing panes.
 
 ### 5. Workspace persistence
 **Documents.** We store two kinds of JSON document, each versioned on its own:

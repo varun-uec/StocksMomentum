@@ -9,6 +9,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+Interval = Literal["1D", "1W"]
+"""A chart interval: daily bars, or one bar per ISO week of sessions (ADR-013 §4)."""
+
 
 class OHLCVBarDTO(BaseModel):
     """A single OHLCV bar for chart rendering."""
@@ -19,6 +22,11 @@ class OHLCVBarDTO(BaseModel):
     low: Decimal
     close: Decimal
     volume: int
+    partial: bool = Field(
+        default=False,
+        description="A weekly bar whose week has sessions after it: still running, "
+        "or not traded to the end.",
+    )
 
 
 class AdjustmentStepDTO(BaseModel):
@@ -37,6 +45,10 @@ class SecurityOHLCVDTO(BaseModel):
     """
 
     symbol: str
+    interval: Interval
+    data_version: str = Field(
+        description="Hash of the stored inputs; equal across responses built from the same data."
+    )
     bars: list[OHLCVBarDTO]
     adjustments: list[AdjustmentStepDTO]
 
@@ -85,9 +97,13 @@ class IndicatorBarDTO(BaseModel):
 
 
 class SecurityIndicatorSeriesDTO(BaseModel):
-    """A symbol's per-bar indicator series."""
+    """A symbol's per-bar indicator series, on daily or weekly bars."""
 
     symbol: str
+    interval: Interval
+    data_version: str = Field(
+        description="Equals the price series' data_version when both use the same data."
+    )
     bars: list[IndicatorBarDTO]
 
 

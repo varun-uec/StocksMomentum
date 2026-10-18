@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { ChartDrawing } from '@/components/stock/chart-drawings';
-import { factorAt, toChartPrices, toTradedPrices } from './traded-prices';
+import { factorAt, toChartPrices, toTradedPrices, weekBarFor } from './traded-prices';
 
 // GOLDIAM: a 1:5 split went ex on 2022-03-28 and a 1:3 bonus on 2026-07-10.
 const GOLDIAM = [
@@ -55,5 +55,28 @@ describe('drawings across a split and a bonus', () => {
     // The same drawing after a future 1:1 bonus halves every earlier factor.
     const later = [...GOLDIAM.map((s) => ({ ...s, factor: String(parseFloat(s.factor) / 2) })), { until: '2027-03-01', factor: '1' }];
     expect(toChartPrices(saved, later)[2].points[0].price).toBeCloseTo(374.55 / 2, 6);
+  });
+});
+
+describe('drawings on weekly bars', () => {
+  // Weekly bars are dated at each week's last session; 2026-07-03 closes a
+  // week whose Friday was a session, 2026-08-13 a week cut short on Thursday.
+  const weeks = ['2026-07-03', '2026-07-10', '2026-08-13'];
+
+  test('a point moves to the bar of its ISO week', () => {
+    expect(weekBarFor('2026-06-29', weeks)).toBe('2026-07-03'); // Monday
+    expect(weekBarFor('2026-07-08', weeks)).toBe('2026-07-10'); // Wednesday
+    expect(weekBarFor('2026-08-10', weeks)).toBe('2026-08-13');
+    expect(weekBarFor('2026-07-20', weeks)).toBe('2026-07-20'); // a week with no bar keeps its date
+    expect(weekBarFor('2026-09-01', weeks)).toBe('2026-09-01'); // after the last bar
+  });
+
+  test('an untouched drawing still goes back as the saved object; a moved one takes its bar date', () => {
+    const saved = [ray('a', '2026-07-08', 420.5)];
+    const chart = toChartPrices(saved, GOLDIAM, weeks);
+    expect(chart[0].points[0]).toEqual({ date: '2026-07-10', price: 315.375 }); // snapped; priced at its own date's factor, 0.75
+    expect(toTradedPrices(chart, saved, GOLDIAM, weeks)[0]).toBe(saved[0]);
+    const moved = [{ ...chart[0], points: [{ date: '2026-07-03', price: 300 }] }];
+    expect(toTradedPrices(moved, saved, GOLDIAM, weeks)[0].points[0]).toEqual({ date: '2026-07-03', price: 400 }); // 300 / 0.75
   });
 });

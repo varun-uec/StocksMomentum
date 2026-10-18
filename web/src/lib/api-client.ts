@@ -349,11 +349,13 @@ export async function getLiveStockAnalysis(
 export async function getOhlcv(
   symbol: string,
   from?: string,
-  to?: string
+  to?: string,
+  interval: import('./types').ChartInterval = '1D'
 ): Promise<import('./types').SecurityOHLCVDTO> {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
+  if (interval !== '1D') params.set('interval', interval);
   return fetchJson(`${API_BASE}/securities/${symbol}/ohlcv?${params}`, { cache: 'no-store' });
 }
 
@@ -443,9 +445,11 @@ export async function getElliottWave(
  */
 export async function getIndicatorSeries(
   symbol: string,
-  strategy = 'minervini_trend_template'
+  strategy = 'minervini_trend_template',
+  interval: import('./types').ChartInterval = '1D'
 ): Promise<import('./types').SecurityIndicatorSeriesDTO> {
   const params = new URLSearchParams({ strategy });
+  if (interval !== '1D') params.set('interval', interval);
   return fetchJson(`${API_BASE}/stocks/${symbol}/indicators/series?${params}`, {
     cache: 'no-store',
   });

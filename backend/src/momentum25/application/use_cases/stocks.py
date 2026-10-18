@@ -8,6 +8,7 @@ from typing import Any
 
 from momentum25.application.dto.market_data import (
     IndicatorBarDTO,
+    Interval,
     SecurityIndicatorSeriesDTO,
 )
 from momentum25.application.dto.stocks import ScorePointDTO, StockHistoryDTO
@@ -17,12 +18,13 @@ from momentum25.application.services.rs_ratings import (
 )
 from momentum25.application.use_cases.rankings import bind_builder_to_run, qualified_count
 from momentum25.application.use_cases.screening_orchestrator import build_evaluation_context
+from momentum25.application.use_cases.securities import ALL_HISTORY_SESSIONS, interval_bars
 from momentum25.domain.analytics.market_context import (
     RS_PERIODS,
     RelativeStrengthPoint,
     relative_strength_vs_index,
 )
-from momentum25.domain.entities.market_data import OHLCVBar
+from momentum25.domain.entities.market_data import OHLCVBar, series_data_version
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
 from momentum25.domain.ports.repositories import (
     BenchmarkIndexRepository,
@@ -31,6 +33,7 @@ from momentum25.domain.ports.repositories import (
     SecurityRepository,
     StrategyRepository,
 )
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.research.stop_loss import (
     DEFAULT_CHANDELIER_LOOKBACK,
     StopLossSuggestion,
@@ -40,6 +43,7 @@ from momentum25.domain.research.stop_loss import (
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
 from momentum25.domain.value_objects.indicators import IndicatorSet
 from momentum25.infrastructure.logging.setup import get_logger
+from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _DEFAULT_STRATEGY = "minervini_trend_template"
 _RS_INDETERMINATE_RULE_ID = "tt_rs_rating_min"
@@ -202,16 +206,25 @@ class GetIndicatorSeries:
         securities: SecurityRepository,
         strategies: StrategyRepository,
         indicator_pipeline: Any,
+        ohlcv: OHLCVRepository,
+        calendar: TradingCalendar,
     ) -> None:
         """Wire the use case with its collaborators."""
         self._securities = securities
         self._strategies = strategies
         self._indicator_pipeline = indicator_pipeline
+        self._ohlcv = ohlcv
+        self._calendar = calendar
 
     async def execute(
-        self, symbol: str, strategy_name: str = _DEFAULT_STRATEGY
+        self, symbol: str, strategy_name: str = _DEFAULT_STRATEGY, interval: Interval = "1D"
     ) -> SecurityIndicatorSeriesDTO:
-        """Return the indicator series for *symbol* under *strategy_name*."""
+        """Return the indicator series for *symbol* under *strategy_name*.
+
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly series run the same functions on
+        weekly bars built from the whole adjusted history.
+        """
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
@@ -220,9 +233,17 @@ class GetIndicatorSeries:
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
-        series = await self._indicator_pipeline.compute_series(
-            symbol, date.today(), strategy.config.indicators
+        today = date.today()
+        stored = await self._ohlcv.get_series(
+            security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=today
         )
+        if interval == "1W":
+            weekly = [bar for bar, _ in interval_bars(stored, "1W", self._calendar)]
+            series = self._indicator_pipeline.series_from_bars(weekly, today)
+        else:
+            series = await self._indicator_pipeline.compute_series(
+                symbol, today, strategy.config.indicators
+            )
 
         # Strict zipping: compute_series guarantees all arrays equal `dates`'
         # length, so a mismatch is a pipeline bug and must surface loudly.
@@ -247,7 +268,12 @@ class GetIndicatorSeries:
                 strict=True,
             )
         ]
-        return SecurityIndicatorSeriesDTO(symbol=str(security.symbol), bars=bars)
+        return SecurityIndicatorSeriesDTO(
+            symbol=str(security.symbol),
+            interval=interval,
+            data_version=series_data_version(stored.bars, INDICATOR_VERSION),
+            bars=bars,
+        )
 
 
 class RefreshGate:

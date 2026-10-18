@@ -20,7 +20,10 @@ from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import OHLCVDailyModel, SecurityModel
 from momentum25.main import create_app
 
-_ROWS = [  # date, raw close, adj_factor, volume
+_ROWS = [  # date, raw close, adj_factor, volume: the bonus week's real closes
+    (date(2026, 7, 6), Decimal("464.8000"), Decimal("0.75"), 300_000),
+    (date(2026, 7, 7), Decimal("450.2500"), Decimal("0.75"), 300_000),
+    (date(2026, 7, 8), Decimal("425.0500"), Decimal("0.75"), 300_000),
     (date(2026, 7, 9), Decimal("420.5000"), Decimal("0.75"), 300_000),
     (date(2026, 7, 10), Decimal("378.0000"), Decimal("1"), 900_000),
 ]
@@ -53,7 +56,9 @@ async def client(db_session: AsyncSession) -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def test_the_bonus_day_shows_the_adjusted_rise(client: httpx.AsyncClient) -> None:
-    res = await client.get("/api/v1/securities/GOLDIAM/ohlcv", params={"to": "2026-07-10"})
+    res = await client.get(
+        "/api/v1/securities/GOLDIAM/ohlcv", params={"from": "2026-07-09", "to": "2026-07-10"}
+    )
     assert res.status_code == 200
     bars = res.json()["bars"]
     closes = [Decimal(b["close"]) for b in bars]
@@ -65,8 +70,8 @@ async def test_the_bonus_day_shows_the_adjusted_rise(client: httpx.AsyncClient) 
 async def test_prices_are_adjusted_once_not_twice(client: httpx.AsyncClient) -> None:
     """The chart close equals the stored ``adj_close``, not ``adj_close`` × factor again."""
     res = await client.get("/api/v1/securities/GOLDIAM/ohlcv", params={"to": "2026-07-10"})
-    first = res.json()["bars"][0]
-    assert Decimal(first["close"]) == _ROWS[0][1] * _ROWS[0][2]  # 315.375, not 236.53
+    first = res.json()["bars"][3]
+    assert Decimal(first["close"]) == _ROWS[3][1] * _ROWS[3][2]  # 315.375, not 236.53
     assert Decimal(first["open"]) == Decimal("315.3750")
 
 
@@ -80,3 +85,37 @@ async def test_the_schedule_names_the_bonus(client: httpx.AsyncClient) -> None:
         ("2026-07-09", Decimal("0.75")),
         ("2026-07-10", Decimal("1")),
     ]
+
+
+async def test_the_bonus_week_is_one_weekly_bar_on_the_adjusted_basis(
+    client: httpx.AsyncClient,
+) -> None:
+    """Golden: the week of 6 July 2026, aggregated from adjusted sessions."""
+    res = await client.get(
+        "/api/v1/securities/GOLDIAM/ohlcv", params={"to": "2026-07-10", "interval": "1W"}
+    )
+    body = res.json()
+    assert body["interval"] == "1W"
+    [week] = body["bars"]
+    assert week["date"] == "2026-07-10"
+    assert (Decimal(week["open"]), Decimal(week["high"]), Decimal(week["low"])) == (
+        Decimal("348.6000"),  # 464.80 x 0.75, Monday's open
+        Decimal("378.0000"),  # Friday, after the bonus
+        Decimal("315.3750"),  # 420.50 x 0.75, Thursday
+    )
+    assert Decimal(week["close"]) == Decimal("378.0000")
+    assert week["volume"] == 4 * 400_000 + 900_000
+    assert week["partial"] is False
+
+
+async def test_daily_and_weekly_responses_share_one_data_version(
+    client: httpx.AsyncClient,
+) -> None:
+    params = {"to": "2026-07-10"}
+    daily = (await client.get("/api/v1/securities/GOLDIAM/ohlcv", params=params)).json()
+    weekly = (
+        await client.get("/api/v1/securities/GOLDIAM/ohlcv", params={**params, "interval": "1W"})
+    ).json()
+    assert daily["interval"] == "1D"
+    assert daily["data_version"] == weekly["data_version"]
+    assert len(daily["data_version"]) == 12

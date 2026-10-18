@@ -7,7 +7,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from momentum25.application.dto.market_data import SecurityOHLCVDTO, SecuritySearchResultDTO
+from momentum25.application.dto.market_data import (
+    Interval,
+    SecurityOHLCVDTO,
+    SecuritySearchResultDTO,
+)
 from momentum25.application.use_cases.securities import GetSecurityOHLCV, SearchSecurities
 from momentum25.interface.api.dependencies import (
     get_get_security_ohlcv,
@@ -33,6 +37,7 @@ async def get_ohlcv(
     use_case: Annotated[GetSecurityOHLCV, Depends(get_get_security_ohlcv)],
     from_: Annotated[date | None, Query(alias="from")] = None,
     to: Annotated[date | None, Query()] = None,
+    interval: Annotated[Interval, Query()] = "1D",
 ) -> SecurityOHLCVDTO:
-    """Return a symbol's OHLCV series for charting."""
-    return await use_case.execute(symbol, from_, to)
+    """Return a symbol's adjusted OHLCV series for charting, daily or weekly."""
+    return await use_case.execute(symbol, from_, to, interval)

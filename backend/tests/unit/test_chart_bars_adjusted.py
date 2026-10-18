@@ -74,7 +74,7 @@ class _Ohlcv:
 
 
 async def test_chart_bars_have_no_jump_across_a_split() -> None:
-    result = await GetSecurityOHLCV(_Securities(), _Ohlcv()).execute(  # type: ignore[arg-type]
+    result = await GetSecurityOHLCV(_Securities(), _Ohlcv(), None).execute(  # type: ignore[arg-type]
         "TEST", to=date(2030, 1, 1)
     )
     closes = [bar.close for bar in result.bars]
@@ -83,7 +83,7 @@ async def test_chart_bars_have_no_jump_across_a_split() -> None:
 
 async def test_chart_bars_match_the_screening_pipeline_bar_for_bar() -> None:
     """One authority: the chart's adjusted bars equal what the indicator pipeline reads."""
-    chart = await GetSecurityOHLCV(_Securities(), _Ohlcv()).execute(  # type: ignore[arg-type]
+    chart = await GetSecurityOHLCV(_Securities(), _Ohlcv(), None).execute(  # type: ignore[arg-type]
         "TEST", to=date(2030, 1, 1)
     )
     rows = [
@@ -113,7 +113,7 @@ def test_adjusting_twice_changes_nothing() -> None:
 
 async def test_the_schedule_covers_dates_before_the_requested_range() -> None:
     """A drawing can sit before the visible range; its factor must still be known."""
-    result = await GetSecurityOHLCV(_Securities(), _Ohlcv()).execute(  # type: ignore[arg-type]
+    result = await GetSecurityOHLCV(_Securities(), _Ohlcv(), None).execute(  # type: ignore[arg-type]
         "TEST", from_=_SPLIT, to=date(2030, 1, 1)
     )
     assert result.bars[0].date == _SPLIT

@@ -14,6 +14,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getIndicatorSeries, getOhlcv } from '@/lib/api-client';
 import { useChartPreferences } from '@/lib/chart-preferences';
 import { toChartPrices, toTradedPrices } from '@/lib/traded-prices';
+import type { ChartInterval } from '@/lib/types';
 import { TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
 
 /** ISO date `days` before today, for the chart's `from` query param. */
@@ -30,10 +31,15 @@ export function lookbackDaysFor(timeframe: TimeframeId, fallback: number): numbe
   return TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? fallback;
 }
 
-/** `chartId` names this screen's chart slot in the saved workspace (ADR-013 §5). */
-export function useChartShell(symbol: string, strategyName: string, chartId: string) {
+/**
+ * `chartId` names this screen's chart slot in the saved workspace (ADR-013 §5).
+ * `weekly` offers the interval switch. Screens that mark daily signals on the
+ * chart leave it off, so they always show daily bars.
+ */
+export function useChartShell(symbol: string, strategyName: string, chartId: string, { weekly = false } = {}) {
   const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
   const { preferences, ready, update } = useChartPreferences(symbol, chartId);
+  const interval: ChartInterval = weekly ? preferences.interval : '1D';
 
   // Apply the persisted timeframe once prefs are loaded; callers render the
   // chart only after `ready`, so it mounts with final values.
@@ -47,8 +53,8 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
   };
 
   const { data: ohlcv, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['stock-ohlcv', symbol, timeframe],
-    queryFn: () => getOhlcv(symbol, fromDateFor(timeframe)),
+    queryKey: ['stock-ohlcv', symbol, timeframe, interval],
+    queryFn: () => getOhlcv(symbol, fromDateFor(timeframe), undefined, interval),
     enabled: !!symbol,
     // Keep the current bars on screen while another range loads, so the chart
     // never blanks and a click during the load still lands on a bar.
@@ -57,8 +63,8 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
   });
 
   const { data: indicatorSeries } = useQuery({
-    queryKey: ['stock-indicator-series', symbol, strategyName],
-    queryFn: () => getIndicatorSeries(symbol, strategyName),
+    queryKey: ['stock-indicator-series', symbol, strategyName, interval],
+    queryFn: () => getIndicatorSeries(symbol, strategyName, interval),
     enabled: !!symbol,
   });
 
@@ -81,9 +87,13 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
   // Drawings are saved at traded prices; the chart shows adjusted ones. Until
   // the schedule loads, no drawing can be placed, so none is shown.
   const adjustments = ohlcv?.adjustments;
+  const weekBars = useMemo(
+    () => (ohlcv?.interval === '1W' ? ohlcv.bars.map((b) => b.date) : undefined),
+    [ohlcv]
+  );
   const chartDrawings = useMemo(
-    () => (adjustments ? toChartPrices(preferences.drawings, adjustments) : []),
-    [preferences.drawings, adjustments]
+    () => (adjustments ? toChartPrices(preferences.drawings, adjustments, weekBars) : []),
+    [preferences.drawings, adjustments, weekBars]
   );
 
   return {
@@ -95,6 +105,9 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       bars: ohlcv?.bars ?? [],
       timeframe,
       onTimeframeChange: setTimeframe,
+      interval,
+      onIntervalChange: weekly ? (next: ChartInterval) => update({ interval: next }) : undefined,
+      dataVersion: ohlcv?.data_version,
       // Placeholder bars are the previous range: still loading.
       isLoading: isLoading || isPlaceholderData,
       indicatorSeries: indicatorBars,
@@ -106,7 +119,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       drawingsEnabled: true,
       drawings: chartDrawings,
       onDrawingsChange: (drawings: typeof preferences.drawings) => {
-        if (adjustments) update({ drawings: toTradedPrices(drawings, preferences.drawings, adjustments) });
+        if (adjustments) update({ drawings: toTradedPrices(drawings, preferences.drawings, adjustments, weekBars) });
       },
     },
   };

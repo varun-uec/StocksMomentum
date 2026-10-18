@@ -425,7 +425,8 @@ export interface paths {
          *     The series is produced by the same indicator functions as
          *     ``/stocks/{symbol}/live`` — its last bar is always that endpoint's latest
          *     values, and no chart-facing indicator is computed here that does not already
-         *     exist on the snapshot.
+         *     exist on the snapshot. With ``interval=1W`` the same functions run on
+         *     weekly bars.
          */
         get: operations["read_stock_indicator_series_api_v1_stocks__symbol__indicators_series_get"];
         put?: never;
@@ -633,7 +634,7 @@ export interface paths {
         };
         /**
          * Get Ohlcv
-         * @description Return a symbol's OHLCV series for charting.
+         * @description Return a symbol's adjusted OHLCV series for charting, daily or weekly.
          */
         get: operations["get_ohlcv_api_v1_securities__symbol__ohlcv_get"];
         put?: never;
@@ -1187,6 +1188,12 @@ export interface components {
              * @enum {string}
              */
             range: "1W" | "1M" | "3M" | "6M" | "1Y" | "MAX";
+            /**
+             * Interval
+             * @default 1D
+             * @enum {string}
+             */
+            interval: "1D" | "1W";
             /** Mas */
             mas: number[];
             /** Panes */
@@ -1966,6 +1973,12 @@ export interface components {
             close: string;
             /** Volume */
             volume: number;
+            /**
+             * Partial
+             * @description A weekly bar whose week has sessions after it: still running, or not traded to the end.
+             * @default false
+             */
+            partial: boolean;
         };
         /** Page[RunDTO] */
         Page_RunDTO_: {
@@ -2666,11 +2679,21 @@ export interface components {
         };
         /**
          * SecurityIndicatorSeriesDTO
-         * @description A symbol's per-bar indicator series.
+         * @description A symbol's per-bar indicator series, on daily or weekly bars.
          */
         SecurityIndicatorSeriesDTO: {
             /** Symbol */
             symbol: string;
+            /**
+             * Interval
+             * @enum {string}
+             */
+            interval: "1D" | "1W";
+            /**
+             * Data Version
+             * @description Equals the price series' data_version when both use the same data.
+             */
+            data_version: string;
             /** Bars */
             bars: components["schemas"]["IndicatorBarDTO"][];
         };
@@ -2685,6 +2708,16 @@ export interface components {
         SecurityOHLCVDTO: {
             /** Symbol */
             symbol: string;
+            /**
+             * Interval
+             * @enum {string}
+             */
+            interval: "1D" | "1W";
+            /**
+             * Data Version
+             * @description Hash of the stored inputs; equal across responses built from the same data.
+             */
+            data_version: string;
             /** Bars */
             bars: components["schemas"]["OHLCVBarDTO"][];
             /** Adjustments */
@@ -3938,6 +3971,7 @@ export interface operations {
         parameters: {
             query?: {
                 strategy?: string;
+                interval?: "1D" | "1W";
             };
             header?: never;
             path: {
@@ -4261,6 +4295,7 @@ export interface operations {
             query?: {
                 from?: string | null;
                 to?: string | null;
+                interval?: "1D" | "1W";
             };
             header?: never;
             path: {

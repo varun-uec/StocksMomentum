@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from momentum25.application.dto.market_data import SecurityIndicatorSeriesDTO
+from momentum25.application.dto.market_data import Interval, SecurityIndicatorSeriesDTO
 from momentum25.application.dto.stocks import StockHistoryDTO
 from momentum25.application.use_cases.stocks import (
     GetIndicatorSeries,
@@ -58,15 +58,17 @@ async def read_stock_indicator_series(
     symbol: str,
     use_case: Annotated[GetIndicatorSeries, Depends(get_indicator_series)],
     strategy: Annotated[str, Query()] = "minervini_trend_template",
+    interval: Annotated[Interval, Query()] = "1D",
 ) -> SecurityIndicatorSeriesDTO:
     """Return a stock's per-bar indicator series for the chart sub-panes.
 
     The series is produced by the same indicator functions as
     ``/stocks/{symbol}/live`` — its last bar is always that endpoint's latest
     values, and no chart-facing indicator is computed here that does not already
-    exist on the snapshot.
+    exist on the snapshot. With ``interval=1W`` the same functions run on
+    weekly bars.
     """
-    return await use_case.execute(symbol, strategy)
+    return await use_case.execute(symbol, strategy, interval)
 
 
 @router.get("/{symbol}/live", response_model=LiveStockAnalysis)

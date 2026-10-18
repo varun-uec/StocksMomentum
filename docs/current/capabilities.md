@@ -37,8 +37,8 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | | `POST /runs/execute` | Runs the full pipeline. Background by default; poll `GET /runs/{id}`. |
 | | `POST /runs` | Creates a `PENDING` row only. Nothing executes it. |
 | Rankings | `GET /rankings/runs/{run_id}`, `GET /rankings/runs/{run_id}/stocks/{security_id}/explanation` | |
-| Stocks | `GET /stocks/{symbol}`, `/history`, `/live`, `/indicators/series`, `/elliott-wave`; `POST /stocks/{symbol}/chart-patterns` | `/live` evaluates any symbol on demand. |
-| Securities | `GET /securities` (search), `GET /securities/{symbol}/ohlcv` (adjusted bars and the adjustment schedule) | |
+| Stocks | `GET /stocks/{symbol}`, `/history`, `/live`, `/indicators/series?interval=1D\|1W`, `/elliott-wave`; `POST /stocks/{symbol}/chart-patterns` | `/live` evaluates any symbol on demand. |
+| Securities | `GET /securities` (search), `GET /securities/{symbol}/ohlcv?interval=1D\|1W` (adjusted daily or weekly bars, the adjustment schedule, `data_version`) | |
 | Market | `GET /market/context`, `GET /indices/{index_code}/closes` | |
 | Market data | `POST /market-data/refresh` | Fetches the latest NSE/BSE session. No backfill, no screening. |
 | Watchlist | `GET /watchlist`, `GET /watchlist/detail`, `POST /watchlist/{symbol}`, `DELETE /watchlist/{symbol}` | |

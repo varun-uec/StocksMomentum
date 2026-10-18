@@ -741,6 +741,9 @@ export interface MarketContext {
   sectors_unavailable_reason: string | null;
 }
 
+/** Daily bars, or one bar per ISO week of sessions (ADR-013 §4). */
+export type ChartInterval = '1D' | '1W';
+
 export interface OHLCVBarDTO {
   date: string;
   open: string;
@@ -748,6 +751,8 @@ export interface OHLCVBarDTO {
   low: string;
   close: string;
   volume: number;
+  /** A weekly bar whose week has sessions after it: still running, or not traded to the end. */
+  partial?: boolean;
 }
 
 /** Bars dated up to `until` (after the previous step) are scaled by `factor`. */
@@ -758,6 +763,9 @@ export interface AdjustmentStepDTO {
 
 export interface SecurityOHLCVDTO {
   symbol: string;
+  interval: ChartInterval;
+  /** Hash of the stored inputs; equal across responses built from the same data. */
+  data_version: string;
   /** Adjusted for corporate actions, as screening reads them (ADR-013 §4). */
   bars: OHLCVBarDTO[];
   /** The factor of every date in the stored history, not only `bars`. */
@@ -796,6 +804,8 @@ export interface IndicatorSeriesBarDTO {
 
 export interface SecurityIndicatorSeriesDTO {
   symbol: string;
+  interval: ChartInterval;
+  data_version: string;
   bars: IndicatorSeriesBarDTO[];
 }
 

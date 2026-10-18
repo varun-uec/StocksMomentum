@@ -46,7 +46,7 @@ class _Ohlcv:
 
 async def test_no_from_date_returns_every_stored_bar() -> None:
     ohlcv = _Ohlcv()
-    result = await GetSecurityOHLCV(_Securities(), ohlcv).execute(  # type: ignore[arg-type]
+    result = await GetSecurityOHLCV(_Securities(), ohlcv, None).execute(  # type: ignore[arg-type]
         "TEST", to=date(2030, 1, 1)
     )
     assert len(result.bars) == 2600
@@ -54,7 +54,7 @@ async def test_no_from_date_returns_every_stored_bar() -> None:
 
 
 async def test_a_from_date_still_bounds_the_series() -> None:
-    result = await GetSecurityOHLCV(_Securities(), _Ohlcv()).execute(  # type: ignore[arg-type]
+    result = await GetSecurityOHLCV(_Securities(), _Ohlcv(), None).execute(  # type: ignore[arg-type]
         "TEST", from_=date(2022, 1, 1), to=date(2030, 1, 1)
     )
     assert result.bars[0].date == date(2022, 1, 1)

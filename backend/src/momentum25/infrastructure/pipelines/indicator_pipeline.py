@@ -9,6 +9,7 @@ All indicator formulas per IMPLEMENTATION_SPEC.md §8 with verified correctness.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -744,7 +745,19 @@ class IndicatorPipelineImpl:
             )
             return IndicatorSeriesSet(as_of=reference_date)
 
-        df = self._to_dataframe(bars)
+        return self.series_from_bars(bars, reference_date)
+
+    @classmethod
+    def series_from_bars(cls, bars: Sequence[Any], as_of: date) -> IndicatorSeriesSet:
+        """Return per-bar indicator series computed on *bars*, at any interval.
+
+        The same ``_*_series`` functions as the daily snapshot, applied to the
+        bars given: weekly bars give weekly indicators, never daily values
+        resampled (ADR-013 §4). Bars carry their own ``adj_factor``.
+        """
+        if not bars:
+            return IndicatorSeriesSet(as_of=as_of)
+        df = cls._to_dataframe(list(bars))
         dates = tuple(d.date() for d in df["date"])
         rsi14 = _series_tuple(_rsi_series(df["close"], 14))
         atr14 = _series_tuple(_atr_series(df, 14))
@@ -752,7 +765,7 @@ class IndicatorPipelineImpl:
         adx14 = _series_tuple(adx14_series)
         macd_line_s, macd_signal_s, macd_histogram_s = _macd_series(df["close"])
         return IndicatorSeriesSet(
-            as_of=reference_date,
+            as_of=as_of,
             dates=dates,
             rsi14=rsi14,
             atr14=atr14,

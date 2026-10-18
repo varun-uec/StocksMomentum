@@ -325,7 +325,9 @@ async def get_get_security_ohlcv(
     ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
 ) -> AsyncIterator[GetSecurityOHLCV]:
     """Provide a GetSecurityOHLCV use-case instance."""
-    yield GetSecurityOHLCV(securities=securities, ohlcv=ohlcv)
+    yield GetSecurityOHLCV(
+        securities=securities, ohlcv=ohlcv, calendar=get_nse_trading_calendar()
+    )
 
 
 async def get_get_index_close_series() -> AsyncIterator[GetIndexCloseSeries]:
@@ -496,6 +498,8 @@ async def get_indicator_series() -> AsyncIterator[GetIndicatorSeries]:
             securities=SqlSecurityRepository(session),
             strategies=SqlStrategyRepository(session),
             indicator_pipeline=IndicatorPipelineImpl(session),
+            ohlcv=SqlOHLCVRepository(session),
+            calendar=get_nse_trading_calendar(),
         )
 
 

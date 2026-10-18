@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from momentum25.application.dto.market_data import (
     AdjustmentStepDTO,
     IndexCloseBarDTO,
     IndexOHLCVDTO,
+    Interval,
     OHLCVBarDTO,
     SecurityOHLCVDTO,
     SecuritySearchResultDTO,
+)
+from momentum25.domain.entities.market_data import (
+    OHLCVBar,
+    OHLCVSeries,
+    series_data_version,
+    weekly_bars,
 )
 from momentum25.domain.errors import NotFoundError
 from momentum25.domain.ports.repositories import (
@@ -18,11 +25,30 @@ from momentum25.domain.ports.repositories import (
     OHLCVRepository,
     SecurityRepository,
 )
+from momentum25.domain.ports.trading_calendar import TradingCalendar
+from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 # With no ``from`` date the chart asks for its whole history (the MAX range).
 # The repository caps by row count, so "everything" is a cap no stored series
 # reaches: 20,000 sessions is about 80 years of daily bars.
 ALL_HISTORY_SESSIONS = 20_000
+
+
+def interval_bars(
+    series: OHLCVSeries, interval: Interval, calendar: TradingCalendar
+) -> list[tuple[OHLCVBar, bool]]:
+    """Return the series' adjusted bars at ``interval``, each with its ``partial`` flag.
+
+    Weekly bars aggregate the adjusted daily bars, never raw prints, so a
+    week with a split or bonus has no jump inside it (ADR-013 §4).
+    """
+    daily = [b.adjusted() for b in series.bars]
+    if interval == "1D" or not daily:
+        return [(b, False) for b in daily]
+    last = daily[-1].date
+    week_end = last + timedelta(days=6 - last.weekday())
+    sessions = calendar.sessions_between(daily[0].date, week_end)
+    return [(w.bar, w.partial) for w in weekly_bars(daily, sessions)]
 
 
 class SearchSecurities:
@@ -36,9 +62,7 @@ class SearchSecurities:
         """Return up to *limit* matches for *query*, best match first."""
         matches = await self._securities.search(query, limit)
         return [
-            SecuritySearchResultDTO(
-                symbol=str(s.symbol), name=s.name, sector=s.sector
-            )
+            SecuritySearchResultDTO(symbol=str(s.symbol), name=s.name, sector=s.sector)
             for s in matches
         ]
 
@@ -50,16 +74,20 @@ class GetSecurityOHLCV:
     the chart and the price behind a rule's verdict always agree (ADR-013 §4).
     """
 
-    def __init__(self, securities: SecurityRepository, ohlcv: OHLCVRepository) -> None:
+    def __init__(
+        self, securities: SecurityRepository, ohlcv: OHLCVRepository, calendar: TradingCalendar
+    ) -> None:
         """Wire the use case with its collaborators."""
         self._securities = securities
         self._ohlcv = ohlcv
+        self._calendar = calendar
 
     async def execute(
         self,
         symbol: str,
         from_: date | None = None,
         to: date | None = None,
+        interval: Interval = "1D",
     ) -> SecurityOHLCVDTO:
         """Return bars in ``[from_, to]`` and the adjustment schedule of the whole history."""
         security = await self._securities.get_by_symbol(symbol)
@@ -73,16 +101,27 @@ class GetSecurityOHLCV:
         )
         bars = [
             OHLCVBarDTO(
-                date=a.date, open=a.open, high=a.high, low=a.low, close=a.close, volume=a.volume
+                date=b.date,
+                open=b.open,
+                high=b.high,
+                low=b.low,
+                close=b.close,
+                volume=b.volume,
+                partial=partial,
             )
-            for a in (b.adjusted() for b in series.bars)
-            if from_ is None or a.date >= from_
+            for b, partial in interval_bars(series, interval, self._calendar)
+            if from_ is None or b.date >= from_
         ]
         adjustments = [
-            AdjustmentStepDTO(until=s.until, factor=s.factor)
-            for s in series.adjustment_schedule()
+            AdjustmentStepDTO(until=s.until, factor=s.factor) for s in series.adjustment_schedule()
         ]
-        return SecurityOHLCVDTO(symbol=str(security.symbol), bars=bars, adjustments=adjustments)
+        return SecurityOHLCVDTO(
+            symbol=str(security.symbol),
+            interval=interval,
+            data_version=series_data_version(series.bars, INDICATOR_VERSION),
+            bars=bars,
+            adjustments=adjustments,
+        )
 
 
 class GetIndexCloseSeries:
