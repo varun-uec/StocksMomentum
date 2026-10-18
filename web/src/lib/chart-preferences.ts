@@ -5,6 +5,7 @@ import {
   type DrawingKind,
 } from '@/components/stock/chart-drawings';
 import { TIMEFRAMES, type PaneId, type TimeframeId } from '@/components/stock/PriceChart';
+import type { ChartType, PriceScale } from '@/components/stock/chart-types';
 import type { ChartInterval } from '@/lib/types';
 import { useSymbolDrawings, useWorkspaceChart, type ChartSettings } from '@/lib/workspace';
 
@@ -19,6 +20,8 @@ import { useSymbolDrawings, useWorkspaceChart, type ChartSettings } from '@/lib/
 export interface ChartPreferences {
   timeframe: TimeframeId;
   interval: ChartInterval;
+  chartType: ChartType;
+  scale: PriceScale;
   activeMas: number[];
   activePanes: PaneId[];
   drawings: ChartDrawing[];
@@ -38,6 +41,8 @@ export function parseLegacyPreferences(raw: string | null): ChartPreferences {
   const base: ChartPreferences = {
     timeframe: '1Y',
     interval: '1D',
+    chartType: 'candles',
+    scale: 'normal',
     activeMas: [50, 200],
     activePanes: [],
     drawings: [],
@@ -71,7 +76,7 @@ export function parseLegacyPreferences(raw: string | null): ChartPreferences {
     ? input.drawings.filter(isValidDrawing)
     : base.drawings;
 
-  return { timeframe, interval: '1D', activeMas, activePanes, drawings };
+  return { timeframe, interval: '1D', chartType: 'candles', scale: 'normal', activeMas, activePanes, drawings };
 }
 
 export function isValidDrawing(value: unknown): value is ChartDrawing {
@@ -110,6 +115,8 @@ export function useChartPreferences(
     () => ({
       timeframe: VALID_TIMEFRAMES.includes(chart.chart.range) ? (chart.chart.range as TimeframeId) : '1Y',
       interval: chart.chart.interval === '1W' ? '1W' : '1D',
+      chartType: chart.chart.chart_type ?? 'candles',
+      scale: chart.chart.scale ?? 'normal',
       activeMas: chart.chart.mas,
       activePanes: chart.chart.panes.filter((p) => VALID_PANES.includes(p)),
       drawings: drawings.drawings.filter(isValidDrawing),
@@ -122,6 +129,8 @@ export function useChartPreferences(
     const settings: Partial<ChartSettings> = {};
     if (patch.timeframe) settings.range = patch.timeframe;
     if (patch.interval) settings.interval = patch.interval;
+    if (patch.chartType) settings.chart_type = patch.chartType;
+    if (patch.scale) settings.scale = patch.scale;
     if (patch.activeMas) settings.mas = patch.activeMas;
     if (patch.activePanes) settings.panes = patch.activePanes;
     if (Object.keys(settings).length > 0) chart.update({ ...settings, symbol: symbol || null });

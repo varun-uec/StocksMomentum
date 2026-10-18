@@ -21,11 +21,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AreaSeries,
+  BarSeries,
   CandlestickSeries,
   ColorType,
   HistogramSeries,
   LineSeries,
   LineStyle,
+  PriceScaleMode,
   createChart,
   createSeriesMarkers,
   type IChartApi,
@@ -39,6 +42,7 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import type { ChartInterval, OHLCVBarDTO } from '@/lib/types';
+import { CHART_TYPES, heikinAshi, type ChartType, type PriceScale } from '@/components/stock/chart-types';
 import { focusRing } from '@/lib/theme';
 import {
   DRAWING_COLOR,
@@ -46,6 +50,7 @@ import {
   DRAWING_LABELS,
   DRAWING_REQUIRED_POINTS,
   attachDrawingsLayer,
+  type PriceSeries,
   drawingId,
   fromTime,
   hitTestAll,
@@ -362,6 +367,10 @@ export function PriceChart({
   interval = '1D',
   onIntervalChange,
   dataVersion,
+  chartType: chartTypeProp,
+  onChartTypeChange,
+  scale: scaleProp,
+  onScaleChange,
   isLoading = false,
   height = 380,
   footnote,
@@ -389,6 +398,12 @@ export function PriceChart({
   onIntervalChange?: (interval: ChartInterval) => void;
   /** The series' data version, shown in the footnote (ADR-013 §4). */
   dataVersion?: string;
+  /** Candles, bars, line, area or Heikin-Ashi; controlled when the handler is given. */
+  chartType?: ChartType;
+  onChartTypeChange?: (type: ChartType) => void;
+  /** Normal, log or percent price scale; controlled when the handler is given. */
+  scale?: PriceScale;
+  onScaleChange?: (scale: PriceScale) => void;
   isLoading?: boolean;
   /** Chart height in px; the Elliott Wave screen renders a much taller chart. */
   height?: number;
@@ -438,13 +453,18 @@ export function PriceChart({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const priceSeriesRef = useRef<ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null>(null);
+  const priceSeriesRef = useRef<PriceSeries | null>(null);
   const maSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const overlaySeriesRef = useRef<ISeriesApi<'Line'>[]>([]);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const zoneLinesRef = useRef<IPriceLine[]>([]);
   const paneSeriesRef = useRef<Map<PaneId, PaneRecord>>(new Map());
-  const [candlestick, setCandlestick] = useState(true);
+  const [internalType, setInternalType] = useState<ChartType>('candles');
+  const chartType = chartTypeProp ?? internalType;
+  const setChartType = (type: ChartType) => (onChartTypeChange ? onChartTypeChange(type) : setInternalType(type));
+  const [internalScale, setInternalScale] = useState<PriceScale>('normal');
+  const scale = scaleProp ?? internalScale;
+  const setScale = (next: PriceScale) => (onScaleChange ? onScaleChange(next) : setInternalScale(next));
   const [internalMas, setInternalMas] = useState<number[]>([50, 200]);
   const activeMas = activeMasProp ?? internalMas;
   const barWord = interval === '1W' ? 'weekly' : 'daily';
@@ -880,6 +900,11 @@ export function PriceChart({
     chartRef.current?.applyOptions({ height });
   }, [height]);
 
+  useEffect(() => {
+    const mode = { normal: PriceScaleMode.Normal, log: PriceScaleMode.Logarithmic, percent: PriceScaleMode.Percentage }[scale];
+    chartRef.current?.priceScale('right').applyOptions({ mode });
+  }, [scale]);
+
   // Price series (candlestick or close line).
   useEffect(() => {
     const chart = chartRef.current;
@@ -888,27 +913,42 @@ export function PriceChart({
       chart.removeSeries(priceSeriesRef.current);
       priceSeriesRef.current = null;
     }
-    if (candlestick) {
-      const series = chart.addSeries(CandlestickSeries, {
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderUpColor: '#10b981',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#10b981',
-        wickDownColor: '#ef4444',
-      });
+    const candleColors = {
+      upColor: '#10b981',
+      downColor: '#ef4444',
+      borderUpColor: '#10b981',
+      borderDownColor: '#ef4444',
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444',
+    };
+    const closes = parsed.map((p) => ({ time: p.time, value: p.close }));
+    if (chartType === 'candles' || chartType === 'heikin_ashi') {
+      const series = chart.addSeries(CandlestickSeries, candleColors);
+      series.setData(chartType === 'heikin_ashi' ? heikinAshi(parsed) : parsed);
+      priceSeriesRef.current = series;
+    } else if (chartType === 'bars') {
+      const series = chart.addSeries(BarSeries, { upColor: '#10b981', downColor: '#ef4444' });
       series.setData(parsed);
+      priceSeriesRef.current = series;
+    } else if (chartType === 'area') {
+      const series = chart.addSeries(AreaSeries, {
+        lineColor: '#6366f1',
+        topColor: 'rgba(99,102,241,0.28)',
+        bottomColor: 'rgba(99,102,241,0.02)',
+        lineWidth: 2,
+      });
+      series.setData(closes);
       priceSeriesRef.current = series;
     } else {
       const series = chart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 2 });
-      series.setData(parsed.map((p) => ({ time: p.time, value: p.close })));
+      series.setData(closes);
       priceSeriesRef.current = series;
     }
     chart.timeScale().fitContent();
     // NFR-11 measures chart open time to this mark: the first frame after the
     // price series holds its bars.
     if (parsed.length > 0) requestAnimationFrame(() => performance.mark('wickstreet:chart-painted'));
-  }, [candlestick, parsed]);
+  }, [chartType, parsed]);
 
   // MA overlays.
   useEffect(() => {
@@ -989,7 +1029,7 @@ export function PriceChart({
       markersRef.current?.detach();
       markersRef.current = null;
     };
-  }, [markers, candlestick, parsed]);
+  }, [markers, chartType, parsed]);
 
   // Projection zone: dashed upper/lower bounds delimiting a range, never a
   // single price line — the projection is a range and is drawn as one.
@@ -1012,7 +1052,7 @@ export function PriceChart({
         title: bound.title,
       })
     );
-  }, [priceZone, candlestick, parsed]);
+  }, [priceZone, chartType, parsed]);
 
   // Scroll to a requested date window (a selected wave's span), or back to the
   // whole loaded range when the caller clears it.
@@ -1176,12 +1216,24 @@ export function PriceChart({
             ))}
           </div>
         )}
-        <div className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
-          <ToggleButton active={candlestick} onClick={() => setCandlestick(true)}>
-            Candles
+        <select
+          aria-label="Chart type"
+          value={chartType}
+          onChange={(e) => setChartType(e.target.value as ChartType)}
+          className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-1 text-xs ${focusRing}`}
+        >
+          {CHART_TYPES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        <div role="group" aria-label="Price scale" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
+          <ToggleButton active={scale === 'log'} onClick={() => setScale(scale === 'log' ? 'normal' : 'log')} ariaLabel="Log scale">
+            Log
           </ToggleButton>
-          <ToggleButton active={!candlestick} onClick={() => setCandlestick(false)}>
-            Line
+          <ToggleButton active={scale === 'percent'} onClick={() => setScale(scale === 'percent' ? 'normal' : 'percent')} ariaLabel="Percent scale">
+            %
           </ToggleButton>
         </div>
         <ToggleButton active={showVolume} onClick={() => setShowVolume((v) => !v)}>

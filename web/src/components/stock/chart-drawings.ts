@@ -170,7 +170,10 @@ export function moveDrawing(
 
 /** Resolves the price series of the price pane at render time; the series is
  * rebuilt on the candlestick/line toggle, so the layer must not cache it. */
-export type PriceSeriesRef = () => ISeriesApi<'Candlestick' | 'Line'> | null;
+/** The price pane's main series, whatever the chart type. */
+export type PriceSeries = ISeriesApi<'Candlestick' | 'Bar' | 'Line' | 'Area'>;
+
+export type PriceSeriesRef = () => PriceSeries | null;
 
 interface RenderablePoint {
   date: string;
@@ -225,7 +228,7 @@ class DrawingsPrimitive implements IPanePrimitive<Time> {
   }
 
   /** Current price-pane series for price↔coordinate conversion. */
-  priceSeries(): ISeriesApi<'Candlestick' | 'Line'> | null {
+  priceSeries(): PriceSeries | null {
     return this._priceSeries();
   }
 
@@ -276,7 +279,7 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
   /** Map a stored point to on-pane coordinates; null when outside the scales. */
   private static _screen(
     chart: IChartApi,
-    series: ISeriesApi<'Candlestick' | 'Line'>,
+    series: PriceSeries,
     point: RenderablePoint
   ): { x: number; y: number } | null {
     const x = chart.timeScale().timeToCoordinate(toTime(point.date));
@@ -289,7 +292,7 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
     ctx: CanvasRenderingContext2D,
     paneWidth: number,
     chart: IChartApi,
-    series: ISeriesApi<'Candlestick' | 'Line'>,
+    series: PriceSeries,
     drawing: ChartDrawing,
     selected: boolean
   ): void {
@@ -359,7 +362,7 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
   private _paintHandles(
     ctx: CanvasRenderingContext2D,
     chart: IChartApi,
-    series: ISeriesApi<'Candlestick' | 'Line'>,
+    series: PriceSeries,
     drawing: ChartDrawing
   ): void {
     for (const point of drawing.points) {
@@ -378,7 +381,7 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
   private _paintDraft(
     ctx: CanvasRenderingContext2D,
     chart: IChartApi,
-    series: ISeriesApi<'Candlestick' | 'Line'>,
+    series: PriceSeries,
     draft: RenderablePoint[],
     cursor: RenderablePoint | null
   ): void {

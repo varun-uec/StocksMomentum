@@ -22,6 +22,8 @@ export const DEFAULT_CHART: ChartSettings = {
   symbol: null,
   range: '1Y',
   interval: '1D',
+  chart_type: 'candles',
+  scale: 'normal',
   mas: [50, 200],
   panes: [],
   indicators: [],

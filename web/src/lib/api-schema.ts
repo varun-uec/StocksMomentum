@@ -1194,6 +1194,18 @@ export interface components {
              * @enum {string}
              */
             interval: "1D" | "1W";
+            /**
+             * Chart Type
+             * @default candles
+             * @enum {string}
+             */
+            chart_type: "candles" | "bars" | "line" | "area" | "heikin_ashi";
+            /**
+             * Scale
+             * @default normal
+             * @enum {string}
+             */
+            scale: "normal" | "log" | "percent";
             /** Mas */
             mas: number[];
             /** Panes */

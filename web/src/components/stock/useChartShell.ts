@@ -119,6 +119,10 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       interval,
       onIntervalChange: weekly ? (next: ChartInterval) => update({ interval: next }) : undefined,
       dataVersion: ohlcv?.data_version,
+      chartType: preferences.chartType,
+      onChartTypeChange: (chartType: typeof preferences.chartType) => update({ chartType }),
+      scale: preferences.scale,
+      onScaleChange: (scale: typeof preferences.scale) => update({ scale }),
       // Placeholder bars are the previous range: still loading.
       isLoading: isLoading || isPlaceholderData,
       indicatorSeries: indicatorBars,
