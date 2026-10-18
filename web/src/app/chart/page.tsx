@@ -191,6 +191,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               {...shell.chartProps}
               {...catalogue.paneProps}
               overlayLines={catalogue.lines}
+              onOpenIndicators={() => setIndicatorsOpen(true)}
               height={height}
               toolRail
             />

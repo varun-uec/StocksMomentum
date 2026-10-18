@@ -43,7 +43,7 @@ import {
 } from 'lightweight-charts';
 import type { ChartInterval, OHLCVBarDTO } from '@/lib/types';
 import { CHART_TYPES, heikinAshi, type ChartType, type PriceScale } from '@/components/stock/chart-types';
-import { DrawingMenu } from '@/components/stock/DrawingMenu';
+import { ChartMenu, DrawingMenu } from '@/components/stock/DrawingMenu';
 import { focusRing } from '@/lib/theme';
 import {
   DRAWING_COLOR,
@@ -385,6 +385,7 @@ export function PriceChart({
   onChartTypeChange,
   scale: scaleProp,
   onScaleChange,
+  onOpenIndicators,
   isLoading = false,
   height = 380,
   footnote,
@@ -419,6 +420,8 @@ export function PriceChart({
   /** Normal, log or percent price scale; controlled when the handler is given. */
   scale?: PriceScale;
   onScaleChange?: (scale: PriceScale) => void;
+  /** Adds "Indicators…" to the chart's context menu. */
+  onOpenIndicators?: () => void;
   isLoading?: boolean;
   /** Chart height in px; the Elliott Wave screen renders a much taller chart. */
   height?: number;
@@ -551,7 +554,8 @@ export function PriceChart({
     commitDrawings(applyDrawingChanges(drawingsRef.current, changes, side), false);
   };
 
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  /** An open context menu: a drawing's (`id`) or the chart's (`id` null). */
+  const [menu, setMenu] = useState<{ id: string | null; x: number; y: number } | null>(null);
 
   /** Arm or disarm a drawing tool, dropping any half-placed anchors. */
   const selectTool = (tool: DrawingKind | null) => {
@@ -916,10 +920,9 @@ export function PriceChart({
         drawingsRef.current.map((d) => ({ id: d.id, kind: d.kind, points: d.points.map(toScreen), text: d.text ?? '' })),
         at,
       );
-      if (!hit) return;
       e.preventDefault();
-      setSelectedId(hit.id);
-      setMenu({ id: hit.id, x: at.x, y: at.y });
+      setSelectedId(hit?.id ?? null);
+      setMenu({ id: hit?.id ?? null, x: at.x, y: at.y });
     };
 
     container.addEventListener('pointerdown', onPointerDown, { capture: true });
@@ -953,11 +956,11 @@ export function PriceChart({
       stepHistory('after');
       return;
     }
-    if (selectedId && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
       e.preventDefault();
       const d = drawings.find((x) => x.id === selectedId);
       const p = d && d.points[0] ? screenOf(d.points[0]) : null;
-      setMenu({ id: selectedId, x: p?.x ?? 40, y: p?.y ?? 40 });
+      setMenu({ id: d?.id ?? null, x: p?.x ?? 40, y: p?.y ?? 40 });
       return;
     }
     if (selectedId && !mod && !e.altKey && moveSelected(e.key)) {
@@ -1447,6 +1450,19 @@ export function PriceChart({
         />
       )}
       <div className="relative flex-1 min-w-0">
+        {menu && menu.id === null && (
+          <ChartMenu
+            at={menu}
+            scale={scale}
+            onScale={setScale}
+            onReset={() => chartRef.current?.timeScale().fitContent()}
+            onIndicators={onOpenIndicators}
+            onClose={() => {
+              setMenu(null);
+              containerRef.current?.focus();
+            }}
+          />
+        )}
         {menu && drawings.some((d) => d.id === menu.id) && (
           <DrawingMenu
             drawing={drawings.find((d) => d.id === menu.id)!}

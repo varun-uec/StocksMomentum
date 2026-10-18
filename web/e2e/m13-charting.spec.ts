@@ -139,3 +139,26 @@ test('Alt+I opens the indicator list; an overlay and a pane draw and are saved w
   await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.3);
   await expect(page.getByText(/^CCI \(20\): -?\d/)).toBeVisible(); // the browser pane has values under the crosshair
 });
+
+test('the chart menu resets the view, sets the scale and opens the indicators', async ({ page, request }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  const box = (await page.getByTestId('price-chart').boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4, { button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Chart' });
+  await expect(menu.getByRole('menuitemradio', { name: /Normal scale/ })).toHaveAttribute('aria-checked', 'true');
+  await menu.getByRole('menuitemradio', { name: /Log scale/ }).click();
+  await expect(menu).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Log scale' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => mainChart(request)).toMatchObject({ scale: 'log' });
+
+  await page.getByTestId('price-chart').focus();
+  await page.keyboard.press('Shift+F10'); // the keyboard way in, with no drawing selected
+  await expect(menu.getByRole('menuitem', { name: 'Reset view' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4, { button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Indicators…' }).click();
+  await expect(page.getByRole('dialog', { name: 'Indicators' })).toBeVisible();
+});
