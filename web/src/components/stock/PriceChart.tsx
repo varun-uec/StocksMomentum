@@ -161,6 +161,7 @@ function DrawingRail({
 const INTERVALS: { id: ChartInterval; label: string; name: string }[] = [
   { id: '1D', label: 'D', name: 'Daily bars' },
   { id: '1W', label: 'W', name: 'Weekly bars' },
+  { id: '1M', label: 'M', name: 'Monthly bars' },
 ];
 
 /**
@@ -409,7 +410,7 @@ export function PriceChart({
   bars: OHLCVBarDTO[];
   timeframe: TimeframeId;
   onTimeframeChange: (id: TimeframeId) => void;
-  /** Daily or weekly bars. The switch shows only when `onIntervalChange` is given. */
+  /** Daily, weekly or monthly bars. The switch shows only when `onIntervalChange` is given. */
   interval?: ChartInterval;
   onIntervalChange?: (interval: ChartInterval) => void;
   /** The series' data version, shown in the footnote (ADR-013 §4). */
@@ -487,7 +488,7 @@ export function PriceChart({
   const setScale = (next: PriceScale) => (onScaleChange ? onScaleChange(next) : setInternalScale(next));
   const [internalMas, setInternalMas] = useState<number[]>([50, 200]);
   const activeMas = activeMasProp ?? internalMas;
-  const barWord = interval === '1W' ? 'weekly' : 'daily';
+  const barWord = { '1D': 'daily', '1W': 'weekly', '1M': 'monthly' }[interval];
   const [drawingTool, setDrawingTool] = useState<DrawingKind | null>(null);
   const [draftPoints, setDraftPoints] = useState<DrawingPoint[]>([]);
   const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);

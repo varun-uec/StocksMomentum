@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Interval = Literal["1D", "1W"]
+Interval = Literal["1D", "1W", "1M"]
 """A chart interval: daily bars, or one bar per ISO week of sessions (ADR-013 §4)."""
 
 
@@ -24,7 +24,7 @@ class OHLCVBarDTO(BaseModel):
     volume: int
     partial: bool = Field(
         default=False,
-        description="A weekly bar whose week has sessions after it: still running, "
+        description="A weekly or monthly bar whose period has sessions after it: still running, "
         "or not traded to the end.",
     )
 
@@ -97,7 +97,7 @@ class IndicatorBarDTO(BaseModel):
 
 
 class SecurityIndicatorSeriesDTO(BaseModel):
-    """A symbol's per-bar indicator series, on daily or weekly bars."""
+    """A symbol's per-bar indicator series, on daily, weekly or monthly bars."""
 
     symbol: str
     interval: Interval

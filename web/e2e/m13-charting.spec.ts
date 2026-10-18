@@ -7,7 +7,7 @@ test.beforeEach(() => resetDocuments());
 
 async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length > 0);
-  await expect(page.getByText(/\d+ (daily|weekly) bars from the stored NSE series/)).toBeVisible();
+  await expect(page.getByText(/\d+ (daily|weekly|monthly) bars from the stored NSE series/)).toBeVisible();
 }
 
 async function mainChart(request: APIRequestContext): Promise<Record<string, unknown> | null> {
@@ -161,4 +161,32 @@ test('the chart menu resets the view, sets the scale and opens the indicators', 
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4, { button: 'right' });
   await menu.getByRole('menuitem', { name: 'Indicators…' }).click();
   await expect(page.getByRole('dialog', { name: 'Indicators' })).toBeVisible();
+});
+
+test('monthly bars draw with monthly indicators and are saved with the chart', async ({ page, request }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  await page.getByRole('button', { name: 'MAX', exact: true }).click();
+  const daily = page.getByText(/^(\d+) daily bars from the stored NSE series/);
+  await expect(daily).toBeVisible();
+  const sessions = Number((await daily.textContent())!.split(' ')[0]);
+
+  await page.getByLabel('RSI (14)', { exact: true }).check();
+  const monthlySeries = page.waitForResponse(
+    (r) => r.url().includes('/indicators/series') && r.url().includes('interval=1M') && r.ok(),
+  );
+  await page.getByRole('button', { name: 'Monthly bars' }).click();
+  const monthly = page.getByText(/^(\d+) monthly bars from the stored NSE series/);
+  await expect(monthly).toBeVisible();
+  const months = Number((await monthly.textContent())!.split(' ')[0]);
+  expect(months).toBeGreaterThan(sessions / 25); // about 21 sessions a month
+  expect(months).toBeLessThan(sessions / 18);
+  const series = await (await monthlySeries).json();
+  expect(series.interval).toBe('1M');
+  expect(series.bars.at(-1).rsi14).not.toBeNull();
+  await expect.poll(() => mainChart(request)).toMatchObject({ interval: '1M' });
+
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Monthly bars' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(monthly).toBeVisible();
 });

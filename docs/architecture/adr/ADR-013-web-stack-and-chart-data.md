@@ -68,6 +68,8 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
   - The interval is saved per chart (`ChartV1.interval`, default `1D`). Only the chart workspace offers the switch. The research screens mark daily signals, so they stay daily.
   - On weekly bars, a drawing point shows on the bar of its ISO week. It keeps its saved date and price until the owner moves it.
   - `spec=` is not built yet. M13's indicator dialog and M15's alerts need it; M11b serves the four existing panes.
+- *(M13, as built)* **Monthly bars** (`interval=1M`): one bar per calendar month of sessions, with the same rules as weekly bars. One domain function, `period_bars`, builds both. Monthly indicators run on monthly bars. `partial` marks the running month. On monthly bars a drawing point shows on the bar of its month.
+- *(M13, as built)* The indicator dialog serves the browser catalogue, which is display-only (NFR-1a), so it still needs no `spec=`. M15's alerts add it.
 
 ### 5. Workspace persistence
 **Documents.** We store two kinds of JSON document, each versioned on its own:

@@ -16,8 +16,9 @@ from momentum25.application.dto.market_data import (
 from momentum25.domain.entities.market_data import (
     OHLCVBar,
     OHLCVSeries,
+    Period,
+    period_bars,
     series_data_version,
-    weekly_bars,
 )
 from momentum25.domain.errors import NotFoundError
 from momentum25.domain.ports.repositories import (
@@ -39,16 +40,21 @@ def interval_bars(
 ) -> list[tuple[OHLCVBar, bool]]:
     """Return the series' adjusted bars at ``interval``, each with its ``partial`` flag.
 
-    Weekly bars aggregate the adjusted daily bars, never raw prints, so a
-    week with a split or bonus has no jump inside it (ADR-013 §4).
+    Weekly and monthly bars aggregate the adjusted daily bars, never raw
+    prints, so a period with a split or bonus has no jump inside it
+    (ADR-013 §4).
     """
     daily = [b.adjusted() for b in series.bars]
     if interval == "1D" or not daily:
         return [(b, False) for b in daily]
     last = daily[-1].date
-    week_end = last + timedelta(days=6 - last.weekday())
-    sessions = calendar.sessions_between(daily[0].date, week_end)
-    return [(w.bar, w.partial) for w in weekly_bars(daily, sessions)]
+    if interval == "1W":
+        period_end = last + timedelta(days=6 - last.weekday())
+    else:
+        period_end = date(last.year + last.month // 12, last.month % 12 + 1, 1) - timedelta(days=1)
+    sessions = calendar.sessions_between(daily[0].date, period_end)
+    period: Period = "week" if interval == "1W" else "month"
+    return [(b.bar, b.partial) for b in period_bars(daily, sessions, period)]
 
 
 class SearchSecurities:

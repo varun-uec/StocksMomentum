@@ -1,6 +1,6 @@
-"""Golden tests for weekly bars (ADR-013 §4, M11b).
+"""Golden tests for weekly and monthly bars (ADR-013 §4, M11b, M13).
 
-One bar per ISO week of NSE sessions: open of the first session, highest high,
+One bar per ISO week or calendar month of NSE sessions: open of the first session, highest high,
 lowest low, close of the last session, summed volume, dated at the last session.
 Every expected value below is worked out by hand.
 """
@@ -18,8 +18,8 @@ from momentum25.application.use_cases.stocks import GetIndicatorSeries
 from momentum25.domain.entities.market_data import (
     OHLCVBar,
     OHLCVSeries,
+    period_bars,
     series_data_version,
-    weekly_bars,
 )
 from momentum25.domain.entities.security import Security
 from momentum25.domain.value_objects.types import Symbol
@@ -51,7 +51,7 @@ def test_a_holiday_week_is_one_bar_dated_at_its_last_session() -> None:
         _bar(sessions[2], "108", "109", "95", "97", 30),
         _bar(sessions[3], "97", "101", "96", "100", 40),
     ]
-    [week] = weekly_bars(daily, sessions)
+    [week] = period_bars(daily, sessions, "week")
     assert week.bar == _bar(date(2025, 10, 24), "100", "110", "95", "100", 100)
     assert week.partial is False
 
@@ -59,7 +59,7 @@ def test_a_holiday_week_is_one_bar_dated_at_its_last_session() -> None:
 def test_a_week_still_running_is_partial() -> None:
     sessions = _weekdays(date(2026, 8, 3))
     daily = [_bar(d, "10", "12", "9", "11", 5) for d in sessions[:3]]  # Mon-Wed so far
-    [week] = weekly_bars(daily, sessions)
+    [week] = period_bars(daily, sessions, "week")
     assert week.bar.date == date(2026, 8, 5)
     assert week.partial is True
 
@@ -68,7 +68,7 @@ def test_a_week_with_no_sessions_has_no_bar() -> None:
     first, third = date(2026, 3, 2), date(2026, 3, 16)
     sessions = _weekdays(first) + _weekdays(third)  # the week of 9 March is closed
     daily = [_bar(d, "10", "11", "9", "10", 1) for d in sessions]
-    bars = weekly_bars(daily, sessions)
+    bars = period_bars(daily, sessions, "week")
     assert [w.bar.date for w in bars] == [date(2026, 3, 6), date(2026, 3, 20)]
 
 
@@ -76,7 +76,7 @@ def test_iso_weeks_cross_the_new_year() -> None:
     # 29 Dec 2025 - 2 Jan 2026 is ISO week 2026-W01: one bar, not two.
     sessions = _weekdays(date(2025, 12, 29))
     daily = [_bar(d, "10", "11", "9", "10", 1) for d in sessions]
-    [week] = weekly_bars(daily, sessions)
+    [week] = period_bars(daily, sessions, "week")
     assert week.bar.date == date(2026, 1, 2)
     assert week.bar.volume == 5
 
@@ -92,8 +92,8 @@ def test_a_corporate_action_week_has_no_jump_inside_it() -> None:
         _bar(sessions[4], "104", "106", "103", "105", 200),
     ]
     with pytest.raises(ValueError, match="adjusted"):
-        weekly_bars(raw, sessions)  # raw prints would give a high of 206
-    [week] = weekly_bars([b.adjusted() for b in raw], sessions)
+        period_bars(raw, sessions, "week")  # raw prints would give a high of 206
+    [week] = period_bars([b.adjusted() for b in raw], sessions, "week")
     assert (week.bar.open, week.bar.high, week.bar.low, week.bar.close) == (
         Decimal("100.0000"),
         Decimal("106"),
@@ -101,6 +101,36 @@ def test_a_corporate_action_week_has_no_jump_inside_it() -> None:
         Decimal("105"),
     )
     assert week.bar.volume == 1000  # 200 + 200 adjusted, plus 600
+
+
+def test_a_month_is_one_bar_across_its_weeks() -> None:
+    # March 2026: 22 weekday sessions over five ISO weeks.
+    march = (date(2026, 3, 1) + timedelta(days=n) for n in range(31))
+    sessions = [d for d in march if d.weekday() < 5]
+    daily = [
+        _bar(d, str(100 + i), str(110 + i), str(90 - i), str(105 + i), 1)
+        for i, d in enumerate(sessions)
+    ]
+    [month] = period_bars(daily, sessions, "month")
+    assert month.bar == _bar(date(2026, 3, 31), "100", "131", "69", "126", 22)
+    assert month.partial is False
+
+
+def test_months_split_where_a_week_does_not() -> None:
+    # 29 Dec 2025 - 2 Jan 2026 is one ISO week but two months.
+    sessions = _weekdays(date(2025, 12, 29))
+    daily = [_bar(d, "10", "11", "9", "10", 1) for d in sessions]
+    months = period_bars(daily, sessions, "month")
+    assert [b.bar.date for b in months] == [date(2025, 12, 31), date(2026, 1, 2)]
+    assert len(period_bars(daily, sessions, "week")) == 1
+
+
+def test_the_running_month_is_partial_even_in_december() -> None:
+    first_half = (date(2025, 12, 1) + timedelta(days=n) for n in range(15))
+    days = [d for d in first_half if d.weekday() < 5]
+    series = OHLCVSeries(1, tuple(_bar(d, "10", "11", "9", "10", 1) for d in days))
+    [(bar, partial)] = interval_bars(series, "1M", _Calendar())  # type: ignore[arg-type]
+    assert (bar.date, partial) == (date(2025, 12, 15), True)
 
 
 def test_the_data_version_follows_every_stored_input() -> None:
@@ -184,3 +214,22 @@ async def test_price_and_indicator_series_share_one_data_version() -> None:
     assert prices.interval == series.interval == "1W"
     assert prices.data_version == series.data_version
     assert len(prices.bars) == 60  # 420 calendar days from a Monday: 60 full weeks
+
+
+async def test_monthly_indicators_are_computed_on_monthly_bars() -> None:
+    monthly = await GetIndicatorSeries(
+        _Securities(),
+        _Strategies(),
+        IndicatorPipelineImpl,
+        _Ohlcv(),
+        _Calendar(),  # type: ignore[arg-type]
+    ).execute("TEST", interval="1M")
+    expected_bars = [b for b, _ in interval_bars(OHLCVSeries(1, _DAILY), "1M", _Calendar())]  # type: ignore[arg-type]
+    expected = IndicatorPipelineImpl.series_from_bars(expected_bars, date.today())
+    assert monthly.interval == "1M"
+    # January 2025 to February 2026; February ends on a Saturday, so no month is partial.
+    assert len(expected_bars) == 14
+    # The series starts on Monday 6 January: 20 sessions, the 20th (i=19) closing at 100 + 19 % 7.
+    assert expected_bars[0] == _bar(date(2025, 1, 31), "100", "120", "99", "105", 20000)
+    assert [b.date for b in monthly.bars] == [b.date for b in expected_bars]
+    assert [b.atr14 for b in monthly.bars] == list(expected.atr14)

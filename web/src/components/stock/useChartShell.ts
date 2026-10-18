@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getIndicatorSeries, getOhlcv } from '@/lib/api-client';
 import { useChartPreferences } from '@/lib/chart-preferences';
-import { toChartPrices, toTradedPrices } from '@/lib/traded-prices';
+import { toChartPrices, toTradedPrices, type PeriodBars } from '@/lib/traded-prices';
 import type { ChartInterval } from '@/lib/types';
 import { TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
 
@@ -43,13 +43,13 @@ export function withinPriceSpan<T extends { date: string }>(indicatorBars: T[], 
 
 /**
  * `chartId` names this screen's chart slot in the saved workspace (ADR-013 §5).
- * `weekly` offers the interval switch. Screens that mark daily signals on the
+ * `intervals` offers the daily / weekly / monthly switch. Screens that mark daily signals on the
  * chart leave it off, so they always show daily bars.
  */
-export function useChartShell(symbol: string, strategyName: string, chartId: string, { weekly = false } = {}) {
+export function useChartShell(symbol: string, strategyName: string, chartId: string, { intervals = false } = {}) {
   const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
   const { preferences, ready, update } = useChartPreferences(symbol, chartId);
-  const interval: ChartInterval = weekly ? preferences.interval : '1D';
+  const interval: ChartInterval = intervals ? preferences.interval : '1D';
 
   // Apply the persisted timeframe once prefs are loaded; callers render the
   // chart only after `ready`, so it mounts with final values.
@@ -98,13 +98,13 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
   // Drawings are saved at traded prices; the chart shows adjusted ones. Until
   // the schedule loads, no drawing can be placed, so none is shown.
   const adjustments = ohlcv?.adjustments;
-  const weekBars = useMemo(
-    () => (ohlcv?.interval === '1W' ? ohlcv.bars.map((b) => b.date) : undefined),
+  const periodBars = useMemo<PeriodBars | undefined>(
+    () => (ohlcv && ohlcv.interval !== '1D' ? { interval: ohlcv.interval, dates: ohlcv.bars.map((b) => b.date) } : undefined),
     [ohlcv]
   );
   const chartDrawings = useMemo(
-    () => (adjustments ? toChartPrices(preferences.drawings, adjustments, weekBars) : []),
-    [preferences.drawings, adjustments, weekBars]
+    () => (adjustments ? toChartPrices(preferences.drawings, adjustments, periodBars) : []),
+    [preferences.drawings, adjustments, periodBars]
   );
 
   return {
@@ -117,7 +117,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       timeframe,
       onTimeframeChange: setTimeframe,
       interval,
-      onIntervalChange: weekly ? (next: ChartInterval) => update({ interval: next }) : undefined,
+      onIntervalChange: intervals ? (next: ChartInterval) => update({ interval: next }) : undefined,
       dataVersion: ohlcv?.data_version,
       chartType: preferences.chartType,
       onChartTypeChange: (chartType: typeof preferences.chartType) => update({ chartType }),
@@ -135,7 +135,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       drawingsKey: symbol,
       drawings: chartDrawings,
       onDrawingsChange: (drawings: typeof preferences.drawings) => {
-        if (adjustments) update({ drawings: toTradedPrices(drawings, preferences.drawings, adjustments, weekBars) });
+        if (adjustments) update({ drawings: toTradedPrices(drawings, preferences.drawings, adjustments, periodBars) });
       },
     },
   };

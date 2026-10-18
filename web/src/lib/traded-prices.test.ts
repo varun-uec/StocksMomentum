@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { ChartDrawing } from '@/components/stock/chart-drawings';
-import { factorAt, toChartPrices, toTradedPrices, weekBarFor } from './traded-prices';
+import { factorAt, periodBarFor, toChartPrices, toTradedPrices } from './traded-prices';
 
 // GOLDIAM: a 1:5 split went ex on 2022-03-28 and a 1:3 bonus on 2026-07-10.
 const GOLDIAM = [
@@ -61,14 +61,14 @@ describe('drawings across a split and a bonus', () => {
 describe('drawings on weekly bars', () => {
   // Weekly bars are dated at each week's last session; 2026-07-03 closes a
   // week whose Friday was a session, 2026-08-13 a week cut short on Thursday.
-  const weeks = ['2026-07-03', '2026-07-10', '2026-08-13'];
+  const weeks = { interval: '1W' as const, dates: ['2026-07-03', '2026-07-10', '2026-08-13'] };
 
   test('a point moves to the bar of its ISO week', () => {
-    expect(weekBarFor('2026-06-29', weeks)).toBe('2026-07-03'); // Monday
-    expect(weekBarFor('2026-07-08', weeks)).toBe('2026-07-10'); // Wednesday
-    expect(weekBarFor('2026-08-10', weeks)).toBe('2026-08-13');
-    expect(weekBarFor('2026-07-20', weeks)).toBe('2026-07-20'); // a week with no bar keeps its date
-    expect(weekBarFor('2026-09-01', weeks)).toBe('2026-09-01'); // after the last bar
+    expect(periodBarFor('2026-06-29', weeks)).toBe('2026-07-03'); // Monday
+    expect(periodBarFor('2026-07-08', weeks)).toBe('2026-07-10'); // Wednesday
+    expect(periodBarFor('2026-08-10', weeks)).toBe('2026-08-13');
+    expect(periodBarFor('2026-07-20', weeks)).toBe('2026-07-20'); // a week with no bar keeps its date
+    expect(periodBarFor('2026-09-01', weeks)).toBe('2026-09-01'); // after the last bar
   });
 
   test('an untouched drawing still goes back as the saved object; a moved one takes its bar date', () => {
@@ -78,5 +78,23 @@ describe('drawings on weekly bars', () => {
     expect(toTradedPrices(chart, saved, GOLDIAM, weeks)[0]).toBe(saved[0]);
     const moved = [{ ...chart[0], points: [{ date: '2026-07-03', price: 300 }] }];
     expect(toTradedPrices(moved, saved, GOLDIAM, weeks)[0].points[0]).toEqual({ date: '2026-07-03', price: 400 }); // 300 / 0.75
+  });
+});
+
+describe('drawings on monthly bars', () => {
+  // Monthly bars are dated at each month's last session; July 2026 is still running.
+  const months = { interval: '1M' as const, dates: ['2026-05-29', '2026-06-30', '2026-07-10'] };
+
+  test('a point moves to the bar of its calendar month', () => {
+    expect(periodBarFor('2026-05-01', months)).toBe('2026-05-29');
+    expect(periodBarFor('2026-06-01', months)).toBe('2026-06-30'); // a Monday that opens a month and a week
+    expect(periodBarFor('2026-07-01', months)).toBe('2026-07-10'); // ISO week of 29 June, but July
+    expect(periodBarFor('2026-04-15', months)).toBe('2026-04-15'); // a month with no bar keeps its date
+    expect(periodBarFor('2026-08-03', months)).toBe('2026-08-03'); // after the last bar
+  });
+
+  test('a snapped point keeps the price of its own date', () => {
+    const chart = toChartPrices([ray('a', '2026-07-09', 420.5)], GOLDIAM, months);
+    expect(chart[0].points[0]).toEqual({ date: '2026-07-10', price: 315.375 });
   });
 });

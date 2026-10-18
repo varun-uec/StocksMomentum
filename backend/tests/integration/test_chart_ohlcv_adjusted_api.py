@@ -119,3 +119,22 @@ async def test_daily_and_weekly_responses_share_one_data_version(
     assert daily["interval"] == "1D"
     assert daily["data_version"] == weekly["data_version"]
     assert len(daily["data_version"]) == 12
+
+
+async def test_the_bonus_month_is_one_monthly_bar_and_still_running(
+    client: httpx.AsyncClient,
+) -> None:
+    """Golden: July 2026 so far is the bonus week. NSE has sessions after the 10th."""
+    res = await client.get(
+        "/api/v1/securities/GOLDIAM/ohlcv", params={"to": "2026-07-10", "interval": "1M"}
+    )
+    body = res.json()
+    assert body["interval"] == "1M"
+    [month] = body["bars"]
+    assert (month["date"], Decimal(month["open"]), Decimal(month["low"])) == (
+        "2026-07-10",
+        Decimal("348.6000"),
+        Decimal("315.3750"),
+    )
+    assert month["volume"] == 4 * 400_000 + 900_000
+    assert month["partial"] is True

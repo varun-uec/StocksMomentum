@@ -65,8 +65,8 @@ async def read_stock_indicator_series(
     The series is produced by the same indicator functions as
     ``/stocks/{symbol}/live`` — its last bar is always that endpoint's latest
     values, and no chart-facing indicator is computed here that does not already
-    exist on the snapshot. With ``interval=1W`` the same functions run on
-    weekly bars.
+    exist on the snapshot. With ``interval=1W`` or ``1M`` the same functions
+    run on weekly or monthly bars.
     """
     return await use_case.execute(symbol, strategy, interval)
 

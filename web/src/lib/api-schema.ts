@@ -425,8 +425,8 @@ export interface paths {
          *     The series is produced by the same indicator functions as
          *     ``/stocks/{symbol}/live`` — its last bar is always that endpoint's latest
          *     values, and no chart-facing indicator is computed here that does not already
-         *     exist on the snapshot. With ``interval=1W`` the same functions run on
-         *     weekly bars.
+         *     exist on the snapshot. With ``interval=1W`` or ``1M`` the same functions
+         *     run on weekly or monthly bars.
          */
         get: operations["read_stock_indicator_series_api_v1_stocks__symbol__indicators_series_get"];
         put?: never;
@@ -634,7 +634,7 @@ export interface paths {
         };
         /**
          * Get Ohlcv
-         * @description Return a symbol's adjusted OHLCV series for charting, daily or weekly.
+         * @description Return a symbol's adjusted OHLCV series for charting: daily, weekly or monthly.
          */
         get: operations["get_ohlcv_api_v1_securities__symbol__ohlcv_get"];
         put?: never;
@@ -1193,7 +1193,7 @@ export interface components {
              * @default 1D
              * @enum {string}
              */
-            interval: "1D" | "1W";
+            interval: "1D" | "1W" | "1M";
             /**
              * Chart Type
              * @default candles
@@ -1994,7 +1994,7 @@ export interface components {
             volume: number;
             /**
              * Partial
-             * @description A weekly bar whose week has sessions after it: still running, or not traded to the end.
+             * @description A weekly or monthly bar whose period has sessions after it: still running, or not traded to the end.
              * @default false
              */
             partial: boolean;
@@ -2698,7 +2698,7 @@ export interface components {
         };
         /**
          * SecurityIndicatorSeriesDTO
-         * @description A symbol's per-bar indicator series, on daily or weekly bars.
+         * @description A symbol's per-bar indicator series, on daily, weekly or monthly bars.
          */
         SecurityIndicatorSeriesDTO: {
             /** Symbol */
@@ -2707,7 +2707,7 @@ export interface components {
              * Interval
              * @enum {string}
              */
-            interval: "1D" | "1W";
+            interval: "1D" | "1W" | "1M";
             /**
              * Data Version
              * @description Equals the price series' data_version when both use the same data.
@@ -2731,7 +2731,7 @@ export interface components {
              * Interval
              * @enum {string}
              */
-            interval: "1D" | "1W";
+            interval: "1D" | "1W" | "1M";
             /**
              * Data Version
              * @description Hash of the stored inputs; equal across responses built from the same data.
@@ -3995,7 +3995,7 @@ export interface operations {
         parameters: {
             query?: {
                 strategy?: string;
-                interval?: "1D" | "1W";
+                interval?: "1D" | "1W" | "1M";
             };
             header?: never;
             path: {
@@ -4319,7 +4319,7 @@ export interface operations {
             query?: {
                 from?: string | null;
                 to?: string | null;
-                interval?: "1D" | "1W";
+                interval?: "1D" | "1W" | "1M";
             };
             header?: never;
             path: {

@@ -222,8 +222,8 @@ class GetIndicatorSeries:
         """Return the indicator series for *symbol* under *strategy_name*.
 
         Daily series keep the snapshot's own bar window, so the last value always
-        equals ``/stocks/{symbol}/live``. Weekly series run the same functions on
-        weekly bars built from the whole adjusted history.
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history.
         """
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
@@ -237,9 +237,9 @@ class GetIndicatorSeries:
         stored = await self._ohlcv.get_series(
             security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=today
         )
-        if interval == "1W":
-            weekly = [bar for bar, _ in interval_bars(stored, "1W", self._calendar)]
-            series = self._indicator_pipeline.series_from_bars(weekly, today)
+        if interval != "1D":
+            period = [bar for bar, _ in interval_bars(stored, interval, self._calendar)]
+            series = self._indicator_pipeline.series_from_bars(period, today)
         else:
             series = await self._indicator_pipeline.compute_series(
                 symbol, today, strategy.config.indicators

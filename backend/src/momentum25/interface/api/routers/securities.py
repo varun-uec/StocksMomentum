@@ -39,5 +39,5 @@ async def get_ohlcv(
     to: Annotated[date | None, Query()] = None,
     interval: Annotated[Interval, Query()] = "1D",
 ) -> SecurityOHLCVDTO:
-    """Return a symbol's adjusted OHLCV series for charting, daily or weekly."""
+    """Return a symbol's adjusted OHLCV series for charting: daily, weekly or monthly."""
     return await use_case.execute(symbol, from_, to, interval)

@@ -114,7 +114,7 @@ export function useChartPreferences(
   const preferences = useMemo<ChartPreferences>(
     () => ({
       timeframe: VALID_TIMEFRAMES.includes(chart.chart.range) ? (chart.chart.range as TimeframeId) : '1Y',
-      interval: chart.chart.interval === '1W' ? '1W' : '1D',
+      interval: chart.chart.interval ?? '1D',
       chartType: chart.chart.chart_type ?? 'candles',
       scale: chart.chart.scale ?? 'normal',
       activeMas: chart.chart.mas,

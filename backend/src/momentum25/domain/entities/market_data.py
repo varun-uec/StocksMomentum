@@ -7,7 +7,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from momentum25.domain.ports.market_data import RawCorporateAction
@@ -151,12 +151,15 @@ def compute_adjustment_factors(
     return factors
 
 
-@dataclass(frozen=True, slots=True)
-class WeeklyBar:
-    """One ISO week of trading sessions as a single bar (ADR-013 §4).
+Period = Literal["week", "month"]
 
-    ``partial`` is true when the exchange calendar has a session in the week
-    after the bar's last session: the week is still running, or the security
+
+@dataclass(frozen=True, slots=True)
+class PeriodBar:
+    """One ISO week or calendar month of trading sessions as a single bar (ADR-013 §4).
+
+    ``partial`` is true when the exchange calendar has a session in the period
+    after the bar's last session: the period is still running, or the security
     did not trade to the end of it.
     """
 
@@ -164,36 +167,40 @@ class WeeklyBar:
     partial: bool
 
 
-def _week_of(day: date) -> tuple[int, int]:
+def _period_of(day: date, period: Period) -> tuple[int, int]:
+    if period == "month":
+        return day.year, day.month
     iso = day.isocalendar()
     return iso.year, iso.week
 
 
-def weekly_bars(daily: Sequence[OHLCVBar], sessions: Iterable[date]) -> list[WeeklyBar]:
-    """Aggregate adjusted daily bars into one bar per ISO week of sessions.
+def period_bars(
+    daily: Sequence[OHLCVBar], sessions: Iterable[date], period: Period
+) -> list[PeriodBar]:
+    """Aggregate adjusted daily bars into one bar per ISO week or calendar month.
 
     Open is the first session's open, high the highest high, low the lowest
     low, close the last session's close and volume the sum. The bar is dated
-    at its last session. A week with holidays still has one bar; a week with
-    no bars has none. ``sessions`` is the exchange calendar over the bars'
-    weeks, used only for the ``partial`` flag.
+    at its last session. A period with holidays still has one bar; a period
+    with no bars has none. ``sessions`` is the exchange calendar over the bars'
+    periods, used only for the ``partial`` flag.
 
     The daily bars must already be adjusted (``adj_factor`` 1). Aggregating raw
     prints across an ex-date would mix two price bases in one bar.
     """
     if any(b.adj_factor != 1 for b in daily):
-        raise ValueError("weekly_bars needs adjusted daily bars (adj_factor 1)")
+        raise ValueError("period_bars needs adjusted daily bars (adj_factor 1)")
     last_session: dict[tuple[int, int], date] = {}
     for day in sessions:
-        week = _week_of(day)
-        last_session[week] = max(day, last_session.get(week, day))
+        key = _period_of(day, period)
+        last_session[key] = max(day, last_session.get(key, day))
 
-    weeks: dict[tuple[int, int], list[OHLCVBar]] = {}
+    groups: dict[tuple[int, int], list[OHLCVBar]] = {}
     for bar in daily:
-        weeks.setdefault(_week_of(bar.date), []).append(bar)
+        groups.setdefault(_period_of(bar.date, period), []).append(bar)
 
-    out: list[WeeklyBar] = []
-    for week, bars in weeks.items():
+    out: list[PeriodBar] = []
+    for key, bars in groups.items():
         last = bars[-1]
         bar = OHLCVBar(
             date=last.date,
@@ -203,7 +210,7 @@ def weekly_bars(daily: Sequence[OHLCVBar], sessions: Iterable[date]) -> list[Wee
             close=last.close,
             volume=sum(b.volume for b in bars),
         )
-        out.append(WeeklyBar(bar=bar, partial=last_session.get(week, last.date) > last.date))
+        out.append(PeriodBar(bar=bar, partial=last_session.get(key, last.date) > last.date))
     return out
 
 

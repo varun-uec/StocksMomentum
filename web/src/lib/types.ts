@@ -742,7 +742,7 @@ export interface MarketContext {
 }
 
 /** Daily bars, or one bar per ISO week of sessions (ADR-013 §4). */
-export type ChartInterval = '1D' | '1W';
+export type ChartInterval = '1D' | '1W' | '1M';
 
 export interface OHLCVBarDTO {
   date: string;
@@ -751,7 +751,7 @@ export interface OHLCVBarDTO {
   low: string;
   close: string;
   volume: number;
-  /** A weekly bar whose week has sessions after it: still running, or not traded to the end. */
+  /** A weekly or monthly bar whose period has sessions after it: still running, or not traded to the end. */
   partial?: boolean;
 }
 
