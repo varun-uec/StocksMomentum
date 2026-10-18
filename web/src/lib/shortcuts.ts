@@ -14,7 +14,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'Alt+V', action: 'Vertical line tool' },
   { keys: 'Click, drag, Delete', action: 'Select, move or delete a drawing' },
   { keys: '← → ↑ ↓ (drawing selected)', action: 'Move the drawing a bar sideways, or a little up or down' },
-  { keys: 'Right-click, ContextMenu key, Shift+F10', action: "The drawing's menu (colour, width, text, delete), or the chart's (reset, indicators, scale)" },
+  { keys: 'Right-click, ContextMenu key, Shift+F10', action: "The drawing's menu (colour, width, text, delete), or the chart's (reset, indicators, scale, alert at a price)" },
   { keys: 'Ctrl/⌘+Z', action: 'Undo a drawing edit made in this window' },
   { keys: 'Ctrl/⌘+Shift+Z, Ctrl+Y', action: 'Redo' },
   { keys: 'Esc', action: 'Cancel the tool or the selection' },

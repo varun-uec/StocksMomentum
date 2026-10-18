@@ -4,7 +4,9 @@
           NFR-11 times a chart opening 10 years of bars, and the real dataset
           starts in 2019 (about 6.9 years). The M13 benchmark fills a 4 × 4
           layout with them. They exist only in the clone. Idempotent.
-``reset`` Delete every saved workspace and drawing, so each test starts clean.
+``reset`` Delete every saved workspace, drawing and alert, so each test starts clean.
+``age-alerts`` Move every alert's ``armed_after`` 30 days back, so an E2E test can
+          watch one fire on bars already stored (the clone gets no new bars).
 
 The database URL comes from ``E2E_DATABASE_URL`` only, never ``M25_DATABASE_URL``.
 Both commands refuse any database whose name does not end in ``_e2e``: a reset
@@ -45,6 +47,10 @@ async def main(command: str, url: str) -> None:
     try:
         if command == "reset":
             await conn.execute("DELETE FROM user_documents")
+            await conn.execute("DELETE FROM alerts")
+            return
+        if command == "age-alerts":
+            await conn.execute("UPDATE alerts SET armed_after = armed_after - 30")
             return
         await conn.execute(SQL)
         count = await conn.fetchval(

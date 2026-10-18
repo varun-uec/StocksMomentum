@@ -6,6 +6,7 @@
 
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertsTab, useAlerts } from '@/components/workspace/AlertsTab';
 import { ExplanationSummary } from '@/components/workspace/ExplanationSummary';
 import { addToWatchlist, getLiveStockAnalysis, getWatchlistDetail, removeFromWatchlist } from '@/lib/api-client';
 import { num } from '@/lib/format';
@@ -15,6 +16,7 @@ import type { RightPanel } from '@/lib/workspace';
 const TABS: { id: NonNullable<RightPanel>; label: string }[] = [
   { id: 'watchlist', label: 'Watchlist' },
   { id: 'details', label: 'Details' },
+  { id: 'alerts', label: 'Alerts' },
 ];
 
 /** Add or remove a symbol; both lists refresh. */
@@ -40,6 +42,7 @@ export function SidePanel({
   onPanel,
   onOpenSymbol,
   height,
+  alertPrice,
 }: {
   symbol: string;
   strategy: string;
@@ -47,7 +50,10 @@ export function SidePanel({
   onPanel: (panel: RightPanel) => void;
   onOpenSymbol: (symbol: string) => void;
   height: number;
+  /** A price picked on the chart for a new alert. */
+  alertPrice?: number;
 }) {
+  const unseen = useAlerts().data?.unseen ?? 0;
   return (
     <aside aria-label="Side panel" style={{ height }} className="flex flex-col rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-slate-200 dark:border-slate-800">
@@ -64,6 +70,11 @@ export function SidePanel({
               }`}
             >
               {tab.label}
+              {tab.id === 'alerts' && unseen > 0 && (
+                <span aria-label={`${unseen} new`} className="ml-1 px-1 rounded-full bg-rose-600 text-white text-[10px]">
+                  {unseen}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -71,12 +82,10 @@ export function SidePanel({
           ×
         </button>
       </div>
-      <div role="tabpanel" aria-label={panel === 'watchlist' ? 'Watchlist' : 'Details'} className="flex-1 overflow-y-auto">
-        {panel === 'watchlist' ? (
-          <WatchlistTab symbol={symbol} strategy={strategy} onOpenSymbol={onOpenSymbol} />
-        ) : (
-          <DetailsTab symbol={symbol} strategy={strategy} />
-        )}
+      <div role="tabpanel" aria-label={TABS.find((t) => t.id === panel)?.label} className="flex-1 overflow-y-auto">
+        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} onOpenSymbol={onOpenSymbol} />}
+        {panel === 'details' && <DetailsTab symbol={symbol} strategy={strategy} />}
+        {panel === 'alerts' && <AlertsTab symbol={symbol} price={alertPrice} />}
       </div>
     </aside>
   );

@@ -34,6 +34,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     const text = await res.text().catch(() => 'Unknown error');
     throw new Error(`API ${res.status}: ${text}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -485,3 +486,26 @@ export async function runWalkForwardBacktest(
     cache: 'no-store',
   });
 }
+
+// ── Alerts (FR-22, M15) ──────────────────────────────────────────────
+
+type AlertSchemas = import('./api-schema').components['schemas'];
+export type AlertDTO = AlertSchemas['AlertDTO'];
+export type AlertListDTO = AlertSchemas['AlertListDTO'];
+export type CreateAlertRequest = AlertSchemas['CreateAlertRequest'];
+export type AlertEvaluationDTO = AlertSchemas['AlertEvaluationDTO'];
+
+export const getAlerts = (): Promise<AlertListDTO> => fetchJson(`${API_BASE}/alerts`, { cache: 'no-store' });
+
+export const createAlert = (body: CreateAlertRequest): Promise<AlertDTO> =>
+  fetchJson(`${API_BASE}/alerts`, { method: 'POST', body: JSON.stringify(body) });
+
+export const deleteAlert = (id: number): Promise<void> => fetchJson(`${API_BASE}/alerts/${id}`, { method: 'DELETE' });
+
+export const rearmAlert = (id: number): Promise<AlertDTO> =>
+  fetchJson(`${API_BASE}/alerts/${id}/rearm`, { method: 'POST' });
+
+export const markAlertsSeen = (): Promise<void> => fetchJson(`${API_BASE}/alerts/seen`, { method: 'POST' });
+
+export const evaluateAlerts = (): Promise<AlertEvaluationDTO> =>
+  fetchJson(`${API_BASE}/alerts/evaluate`, { method: 'POST' });

@@ -124,7 +124,7 @@ const SCALES: { id: PriceScale; label: string }[] = [
 
 /**
  * The chart's context menu (M13): reset the view, pick the price scale, open
- * the indicator list. Opened by a right-click away from any drawing, or the
+ * the indicator list, set an alert at the price under the menu (M15). Opened by a right-click away from any drawing, or the
  * ContextMenu key / Shift+F10 when no drawing is selected.
  */
 export function ChartMenu({
@@ -133,6 +133,7 @@ export function ChartMenu({
   onScale,
   onReset,
   onIndicators,
+  onAlert,
   onClose,
 }: {
   at: { x: number; y: number };
@@ -140,6 +141,8 @@ export function ChartMenu({
   onScale: (scale: PriceScale) => void;
   onReset: () => void;
   onIndicators?: () => void;
+  /** Present when the chart can set an alert at the price under the menu. */
+  onAlert?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -164,6 +167,11 @@ export function ChartMenu({
       {onIndicators && (
         <button type="button" role="menuitem" className={ITEM_CLASS} onClick={run(onIndicators)}>
           Indicators…
+        </button>
+      )}
+      {onAlert && (
+        <button type="button" role="menuitem" className={ITEM_CLASS} onClick={run(onAlert)}>
+          Alert at this price…
         </button>
       )}
       <div role="group" aria-label="Price scale" className="flex flex-col border-t border-slate-100 dark:border-slate-800 pt-1">

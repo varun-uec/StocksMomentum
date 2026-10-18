@@ -30,9 +30,14 @@ export { expect };
 /** A symbol present in every local dataset since 2019. */
 export const SYMBOL = 'RELIANCE';
 
-/** Delete every saved workspace and drawing in the E2E clone. */
-export function resetDocuments(): void {
-  execFileSync(`${BACKEND_DIR}/.venv/bin/python`, [new URL('./db.py', import.meta.url).pathname, 'reset'], {
+function db(command: 'reset' | 'age-alerts'): void {
+  execFileSync(`${BACKEND_DIR}/.venv/bin/python`, [new URL('./db.py', import.meta.url).pathname, command], {
     env: { ...process.env, E2E_DATABASE_URL },
   });
 }
+
+/** Delete every saved workspace, drawing and alert in the E2E clone. */
+export const resetDocuments = (): void => db('reset');
+
+/** Move every alert's armed date 30 days back, so it can fire on stored bars. */
+export const ageAlerts = (): void => db('age-alerts');

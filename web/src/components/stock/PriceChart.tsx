@@ -388,6 +388,7 @@ export function PriceChart({
   scale: scaleProp,
   onScaleChange,
   onOpenIndicators,
+  onAlertAtPrice,
   compact = false,
   crosshairSync,
   isLoading = false,
@@ -426,6 +427,8 @@ export function PriceChart({
   onScaleChange?: (scale: PriceScale) => void;
   /** Adds "Indicators…" to the chart's context menu. */
   onOpenIndicators?: () => void;
+  /** Adds "Alert at this price…" to the chart's context menu (M15). */
+  onAlertAtPrice?: (price: number) => void;
   /** A grid cell (M13): only the range and interval controls; no legend or footnote. */
   compact?: boolean;
   /** Shares the crosshair date with the other charts of a layout. */
@@ -1500,6 +1503,14 @@ export function PriceChart({
             onScale={setScale}
             onReset={() => chartRef.current?.timeScale().fitContent()}
             onIndicators={onOpenIndicators}
+            onAlert={
+              onAlertAtPrice
+                ? () => {
+                    const price = priceSeriesRef.current?.coordinateToPrice(menu.y);
+                    if (price != null) onAlertAtPrice(price);
+                  }
+                : undefined
+            }
             onClose={() => {
               setMenu(null);
               containerRef.current?.focus();

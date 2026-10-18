@@ -180,6 +180,11 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { panel, setPanel } = useRightPanel();
+  const [alertPrice, setAlertPrice] = useState<number>();
+  const alertAt = (price: number) => {
+    setAlertPrice(price);
+    setPanel('alerts');
+  };
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
   const listed = watchlist.data?.items.some((i) => i.symbol === symbol) ?? false;
@@ -337,7 +342,13 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         <div className="flex-1 min-w-0">
           {!multi ? (
             shell.ready ? (
-              <PriceChart {...slot.chartProps} onOpenIndicators={() => setIndicatorsOpen(true)} height={height} toolRail />
+              <PriceChart
+                {...slot.chartProps}
+                onOpenIndicators={() => setIndicatorsOpen(true)}
+                onAlertAtPrice={alertAt}
+                height={height}
+                toolRail
+              />
             ) : (
               <LoadingSpinner />
             )
@@ -374,6 +385,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               onPanel={setPanel}
               onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
               height={height + 120}
+              alertPrice={alertPrice}
             />
           </div>
         )}

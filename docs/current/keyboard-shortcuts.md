@@ -15,7 +15,7 @@ The chart workspace (`/chart`) answers these keys. Press `?` there to see the sa
 | Alt+V | Vertical line tool |
 | Click, drag, Delete | Select, move or delete a drawing |
 | ← → ↑ ↓ (drawing selected) | Move the drawing a bar sideways, or a little up or down |
-| Right-click, ContextMenu key, Shift+F10 | The drawing's menu (colour, width, text, delete), or the chart's (reset, indicators, scale) |
+| Right-click, ContextMenu key, Shift+F10 | The drawing's menu (colour, width, text, delete), or the chart's (reset, indicators, scale, alert at a price) |
 | Ctrl/⌘+Z | Undo a drawing edit made in this window |
 | Ctrl/⌘+Shift+Z, Ctrl+Y | Redo |
 | Esc | Cancel the tool or the selection |
