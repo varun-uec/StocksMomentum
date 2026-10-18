@@ -39,14 +39,43 @@ describe('mergeWorkspaces', () => {
     const base = ws({ stock: DEFAULT_CHART });
     const mine = ws({ stock: { ...DEFAULT_CHART, range: 'MAX' } });
     const theirs = ws({ stock: DEFAULT_CHART, analysis: { ...DEFAULT_CHART, panes: ['rsi'] } });
-    const merged = mergeWorkspaces(base, mine, theirs);
-    expect(merged.charts.stock.range).toBe('MAX');
-    expect(merged.charts.analysis.panes).toEqual(['rsi']);
+    const r = mergeWorkspaces(base, mine, theirs);
+    expect(r.conflicted).toBe(false);
+    expect(r.mine.charts.stock.range).toBe('MAX');
+    expect(r.mine.charts.analysis.panes).toEqual(['rsi']);
+  });
+
+  test('the same setting changed differently in two windows is a conflict', () => {
+    const base = ws({ main: DEFAULT_CHART });
+    const r = mergeWorkspaces(base, ws({ main: { ...DEFAULT_CHART, mas: [20, 50, 200] } }), ws({ main: { ...DEFAULT_CHART, mas: [200] } }));
+    expect(r.conflicts).toEqual(['main.mas']);
+    expect(r.mine.charts.main.mas).toEqual([20, 50, 200]);
+    expect(r.theirs.charts.main.mas).toEqual([200]);
+  });
+
+  test('the open symbol and active chart follow the newest window, without a conflict', () => {
+    const base = ws({ main: { ...DEFAULT_CHART, symbol: 'TCS' } }, 'stock');
+    const mine = ws({ main: { ...DEFAULT_CHART, symbol: 'INFY' } }, 'main');
+    const theirs = ws({ main: { ...DEFAULT_CHART, symbol: 'SBIN' } }, 'analysis');
+    const r = mergeWorkspaces(base, mine, theirs);
+    expect(r.conflicted).toBe(false);
+    expect(r.mine.charts.main.symbol).toBe('INFY');
+    expect(r.mine.active_chart_id).toBe('main');
+  });
+
+  test('two first saves of one chart: only changes from the defaults count', () => {
+    const mine = ws({ main: { ...DEFAULT_CHART, symbol: 'TCS', mas: [20, 50, 200] } });
+    const theirs = ws({ main: { ...DEFAULT_CHART, symbol: 'TCS' } });
+    const r = mergeWorkspaces(null, mine, theirs);
+    expect(r.conflicted).toBe(false);
+    expect(r.mine.charts.main.mas).toEqual([20, 50, 200]);
+    expect(mergeWorkspaces(null, mine, ws({ main: { ...DEFAULT_CHART, mas: [200] } })).conflicts).toEqual(['main.mas']);
   });
 
   test('two first saves (no base) keep both sides charts', () => {
-    const merged = mergeWorkspaces(null, ws({ main: DEFAULT_CHART }, 'main'), ws({ stock: DEFAULT_CHART }, 'stock'));
-    expect(Object.keys(merged.charts).sort()).toEqual(['main', 'stock']);
-    expect(merged.active_chart_id).toBe('main');
+    const r = mergeWorkspaces(null, ws({ main: DEFAULT_CHART }, 'main'), ws({ stock: DEFAULT_CHART }, 'stock'));
+    expect(Object.keys(r.mine.charts).sort()).toEqual(['main', 'stock']);
+    expect(r.mine.active_chart_id).toBe('main');
+    expect(r.conflicted).toBe(false);
   });
 });

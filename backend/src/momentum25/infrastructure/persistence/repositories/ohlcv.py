@@ -114,6 +114,7 @@ class SqlOHLCVRepository:
                 adj_close=r.adj_close,
                 prev_close=r.prev_close,
                 turnover_value=r.turnover_value,
+                adj_factor=r.adj_factor,
             )
             for r in rows
         )

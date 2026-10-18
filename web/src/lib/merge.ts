@@ -12,19 +12,51 @@ export function sameJson(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+export interface FieldMerge<T> {
+  /** The merge, with this window's value of each conflicting field. */
+  mine: T;
+  /** The same merge, with the server's value of each conflicting field. */
+  theirs: T;
+  /** Fields both windows changed differently. Empty means the merge is clean. */
+  conflicts: string[];
+}
+
 /**
- * Field-level merge of two flat records. A field this window changed keeps its
- * value; any other field takes theirs. Never conflicts: used for presentation
- * settings, where the last writer per field is the expected outcome.
+ * Field-level merge of two flat records (presentation settings).
+ *
+ * Per field: if only one side changed it, that side wins. If both changed it
+ * the same way, fine. If both changed it differently, it is a conflict and the
+ * caller asks the user. With no base (both sides created the record), every
+ * differing field conflicts.
+ *
+ * `latestWins` names fields that record where the owner is, not what they
+ * built, such as the open symbol. For those the newest navigation is the
+ * right value, so this window's value wins without a conflict.
  */
-export function mergeFields<T extends Record<string, unknown>>(base: T | undefined, mine: T, theirs: T | undefined): T {
-  if (!theirs) return mine;
-  if (!base) return mine;
-  const out: Record<string, unknown> = { ...theirs };
-  for (const key of Object.keys(mine)) {
-    if (!sameJson(mine[key], base[key])) out[key] = mine[key];
+export function mergeFields<T extends Record<string, unknown>>(
+  base: T | undefined,
+  mine: T,
+  theirs: T | undefined,
+  latestWins: readonly string[] = [],
+): FieldMerge<T> {
+  if (!theirs) return { mine, theirs: mine, conflicts: [] };
+  const b: Record<string, unknown> = base ?? {};
+  const resolvedMine: Record<string, unknown> = {};
+  const resolvedTheirs: Record<string, unknown> = {};
+  const conflicts: string[] = [];
+  for (const key of new Set([...Object.keys(theirs), ...Object.keys(mine)])) {
+    const [bi, mi, ti] = [b[key], mine[key], theirs[key]];
+    let pick: { mine: unknown; theirs: unknown };
+    if (sameJson(mi, bi)) pick = { mine: ti, theirs: ti };
+    else if (sameJson(ti, bi) || sameJson(mi, ti) || latestWins.includes(key)) pick = { mine: mi, theirs: mi };
+    else {
+      conflicts.push(key);
+      pick = { mine: mi, theirs: ti };
+    }
+    if (pick.mine !== undefined) resolvedMine[key] = pick.mine;
+    if (pick.theirs !== undefined) resolvedTheirs[key] = pick.theirs;
   }
-  return out as T;
+  return { mine: resolvedMine as T, theirs: resolvedTheirs as T, conflicts };
 }
 
 export interface ItemMerge<T> {

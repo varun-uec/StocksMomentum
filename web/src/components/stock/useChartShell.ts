@@ -92,7 +92,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
       activePanes: preferences.activePanes,
       onActivePanesChange: (panes: typeof preferences.activePanes) =>
         update({ activePanes: panes }),
-      initialActiveMas: preferences.activeMas,
+      activeMas: preferences.activeMas,
       onActiveMasChange: (mas: number[]) => update({ activeMas: mas }),
       drawingsEnabled: true,
       drawings: preferences.drawings,

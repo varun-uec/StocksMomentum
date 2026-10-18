@@ -12,7 +12,7 @@ import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
 import { useChartShell } from '@/components/stock/useChartShell';
-import { ConflictNotice, SaveState } from '@/components/workspace/SaveState';
+import { SaveState } from '@/components/workspace/SaveState';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { useSymbolDrawings, useWorkspaceChart } from '@/lib/workspace';
@@ -109,12 +109,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         <span className="flex-1" />
         <SaveState documents={[workspace, drawings]} />
       </header>
-
-      {drawings.conflict && (
-        <div className="mb-2">
-          <ConflictNotice symbol={symbol} onResolve={drawings.resolve} />
-        </div>
-      )}
 
       {shell.ready ? (
         <PriceChart {...shell.chartProps} height={height} />

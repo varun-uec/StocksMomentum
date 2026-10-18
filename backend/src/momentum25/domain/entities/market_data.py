@@ -11,9 +11,17 @@ if TYPE_CHECKING:
     from momentum25.domain.ports.market_data import RawCorporateAction
 
 
+_PRICE_QUANTUM = Decimal("0.0001")
+
+
 @dataclass(frozen=True, slots=True)
 class OHLCVBar:
-    """A single daily OHLCV bar. ``adj_close`` is the corporate-action-adjusted close."""
+    """A single daily OHLCV bar, as printed (raw).
+
+    ``adj_close`` is the corporate-action-adjusted close. ``adj_factor`` is the
+    stored backward adjustment factor (1 = no adjustment); the adjustment
+    refresh owns it, so bar writers ignore this field.
+    """
 
     date: date
     open: Decimal
@@ -24,6 +32,34 @@ class OHLCVBar:
     adj_close: Decimal | None = None
     prev_close: Decimal | None = None
     turnover_value: Decimal | None = None
+    adj_factor: Decimal = Decimal(1)
+
+    def adjusted(self) -> OHLCVBar:
+        """Return the bar on the adjusted basis screening uses.
+
+        Prices are multiplied by ``adj_factor`` and volume divided by it, the
+        contract of :func:`compute_adjustment_factors` and of the indicator
+        pipeline. Prices keep the stored 4-decimal precision. ``prev_close`` and
+        ``turnover_value`` have no single adjusted meaning across an ex-date, so
+        they are dropped.
+        """
+        if self.adj_factor == 1:
+            return self
+        f = self.adj_factor
+
+        def price(value: Decimal) -> Decimal:
+            return (value * f).quantize(_PRICE_QUANTUM)
+
+        return OHLCVBar(
+            date=self.date,
+            open=price(self.open),
+            high=price(self.high),
+            low=price(self.low),
+            close=price(self.close),
+            volume=round(self.volume / f),
+            adj_close=self.adj_close,
+            adj_factor=Decimal(1),
+        )
 
 
 @dataclass(frozen=True, slots=True)

@@ -16,6 +16,6 @@ Each ADR follows: **Context · Decision · Consequences · Alternatives consider
 | [010](./ADR-010-no-auth-mvp.md) | No auth in MVP, SaaS seams pre-built |
 | [011](./ADR-011-chart-engine.md) | Chart engine: keep lightweight-charts |
 | [012](./ADR-012-open-source-self-hosted.md) | Open-source, self-hosted, local by default *(Proposed)* |
-| [013](./ADR-013-web-stack-and-chart-data.md) | Web stack, chart data semantics, workspace persistence *(Proposed)* |
+| [013](./ADR-013-web-stack-and-chart-data.md) | Web stack, chart data semantics, workspace persistence *(Accepted)* |
 | [014](./ADR-014-strategy-studio.md) | Strategy Studio: configured rules, three result classes, sealed hold-out *(Proposed)* |
 | 015 | Licence *(placeholder)* |

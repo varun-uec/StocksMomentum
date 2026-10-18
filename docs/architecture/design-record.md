@@ -29,5 +29,6 @@ Each entry: the Wickstreet decision, the reference that prompted it (if any), an
 | D4 | 2026-10-18 | Autosave with a visible "Saved ✓ hh:mm" state, no Save button in M11 | Own | A self-hosted app has no account flow to save into. Visible state builds trust. |
 | D5 | 2026-10-18 | A conflict notice, never a silent overwrite | Own | ADR-013 §5. Two windows on one instance are a normal case. |
 | D6 | 2026-10-18 | Chart in the centre, drawing tools on the left, details on the right | Common terminal convention (X5) | Layout convention shared by most charting tools; Wickstreet uses its own visual style |
-| D7 | 2026-10-18 | `/` opens search in M11, and moves to the indicator dialog in M13 | X4 (`/` opens indicators) | M11 has no indicator dialog. The move keeps TradingView habits once the dialog exists. |
+| D7 | 2026-10-18 | *(Superseded by D9.)* `/` opens search in M11, and moves to the indicator dialog in M13 | X4 (`/` opens indicators) | M11 has no indicator dialog. The move keeps TradingView habits once the dialog exists. |
 | D8 | 2026-10-18 | No scripting language and no AI agents | X1 (OpenChart offers both) | A1 §4. Momentum25's configurable, explained rules are the differentiator. |
+| D9 | 2026-10-18 | `/` stays symbol search in every milestone. Supersedes D7. M13 gives the indicator dialog its own shortcut. | X4 (`/` opens indicators) | Owner decision at the M11 review. Search is the first step of every workflow, and one key should keep one meaning. |

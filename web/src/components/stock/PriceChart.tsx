@@ -292,7 +292,7 @@ export function PriceChart({
   activePanes,
   onActivePanesChange,
   extraPaneDefs,
-  initialActiveMas,
+  activeMas: activeMasProp,
   onActiveMasChange,
   drawingsEnabled = false,
   drawings: drawingsProp,
@@ -334,8 +334,11 @@ export function PriceChart({
    * their on/off UI.
    */
   extraPaneDefs?: PaneDef[];
-  /** Initial MA toggles for the Phase 9.5 persisted preferences. */
-  initialActiveMas?: number[];
+  /**
+   * Moving averages to show. Controlled by the parent when supplied, so a merge
+   * from another window shows up; else the chart keeps its own default.
+   */
+  activeMas?: number[];
   onActiveMasChange?: (mas: number[]) => void;
   /** Show the drawing toolbar and accept clicks while a tool is active. */
   drawingsEnabled?: boolean;
@@ -352,7 +355,8 @@ export function PriceChart({
   const zoneLinesRef = useRef<IPriceLine[]>([]);
   const paneSeriesRef = useRef<Map<PaneId, PaneRecord>>(new Map());
   const [candlestick, setCandlestick] = useState(true);
-  const [activeMas, setActiveMas] = useState<number[]>(initialActiveMas ?? [50, 200]);
+  const [internalMas, setInternalMas] = useState<number[]>([50, 200]);
+  const activeMas = activeMasProp ?? internalMas;
   const [drawingTool, setDrawingTool] = useState<DrawingKind | null>(null);
   const [draftPoints, setDraftPoints] = useState<DrawingPoint[]>([]);
   const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);
@@ -1000,8 +1004,8 @@ export function PriceChart({
     const next = on
       ? [...activeMas, period].sort((a, b) => a - b)
       : activeMas.filter((p) => p !== period);
-    setActiveMas(next);
-    onActiveMasChange?.(next);
+    if (onActiveMasChange) onActiveMasChange(next);
+    else setInternalMas(next);
   };
 
   const paneOrder = paneDefs.map((d) => d.id);

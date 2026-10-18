@@ -237,3 +237,120 @@ test('the existing research screens still save their charts (NFR-13)', async ({ 
   await chartReady(page);
   await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
 });
+
+test('chart settings saved in this browser before M11 are imported once; a server copy wins', async ({ browser, request }) => {
+  const prefs = (activeMas: number[]) => JSON.stringify({ timeframe: 'MAX', activeMas, activePanes: ['rsi'], drawings: [] });
+  const overlays = JSON.stringify({ indicators: [{ uid: 'sma-a1b2c3', id: 'sma', params: { period: 30 } }], presetId: 'nope', showSignals: false, presetEdited: true });
+
+  const first = await browser.newContext();
+  await first.addInitScript(
+    ([p, o]) => {
+      if (localStorage.getItem('wickstreet:imported:presentation')) return;
+      localStorage.setItem('chart-prefs:TCS', p);
+      localStorage.setItem('chart-prefs:INFY', p);
+      localStorage.setItem('chart-overlays:TCS', o);
+    },
+    [prefs([20, 50]), overlays],
+  );
+  const page = await first.newPage();
+  await page.goto('/chart/ITC');
+  await chartReady(page);
+  await expect(checkbox(page, 'MA20')).toBeChecked();
+  await expect(checkbox(page, 'RSI (14)')).toBeChecked();
+  await expect(checkbox(page, 'MA200')).not.toBeChecked();
+
+  const saved = async () => {
+    const res = await request.get('/api/v1/workspaces/default');
+    return res.ok() ? (await res.json()).body.charts : null;
+  };
+  await expect.poll(saved).toMatchObject({
+    main: { symbol: 'ITC', range: 'MAX', mas: [20, 50], panes: ['rsi'] },
+    stock: { range: 'MAX', mas: [20, 50] },
+    analysis: { mas: [20, 50], indicators: [{ id: 'sma', uid: 'sma-1' }], show_signals: false, preset_edited: true },
+  });
+  let puts = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'PUT' && r.url().includes('/workspaces/')) puts += 1;
+  });
+  await page.reload(); // the marker stops a second import
+  await chartReady(page);
+  await page.waitForLoadState('networkidle');
+  expect(puts).toBe(0);
+  await first.close();
+
+  // A second browser with other old settings changes nothing: the server copy wins.
+  const second = await browser.newContext();
+  await second.addInitScript((p) => localStorage.setItem('chart-prefs:TCS', p), prefs([10]));
+  const other = await second.newPage();
+  await other.goto('/chart/ITC');
+  await chartReady(other);
+  await expect(other.getByLabel('MA20', { exact: true })).toBeChecked();
+  expect((await saved()).stock.mas).toEqual([20, 50]);
+  await second.close();
+});
+
+test('two windows changing different chart settings merge silently', async ({ page, browser, request }) => {
+  await page.goto('/chart/TCS');
+  await chartReady(page);
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/chart/TCS');
+  await chartReady(second);
+
+  await checkbox(page, 'MA20').check();
+  await expect.poll(async () => (await serverChart(request))?.mas).toContain(20);
+  await checkbox(second, 'RSI (14)').check(); // based on the older revision
+  await expect.poll(() => serverChart(request)).toMatchObject({ mas: expect.arrayContaining([20, 50, 200]), panes: ['rsi'] });
+  await settled(second);
+  await expect(second.getByRole('alert')).toHaveCount(0);
+  await other.close();
+});
+
+test('two windows changing the same chart setting get the conflict notice; nothing is overwritten silently', async ({ page, browser, request }) => {
+  await page.goto('/chart/TCS');
+  await chartReady(page);
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/chart/TCS');
+  await chartReady(second);
+
+  await checkbox(page, 'MA20').check(); // window 1: mas [20, 50, 200]
+  await expect.poll(async () => (await serverChart(request))?.mas).toContain(20);
+  await checkbox(second, 'MA50').uncheck(); // window 2, on the old revision: mas [200]
+
+  const notice = second.getByRole('alert');
+  await expect(notice).toContainText('Your chart settings changed in another window');
+  expect((await serverChart(request))?.mas).toEqual(expect.arrayContaining([20, 50, 200])); // window 1's change still stands
+  await notice.getByRole('button', { name: 'Keep theirs' }).click();
+  await expect(notice).toBeHidden();
+  await expect(second.getByLabel('MA20', { exact: true })).toBeChecked();
+  await expect(second.getByLabel('MA50', { exact: true })).toBeChecked();
+  await other.close();
+});
+
+test('a drawing conflict on a research screen shows the same notice', async ({ page, browser, request }) => {
+  await page.goto('/chart/HDFCBANK');
+  await chartReady(page);
+  await drawTrendline(page, [0.3, 0.2], [0.5, 0.3]);
+  await expect.poll(drawingCount(request, 'HDFCBANK')).toBe(1);
+  const original = (await serverDrawings(request, 'HDFCBANK'))[0];
+
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/stock/HDFCBANK');
+  await second.getByTestId('price-chart').scrollIntoViewIfNeeded();
+  await expect(second.getByRole('button', { name: 'Clear' })).toBeVisible();
+
+  await drag(page, [0.4, 0.25], [0.4, 0.15]); // window 1 moves it
+  await expect
+    .poll(async () => (await serverDrawings(request, 'HDFCBANK'))[0].points[0].price)
+    .toBeGreaterThan(original.points[0].price);
+  await second.getByRole('button', { name: 'Clear' }).click(); // window 2, on the old revision, deletes it
+
+  const notice = second.getByRole('alert');
+  await expect(notice).toContainText('Your drawings on HDFCBANK changed in another window');
+  expect(await drawingCount(request, 'HDFCBANK')()).toBe(1); // the move still stands
+  await notice.getByRole('button', { name: 'Apply mine' }).click();
+  await expect.poll(drawingCount(request, 'HDFCBANK')).toBe(0);
+  await other.close();
+});

@@ -182,7 +182,7 @@ Rules:
 | Delete / Backspace | Delete the selected drawing | TradingView |
 | Esc | Cancel the active tool or selection | TradingView |
 
-Note: TradingView uses `/` for the indicator dialog. Wickstreet M11 uses `/` for search, because M11 has no indicator dialog. **M13 moves `/` to the indicator dialog**, as TradingView users expect, when that dialog exists.
+Note: TradingView uses `/` for the indicator dialog. Wickstreet uses `/` for symbol search. *(Amended at the M11 review: `/` stays symbol search in every milestone, and M13 gives the indicator dialog another shortcut. Design record D9.)*
 
 ## 7. Open usability questions (default taken)
 

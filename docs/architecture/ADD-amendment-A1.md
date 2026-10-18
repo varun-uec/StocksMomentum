@@ -82,7 +82,7 @@ The Python package, CLI commands, database names and API paths stay `momentum25`
 |---|---|---|
 | 011 | Chart engine: keep `lightweight-charts` | Apache-2.0, already in use (vs Advanced Charting Library: proprietary; vs KLineChart: a rewrite) |
 | 012 | Open-source, self-hosted, local by default | Each user fetches their own data, so there is no redistribution (vs a hosted service: needs a data license and auth) |
-| 013 | Web stack and chart data semantics *(Proposed until the M10 spike)* | A same-origin SPA plus backend-owned bars and indicators (vs keeping Next.js with a build-time API URL) |
+| 013 | Web stack and chart data semantics *(Accepted 2026-10-18, after the M10 spike)* | A same-origin SPA plus backend-owned bars and indicators (vs keeping Next.js with a build-time API URL) |
 | 014 | Strategy Studio: configured rules, hypothesis-and-lineage families, one 36-month hold-out evaluation per family, a reproducible `data_version` *(Proposed)* | The real engine evaluates user strategies point in time (vs reusing the walk-forward backtest, which is a different method) |
 | 015 | Licence *(placeholder, decided separately)* | Apache-2.0 vs AGPL-3.0 |
 

@@ -1,6 +1,6 @@
 # ADR-013: Web Stack, Chart Data Semantics and Workspace Persistence
 
-**Status:** Proposed (draft, 2026-10-18). The web-stack part stays Proposed until the owner accepts the [M10 spike evidence](../../history/audits/2026-10-18-m10-stack-spike-report.md) (S1–S7 pass). §5 was revised after M11 to match what was built; the changes are marked *(M11)*.
+**Status:** Accepted (2026-10-18). The owner accepted the [M10 spike evidence](../../history/audits/2026-10-18-m10-stack-spike-report.md) (S1–S7 pass) and approved Vite 7 + React. §4 and §5 were revised during M11 to match what was built; the changes are marked *(M11)*.
 
 ## Context
 Wickstreet is a client-heavy workspace (ADD A1). Four facts from the code shape this decision:
@@ -49,7 +49,7 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 
 ### 4. Chart data semantics (backend domain)
 - **The backend owns bars, intervals and alert-capable indicators.** The browser draws them.
-- **Daily bars** use the same corporate-action-adjusted series that screening reads.
+- **Daily bars** use the same corporate-action-adjusted series that screening reads. *(M11)* `GET /securities/{symbol}/ohlcv` applies the stored `adj_factor` the same way the indicator pipeline does: price × factor, volume ÷ factor. A split no longer shows as a price jump on the chart.
 - **Weekly bars (M11b):** one bar per ISO week of NSE trading sessions, using the existing `TradingCalendar` port.
   - Open = first session's open, High = max high, Low = min low, Close = last session's close, Volume = sum.
   - The bar is dated at its last trading session.
@@ -87,7 +87,9 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 - One store per document, shared by every component that shows it. Saves are debounced (400 ms), one is in flight at a time, and unsaved edits are sent with `keepalive` when the page is left.
 - On `412`, the client does a three-way merge of its last-seen version, its current version and the server's, then saves again:
   - **`symbol_drawings`:** merged by `drawing_id`. Edits to different drawings both survive with no notice. When both windows changed the *same* drawing differently, the client shows "Changed in another window" and the user picks **Keep theirs** or **Apply mine**.
-  - **`workspace`:** merged chart by chart and field by field. A field this window changed keeps its value; every other field takes the server's. Presentation settings never ask the user: the last writer per field is the expected result.
+  - **`workspace`:** merged chart by chart and field by field. A field only one window changed takes that window's value. When both windows changed the *same* field differently, the client shows the same notice for "Your chart settings" and the user picks a side. A chart that did not exist yet merges against the default chart.
+  - **Navigation fields** (`symbol`, the open symbol of a chart, and `active_chart_id`) record where the owner is, not what they set. For those the newest window wins without a notice.
+  - While a document waits for a choice, edits to it are held back, and the notice shows on every screen, not only the chart workspace.
 - The client never overwrites silently.
 
 **Migration from `localStorage` (one time, idempotent):**
@@ -96,7 +98,7 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 3. The original keys stay in place as the backup for one release.
 4. Running the migration again, or from a second browser, changes nothing.
 
-*(M11)* Only drawings are imported. Range, moving averages, panes and indicators were stored per symbol, and they now belong to a chart, so no faithful mapping exists; they start from defaults. The one-time "a local copy was kept" message was not built.
+*(M11)* Chart settings are imported too, in one pass marked `wickstreet:imported:presentation`. They were stored per symbol (`chart-prefs:<symbol>` and the analysis screen's `chart-overlays:<symbol>`) and now belong to a chart. Each chart takes the setting the owner chose on the most symbols; symbols left at the defaults do not count, and a tie goes to the first in JSON order. Range, moving averages and panes go to the `main`, `stock`, `analysis` and `elliott-wave` charts; indicators and the signal preset go to `analysis` only. The import only adds charts the server does not have, so the server copy wins. The one-time "a local copy was kept" message was not built.
 
 ## Consequences
 - One authority per number: the browser draws bars and indicators but never computes an alert-capable value.

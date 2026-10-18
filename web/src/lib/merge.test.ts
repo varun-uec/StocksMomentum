@@ -42,14 +42,37 @@ describe('mergeById', () => {
 });
 
 describe('mergeFields', () => {
-  test('my changed fields win, other fields take theirs', () => {
-    const base = { range: '1Y', mas: [50], panes: [] as string[] };
-    const mine = { range: 'MAX', mas: [50], panes: [] as string[] };
-    const theirs = { range: '1Y', mas: [20, 50], panes: ['rsi'] };
-    expect(mergeFields(base, mine, theirs)).toEqual({ range: 'MAX', mas: [20, 50], panes: ['rsi'] });
+  const base = { symbol: 'TCS', range: '1Y', mas: [50], panes: [] as string[] };
+
+  test('fields changed on one side each keep that side', () => {
+    const mine = { ...base, range: 'MAX' };
+    const theirs = { ...base, mas: [20, 50], panes: ['rsi'] };
+    const r = mergeFields(base, mine, theirs);
+    expect(r).toEqual({ mine: { ...base, range: 'MAX', mas: [20, 50], panes: ['rsi'] }, theirs: r.mine, conflicts: [] });
+  });
+
+  test('the same field changed differently is a conflict, never a silent overwrite', () => {
+    const r = mergeFields(base, { ...base, mas: [20, 50] }, { ...base, mas: [] });
+    expect(r.conflicts).toEqual(['mas']);
+    expect(r.mine.mas).toEqual([20, 50]);
+    expect(r.theirs.mas).toEqual([]);
+  });
+
+  test('the same change on both sides is not a conflict', () => {
+    expect(mergeFields(base, { ...base, range: 'MAX' }, { ...base, range: 'MAX' }).conflicts).toEqual([]);
+  });
+
+  test('a latest-wins field takes this window\'s value without a conflict', () => {
+    const r = mergeFields(base, { ...base, symbol: 'INFY' }, { ...base, symbol: 'SBIN' }, ['symbol']);
+    expect(r).toEqual({ mine: { ...base, symbol: 'INFY' }, theirs: { ...base, symbol: 'INFY' }, conflicts: [] });
+  });
+
+  test('with no base, every field the two sides set differently conflicts', () => {
+    const r = mergeFields(undefined, { ...base, range: 'MAX' }, base);
+    expect(r.conflicts).toEqual(['range']);
   });
 
   test('with no server copy, mine stands', () => {
-    expect(mergeFields(undefined, { a: 1 }, undefined)).toEqual({ a: 1 });
+    expect(mergeFields(undefined, { a: 1 }, undefined)).toEqual({ mine: { a: 1 }, theirs: { a: 1 }, conflicts: [] });
   });
 });

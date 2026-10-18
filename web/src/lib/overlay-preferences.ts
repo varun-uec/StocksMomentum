@@ -29,7 +29,7 @@ export function newUid(id: string): string {
   return `${id}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function defaults(): OverlayPreferences {
+export function defaultOverlays(): OverlayPreferences {
   return { indicators: [], presetId: DEFAULT_PRESET_ID, showSignals: true, presetEdited: false };
 }
 
@@ -49,6 +49,34 @@ function validIndicator(value: unknown): ActiveIndicator | null {
   return { uid: typeof v.uid === 'string' ? v.uid : newUid(v.id), id: v.id, params };
 }
 
+export const LEGACY_OVERLAY_KEY_PREFIX = 'chart-overlays:';
+
+/**
+ * Parse the per-symbol blob that Phase 9.5 kept under `chart-overlays:<symbol>`,
+ * once, for the import in `local-import.ts`. Anything unknown falls back to the
+ * defaults.
+ */
+export function parseLegacyOverlays(raw: string | null): OverlayPreferences {
+  const base = defaultOverlays();
+  if (!raw) return base;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return base;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return base;
+  const input = parsed as Record<string, unknown>;
+  return {
+    indicators: Array.isArray(input.indicators)
+      ? input.indicators.map(validIndicator).filter((x): x is ActiveIndicator => x !== null)
+      : base.indicators,
+    presetId: typeof input.presetId === 'string' && PRESET_BY_ID.has(input.presetId) ? input.presetId : base.presetId,
+    showSignals: typeof input.showSignals === 'boolean' ? input.showSignals : base.showSignals,
+    presetEdited: typeof input.presetEdited === 'boolean' ? input.presetEdited : base.presetEdited,
+  };
+}
+
 /**
  * One chart's catalogue indicators and signal preset, stored in the server
  * workspace (ADR-013 §5). An indicator id the catalogue no longer defines is
@@ -62,7 +90,7 @@ export function useOverlayPreferences(chartId: string): {
   const { chart, ready, update: updateChart } = useWorkspaceChart(chartId);
 
   const overlays = useMemo<OverlayPreferences>(() => {
-    const base = defaults();
+    const base = defaultOverlays();
     return {
       indicators: chart.indicators.map(validIndicator).filter((x): x is ActiveIndicator => x !== null),
       presetId: chart.preset_id && PRESET_BY_ID.has(chart.preset_id) ? chart.preset_id : base.presetId,

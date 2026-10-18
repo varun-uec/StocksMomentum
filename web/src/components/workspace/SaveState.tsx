@@ -1,4 +1,4 @@
-import type { SaveStatus } from '@/lib/server-document';
+import { useConflictedDocuments, type SaveStatus } from '@/lib/server-document';
 
 const time = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -34,11 +34,26 @@ export function SaveState({
   );
 }
 
-/** Shown when this window and another changed the same drawing (design record D5). */
-export function ConflictNotice({ symbol, onResolve }: { symbol: string; onResolve: (choice: 'mine' | 'theirs') => void }) {
+/**
+ * Shown on every screen while this window and another changed the same thing
+ * (design record D5). Edits to that document wait until the owner chooses.
+ */
+export function ConflictBanner() {
+  const documents = useConflictedDocuments();
+  if (!documents.length) return null;
+  return (
+    <div className="max-w-screen-2xl mx-auto px-2 sm:px-4 pt-3 space-y-2">
+      {documents.map((d) => (
+        <ConflictNotice key={d.path} label={d.label} onResolve={d.resolve} />
+      ))}
+    </div>
+  );
+}
+
+function ConflictNotice({ label, onResolve }: { label: string; onResolve: (choice: 'mine' | 'theirs') => void }) {
   return (
     <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-      <span>⚠ Your drawings on {symbol} changed in another window.</span>
+      <span>⚠ {label} changed in another window.</span>
       <button type="button" onClick={() => onResolve('theirs')} className="px-2 py-1 rounded-md border border-amber-400 dark:border-amber-600 text-xs font-medium">
         Keep theirs
       </button>

@@ -8,7 +8,7 @@
 
 import type { components } from '@/lib/api-schema';
 import { mergeById, mergeFields } from '@/lib/merge';
-import { useServerDocument, type DocumentSpec } from '@/lib/server-document';
+import { useServerDocument, type DocumentSpec, type MergeResult } from '@/lib/server-document';
 
 type Schemas = components['schemas'];
 export type WorkspaceBody = Schemas['WorkspaceV1'];
@@ -29,27 +29,42 @@ export const DEFAULT_CHART: ChartSettings = {
   preset_edited: false,
 };
 
-/** Merge two workspaces chart by chart, field by field. Presentation never conflicts. */
-export function mergeWorkspaces(base: WorkspaceBody | null, mine: WorkspaceBody, theirs: WorkspaceBody): WorkspaceBody {
-  const charts: WorkspaceBody['charts'] = { ...theirs.charts };
+/** Where the owner is, not what they set: the newest window wins (see `mergeFields`). */
+const NAVIGATION_FIELDS = ['symbol', 'active_chart_id'] as const;
+
+/**
+ * Merge two workspaces chart by chart, field by field. A setting both windows
+ * changed differently is a conflict, named `<chart id>.<field>`. A chart that
+ * did not exist yet started from `DEFAULT_CHART`, so that is its base.
+ */
+export function mergeWorkspaces(base: WorkspaceBody | null, mine: WorkspaceBody, theirs: WorkspaceBody): MergeResult<WorkspaceBody> & { conflicts: string[] } {
+  const charts = { mine: { ...theirs.charts }, theirs: { ...theirs.charts } };
+  const conflicts: string[] = [];
   for (const [id, chart] of Object.entries(mine.charts)) {
-    charts[id] = mergeFields(base?.charts[id], chart, theirs.charts[id]);
+    const r = mergeFields(base?.charts[id] ?? DEFAULT_CHART, chart, theirs.charts[id], NAVIGATION_FIELDS);
+    charts.mine[id] = r.mine;
+    charts.theirs[id] = r.theirs;
+    conflicts.push(...r.conflicts.map((field) => `${id}.${field}`));
   }
   const active = mergeFields(
     base ? { active_chart_id: base.active_chart_id } : undefined,
     { active_chart_id: mine.active_chart_id },
     { active_chart_id: theirs.active_chart_id },
-  );
-  return { ...active, charts };
+    NAVIGATION_FIELDS,
+  ).mine;
+  return {
+    mine: { ...active, charts: charts.mine },
+    theirs: { ...active, charts: charts.theirs },
+    conflicted: conflicts.length > 0,
+    conflicts,
+  };
 }
 
-const workspaceSpec: DocumentSpec<WorkspaceBody> = {
+export const workspaceSpec: DocumentSpec<WorkspaceBody> = {
   path: `/api/v1/workspaces/${WORKSPACE_ID}`,
+  label: 'Your chart settings',
   defaults: () => ({ active_chart_id: null, charts: {} }),
-  merge: (base, mine, theirs) => {
-    const merged = mergeWorkspaces(base, mine, theirs);
-    return { mine: merged, theirs: merged, conflicted: false };
-  },
+  merge: mergeWorkspaces,
 };
 
 const drawingSpecs = new Map<string, DocumentSpec<DrawingsBody>>();
@@ -59,6 +74,7 @@ export function drawingsSpec(symbol: string): DocumentSpec<DrawingsBody> {
   if (!spec) {
     spec = {
       path: `/api/v1/drawings/${encodeURIComponent(symbol)}`,
+      label: `Your drawings on ${symbol}`,
       defaults: () => ({ drawings: [] }),
       merge: (base, mine, theirs) => {
         const r = mergeById(base?.drawings ?? [], mine.drawings, theirs.drawings);
@@ -97,8 +113,6 @@ export function useSymbolDrawings(symbol: string) {
     ready: doc.status !== 'loading',
     status: doc.status,
     savedAt: doc.savedAt,
-    conflict: doc.conflict !== null,
-    resolve: doc.resolve,
     retry: doc.retry,
     update: (drawings: DrawingsBody['drawings']) => doc.update(() => ({ drawings })),
   };

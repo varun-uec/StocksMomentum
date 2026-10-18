@@ -61,6 +61,7 @@ def _bar_from_row(row: _LegacyModel | OHLCVDailyModel) -> OHLCVBar:
         adj_close=row.adj_close,
         prev_close=row.prev_close,
         turnover_value=row.turnover_value,
+        adj_factor=row.adj_factor,
     )
 
 

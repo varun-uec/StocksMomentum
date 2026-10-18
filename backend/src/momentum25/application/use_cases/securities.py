@@ -43,7 +43,11 @@ class SearchSecurities:
 
 
 class GetSecurityOHLCV:
-    """Return a symbol's OHLCV series for charting."""
+    """Return a symbol's OHLCV series for charting, adjusted for corporate actions.
+
+    The chart shows the same adjusted series that screening reads, so a price on
+    the chart and the price behind a rule's verdict always agree (ADR-013 §4).
+    """
 
     def __init__(self, securities: SecurityRepository, ohlcv: OHLCVRepository) -> None:
         """Wire the use case with its collaborators."""
@@ -74,10 +78,10 @@ class GetSecurityOHLCV:
         )
         bars = [
             OHLCVBarDTO(
-                date=b.date, open=b.open, high=b.high, low=b.low, close=b.close, volume=b.volume
+                date=a.date, open=a.open, high=a.high, low=a.low, close=a.close, volume=a.volume
             )
-            for b in series.bars
-            if from_ is None or b.date >= from_
+            for a in (b.adjusted() for b in series.bars)
+            if from_ is None or a.date >= from_
         ]
         return SecurityOHLCVDTO(symbol=str(security.symbol), bars=bars)
 

@@ -32,6 +32,8 @@ export interface MergeResult<T> {
 export interface DocumentSpec<T> {
   /** API path, e.g. `/api/v1/drawings/RELIANCE`. */
   path: string;
+  /** Names the owner's work in the conflict notice, e.g. "Your drawings on TCS". */
+  label: string;
   defaults: () => T;
   /** Three-way merge used when a save returns 412. */
   merge: (base: T | null, mine: T, theirs: T) => MergeResult<T>;
@@ -52,7 +54,7 @@ export class DocumentStore<T> {
   private inFlight = false;
 
   constructor(
-    private readonly spec: DocumentSpec<T>,
+    readonly spec: DocumentSpec<T>,
     private readonly http: typeof fetch = (...args) => fetch(...args),
   ) {
     this.state = { status: 'loading', body: spec.defaults(), revision: null, savedAt: null, conflict: null };
@@ -81,10 +83,27 @@ export class DocumentStore<T> {
     }
   }
 
-  /** Apply a local edit and schedule a save. Ignored while a conflict waits. */
+  /** Resolves once the first load has finished, whatever its outcome. */
+  whenLoaded(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.state.status !== 'loading') return resolve();
+      const stop = this.subscribe(() => {
+        if (this.state.status === 'loading') return;
+        stop();
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * Apply a local edit and schedule a save. Ignored while a conflict waits.
+   * An edit that returns the body unchanged saves nothing.
+   */
   update(edit: (body: T) => T): void {
     if (this.state.status === 'conflict' || this.state.status === 'loading') return;
-    this.set({ body: edit(this.state.body), status: 'unsaved' });
+    const body = edit(this.state.body);
+    if (body === this.state.body) return;
+    this.set({ body, status: 'unsaved' });
     this.schedule();
   }
 
@@ -173,12 +192,34 @@ export class DocumentStore<T> {
 
 const stores = new Map<string, DocumentStore<unknown>>();
 
+export interface ConflictedDocument {
+  path: string;
+  label: string;
+  resolve: (choice: 'mine' | 'theirs') => void;
+}
+
+let conflicted: ConflictedDocument[] = [];
+const conflictListeners = new Set<() => void>();
+
+/** Recompute the conflict list; a new array only when its members change. */
+function refreshConflicts(): void {
+  const now = [...stores.values()].filter((store) => store.getState().status === 'conflict');
+  if (now.length === conflicted.length && now.every((store, i) => store.spec.path === conflicted[i].path)) return;
+  conflicted = now.map((store) => ({
+    path: store.spec.path,
+    label: store.spec.label,
+    resolve: (choice) => store.resolve(choice),
+  }));
+  conflictListeners.forEach((listener) => listener());
+}
+
 /** The shared store for one document; created and loaded on first use. */
 export function documentStore<T>(spec: DocumentSpec<T>): DocumentStore<T> {
   let store = stores.get(spec.path) as DocumentStore<T> | undefined;
   if (!store) {
     store = new DocumentStore(spec);
     stores.set(spec.path, store as DocumentStore<unknown>);
+    store.subscribe(refreshConflicts);
     void store.load();
   }
   return store;
@@ -198,7 +239,6 @@ if (typeof window !== 'undefined') {
 
 export function useServerDocument<T>(spec: DocumentSpec<T>): DocumentState<T> & {
   update: (edit: (body: T) => T) => void;
-  resolve: (choice: 'mine' | 'theirs') => void;
   retry: () => void;
 } {
   const store = documentStore(spec);
@@ -206,7 +246,17 @@ export function useServerDocument<T>(spec: DocumentSpec<T>): DocumentState<T> & 
   return {
     ...state,
     update: (edit) => store.update(edit),
-    resolve: (choice) => store.resolve(choice),
     retry: () => store.retry(),
   };
+}
+
+/** Every open document waiting for the owner to settle a conflict, on any screen. */
+export function useConflictedDocuments(): ConflictedDocument[] {
+  return useSyncExternalStore(
+    (listener) => {
+      conflictListeners.add(listener);
+      return () => conflictListeners.delete(listener);
+    },
+    () => conflicted,
+  );
 }

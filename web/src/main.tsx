@@ -4,7 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router';
 import RootLayout from './app/layout';
-import { importLocalDrawings } from './lib/local-import';
+import { importLocalDrawings, importLocalPresentation } from './lib/local-import';
 
 type PageModule = { default: React.ComponentType };
 
@@ -55,8 +55,12 @@ const routes: RouteObject[] = [
 
 void importLocalDrawings();
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RouterProvider router={createBrowserRouter(routes)} />
-  </StrictMode>,
+// Settings go first, so no screen saves its defaults before the import fills them in.
+// With nothing to import, this finishes without a request.
+void importLocalPresentation().finally(() =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <RouterProvider router={createBrowserRouter(routes)} />
+    </StrictMode>,
+  ),
 );

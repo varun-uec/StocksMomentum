@@ -8,6 +8,7 @@ interface Body {
 
 const spec: DocumentSpec<Body> = {
   path: '/api/v1/drawings/TCS',
+  label: 'Your drawings on TCS',
   defaults: () => ({ drawings: [] }),
   merge: (base, mine, theirs) => {
     const r = mergeById(base?.drawings ?? [], mine.drawings, theirs.drawings);
@@ -66,6 +67,18 @@ describe('DocumentStore', () => {
     await settle();
     expect(server.calls.at(-1)?.headers['If-None-Match']).toBe('*');
     expect(store.getState()).toMatchObject({ status: 'saved', revision: 1 });
+  });
+
+  test('an edit that changes nothing saves nothing', async () => {
+    const server = fakeServer({ revision: 1, body: { drawings: [] } });
+    const store = new DocumentStore(spec, server.http);
+    const loaded = store.whenLoaded();
+    await store.load();
+    await loaded;
+    store.update((b) => b);
+    await settle();
+    expect(store.getState().status).toBe('saved');
+    expect(server.calls.filter((c) => c.method === 'PUT')).toHaveLength(0);
   });
 
   test('quick edits are debounced into one save that names the revision it saw', async () => {
