@@ -22,3 +22,25 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'Alt+W', action: 'Add the symbol to the watchlist, or remove it' },
   { keys: '?', action: 'Show these shortcuts' },
 ];
+
+/** True when the key goes to a field or an open dialog, not to the workspace. */
+export function isTyping(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  // A checkbox or radio takes no text, so the workspace keys still apply after a click on one.
+  const field = target?.closest(
+    'input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]',
+  );
+  const fieldDialog = field?.closest('dialog');
+  if (fieldDialog && !fieldDialog.open) return false;
+  return !!field || !!target?.closest('dialog[open]');
+}
+
+/** True when a key press should open symbol search instead of typing somewhere. */
+export function opensSearch(e: KeyboardEvent): { initial: string } | null {
+  if (isTyping(e)) return null;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') return { initial: '' };
+  if (e.ctrlKey || e.metaKey || e.altKey) return null;
+  if (e.key === '/') return { initial: '' };
+  if (/^[a-z0-9]$/i.test(e.key)) return { initial: e.key };
+  return null;
+}

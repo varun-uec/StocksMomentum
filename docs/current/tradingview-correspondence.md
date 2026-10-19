@@ -24,7 +24,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C12 | Layout 1…4×4 | /chart header `Layout` select | same | `Layout` | y | server document | m13-layouts "all documented" | pass |
 | C13 | Sync symbol / interval / crosshair | /chart header (multi only) | same | `Sync` group | y | server document | m13-layouts "sync" | pass |
 | C14 | Save state | /chart header | same | `Saved ✓` status | y | — | m11-slice "Restore" | pass |
-| C15 | Keyboard shortcuts dialog | /chart header `?` | same | `?` key or button | y | — | m12-shell "? lists" | pass |
+| C15 | Keyboard shortcuts dialog | /chart header `?` | shell: `?` on every route; ☰ app menu | `?` key, ☰ → Keyboard shortcuts | y | — | m12-shell "? lists" | moved |
 | C16 | Panel toggle | /chart header `Panel` | same | `Panel` | y | server document | m12-shell "panel is saved" | pass |
 | C17 | Analyse (opens Details panel) | /chart header | same | `Analyse` | y | `getLiveStockAnalysis` | m12-shell "details tab" | pass |
 | C18 | Research (symbol page) | /chart header link | same | `Research` | n | — | manual | pass |
@@ -35,7 +35,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C23 | Chart context menu: reset, indicators, scale, alert at price | plot right-click | same | Right-click, Shift+F10 | y | — | m13-charting "chart menu" | pass |
 | C24 | Pan / zoom by wheel, drag, keys | plot | plot | Mouse, keys | y | — | m13-charting "mouse wheel" | pass |
 | C25 | Grid cells: per-cell symbol button, compare chips, range select, active border | each cell | each cell | Click cell | y | — | m13-layouts, transformation "grid activation" | pass |
-| C26 | Chart library credit | site footer | site footer | Page bottom | y | — | manual | pass |
+| C26 | Chart library credit | site footer | shell status edge (`footer`) on every route; ☰ app menu | Page bottom | y | — | m10-stack "credited on every page" | moved |
 
 ## Drawing tools and objects
 
@@ -62,7 +62,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 
 ## Routes and navigation
 
-Every route keeps its URL. "Prev" is the site `NavBar`.
+Every route keeps its URL. "Prev" is the site `NavBar`. Since A2.1 the desktop entries live in the ☰ app menu (Chart, Screener, Markets, Watchlist; Research: the seven tools; Learn, Data, About). Phones keep the bottom navigation and its More sheet.
 
 | # | Route | Prev nav entry | Now | Verified | Status |
 |---|---|---|---|---|---|
@@ -76,8 +76,8 @@ Every route keeps its URL. "Prev" is the site `NavBar`.
 | R8 | `/stock/:symbol`, `/analysis`, `/elliott-wave` | symbol search; links | same | momentum-ranking-display, m11-slice | pass |
 | R9 | `/about` | footer link | same | manual | pass |
 | R10 | `/lab/chart-grid` | none (diagnostic) | same | m13-bench | pass |
-| R11 | Symbol search box (desktop), search dialog (phone, Ctrl/⌘+K off-chart) | NavBar | same | transformation "global command search" | pass |
-| R12 | Theme light / dark / system | NavBar | same | final-accessibility | pass |
+| R11 | Symbol search box (desktop), search dialog (phone, Ctrl/⌘+K, `/` or typing off-chart) | NavBar | shell header bar | transformation "global command search", "unfinished annotations" | moved |
+| R12 | Theme light / dark / system | NavBar | ☰ app menu; phone More sheet | audit-visual "dark desktop" (`openAppMenu`) | moved |
 | R13 | Screener side detail (`ScreenerDetail`): 1-year close line, badge, rank, momentum and setup scores, gate failures, why it ranks, what could invalidate, Open chart, Full research | Dashboard | same | m12-shell "screener shows the selected row" | pass |
 
 ## Keyboard shortcuts (`src/lib/shortcuts.ts`)

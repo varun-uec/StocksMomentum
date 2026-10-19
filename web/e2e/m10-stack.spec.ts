@@ -1,4 +1,4 @@
-import { expect, SYMBOL, test } from './fixtures';
+import { expect, openAppMenu, SYMBOL, test } from './fixtures';
 
 /** ADR-013 spike criteria S1, S3, S4, S7 and the attribution requirement (ADR-012). */
 
@@ -68,7 +68,7 @@ test('S4: the query cache survives client-side navigation', async ({ page }) => 
   await page.goto(`/stock/${SYMBOL}`);
   await page.waitForLoadState('networkidle');
   const afterFirstLoad = ohlcvCalls;
-  await page.getByRole('link', { name: 'Watchlist' }).first().click();
+  await (await openAppMenu(page)).getByRole('link', { name: 'Watchlist' }).click();
   await expect(page.locator('h1').first()).toHaveText('Watchlist');
   await page.goBack();
   await expect(page.locator('h1').first()).toContainText(SYMBOL);

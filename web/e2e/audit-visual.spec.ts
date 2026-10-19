@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { expect, resetDocuments, test } from './fixtures';
+import { expect, openAppMenu, resetDocuments, test } from './fixtures';
 
 /** Browser-rendered evidence for the product audit; these tests do not mutate user data. */
 const screenshots = resolve(process.cwd(), '../audit-evidence/screenshots');
@@ -75,11 +75,11 @@ test('audit screenshots: dark desktop and mobile navigation', async ({ page }) =
   await page.waitForLoadState('networkidle');
   await expect(page.getByText('Ranked Universe')).toBeVisible();
   await expect(page.getByText('Gate failures')).toBeVisible();
-  await page.getByRole('button', { name: 'Dark theme' }).click();
+  await (await openAppMenu(page)).getByRole('button', { name: 'Dark theme' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.screenshot({ path: join(screenshots, 'dashboard-dark-desktop.png'), fullPage: true });
 
-  await page.getByRole('button', { name: 'Light theme' }).click();
+  await (await openAppMenu(page)).getByRole('button', { name: 'Light theme' }).click();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

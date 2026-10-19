@@ -91,3 +91,17 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
   .workstation-button, .workspace-header button, .chart-controls button, .chart-controls select { min-height: 32px; }
   .price-workstation [aria-label='Drawing tools'] button { min-width: 32px; min-height: 36px; }
 }
+
+/* Workstation shell (D23): TradingView structure in the Wickstreet skin. */
+:root { --ws-header: 38px; --ws-status: 24px; --ws-phone-nav: 0px; }
+@media (max-width: 1023px) { :root { --ws-phone-nav: calc(4.5rem + env(safe-area-inset-bottom)); } }
+.ws-header { position: sticky; top: 0; z-index: 50; height: var(--ws-header); display: flex; align-items: center; gap: 6px; padding: 0 6px; background: var(--ws-surface); color: var(--ws-ink); border-bottom: 1px solid var(--ws-line); }
+.ws-route-slot { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 4px; }
+.ws-icon-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 4px; color: var(--ws-ink); }
+.ws-icon-button:hover, .ws-icon-button[aria-expanded='true'] { background: var(--ws-muted); }
+.ws-popover { position: absolute; z-index: 60; background: var(--ws-surface); color: var(--ws-ink); border: 1px solid var(--ws-line); border-radius: 6px; box-shadow: 0 12px 32px #0002; }
+.ws-body { display: flex; align-items: flex-start; }
+.ws-main { flex: 1; min-width: 0; }
+.ws-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: var(--ws-status); margin-bottom: var(--ws-phone-nav); padding: 3px 10px; border-top: 1px solid var(--ws-line); background: var(--ws-surface); font-size: 11px; color: #5f7280; }
+.dark .ws-status { color: #95a5b0; }
+@media (pointer: coarse) { .ws-icon-button { min-width: 32px; min-height: 32px; } }

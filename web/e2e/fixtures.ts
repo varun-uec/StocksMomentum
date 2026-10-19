@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { expect, test as base, type Page } from '@playwright/test';
+import { expect, test as base, type Locator, type Page } from '@playwright/test';
 import { BACKEND_DIR, E2E_DATABASE_URL } from './env';
 
 const injectedNetworkFailures = new WeakMap<Page, number>();
@@ -69,3 +69,11 @@ export const ageAlerts = (): void => db('age-alerts');
 /** Change only synthetic E2E10Y bars in the fixed OOS window for a rejection test. */
 export const setHoldoutProvenance = (value: 'published' | 'reconstructed'): void =>
   db('holdout-provenance', value);
+
+/** Open the ☰ app menu, where routes, the theme and the shortcuts live (D23). */
+export async function openAppMenu(page: Page): Promise<Locator> {
+  const menu = page.getByRole('navigation', { name: 'App menu' });
+  if (!(await menu.isVisible())) await page.getByRole('button', { name: 'App menu' }).click();
+  await expect(menu).toBeVisible();
+  return menu;
+}

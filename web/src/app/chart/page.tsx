@@ -19,7 +19,6 @@ import { PriceChart } from '@/components/stock/PriceChart';
 import { MAX_PANES } from '@/components/stock/useCatalogueIndicators';
 import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
 import { SaveState } from '@/components/workspace/SaveState';
-import { ShortcutsDialog } from '@/components/workspace/ShortcutsDialog';
 import { SidePanel, useWatchlistDetail, useWatchlistToggle } from '@/components/workspace/SidePanel';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
 import { MAX_COMPARE, type CompareLine } from '@/components/workspace/useCompare';
@@ -27,6 +26,7 @@ import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import { isTyping, opensSearch } from '@/lib/shortcuts';
 import { focusRing } from '@/lib/theme';
 import type { ChartInterval } from '@/lib/types';
 import { LAYOUTS, useLayout, useRightPanel, useSymbolDrawings, useWorkspaceChart, type Layout } from '@/lib/workspace';
@@ -50,28 +50,6 @@ function useChartHeight(): number {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return height;
-}
-
-/** True when the key goes to a field or an open dialog, not to the workspace. */
-function isTyping(e: KeyboardEvent): boolean {
-  const target = e.target as HTMLElement | null;
-  // A checkbox or radio takes no text, so the workspace keys still apply after a click on one.
-  const field = target?.closest(
-    'input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]',
-  );
-  const fieldDialog = field?.closest('dialog');
-  if (fieldDialog && !fieldDialog.open) return false;
-  return !!field || !!target?.closest('dialog[open]');
-}
-
-/** True when a key press should open symbol search instead of typing somewhere. */
-function opensSearch(e: KeyboardEvent): { initial: string } | null {
-  if (isTyping(e)) return null;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') return { initial: '' };
-  if (e.ctrlKey || e.metaKey || e.altKey) return null;
-  if (e.key === '/') return { initial: '' };
-  if (/^[a-z0-9]$/i.test(e.key)) return { initial: e.key };
-  return null;
 }
 
 export default function ChartPage() {
@@ -193,7 +171,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     searchOpenRef.current = false;
     setSearch((s) => ({ ...s, open: false, compare: false }));
   };
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { panel, setPanel } = useRightPanel();
   const [panelOverlay, setPanelOverlay] = useState(false);
@@ -248,11 +225,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       if (e.altKey && e.code === 'KeyI' && !isTyping(e)) {
         e.preventDefault();
         setIndicatorsOpen(true);
-        return;
-      }
-      if (e.key === '?' && !isTyping(e)) {
-        e.preventDefault();
-        setShortcutsOpen(true);
         return;
       }
       if (searchOpenRef.current) {
@@ -352,15 +324,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         </button>
         <button
           type="button"
-          onClick={() => setShortcutsOpen(true)}
-          aria-label="Keyboard shortcuts"
-          title="Keyboard shortcuts (?)"
-          className={`w-6 h-6 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 ${focusRing}`}
-        >
-          ?
-        </button>
-        <button
-          type="button"
           onClick={() => { if (window.innerWidth < 1024 || grid.slots.length >= 9) { setPanelOverlay(!panelOverlay); if (!panel) setPanel('watchlist'); } else setPanel(panel ? null : 'watchlist'); }}
           aria-pressed={!!panel && ((!narrow && grid.slots.length < 9) || panelOverlay)}
           className={`inline-block px-2 py-0.5 rounded-md text-xs border border-slate-200 dark:border-slate-700 ${focusRing} ${
@@ -422,7 +385,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           </div>
         )}
       </div>
-      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <IndicatorDialog
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}

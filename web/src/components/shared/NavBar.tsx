@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
-import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { focusRing } from '@/lib/theme';
 
@@ -123,6 +122,19 @@ const RESEARCH_TOOLS = [
   { href: '/backtest', label: 'Backtest', icon: Icons.backtest },
 ];
 
+// The ☰ app menu: the workflows first, then help and settings.
+const APP_ROUTES: NavItem[] = [
+  { href: '/chart', label: 'Chart', icon: Icons.chart },
+  { href: '/', label: 'Screener', icon: Icons.dashboard },
+  { href: '/market', label: 'Markets', icon: Icons.market },
+  { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
+];
+const HELP_ROUTES: NavItem[] = [
+  { href: '/learn', label: 'Learn', icon: Icons.learn },
+  { href: '/data', label: 'Data', icon: Icons.data },
+  { href: '/about', label: 'About', icon: Icons.research },
+];
+
 // The bottom bar on mobile. "More" opens the research sheet.
 const MOBILE_PRIMARY = NAV_ITEMS.slice(0, 3);
 
@@ -162,7 +174,7 @@ function ThemeToggle() {
  * is finding it in a ranked list, which is impossible for any symbol that did
  * not qualify in the latest run.
  */
-function SymbolSearch({ className = '', inputClassName = 'w-28 lg:w-44' }: { className?: string; inputClassName?: string }) {
+export function SymbolSearch({ className = '', inputClassName = 'w-28 lg:w-44' }: { className?: string; inputClassName?: string }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [value, setValue] = useState('');
@@ -273,7 +285,7 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-function NavLink({
+export function NavLink({
   item,
   pathname,
   onClick,
@@ -302,112 +314,6 @@ function NavLink({
       </span>
       {item.label}
     </Link>
-  );
-}
-
-/** Roving-focus dropdown: Arrow/Home/End move, Escape closes and restores focus. */
-function ResearchToolsMenu() {
-  const { pathname } = useLocation();
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const isActive = RESEARCH_TOOLS.some(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
-  );
-
-  const close = useCallback((restoreFocus: boolean) => {
-    setOpen(false);
-    if (restoreFocus) buttonRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    itemRefs.current[active]?.focus();
-  }, [open, active]);
-
-  const openAt = (index: number) => {
-    setActive(index);
-    setOpen(true);
-  };
-
-  const onMenuKeyDown = (e: React.KeyboardEvent) => {
-    const last = RESEARCH_TOOLS.length - 1;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActive((i) => (i >= last ? 0 : i + 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActive((i) => (i <= 0 ? last : i - 1));
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      setActive(0);
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      setActive(last);
-    } else if (e.key === 'Escape' || e.key === 'Tab') {
-      close(e.key === 'Escape');
-    }
-  };
-
-  return (
-    <div className="relative" onBlur={(e) => {
-      if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
-    }}>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => (open ? close(false) : openAt(0))}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            openAt(0);
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            openAt(RESEARCH_TOOLS.length - 1);
-          }
-        }}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${focusRing} ${
-          isActive
-            ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-        }`}
-      >
-        Research
-        <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}>
-          <path fillRule="evenodd" clipRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
-        </svg>
-      </button>
-      {open && (
-        <ul
-          role="menu"
-          aria-label="Research"
-          onKeyDown={onMenuKeyDown}
-          className="absolute left-0 mt-1 w-48 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 z-50"
-        >
-          {RESEARCH_TOOLS.map((item, i) => (
-            <li key={item.href} role="none">
-              <Link
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                to={item.href}
-                role="menuitem"
-                tabIndex={i === active ? 0 : -1}
-                aria-current={pathname === item.href ? 'page' : undefined}
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
-              >
-                <span className="text-slate-400 dark:text-slate-500">{item.icon}</span>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -490,24 +396,78 @@ function MobileSheet({
   );
 }
 
-export function NavBar() {
+/**
+ * The ☰ app menu in the header bar: every route, the theme, the keyboard
+ * shortcuts and the chart library credit. A disclosure, not an ARIA menu,
+ * because it holds links and buttons. Escape or a click outside closes it.
+ */
+export function AppMenu({ onShortcuts }: { onShortcuts: () => void }) {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    rootRef.current?.querySelector<HTMLElement>('nav a')?.focus();
+    const onPointer = (e: PointerEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); buttonRef.current?.focus(); } };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  const close = () => setOpen(false);
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="App menu"
+        aria-expanded={open}
+        aria-controls="app-menu"
+        title="App menu"
+        onClick={() => setOpen((o) => !o)}
+        className={`ws-icon-button ${focusRing}`}
+      >
+        {Icons.menu}
+      </button>
+      {open && (
+        <nav id="app-menu" aria-label="App menu" className="ws-popover left-0 top-[34px] w-60 py-1">
+          <ul>
+            {APP_ROUTES.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} /></li>)}
+          </ul>
+          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Research</p>
+          <ul>
+            {RESEARCH_TOOLS.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} /></li>)}
+          </ul>
+          <ul className="mt-1 pt-1 border-t border-[var(--ws-line)]">
+            {HELP_ROUTES.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} /></li>)}
+          </ul>
+          <div className="mt-1 pt-2 px-3 pb-1 border-t border-[var(--ws-line)] flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
+          <button type="button" onClick={() => { close(); onShortcuts(); }} className={`w-full text-left px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-[var(--ws-muted)] ${focusRing}`}>
+            Keyboard shortcuts <span className="text-slate-500">?</span>
+          </button>
+          <p className="px-3 pt-1 pb-2 text-[11px] text-slate-500">
+            Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline">TradingView Lightweight Charts™</a>
+          </p>
+        </nav>
+      )}
+    </div>
+  );
+}
+
+/** Phone navigation: the bottom bar and its "More" sheet, below `lg` on every route. */
+export function PhoneNav() {
+  const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   // A route change should never leave a sheet open over the new page.
-  useEffect(() => {
-    setMoreOpen(false);
-    setSearchOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (pathname.startsWith('/chart')) return;
-    const command = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(true); } };
-    window.addEventListener('keydown', command);
-    return () => window.removeEventListener('keydown', command);
-  }, [pathname]);
+  useEffect(() => setMoreOpen(false), [pathname]);
 
   const moreActive = RESEARCH_TOOLS.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -515,54 +475,8 @@ export function NavBar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors">
-        <div className="w-full mx-auto px-3 sm:px-4">
-          <div className="flex items-center h-12 gap-1">
-            {/* Brand */}
-            <Link
-              to="/"
-              className="flex items-center gap-2 mr-4 text-sm font-bold tracking-tight text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
-            >
-              <span className="flex items-center justify-center w-7 h-7 rounded-md bg-indigo-600 text-white text-xs font-extrabold">
-                W
-              </span>
-              <span className="brand-name">wickstreet<span className="text-indigo-600">.</span></span>
-            </Link>
-
-            {/* Desktop Nav */}
-            <div className="hidden lg:flex items-center gap-0.5">
-              {NAV_ITEMS.map((item) => (
-                <NavLink key={item.href} item={item} pathname={pathname} />
-              ))}
-              <ResearchToolsMenu />
-            </div>
-
-            <div className="flex-1" />
-
-            <div className="flex items-center gap-3">
-              <SymbolSearch className="hidden lg:block" />
-              <ThemeToggle />
-      {/* Symbol search is the fastest route to any stock, so on mobile it gets
-          its own always-visible button rather than hiding inside a drawer. */}
-      <button
-        type="button"
-        onClick={() => setSearchOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={searchOpen}
-        aria-label="Search for a symbol"
-        className={`lg:hidden ml-1 w-8 h-8 flex items-center justify-center rounded-md text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 ${focusRing}`}
-      >
-        {Icons.search}
-      </button>
-
-              <span className="hidden xl:inline text-[10px] uppercase tracking-widest text-slate-500">End of day · NSE</span>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Mobile bottom bar. It overlays the page instead of pushing it, so the
-          content never reflows when navigation opens. */}
+      {/* It overlays the page instead of pushing it, so the content never
+          reflows when navigation opens. */}
       <nav
         aria-label="Primary"
         className="lg:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
@@ -605,7 +519,6 @@ export function NavBar() {
         </ul>
       </nav>
 
-
       {moreOpen && (
         <MobileSheet title="More" onClose={() => setMoreOpen(false)}>
           <div className="space-y-1">
@@ -621,10 +534,12 @@ export function NavBar() {
               <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMoreOpen(false)} />
             ))}
           </div>
+          <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between px-3">
+            <span className="text-xs text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
         </MobileSheet>
       )}
-
-<SymbolSearchDialog open={searchOpen} initialText="" onClose={() => setSearchOpen(false)} onChoose={(symbol) => navigate(`${pathname.startsWith('/chart') ? '/chart' : '/stock'}/${encodeURIComponent(symbol)}`)} />
     </>
   );
 }
