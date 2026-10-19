@@ -327,6 +327,7 @@ test('two windows changing different chart settings merge silently', async ({ pa
 test('two windows changing the same chart setting get the conflict notice; nothing is overwritten silently', async ({ page, browser, request }) => {
   await page.goto('/chart/TCS');
   await chartReady(page);
+  await settled(page); // establish the initial navigation save before the second window reads its base
   const other = await browser.newContext();
   const second = await other.newPage();
   await second.goto('/chart/TCS');

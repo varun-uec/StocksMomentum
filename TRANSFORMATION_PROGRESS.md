@@ -25,3 +25,12 @@ Baseline: `b8a9a1b`, clean working tree. Existing audit and accepted architectur
 - Web unit suite110 passes; lint/typecheck clean. Focused integrated browser pass16/18: remaining two were overly narrow date and first-save polling test assumptions, corrected. Accessibility axe checks pass on dashboard/chart/Studio in both themes.
 - Screenshot measurements: desktop plot1076×676 (previous1068×600), y163 (previous198). Phone334×544, y215 (previous319×544, y345), no document overflow. Grid headers subsequently consolidated into one row.
 - Full regression suite running serially on a fresh synthetic database. No publication, exchange download or real-data mutation.
+
+## Review hardening
+
+- Preserved pane0 across price-series replacement, including charts with no quick MAs and only an oscillator; stopped independently rebasing price-study overlays on percentage axes.
+- Draft notes/tools/selections clear when the symbol changes. Historical viewport survives same-symbol refreshes. Colour updates reach existing pane series.
+- Shared drawing rail now applies to research charts too; side-panel tabs use roving keyboard focus; dialog list IDs are unique; larger touch controls and truthful mobile panel state added.
+- Added cached-symbol annotation, pane lifetime, touch drawing/panel and global-command-search journeys.
+- Full-suite iteration found research-drawing discovery regression (fixed by shared rails), an initial-navigation-save race in a concurrency test (now waits for a confirmed base), and an ambiguous alert-status selector (now named). Final production-build run follows these corrections.
+- Manual native Chrome200% zoom exercised; automated equivalent reflow and theme axe checks remain in regression coverage.

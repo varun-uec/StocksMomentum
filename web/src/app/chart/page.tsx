@@ -26,6 +26,7 @@ import { MAX_COMPARE, type CompareLine } from '@/components/workspace/useCompare
 import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { focusRing } from '@/lib/theme';
 import type { ChartInterval } from '@/lib/types';
 import { LAYOUTS, useLayout, useRightPanel, useSymbolDrawings, useWorkspaceChart, type Layout } from '@/lib/workspace';
@@ -172,6 +173,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const grid = useLayout();
   const activeId = grid.active;
   const multi = grid.slots.length > 1;
+  const narrow = useMediaQuery('(max-width: 1023px)');
   const slot = useChartSlot(activeId, symbol, strategyName);
   const { shell, chart: workspace, overlays, updateOverlays, catalogue, compare, compareSymbols, setCompare } = slot;
   const drawings = useSymbolDrawings(symbol);
@@ -360,12 +362,12 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         <button
           type="button"
           onClick={() => { if (window.innerWidth < 1024 || grid.slots.length >= 9) { setPanelOverlay(!panelOverlay); if (!panel) setPanel('watchlist'); } else setPanel(panel ? null : 'watchlist'); }}
-          aria-pressed={panel !== null}
+          aria-pressed={!!panel && ((!narrow && grid.slots.length < 9) || panelOverlay)}
           className={`inline-block px-2 py-0.5 rounded-md text-xs border border-slate-200 dark:border-slate-700 ${focusRing} ${
             panel ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'
           }`}
         >
-          {panel ? 'Hide panel' : 'Panel'}
+          {panel && ((!narrow && grid.slots.length < 9) || panelOverlay) ? 'Hide panel' : 'Panel'}
         </button>
       </header>
 

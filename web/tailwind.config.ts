@@ -4,8 +4,8 @@ import { chartPalette, colors } from './src/lib/theme';
 /**
  * Design tokens live in `src/lib/theme.ts` and are wired in here so the same
  * values drive Tailwind classes and inline chart styles.
- * The slate/indigo/emerald/amber/rose/cyan/violet scales in `theme.ts` already
- * match Tailwind's defaults, so only the chart palette and the type scale map.
+ * Wickstreet's owned ink/paper and sea-green scales replace the corresponding
+ * utility scales; components and runtime chart styles share the same source.
  */
 const config: Config = {
   darkMode: 'class',

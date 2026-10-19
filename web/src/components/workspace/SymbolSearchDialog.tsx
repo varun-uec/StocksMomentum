@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { focusRing } from '@/lib/theme';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 
@@ -22,6 +22,7 @@ export function SymbolSearchDialog({
   onChoose: (symbol: string) => void;
   onClose: () => void;
 }) {
+  const id = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(initialText);
@@ -80,8 +81,8 @@ export function SymbolSearchDialog({
           aria-label="Symbol or company"
           role="combobox"
           aria-expanded={results.length > 0}
-          aria-controls="symbol-dialog-results"
-          aria-activedescendant={results[active] ? `symbol-option-${results[active].symbol}` : undefined}
+          aria-controls={`${id}-results`}
+          aria-activedescendant={results[active] ? `${id}-option-${results[active].symbol}` : undefined}
           autoComplete="off"
           spellCheck={false}
           value={value}
@@ -100,11 +101,11 @@ export function SymbolSearchDialog({
           className={`w-full px-4 py-3 text-base uppercase tracking-wide bg-transparent border-b border-slate-200 dark:border-slate-700 placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 rounded-t-xl ${focusRing}`}
         />
       </form>
-      <ul id="symbol-dialog-results" role="listbox" className="max-h-80 overflow-y-auto py-1">
+      <ul id={`${id}-results`} role="listbox" className="max-h-80 overflow-y-auto py-1">
         {results.map((r, i) => (
           <li
             key={r.symbol}
-            id={`symbol-option-${r.symbol}`}
+            id={`${id}-option-${r.symbol}`}
             role="option"
             aria-selected={i === active}
             onMouseEnter={() => setActive(i)}

@@ -180,3 +180,32 @@ test('responsive workspace evidence in both themes and dense layouts', async ({ 
   await page.screenshot({ path: resolve(evidence, 'chart-grid-16.png') });
   writeFileSync(resolve(evidence, 'geometry.json'), JSON.stringify(measurements, null, 2));
 });
+
+test.describe('touch workspace', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  test('touch controls retain a usable chart and open contextual analysis', async ({ page, request }) => {
+    await page.goto('/chart/RELIANCE'); await ready(page);
+    const box = (await page.getByTestId('price-chart').boundingBox())!;
+    expect(box.y).toBeLessThan(280);
+    await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).tap();
+    await page.getByTestId('price-chart').tap({ position: { x: box.width * .4, y: 100 } });
+    await expect.poll(async () => (await savedDrawings(request)).length).toBe(1);
+    await page.getByRole('button', { name: 'Panel', exact: true }).tap();
+    await page.getByRole('tab', { name: 'Details', exact: true }).tap();
+    await expect(page.getByRole('tabpanel', { name: 'Details', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Close panel', exact: true }).tap();
+    await expect(page.getByLabel('Side panel', { exact: true })).toBeHidden();
+  });
+});
+
+test('global command search keeps a security connected to research and its chart', async ({ page }) => {
+  await page.goto('/studio');
+  await page.keyboard.press('Control+k');
+  const search = page.getByRole('dialog', { name: 'Search symbols', exact: true });
+  await search.getByRole('combobox').fill('INFY');
+  await expect(search.getByRole('option', { name: /INFY/ }).first()).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/stock\/INFY$/);
+  await page.getByRole('link', { name: 'Open in chart', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'INFY', exact: true })).toBeVisible();
+});

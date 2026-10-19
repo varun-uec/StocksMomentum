@@ -407,7 +407,7 @@ export function PriceChart({
   activeMas: activeMasProp,
   onActiveMasChange,
   drawingsEnabled = false,
-  toolRail = false,
+  toolRail = true,
   drawingsKey,
   drawings: drawingsProp,
   onDrawingsChange,
@@ -432,7 +432,7 @@ export function PriceChart({
   onOpenIndicators?: () => void;
   /** Adds "Alert at this price…" to the chart's context menu (M15). */
   onAlertAtPrice?: (price: number) => void;
-  /** A grid cell (M13): only the range and interval controls; no legend or footnote. */
+  /** Compact grid toolbar; optional active-cell drawing rail; no legend or footnote. */
   compact?: boolean;
   chartLabel?: React.ReactNode;
   /** Shares the crosshair date with the other charts of a layout. */
@@ -1070,21 +1070,16 @@ export function PriceChart({
       chart.removeSeries(priceSeriesRef.current);
       priceSeriesRef.current = null;
     }
-    const candleColors = {
-      upColor: '#10b981',
-      downColor: '#ef4444',
-      borderUpColor: '#10b981',
-      borderDownColor: '#ef4444',
-      wickUpColor: '#10b981',
-      wickDownColor: '#ef4444',
-    };
+    const upColor = resolvedTheme === 'dark' ? '#34d399' : '#147d65';
+    const downColor = resolvedTheme === 'dark' ? '#fb7185' : '#c93850';
+    const candleColors = { upColor, downColor, borderUpColor: upColor, borderDownColor: downColor, wickUpColor: upColor, wickDownColor: downColor };
     const closes = parsed.map((p) => ({ time: p.time, value: p.close }));
     if (chartType === 'candles' || chartType === 'heikin_ashi') {
       const series = chart.addSeries(CandlestickSeries, candleColors);
       series.setData(chartType === 'heikin_ashi' ? heikinAshi(parsed) : parsed);
       priceSeriesRef.current = series;
     } else if (chartType === 'bars') {
-      const series = chart.addSeries(BarSeries, { upColor: '#10b981', downColor: '#ef4444' });
+      const series = chart.addSeries(BarSeries, { upColor, downColor });
       series.setData(parsed);
       priceSeriesRef.current = series;
     } else if (chartType === 'area') {
@@ -1105,7 +1100,7 @@ export function PriceChart({
     // NFR-11 measures chart open time to this mark: the first frame after the
     // price series holds its bars.
     if (parsed.length > 0) requestAnimationFrame(() => performance.mark('wickstreet:chart-painted'));
-  }, [chartType, parsed, priceContext]);
+  }, [chartType, parsed, priceContext, resolvedTheme]);
 
   // MA overlays.
   useEffect(() => {

@@ -29,13 +29,13 @@ test('an alert set at a chart price is listed, checked, fires, and is seen', asy
   await expect(list.getByText(/^Watching bars after \d{4}-\d{2}-\d{2}$/)).toBeVisible();
 
   await form.getByRole('button', { name: 'Check now' }).click();
-  await expect(form.getByRole('status')).toHaveText('0 of 1 fired'); // no bar after the last stored session yet
+  await expect(form.getByRole('status', { name: 'Alert evaluation' })).toHaveText('0 of 1 fired'); // no bar after the last stored session yet
 
   ageAlerts(); // as if the alert had been set 30 days ago
   await page.getByRole('tab', { name: /^Watchlist/ }).click();
   await page.getByRole('tab', { name: /^Alerts/ }).click();
   await form.getByRole('button', { name: 'Check now' }).click();
-  await expect(form.getByRole('status')).toHaveText('1 of 1 fired');
+  await expect(form.getByRole('status', { name: 'Alert evaluation' })).toHaveText('1 of 1 fired');
   await expect(list.getByText(/^Fired on \d{4}-\d{2}-\d{2} at \d+\.\d{2}$/)).toBeVisible();
   // The list is open, so the alert is seen at once and no count stays on the tab.
   await expect(page.getByRole('tab', { name: /^Alerts/ }).getByLabel(/new$/)).toHaveCount(0);

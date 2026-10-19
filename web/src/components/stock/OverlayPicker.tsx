@@ -4,7 +4,7 @@
  * indicator's latest value.
  *
  * Overlay series set `lastValueVisible: false`, so they never show in the
- * chart's crosshair readout box. This legend is where their numbers live.
+ * chart's crosshair readout box. This inspector mirrors the on-chart legend.
  */
 
 import { useMemo, useState } from 'react';

@@ -165,7 +165,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
           {editing && <button type="button" className="workstation-button" onClick={() => { setEditing(null); setDrawingId(''); setCondition('crosses_above'); }}>Cancel edit</button>}
           <button
             type="button"
-            onClick={() => check.mutate()}
+            onClick={() => { setNotice(''); check.mutate(); }}
             disabled={check.isPending}
             title="The app also checks after each daily sync"
             className={`px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40 ${focusRing}`}
@@ -173,7 +173,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
             Check now
           </button>
           {check.data && (
-            <span role="status" className="text-slate-500">
+            <span role="status" aria-label="Alert evaluation" className="text-slate-500">
               {check.data.fired} of {check.data.evaluated} fired
             </span>
           )}
