@@ -29,8 +29,8 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C17 | Analyse (opens Details panel) | /chart header | strip `Details` tab (the Assessment) | Strip icon | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
 | C18 | Research (symbol page) | /chart header link | Details panel "Full research →" | Strip → Details | n | — | m12-shell "details tab" | moved |
 | C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | chart toolbar Undo/Redo icons ≥1280 px; ⋯ menu below; keys | `Objects`, keys | y | server document | m13-charting "undo and redo" | moved |
-| C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | above plot | Legend row | y | — | transformation "study legends" | pass |
-| C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | plot top-left | Hover | y | — | openchart-parity D4 | pass |
+| C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | overlay legend at plot top-left: title, OHLC + change, one line per study with × and ⚙ (research pages keep the row above the plot) | Legend | y | — | transformation "study legends", "overlay legend" | moved |
+| C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | inside the overlay legend on the active chart; plot top-left elsewhere | Hover | y | — | openchart-parity D4, transformation "overlay legend" | moved |
 | C22 | Footnote "N daily bars from the stored NSE series", data version | below plot | below plot | Read | y | — | m11b-weekly | pass |
 | C23 | Chart context menu: reset, indicators, scale, alert at price | plot right-click | same | Right-click, Shift+F10 | y | — | m13-charting "chart menu" | pass |
 | C24 | Pan / zoom by wheel, drag, keys | plot | plot | Mouse, keys | y | — | m13-charting "mouse wheel" | pass |

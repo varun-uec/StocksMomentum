@@ -366,3 +366,23 @@ test('the settings gear holds volume and the moving averages for the active char
   await page.keyboard.press('Escape');
   await expect(page.getByRole('checkbox', { name: 'MA20', exact: true })).toBeHidden();
 });
+
+test('the overlay legend names the chart, follows the crosshair and removes a study', async ({ page, request }) => {
+  await page.goto('/chart/RELIANCE'); await ready(page);
+  await expect(page.getByText('RELIANCE · 1D · NSE', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^O \d+\.\d{2} H \d+\.\d{2} L \d+\.\d{2} C \d+\.\d{2}/)).toBeVisible();
+  const chart = page.getByTestId('price-chart');
+  const box = (await chart.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5);
+  await expect(page.getByTestId('crosshair-readout')).toContainText(/^\d{4}-\d{2}-\d{2}/);
+  await page.mouse.move(box.x + box.width * 0.6, box.y - 60); // off the chart: the readout clears
+  await expect(page.getByTestId('crosshair-readout')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Remove MA50', exact: true }).click();
+  await expect(page.getByLabel('Study legend')).not.toContainText('MA50');
+  await expect
+    .poll(async () => {
+      const res = await request.get('/api/v1/workspaces/default');
+      return res.ok() ? (await res.json()).body.charts.main?.mas : null;
+    })
+    .toEqual([200]);
+});

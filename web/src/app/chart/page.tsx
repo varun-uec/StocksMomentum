@@ -389,7 +389,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       {!multi ? (
         <div className="chart-stage" data-plot-cell>
           {shell.ready ? (
-            <PriceChart {...slot.chartProps} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
+            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
           ) : (
             <LoadingSpinner />
           )}

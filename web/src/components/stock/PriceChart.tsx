@@ -431,6 +431,7 @@ export function PriceChart({
   onOpenIndicators,
   onAlertAtPrice,
   chrome,
+  legendTitle,
   compact = false,
   chartLabel,
   crosshairSync,
@@ -480,6 +481,8 @@ export function PriceChart({
   onAlertAtPrice?: (price: number) => void;
   /** Render the chrome into page slots instead of inline (the active workspace chart). */
   chrome?: ChartChrome;
+  /** The overlay legend's first words, e.g. "RELIANCE · 1D · NSE" (workstation only). */
+  legendTitle?: string;
   /** Compact grid toolbar; optional active-cell drawing rail; no legend or footnote. */
   compact?: boolean;
   chartLabel?: React.ReactNode;
@@ -1666,6 +1669,75 @@ export function PriceChart({
         )}
     </>
   );
+  const lastBar = parsed.at(-1);
+  const previousClose = parsed.at(-2)?.close;
+  const shownBar = readout?.bar ?? lastBar;
+  const ohlc = (bar: { open: number; high: number; low: number; close: number }) =>
+    `O ${bar.open.toFixed(2)} H ${bar.high.toFixed(2)} L ${bar.low.toFixed(2)} C ${bar.close.toFixed(2)}`;
+  const legendAction = `pointer-events-auto w-4 h-4 inline-flex items-center justify-center rounded text-slate-500 opacity-60 hover:opacity-100 hover:bg-[var(--ws-muted)] focus-visible:opacity-100 ${focusRing}`;
+  // TradingView's familiar order: title, the bar's values, then one line per study.
+  const overlayLegend = (
+    <div className="chart-overlay-legend">
+      <div className="tabular-nums">
+        {legendTitle && <span className="font-semibold text-[var(--ws-ink)]">{legendTitle}</span>}
+        {!readout && shownBar && (
+          <span className="ml-2 text-slate-600 dark:text-slate-300">
+            {ohlc(shownBar)}
+            {previousClose !== undefined && (
+              <span className={shownBar.close >= previousClose ? 'ml-1 text-emerald-700 dark:text-emerald-400' : 'ml-1 text-rose-700 dark:text-rose-400'}>
+                {`${shownBar.close >= previousClose ? '+' : ''}${(shownBar.close - previousClose).toFixed(2)} (${((shownBar.close / previousClose - 1) * 100).toFixed(2)}%)`}
+              </span>
+            )}
+          </span>
+        )}
+      </div>
+      {readout && (
+        <div data-testid="crosshair-readout" className="tabular-nums text-slate-600 dark:text-slate-300">
+          <div>
+            {readout.date}
+            {readout.bar && <span className="ml-2">{ohlc(readout.bar)}</span>}
+          </div>
+          {readout.panes.map((p) => (
+            <div key={p.id} style={{ color: p.color }}>
+              {p.label}: {p.value}
+            </div>
+          ))}
+        </div>
+      )}
+      <div aria-label="Study legend" className="flex flex-col items-start">
+        {scale !== 'percent' && activeMas.map((period) => {
+          const series = maSeriesData.get(period);
+          const latest = series?.[series.length - 1]?.value;
+          return (
+            <span key={period} className="inline-flex items-center gap-1.5 tabular-nums">
+              <span aria-hidden="true" className="inline-block w-3 h-0.5 rounded-full" style={{ backgroundColor: maColors[period] }} />
+              <span className="text-slate-500 dark:text-slate-400">MA{period}</span>
+              <span className="text-slate-700 dark:text-slate-300">{latest === undefined ? '—' : latest.toFixed(2)}</span>
+              <button type="button" aria-label={`Remove MA${period}`} title="Remove" onClick={() => toggleMas(period, false)} className={legendAction}>×</button>
+            </span>
+          );
+        })}
+        {scale === 'percent' && (activeMas.length > 0 || !!studyLegend?.length) && <span className="text-slate-500">Price studies hidden on % scale</span>}
+        {paneDefs.filter((d) => displayedPanes.includes(d.id)).map((def) => (
+          <span key={def.id} className="inline-flex items-center gap-1.5 tabular-nums">
+            <span aria-hidden="true" style={{ color: paneColor(def) }}>●</span>
+            <span>{def.label}</span>
+            <span>{def.series.map((s) => { const value = paneSourceBars.at(-1)?.[s.key]; return value == null ? '—' : Number(value).toFixed(2); }).join(' / ')}</span>
+            {onOpenIndicators && <button type="button" aria-label={`Configure ${def.label}`} title="Settings" onClick={onOpenIndicators} className={legendAction}>⚙</button>}
+            <button type="button" aria-label={`Remove ${def.label} pane`} title="Remove" onClick={() => togglePane(def.id)} className={legendAction}>×</button>
+          </span>
+        ))}
+        {scale !== 'percent' && studyLegend?.map((entry, i) => (
+          <span key={`${entry.label}-${i}`} className="inline-flex items-center gap-1.5 tabular-nums whitespace-nowrap">
+            <span aria-hidden="true" className="inline-block w-3 h-0.5" style={{ background: entry.color }} />
+            <span>{entry.label}</span>
+            <strong className="font-medium">{entry.value}</strong>
+            {onOpenIndicators && <button type="button" aria-label={`Configure ${entry.label}`} title="Settings" onClick={onOpenIndicators} className={legendAction}>⚙</button>}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
   const fitButton = <button type="button" className="workstation-button" onClick={() => chartRef.current?.timeScale().fitContent()} title="Fit all history (Alt+R)">Fit</button>;
 
   return (
@@ -1710,7 +1782,7 @@ export function PriceChart({
       )}
       {/* Legend: what is currently drawn, with each line's latest value, so
           the colours on the chart need no decoding. */}
-      {!compact && (activeMas.length > 0 || studyLegend?.length || displayedPanes.length > 0) && (
+      {!compact && !chrome && (activeMas.length > 0 || studyLegend?.length || displayedPanes.length > 0) && (
         <div className="chart-legend flex items-center gap-3 mb-1" aria-label="Study legend">
           {scale !== 'percent' && activeMas.map((period) => {
             const series = maSeriesData.get(period);
@@ -1799,7 +1871,8 @@ export function PriceChart({
         />
         {!isLoading && bars.length === 0 && <div role="status" className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">No stored bars for this security. Import EOD data from Data to begin.</div>}
         {isLoading && <div role="status" className="absolute top-3 left-3 text-xs text-slate-500">Loading stored history…</div>}
-        {readout && (
+        {chrome && !compact && overlayLegend}
+        {readout && (compact || !chrome) && (
           <div data-testid="crosshair-readout" className="pointer-events-none absolute top-2 left-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">
             <div className="font-medium text-slate-700 dark:text-slate-300">
               {readout.date}
