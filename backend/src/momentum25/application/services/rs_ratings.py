@@ -58,6 +58,11 @@ async def resolve_universe_rs_ratings(
     return ratings
 
 
+def _adjusted(bar: Any) -> float:
+    """The split- and bonus-adjusted close. A raw close across a 1:5 split reads as -80%."""
+    return float(bar.adj_close if bar.adj_close is not None else bar.close)
+
+
 async def compute_universe_rs_ratings(
     securities: list[Security],
     ohlcv_repo: Any,
@@ -96,14 +101,14 @@ async def compute_universe_rs_ratings(
         bars: tuple[Any, ...] = series.bars if series else ()
         if len(bars) < 2:
             continue
-        latest = float(bars[-1].close)
+        latest = _adjusted(bars[-1])
         weighted_sum = 0.0
         total_weight = 0.0
         for period, weight in periods.items():
             window = min(period, len(bars) - 1)
             if window <= 0:
                 continue
-            prior = float(bars[-(window + 1)].close)
+            prior = _adjusted(bars[-(window + 1)])
             if prior <= 0:
                 continue
             weighted_sum += weight * ((latest / prior) - 1.0)
