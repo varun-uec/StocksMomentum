@@ -126,10 +126,36 @@ $$""",
     return statements
 
 
+# Tables whose rows never change once written (ADR-014 §4, §6).
+APPEND_ONLY = ("strategy_families",)
+
+
+def append_only_ddl(tables: tuple[str, ...]) -> list[str]:
+    """A trigger that refuses every update and delete on ``tables``.
+
+    ``TRUNCATE`` fires no row trigger, so the test schema can still be reset.
+    """
+    statements = [
+        """
+CREATE OR REPLACE FUNCTION refuse_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION '% is append-only: % refused', TG_TABLE_NAME, TG_OP;
+END
+$$"""
+    ]
+    for table in tables:
+        statements.append(f"DROP TRIGGER IF EXISTS {table}_append_only ON {table}")
+        statements.append(
+            f"CREATE TRIGGER {table}_append_only BEFORE UPDATE OR DELETE ON {table} "
+            "FOR EACH ROW EXECUTE FUNCTION refuse_change()"
+        )
+    return statements
+
+
 def install_on_create(metadata: MetaData) -> None:
-    """Run :func:`ddl_v1` whenever ``metadata.create_all`` builds the schema (tests)."""
+    """Run the trigger DDL whenever ``metadata.create_all`` builds the schema (tests)."""
 
     @event.listens_for(metadata, "after_create")
     def _install(target: MetaData, connection: Connection, **_: object) -> None:
-        for statement in ddl_v1():
+        for statement in ddl_v1() + append_only_ddl(APPEND_ONLY):
             connection.execute(text(statement))

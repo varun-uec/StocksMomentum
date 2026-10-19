@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.errors import ConflictError
 from momentum25.domain.value_objects.types import RunStatus
 from momentum25.infrastructure.config.strategy_loader import config_from_raw, raw_from_config
 from momentum25.infrastructure.persistence.models import ScreeningRunModel, StrategyModel
@@ -14,7 +15,7 @@ from momentum25.infrastructure.persistence.models import ScreeningRunModel, Stra
 _BuiltinList = list
 
 
-def _to_domain(row: StrategyModel) -> Strategy:
+def strategy_from_row(row: StrategyModel) -> Strategy:
     """Map an ORM row to a domain :class:`Strategy`."""
     return Strategy(
         id=row.id,
@@ -24,7 +25,14 @@ def _to_domain(row: StrategyModel) -> Strategy:
         kind=row.kind,
         config=config_from_raw(row.config),
         config_hash=row.config_hash,
+        family_id=row.family_id,
+        parent_config_hash=row.parent_config_hash,
     )
+
+
+# User strategies (ADR-014 §3) live only in the Studio. Every read by name, every
+# list and the startup prune skip them, so no live or research path can run one.
+_NOT_USER = StrategyModel.kind != "user"
 
 
 class SqlStrategyRepository:
@@ -52,24 +60,32 @@ class SqlStrategyRepository:
                 "config": stmt.excluded.config,
                 "config_hash": stmt.excluded.config_hash,
             },
+            where=_NOT_USER,
         ).returning(StrategyModel.id)
-        result = await self._session.execute(upsert_stmt)
-        return int(result.scalar_one())
+        strategy_id = (await self._session.execute(upsert_stmt)).scalar_one_or_none()
+        if strategy_id is None:
+            raise ConflictError(
+                f"Strategy {strategy.name!r} v{strategy.version} is a user strategy; "
+                "a strategy file cannot replace it"
+            )
+        return int(strategy_id)
 
     async def get_active(self, name: str) -> Strategy | None:
         """Return the active strategy with the given name, or ``None``."""
         result = await self._session.execute(
             select(StrategyModel)
-            .where(StrategyModel.name == name, StrategyModel.is_active.is_(True))
+            .where(StrategyModel.name == name, StrategyModel.is_active.is_(True), _NOT_USER)
             .order_by(StrategyModel.version.desc())
         )
         row = result.scalars().first()
-        return _to_domain(row) if row else None
+        return strategy_from_row(row) if row else None
 
     async def list(self) -> list[Strategy]:
-        """Return all strategies."""
-        result = await self._session.execute(select(StrategyModel).order_by(StrategyModel.name))
-        return [_to_domain(row) for row in result.scalars().all()]
+        """Return all strategies except user strategies."""
+        result = await self._session.execute(
+            select(StrategyModel).where(_NOT_USER).order_by(StrategyModel.name)
+        )
+        return [strategy_from_row(row) for row in result.scalars().all()]
 
     async def list_with_completed_runs(self) -> _BuiltinList[Strategy]:
         """Return strategies that have at least one completed live run.
@@ -92,7 +108,7 @@ class SqlStrategyRepository:
             .distinct()
             .order_by(StrategyModel.name)
         )
-        return [_to_domain(row) for row in result.scalars().all()]
+        return [strategy_from_row(row) for row in result.scalars().all()]
 
     async def delete_orphans(self, names_on_disk: _BuiltinList[str]) -> _BuiltinList[str]:
         """Delete strategies not present on disk, but only those with no runs.
@@ -107,6 +123,7 @@ class SqlStrategyRepository:
             .where(
                 ~StrategyModel.name.in_(names_on_disk),
                 ScreeningRunModel.id.is_(None),
+                _NOT_USER,
             )
         )
         orphans = list(result.scalars().all())

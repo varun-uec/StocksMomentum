@@ -18,12 +18,14 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
@@ -317,7 +319,17 @@ class StrategyModel(Base):
     """A versioned, hashed strategy definition."""
 
     __tablename__ = "strategies"
-    __table_args__ = (UniqueConstraint("name", "version"),)
+    __table_args__ = (
+        UniqueConstraint("name", "version"),
+        CheckConstraint("(kind = 'user') = (family_id IS NOT NULL)", name="ck_strategies_family"),
+        # A user config is addressed by its hash, so each hash names one row.
+        Index(
+            "uq_strategies_user_config_hash",
+            "config_hash",
+            unique=True,
+            postgresql_where=text("kind = 'user'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, nullable=False, index=True)
@@ -326,7 +338,28 @@ class StrategyModel(Base):
     kind: Mapped[str] = mapped_column(String, nullable=False, server_default="production")
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     config_hash: Mapped[str] = mapped_column(String, nullable=False)
+    # User strategies only (ADR-014 §3–4): the family, and the config it came from.
+    family_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("strategy_families.id"), index=True
+    )
+    parent_config_hash: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StrategyFamilyModel(Base):
+    """A hypothesis and its root config, fixed at creation (ADR-014 §4)."""
+
+    __tablename__ = "strategy_families"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    hypothesis: Mapped[str] = mapped_column(Text, nullable=False)
+    # Lower-cased, single-spaced: two families cannot state the same hypothesis.
+    hypothesis_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    root_config_hash: Mapped[str] = mapped_column(String, nullable=False)
+    tenant_id: Mapped[int | None] = mapped_column(BigInteger)  # SaaS extension point (ADR-010)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class ScreeningRunModel(Base):

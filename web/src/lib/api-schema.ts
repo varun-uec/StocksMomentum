@@ -605,6 +605,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rule Registry
+         * @description Every engine, rule and parameter a user strategy may set, with bounds.
+         */
+        get: operations["rule_registry_api_v1_studio_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/families": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Families
+         * @description Every family with its hypothesis, root and members.
+         */
+        get: operations["list_families_api_v1_studio_families_get"];
+        put?: never;
+        /**
+         * Create Family
+         * @description State a hypothesis and save its first config, from a strategy file or from scratch.
+         */
+        post: operations["create_family_api_v1_studio_families_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/families/{family_id}/strategies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Strategy
+         * @description Save a new config derived from the family's root or one of its members.
+         */
+        post: operations["save_strategy_api_v1_studio_families__family_id__strategies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/securities": {
         parameters: {
             query?: never;
@@ -1475,6 +1539,23 @@ export interface components {
             threshold: number | string;
         };
         /**
+         * CreateFamilyRequest
+         * @description A new family: a hypothesis and its first config.
+         *
+         *     ``parent_config_hash`` names the strategy file it starts from, or is null
+         *     for a config written from scratch.
+         */
+        CreateFamilyRequest: {
+            /** Hypothesis */
+            hypothesis: string;
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Parent Config Hash */
+            parent_config_hash?: string | null;
+        };
+        /**
          * DataFreshnessDTO
          * @description Whether persisted market data is current, and why if not (Phase 1.5).
          *
@@ -1800,6 +1881,30 @@ export interface components {
             avg_momentum_score: string;
             /** Avg Buy Setup Score */
             avg_buy_setup_score: string;
+        };
+        /**
+         * FamilyDTO
+         * @description A family: its hypothesis, its root and its members in save order.
+         */
+        FamilyDTO: {
+            /** Id */
+            id: number;
+            /** Hypothesis */
+            hypothesis: string;
+            /** Root Config Hash */
+            root_config_hash: string;
+            /**
+             * Root
+             * @enum {string}
+             */
+            root: "builtin" | "scratch";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Members */
+            members: components["schemas"]["StudioStrategyDTO"][];
         };
         /**
          * FibonacciRelationship
@@ -2220,6 +2325,31 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /**
+         * ParamSpecDTO
+         * @description One rule parameter: what it may be set to.
+         */
+        ParamSpecDTO: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "number" | "integer" | "choice";
+            /** Unit */
+            unit: string;
+            /** Default */
+            default: string;
+            /** Meaning */
+            meaning: string;
+            /** Minimum */
+            minimum: string | null;
+            /** Maximum */
+            maximum: string | null;
+            /** Choices */
+            choices: string[];
         };
         /**
          * ParameterExperimentRequest
@@ -2790,6 +2920,38 @@ export interface components {
             weight: string;
         };
         /**
+         * RuleRegistryDTO
+         * @description Every engine and rule a user strategy may configure (ADR-014 §2).
+         */
+        RuleRegistryDTO: {
+            /** Version */
+            version: string;
+            /** Max Weight */
+            max_weight: string;
+            /** Engines */
+            engines: string[];
+            /** Engines Without Rules */
+            engines_without_rules: string[];
+            /** Rules */
+            rules: components["schemas"]["RuleSchemaDTO"][];
+        };
+        /**
+         * RuleSchemaDTO
+         * @description A registered rule, its engine and its parameters.
+         */
+        RuleSchemaDTO: {
+            /** Rule Id */
+            rule_id: string;
+            /** Engine Id */
+            engine_id: string;
+            /** Meaning */
+            meaning: string;
+            /** Note */
+            note: string | null;
+            /** Params */
+            params: components["schemas"]["ParamSpecDTO"][];
+        };
+        /**
          * RunComparisonResponse
          * @description Complete comparison report between two runs.
          */
@@ -2868,6 +3030,18 @@ export interface components {
             } | null;
             /** Error */
             error?: string | null;
+        };
+        /**
+         * SaveStrategyRequest
+         * @description A new config in a family, derived from one of its members or its root.
+         */
+        SaveStrategyRequest: {
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Parent Config Hash */
+            parent_config_hash: string;
         };
         /**
          * ScoreComparisonDTO
@@ -3246,6 +3420,26 @@ export interface components {
             config_hash: string;
             /** Description */
             description?: string | null;
+        };
+        /**
+         * StudioStrategyDTO
+         * @description A saved user strategy and the config it came from.
+         */
+        StudioStrategyDTO: {
+            /** Config Hash */
+            config_hash: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: number;
+            /** Family Id */
+            family_id: number;
+            /** Parent Config Hash */
+            parent_config_hash: string | null;
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
         };
         /**
          * Subdivision
@@ -4509,6 +4703,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyDetailDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_registry_api_v1_studio_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRegistryDTO"];
+                };
+            };
+        };
+    };
+    list_families_api_v1_studio_families_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyDTO"][];
+                };
+            };
+        };
+    };
+    create_family_api_v1_studio_families_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFamilyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_strategy_api_v1_studio_families__family_id__strategies_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveStrategyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioStrategyDTO"];
                 };
             };
             /** @description Validation Error */

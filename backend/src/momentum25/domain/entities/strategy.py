@@ -8,6 +8,7 @@ objects is performed by the strategy loader (infrastructure) using a Pydantic sc
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -87,3 +88,21 @@ class Strategy:
     id: int | None = None
     is_active: bool = True
     kind: str = "production"
+    # User strategies only (ADR-014 §3–4).
+    family_id: int | None = None
+    parent_config_hash: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class StrategyFamily:
+    """A hypothesis and the root config its members derive from (ADR-014 §4).
+
+    Both are fixed when the family is created. ``root_config_hash`` is the
+    built-in strategy's hash, or the first member's own hash when the user
+    started from scratch.
+    """
+
+    id: int
+    hypothesis: str
+    root_config_hash: str
+    created_at: datetime

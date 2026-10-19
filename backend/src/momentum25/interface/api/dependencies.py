@@ -47,6 +47,7 @@ from momentum25.application.use_cases.stocks import (
     GetStockExplanation as GetStockExplanationBySymbol,
 )
 from momentum25.application.use_cases.strategies import GetStrategy, ListStrategies
+from momentum25.application.use_cases.studio import CreateFamily, ListFamilies, SaveStrategy
 from momentum25.application.use_cases.user_documents import GetUserDocument, SaveUserDocument
 from momentum25.application.use_cases.watchlist import (
     AddToWatchlist,
@@ -71,6 +72,7 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlScreeningRunRepository,
     SqlSecurityRepository,
     SqlStrategyRepository,
+    SqlStudioRepository,
     SqlUserDocumentRepository,
     SqlWatchlistRepository,
 )
@@ -613,3 +615,34 @@ async def get_evaluate_alerts() -> AsyncIterator[EvaluateAlerts]:
     """Provide an EvaluateAlerts use-case instance."""
     async with _shared_session() as session:
         yield evaluate_alerts_with(session)
+
+
+# ── Strategy Studio (FR-25, M14) ─────────────────────────────────────────
+
+
+async def get_studio_repo() -> AsyncIterator[SqlStudioRepository]:
+    """Provide a Studio repository instance."""
+    async with _managed_session() as session:
+        yield SqlStudioRepository(session)
+
+
+async def get_list_families(
+    studio: Annotated[SqlStudioRepository, Depends(get_studio_repo)],
+) -> AsyncIterator[ListFamilies]:
+    """Provide a ListFamilies use-case instance."""
+    yield ListFamilies(studio)
+
+
+async def get_create_family(
+    studio: Annotated[SqlStudioRepository, Depends(get_studio_repo)],
+    strategies: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
+) -> AsyncIterator[CreateFamily]:
+    """Provide a CreateFamily use-case instance."""
+    yield CreateFamily(studio, strategies)
+
+
+async def get_save_strategy(
+    studio: Annotated[SqlStudioRepository, Depends(get_studio_repo)],
+) -> AsyncIterator[SaveStrategy]:
+    """Provide a SaveStrategy use-case instance."""
+    yield SaveStrategy(studio)

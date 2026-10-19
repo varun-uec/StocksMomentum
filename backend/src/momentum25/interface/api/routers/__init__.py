@@ -18,6 +18,7 @@ from momentum25.interface.api.routers import (
     securities,
     stocks,
     strategies,
+    studio,
     user_documents,
     validation,
     watchlist,
@@ -31,6 +32,7 @@ api_router.include_router(research.router)
 api_router.include_router(stocks.router)
 api_router.include_router(runs.router)
 api_router.include_router(strategies.router)
+api_router.include_router(studio.router)
 api_router.include_router(securities.router)
 api_router.include_router(validation.router)
 api_router.include_router(watchlist.router)

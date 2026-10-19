@@ -14,7 +14,7 @@ from momentum25.domain.entities.alert import Alert, Firing
 from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
-from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.entities.strategy import Strategy, StrategyFamily
 from momentum25.domain.entities.user_document import DocumentKind, UserDocument
 from momentum25.domain.ports.market_data import RawCorporateAction, RawIndexBar
 from momentum25.domain.research.forward_returns import ForwardReturn
@@ -379,4 +379,52 @@ class AlertRepository(Protocol):
 
     async def mark_seen(self) -> int:
         """Mark every fired alert seen; return how many changed."""
+        ...
+
+
+class StudioRepository(Protocol):
+    """Persistence for strategy families and user strategies (ADR-014 §3–4).
+
+    Families and user strategies are append-only: nothing here updates a row.
+    """
+
+    async def create_family(
+        self, hypothesis: str, hypothesis_key: str, root_config_hash: str, first: Strategy
+    ) -> StrategyFamily:
+        """Store a family and its first member together.
+
+        Raises ``ConflictError`` if another family states the hypothesis.
+        """
+        ...
+
+    async def get_family(self, family_id: int) -> StrategyFamily | None:
+        """Return a family, or ``None``."""
+        ...
+
+    async def list_families(self) -> _BuiltinList[StrategyFamily]:
+        """Return every family, oldest first."""
+        ...
+
+    async def add_strategy(self, strategy: Strategy) -> Strategy:
+        """Store a new user strategy and return it with its id."""
+        ...
+
+    async def get_strategy(self, config_hash: str) -> Strategy | None:
+        """Return the user strategy with this hash, or ``None``."""
+        ...
+
+    async def get_builtin(self, config_hash: str) -> Strategy | None:
+        """Return the strategy file (not a user strategy) with this hash, or ``None``."""
+        ...
+
+    async def members(self, family_id: int) -> _BuiltinList[Strategy]:
+        """Return a family's strategies in the order they were saved."""
+        ...
+
+    async def named(self, name: str) -> Strategy | None:
+        """Return any stored strategy called ``name``, or ``None``."""
+        ...
+
+    async def next_version(self, name: str) -> int:
+        """One more than the highest stored version of ``name``."""
         ...
