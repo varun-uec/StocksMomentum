@@ -7,7 +7,7 @@ import {
   LoadingSpinner,
   PageHeader,
 } from '@/components/shared/Card';
-import { getDataFreshness, refreshLatestMarketData } from '@/lib/api-client';
+import { getDataFreshness, getMarketDataPolicy, refreshLatestMarketData } from '@/lib/api-client';
 import { focusRing } from '@/lib/theme';
 import type { Exchange, ExchangeRefreshResult } from '@/lib/types';
 
@@ -72,6 +72,10 @@ export default function DataPage() {
     queryKey: ['data-freshness'],
     queryFn: getDataFreshness,
   });
+  const { data: policy } = useQuery({
+    queryKey: ['market-data-policy'],
+    queryFn: getMarketDataPolicy,
+  });
 
   const refresh = useMutation({
     mutationFn: () => refreshLatestMarketData(SCOPES[scopeIndex].exchanges),
@@ -84,7 +88,7 @@ export default function DataPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <PageHeader
         title="Market Data"
-        subtitle="Ingest the latest completed trading session on demand"
+        subtitle="Import and manage authorized local data"
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <Card title="Stored data">
@@ -113,10 +117,13 @@ export default function DataPage() {
           </div>
         </Card>
 
-        <Card
-          title="Refresh latest market data"
-          subtitle="Fetches one session (the latest completed one) and upserts it. Repeat runs are idempotent. This does not start a screening run."
-        >
+        {!policy ? (
+          <Card title="Market data policy"><LoadingSpinner text="Loading data policy…" /></Card>
+        ) : policy.direct_exchange_downloads_enabled ? (
+          <Card
+            title="Refresh latest market data"
+            subtitle="Direct exchange downloads are enabled by this instance's operator. This fetches one session and does not start a screening run."
+          >
           <div className="flex flex-wrap items-center gap-3">
             <div
               role="radiogroup"
@@ -165,7 +172,24 @@ export default function DataPage() {
               />
             </div>
           )}
-        </Card>
+          </Card>
+        ) : (
+          <Card
+            title="Authorized CSV import"
+            subtitle="Direct exchange downloads are disabled. Import data you are authorized to use, then run a screen from the dashboard."
+          >
+            <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+              <p>From the backend directory, load the project settings and import normalized end-of-day bars and benchmark closes:</p>
+              <pre className="overflow-x-auto rounded-md bg-slate-100 dark:bg-slate-800 p-3 text-xs">{`set -a
+source ../.env
+set +a
+uv run momentum25 import-eod bars.csv --actions corporate-actions.csv
+uv run momentum25 import-benchmark benchmark.csv
+uv run momentum25 screen`}</pre>
+              <p>CSV columns and corporate-action requirements are documented in the repository README.</p>
+            </div>
+          </Card>
+        )}
 
         {summary && (
           <div className="space-y-4">

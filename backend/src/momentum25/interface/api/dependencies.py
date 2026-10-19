@@ -392,16 +392,19 @@ async def _shared_session() -> AsyncIterator[AsyncSession]:
 async def get_execute_screening() -> AsyncIterator[ExecuteScreening]:
     """Provide an ExecuteScreening use-case instance.
 
-    Assembles the full vertical slice: BhavcopyProvider (ADR-003 MVP), repositories,
-    indicator pipeline, and strategy engine.
+    Assembles the vertical slice. External downloads are disabled unless the
+    operator explicitly opts in; the default screens locally imported data.
     """
     register_builtin_engines()
     async with _shared_session() as session:
-        import httpx
+        settings = get_settings()
+        market_data_provider = None
+        if settings.direct_exchange_downloads_enabled:
+            import httpx
 
-        from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
+            from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
 
-        market_data_provider = BhavcopyProvider(httpx.AsyncClient())
+            market_data_provider = BhavcopyProvider(httpx.AsyncClient())
         security_repo = SqlSecurityRepository(session)
         ohlcv_repo = SqlOHLCVRepository(session)
         screening_run_repo = SqlScreeningRunRepository(session)
@@ -422,6 +425,7 @@ async def get_execute_screening() -> AsyncIterator[ExecuteScreening]:
             screening_run_repo=screening_run_repo,
             indicator_pipeline=indicator_pipeline,
             strategy_engine=strategy_engine,
+            ingest_enabled=settings.direct_exchange_downloads_enabled,
         )
 
 
@@ -431,6 +435,16 @@ async def get_refresh_corporate_actions() -> AsyncIterator[RefreshCorporateActio
     A periodic maintenance operation, not part of the daily screening
     request path -- see ``application.services.corporate_actions`` for why.
     """
+    if not get_settings().direct_exchange_downloads_enabled:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct exchange downloads are disabled. "
+                "Import an authorized data export instead."
+            ),
+        )
     async with _shared_session() as session:
         import httpx
 
@@ -450,6 +464,16 @@ async def get_refresh_latest_market_data() -> AsyncIterator[RefreshLatestMarketD
     Both bhavcopy providers are wired so one request can refresh either
     exchange; the caller chooses the scope in the request body.
     """
+    if not get_settings().direct_exchange_downloads_enabled:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct exchange downloads are disabled. "
+                "Import an authorized data export instead."
+            ),
+        )
     async with _shared_session() as session:
         import httpx
 

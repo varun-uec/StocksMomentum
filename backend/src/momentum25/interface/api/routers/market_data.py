@@ -11,9 +11,19 @@ from momentum25.application.dto.market_data import (
     RefreshMarketDataResponse,
 )
 from momentum25.application.use_cases.market_data import RefreshLatestMarketData
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.interface.api.dependencies import get_refresh_latest_market_data
 
 router = APIRouter(prefix="/market-data", tags=["market-data"])
+
+
+@router.get("/status")
+async def market_data_policy() -> dict[str, bool]:
+    """Expose whether direct exchange downloads were explicitly enabled."""
+    return {
+        "direct_exchange_downloads_enabled": get_settings().direct_exchange_downloads_enabled,
+        "authorized_csv_import_supported": True,
+    }
 
 
 @router.post("/refresh", response_model=RefreshMarketDataResponse)

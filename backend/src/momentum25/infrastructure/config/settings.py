@@ -45,6 +45,9 @@ class Settings(BaseSettings):
 
     # --- Market data / strategy ---
     data_provider: str = "bhavcopy"
+    # Exchange adapters can make automated requests to NSE/BSE. Keep them
+    # disabled in a fresh install; users can import authorized CSV exports.
+    direct_exchange_downloads_enabled: bool = False
     benchmark_index: str = "NIFTY500"
     strategy_dir: str = "../docs/architecture/strategies"
 

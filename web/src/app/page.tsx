@@ -178,10 +178,10 @@ export default function Home() {
               disabled={isRefreshing}
               className={`px-3 py-1.5 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 disabled:opacity-50 transition-colors ${focusRing}`}
             >
-              {isScreening ? 'Screening…' : 'Refresh'}
+              {isScreening ? 'Screening…' : 'Run screening'}
             </button>
             <span className="text-[10px] text-slate-400 dark:text-slate-500">
-              This re-evaluates the universe; it usually takes a few minutes.
+              Uses stored market data; it does not download exchange data.
             </span>
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function Home() {
         )}
 
         {!isLoading && !rankings && !rankingsError && (
-          <EmptyState message="No completed screening run for this strategy yet. Choose Refresh above to run one. On a new install the first run also downloads about 18 months of NSE data, which takes several minutes." />
+          <EmptyState message="No completed screening run for this strategy yet. Import authorized EOD and benchmark CSV data from the CLI (see README), then choose Run screening. Wickstreet does not download exchange data by default." />
         )}
       </div>
     </main>

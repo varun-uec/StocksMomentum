@@ -35,6 +35,7 @@ export default defineConfig({
       M25_WEB_DIST_DIR: webDist,
       M25_STRATEGY_DIR: '../docs/architecture/strategies',
       M25_SCHEDULER_ENABLED: 'false',
+      M25_DIRECT_EXCHANGE_DOWNLOADS_ENABLED: 'false',
       M25_ENVIRONMENT: 'test',
       M25_LOG_JSON: 'false',
       M25_RATE_LIMIT_MAX_REQUESTS: '100000',

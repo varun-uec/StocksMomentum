@@ -19,7 +19,7 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | 11 | Validation: scorecard, alpha, rule and engine IC | Shipped | `/validation` |
 | 12 | Research: historical screening, run comparison, contribution, experiments, determinism check | Shipped | `/analytics`, `/historical`, `/experiment` |
 | 13 | Walk-forward backtest (3/6/12M, monthly) | Shipped with labelled approximations | `/backtest` |
-| 14 | Market-data refresh (NSE/BSE latest session) | Shipped | `/data` |
+| 14 | Market-data import from authorized CSV; optional direct NSE/BSE refresh when explicitly enabled | Shipped | `/data` |
 | 15 | Health, data freshness, Prometheus metrics | Shipped | — |
 | 16 | Learn hub (methodology, scoring, rules, FAQ) | Shipped | `/learn/*` |
 | 17 | Chart workspace: search, 12 drawing tools, indicators (Alt+I), chart types and scales, 1D/1W/1M bars, compare, layouts up to 4 × 4 with sync, saved on the server (M11–M13) | Shipped on branch `wickstreet/m10-m11` | `/chart`, `/chart/[symbol]` |
@@ -36,13 +36,13 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | Health | `GET /health`, `/health/live`, `/health/ready`, `/health/startup`, `/health/data-freshness` | Freshness reports sessions missed since the latest bar. |
 | Metrics | `GET /metrics` | Prometheus format. |
 | Runs | `GET /runs`, `GET /runs/latest`, `GET /runs/{run_id}` | |
-| | `POST /runs/execute` | Runs the full pipeline. Background by default; poll `GET /runs/{id}`. |
-| | `POST /runs` | Creates a `PENDING` row, schedules the ingest-and-screen pipeline, and returns `202`; poll `GET /runs/{id}`. |
+| | `POST /runs/execute` | Screens stored bars by default. Background by default; poll `GET /runs/{id}`. Direct exchange downloads require explicit operator opt-in; `force=true` returns `409` while disabled. |
+| | `POST /runs` | Creates a `PENDING` row and schedules screening over stored data by default; returns `202`; poll `GET /runs/{id}`. Forced exchange downloads return `409` while the adapter is disabled. |
 | Rankings | `GET /rankings/runs/{run_id}`, `GET /rankings/runs/{run_id}/stocks/{security_id}/explanation` | |
 | Stocks | `GET /stocks/{symbol}`, `/history`, `/live`, `/indicators/series?interval=1D\|1W`, `/elliott-wave`; `POST /stocks/{symbol}/chart-patterns` | `/live` evaluates any symbol on demand. |
 | Securities | `GET /securities` (search), `GET /securities/{symbol}/ohlcv?interval=1D\|1W\|1M` (adjusted daily, weekly or monthly bars, the adjustment schedule, `data_version`) | |
 | Market | `GET /market/context`, `GET /indices/{index_code}/closes` | |
-| Market data | `POST /market-data/refresh` | Fetches the latest NSE/BSE session. No backfill, no screening. |
+| Market data | `GET /market-data/status`, `POST /market-data/refresh` | Direct exchange refresh is disabled by default and returns `409` unless `M25_DIRECT_EXCHANGE_DOWNLOADS_ENABLED=true`. The supported default import path is the local `import-eod` / `import-benchmark` CLI. |
 | Watchlist | `GET /watchlist`, `GET /watchlist/detail`, `POST /watchlist/{symbol}`, `DELETE /watchlist/{symbol}` | |
 | Workspace | `GET`/`PUT /workspaces/{id}`, `GET`/`PUT /drawings/{symbol}` | Saved chart settings and drawings. `ETag`/`If-Match` concurrency: `412` with the current document, `428` without a precondition (ADR-013 §5). |
 | Strategies | `GET /strategies`, `GET /strategies/{name}` | User strategies never appear here. |
@@ -74,7 +74,7 @@ A Vite single-page app: React 18, React Router 7, TypeScript, Tailwind. The API 
 | `/historical` | Browse past runs and their rankings |
 | `/experiment` | Run a strategy experiment |
 | `/backtest` | Walk-forward backtest with the data caveat shown first |
-| `/data` | Refresh the latest market session |
+| `/data` | Inspect stored data; import authorized CSV data by CLI. The direct refresh control appears only when the operator explicitly enables downloads. |
 | `/learn`, `/learn/{minervini-methodology, momentum25-methodology, momentum-investing, scoring-guide, rule-guide, faq}` | Methodology and education |
 | `/about` | What Wickstreet is; the chart-library licence notice |
 | `/lab/chart-grid?n=&symbol=` | Engineering diagnostic: `n` charts on one symbol (multi-chart smoke check). Not in the navigation. |
@@ -88,7 +88,10 @@ A Vite single-page app: React 18, React Router 7, TypeScript, Tailwind. The API 
 | `engines` | Lists registered engines. |
 | `strategies` | Lists strategy files with config hash. |
 | `walk-forward --start --end --initial-capital` | Runs the backtest. Same wiring as the API. |
-| `ingest`, `screen` | Stubs. They print a message and exit. |
+| `import-eod FILE [--actions FILE]` | Imports normalized authorized daily-bar CSV and optional corporate-action history; no network access. |
+| `import-benchmark FILE` | Imports one authorized benchmark close series from CSV. |
+| `screen [--strategy NAME]` | Screens already stored data and never downloads. |
+| `ingest` | Retired; exits nonzero with the supported `import-eod` workflow. |
 
 ## Operational scripts
 

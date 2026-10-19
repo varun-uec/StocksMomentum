@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from momentum25.application.dto.market_data import Interval, SecurityIndicatorSeriesDTO
 from momentum25.application.dto.stocks import StockHistoryDTO
@@ -16,6 +16,7 @@ from momentum25.application.use_cases.stocks import (
     LiveStockAnalysis,
 )
 from momentum25.domain.scoring.explainability import StockExplanation
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.interface.api.dependencies import (
     get_indicator_series,
     get_live_stock_analysis,
@@ -86,4 +87,12 @@ async def read_stock_live(
     rule (e.g. RS rating) could not be measured for a single symbol -- see
     ``GetLiveStockAnalysis`` for why.
     """
+    if refresh and not get_settings().direct_exchange_downloads_enabled:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct exchange downloads are disabled. "
+                "Import authorized data or omit refresh=true."
+            ),
+        )
     return await use_case.execute(symbol, strategy, refresh)

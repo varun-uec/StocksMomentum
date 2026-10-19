@@ -9,6 +9,7 @@ import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategy_file
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
@@ -64,3 +65,29 @@ async def test_post_runs_schedules_execution_without_calling_a_market_provider(
     run = response.json()
     assert run["status"] == "PENDING"
     assert scheduled == [("minervini_trend_template", False, run["id"])]
+
+
+async def test_forced_run_is_rejected_before_creating_a_run_when_downloads_are_disabled(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("M25_DIRECT_EXCHANGE_DOWNLOADS_ENABLED", "false")
+    get_settings.cache_clear()
+
+    for path, body in (
+        ("/api/v1/runs", {"strategy": "minervini_trend_template", "force": True}),
+        (
+            "/api/v1/runs/execute",
+            {
+                "strategy": "minervini_trend_template",
+                "force": True,
+                "background": False,
+            },
+        ),
+    ):
+        response = await client.post(path, json=body)
+        assert response.status_code == 409, response.text
+        assert "Forced exchange downloads are disabled" in response.json()["detail"]
+        runs = await client.get("/api/v1/runs")
+        assert runs.status_code == 200
+        assert runs.json()["total"] == 0
+    get_settings.cache_clear()

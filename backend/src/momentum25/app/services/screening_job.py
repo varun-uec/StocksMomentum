@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
 from structlog import get_logger
 
 from momentum25.application.use_cases.screening import ExecuteScreening
@@ -22,6 +21,7 @@ from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.domain.value_objects.types import RunStatus
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
@@ -29,7 +29,6 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlSecurityRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
-from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
 
 _logger = get_logger("screening_job")
 
@@ -41,6 +40,7 @@ async def run_screening_pipeline(
     run_id: int | None = None,
     target_symbols: list[str] | None = None,
     market_data_provider: Any | None = None,
+    ingest_enabled: bool | None = None,
 ) -> int:
     """Run the full ingest-and-screen pipeline in its own session.
 
@@ -52,9 +52,8 @@ async def run_screening_pipeline(
             path (Phase 1.6) creates the row before returning ``202`` to the
             client, then hands its id here.
         target_symbols: Optional symbol subset (mainly for tests).
-        market_data_provider: Override the default ``BhavcopyProvider`` (for
-            tests, so a background-execution test does not make real NSE
-            network calls).
+        market_data_provider: Explicit external provider override, mainly tests.
+        ingest_enabled: Override the configured exchange-download policy.
 
     Returns:
         The id of the completed run.
@@ -62,7 +61,19 @@ async def run_screening_pipeline(
     register_builtin_engines()
     session = get_database().new_session()
     try:
-        market_data_provider = market_data_provider or BhavcopyProvider(httpx.AsyncClient())
+        if ingest_enabled is None:
+            # Supplying a provider is an explicit opt-in for tests/integrators;
+            # the application default remains offline.
+            ingest_enabled = (
+                market_data_provider is not None
+                or get_settings().direct_exchange_downloads_enabled
+            )
+        if ingest_enabled and market_data_provider is None:
+            import httpx
+
+            from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
+
+            market_data_provider = BhavcopyProvider(httpx.AsyncClient())
         security_repo = SqlSecurityRepository(session)
         ohlcv_repo = SqlOHLCVRepository(session)
         screening_run_repo = SqlScreeningRunRepository(session)
@@ -80,6 +91,7 @@ async def run_screening_pipeline(
             screening_run_repo=screening_run_repo,
             indicator_pipeline=indicator_pipeline,
             strategy_engine=strategy_engine,
+            ingest_enabled=ingest_enabled,
         )
 
         try:

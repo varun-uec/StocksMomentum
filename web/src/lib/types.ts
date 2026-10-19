@@ -1015,6 +1015,11 @@ export interface ExchangeRefreshResult {
   warnings: string[];
 }
 
+export interface MarketDataPolicy {
+  direct_exchange_downloads_enabled: boolean;
+  authorized_csv_import_supported: boolean;
+}
+
 export interface RefreshMarketDataRequest {
   exchanges: Exchange[];
 }

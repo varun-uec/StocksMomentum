@@ -57,6 +57,7 @@ class ExecuteScreening:
         screening_run_repo: Any,
         indicator_pipeline: Any,
         strategy_engine: Any,
+        ingest_enabled: bool = True,
     ) -> None:
         """Wire the use case with its collaborators."""
         self._market_data_provider = market_data_provider
@@ -65,6 +66,7 @@ class ExecuteScreening:
         self._screening_run_repo = screening_run_repo
         self._indicator_pipeline = indicator_pipeline
         self._strategy_engine = strategy_engine
+        self._ingest_enabled = ingest_enabled
 
     async def execute(
         self,
@@ -101,6 +103,11 @@ class ExecuteScreening:
             force=force,
         )
 
+        if not self._ingest_enabled and force:
+            raise ValueError(
+                "Forced exchange downloads are disabled. Import authorized market data first."
+            )
+
         # 1. Resolve the strategy
         strategy = await self._resolve_strategy(strategy_name)
 
@@ -118,7 +125,7 @@ class ExecuteScreening:
         # 2. Fetch EOD bars for the (possibly incremental) window
         all_bars = (
             await self._fetch_eod_range(start_date, reference_date)
-            if start_date <= reference_date
+            if self._ingest_enabled and start_date <= reference_date
             else []
         )
 
@@ -128,7 +135,8 @@ class ExecuteScreening:
             # run and the orchestrator resolves it independently via
             # ``security_repo.list_active()``. Only a genuinely empty
             # database (no strategy has ever ingested anything) is an error.
-            if force or not await self._security_repo.list_active():
+            active_securities = await self._security_repo.list_active()
+            if (self._ingest_enabled and force) or not active_securities:
                 raise ValueError("No market data available for screening")
             _logger.info("execute_screening_no_new_bars", start_date=start_date.isoformat())
         else:
@@ -175,6 +183,8 @@ class ExecuteScreening:
         # no_bar_on_trading_date -- the universe collapses to zero scored,
         # zero passed, zero failed with no error surfaced.
         latest_bar_date = await self._ohlcv_repo.latest_date()
+        if latest_bar_date is None:
+            raise ValueError("No stored market data. Import authorized EOD data first.")
         screening_date = latest_bar_date or reference_date
         run_id = await self._run_via_orchestrator(strategy, screening_date, existing_run_id)
 

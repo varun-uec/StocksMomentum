@@ -32,14 +32,15 @@ All configuration is via environment variables prefixed with `M25_`.
 |---|---|---|
 | `M25_LOG_LEVEL` | `INFO` | Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `M25_LOG_JSON` | `true` | Structured JSON logging |
-| `M25_SCHEDULER_ENABLED` | `true` | Enable daily screening scheduler (on by default in the shipped env; disable in dev/laptop runs or CI, where the automatic job must not spawn) |
+| `M25_SCHEDULER_ENABLED` | `false` | Enable the daily screening scheduler. The sample configuration keeps it off. |
+| `M25_DIRECT_EXCHANGE_DOWNLOADS_ENABLED` | `false` | Allow optional direct NSE/BSE adapters. Keep off unless the operator has confirmed permission for the source and intended use. Authorized CSV import is the supported offline path. |
 | `M25_SCHEDULE_CRON` | `30 18 * * 1-5` | Cron expression for daily run |
 | `M25_DB_POOL_SIZE` | `10` | Database connection pool size |
 | `M25_DB_MAX_OVERFLOW` | `5` | Database connection pool overflow |
 | `M25_RATE_LIMIT_MAX_REQUESTS` | `200` | API rate limit per window |
 | `M25_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window in seconds |
 | `M25_WEB_DIST_DIR` | `""` (image: `/app/web`) | Built web app to serve at `/`. Empty = API only. |
-| `APP_BIND` (Compose) | `127.0.0.1` | Interface the app port binds to. `0.0.0.0` opens it to the LAN with full access and no login (ADR-012). |
+| `APP_BIND` (Compose) | `127.0.0.1` | Interface the app port binds to. The app has no authentication and is intended for one local user. `0.0.0.0` exposes unauthenticated read/write access to the LAN; that instance is not secure. Use an authenticating proxy before any network exposure. |
 | `M25_RETRY_MAX_ATTEMPTS` | `3` | Max retry attempts for external calls |
 | `M25_REQUEST_TIMEOUT_SECONDS` | `30.0` | Request timeout for external calls |
 
@@ -90,7 +91,7 @@ curl http://localhost:8000/metrics
 - [ ] Redis connection uses TLS (rediss://)
 - [ ] Secrets managed via environment or vault (not .env files)
 - [ ] `M25_ALLOWED_HOSTS` lists only the names this instance serves
-- [ ] Exposed beyond a trusted local network only behind an authenticating reverse proxy (ADR-012)
+- [ ] Keep `APP_BIND=127.0.0.1` for the single-user deployment. Any network exposure requires an authenticating reverse proxy; Host/Origin checks are not authentication (ADR-012).
 - [ ] Rate limiting configured appropriately
 - [ ] Log level set to `INFO` or `WARNING` (not `DEBUG`)
 - [ ] Scheduler enabled only on one instance (or use distributed locking)

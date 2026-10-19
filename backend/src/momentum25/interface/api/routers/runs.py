@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 
 from momentum25.app.services.screening_job import run_screening_pipeline
 from momentum25.application.dto.common import Page
@@ -16,6 +16,7 @@ from momentum25.application.use_cases.runs import (
     TriggerRefresh,
 )
 from momentum25.application.use_cases.screening import ExecuteScreening
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.interface.api.dependencies import (
     get_execute_screening,
     get_get_latest_run_for_strategy,
@@ -25,6 +26,18 @@ from momentum25.interface.api.dependencies import (
 )
 
 router = APIRouter(prefix="/runs", tags=["runs"])
+
+
+def _require_downloads_if_forced(force: bool) -> None:
+    """Reject a requested full exchange refetch before creating a run row."""
+    if force and not get_settings().direct_exchange_downloads_enabled:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Forced exchange downloads are disabled. "
+                "Import authorized market data first or enable the adapter explicitly."
+            ),
+        )
 
 
 @router.get("", response_model=Page[RunDTO])
@@ -46,7 +59,8 @@ async def trigger_refresh(
     create: Annotated[TriggerRefresh, Depends(get_trigger_refresh)],
     fetch: Annotated[GetRun, Depends(get_get_run)],
 ) -> RunDTO:
-    """Create a run and execute its ingest-and-screen pipeline in the background."""
+    """Create a run and screen stored data, optionally using an enabled data adapter."""
+    _require_downloads_if_forced(body.force)
     run_id = await create.execute(body.strategy, body.force)
     background_tasks.add_task(
         run_screening_pipeline,
@@ -68,21 +82,22 @@ async def execute_screening(
 ) -> RunDTO:
     """Execute the full end-to-end screening pipeline.
 
-    Fetches live NSE market data, computes indicators, runs the strategy
-    engine, and persists scores and rankings.
+    By default, screens locally stored bars, computes indicators, runs the
+    strategy engine, and persists scores and rankings. Direct exchange fetches
+    require operator opt-in. ``force=true`` is rejected unless downloads are
+    enabled.
 
     Default (``background=true``): creates a ``PENDING`` run and returns it
     immediately (``202``); the pipeline runs after the response is sent and
     the caller polls ``GET /runs/{id}`` for completion. A synchronous
-    ``ExecuteScreening`` run over the full universe was 300+ sequential NSE
-    fetches followed by scoring every security inside one HTTP request --
-    long enough to exceed most gateway timeouts (Phase 1.6).
+    A synchronous full-universe screen can exceed ordinary gateway timeouts.
 
     ``background=false``: blocks and returns the ``COMPLETED`` run directly
     (``201``), matching the pre-Phase-1.6 behaviour -- used by tests and the
     CLI, which have no timeout to exceed.
     """
     if body.background:
+        _require_downloads_if_forced(body.force)
         run_id = await create.execute(body.strategy, body.force)
         background_tasks.add_task(
             run_screening_pipeline,
@@ -93,6 +108,7 @@ async def execute_screening(
         response.status_code = status.HTTP_202_ACCEPTED
         return await fetch.execute(run_id)
 
+    _require_downloads_if_forced(body.force)
     run_id = await execute.execute(
         strategy_name=body.strategy,
         target_symbols=None,

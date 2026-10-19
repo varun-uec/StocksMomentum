@@ -1,9 +1,4 @@
-"""Command-line interface.
-
-Provides operational commands. ``ingest`` and ``screen`` are wired to their use cases
-in milestones M1/M4; this phase exposes the command surface and the strategy/registry
-utilities that already work.
-"""
+"""Command-line interface for imports, screening, strategies and backtests."""
 
 from __future__ import annotations
 
@@ -14,10 +9,21 @@ from pathlib import Path
 
 import typer
 
+from momentum25.application.use_cases.import_market_data import (
+    ImportBenchmarkCsv,
+    ImportEodCsv,
+)
 from momentum25.application.use_cases.walk_forward import format_walk_forward_report
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
+from momentum25.infrastructure.persistence.database import get_database
+from momentum25.infrastructure.persistence.repositories import (
+    SqlBenchmarkIndexRepository,
+    SqlCorporateActionRepository,
+    SqlOHLCVRepository,
+    SqlSecurityRepository,
+)
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
 )
@@ -42,18 +48,59 @@ def strategies() -> None:
         typer.echo(f"{strategy.name} v{strategy.version}  {strategy.config_hash[:12]}")
 
 
+@app.command(name="import-eod")
+def import_eod(
+    file: Path = typer.Argument(..., exists=True, readable=True, dir_okay=False),  # noqa: B008
+    actions: Path | None = typer.Option(  # noqa: B008
+        None, "--actions", exists=True, readable=True, dir_okay=False,
+        help="Optional complete corporate-action history for the imported symbols.",
+    ),
+) -> None:
+    """Import authorized daily bars from a normalized CSV file without network access."""
+    try:
+        result = asyncio.run(_import_eod(file, actions))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(
+        f"Imported {result['bars']} bars for {result['symbols']} symbols; "
+        f"saved {result['actions']} actions and adjusted {result['adjusted_bars']} bars."
+    )
+
+
+@app.command(name="import-benchmark")
+def import_benchmark(
+    file: Path = typer.Argument(..., exists=True, readable=True, dir_okay=False),  # noqa: B008
+) -> None:
+    """Import an authorized benchmark close series from a normalized CSV file."""
+    try:
+        result = asyncio.run(_import_benchmark(file))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Imported {result['bars']} bars for {result['index_code']}.")
+
+
 @app.command()
-def ingest(date: str = typer.Argument(None, help="YYYY-MM-DD; default latest")) -> None:
-    """Ingest market data for a date (implemented in milestone M1)."""
-    typer.echo("`ingest` is implemented in milestone M1.")
-    raise typer.Exit(0)
+def ingest() -> None:
+    """Retired: use import-eod for authorized local data; exchange scraping is not implicit."""
+    typer.echo(
+        "`ingest` was retired. Use `momentum25 import-eod <bars.csv>` "
+        "with an authorized data export.",
+        err=True,
+    )
+    raise typer.Exit(2)
 
 
 @app.command()
 def screen(strategy: str = typer.Option("minervini_trend_template")) -> None:
-    """Run a screening pipeline for a strategy (implemented in milestone M4)."""
-    typer.echo("`screen` is implemented in milestone M4.")
-    raise typer.Exit(0)
+    """Screen data already stored locally; this command never downloads market data."""
+    from momentum25.app.services.screening_job import run_screening_pipeline
+
+    try:
+        run_id = asyncio.run(run_screening_pipeline(strategy, ingest_enabled=False))
+    except (RuntimeError, ValueError) as exc:
+        typer.echo(f"Screening failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Completed screening run {run_id} for {strategy} using stored data.")
 
 
 @app.command(name="walk-forward")
@@ -84,6 +131,23 @@ async def _run_walk_forward(start: str, end: str, initial_capital: str) -> None:
     runner = await build_walk_forward_runner(start_date, end_date)
     result = runner.run(start_date, end_date, Decimal(initial_capital))
     typer.echo(format_walk_forward_report(result))
+
+
+async def _import_eod(file: Path, actions: Path | None) -> dict[str, int]:
+    database = get_database()
+    async with database.session() as session:
+        importer = ImportEodCsv(
+            SqlSecurityRepository(session),
+            SqlOHLCVRepository(session),
+            SqlCorporateActionRepository(session),
+        )
+        return await importer.execute(file, actions)
+
+
+async def _import_benchmark(file: Path) -> dict[str, int | str]:
+    database = get_database()
+    async with database.session() as session:
+        return await ImportBenchmarkCsv(SqlBenchmarkIndexRepository(session)).execute(file)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ import type {
   DataFreshnessDTO,
   Exchange,
   RefreshMarketDataResponse,
+  MarketDataPolicy,
 } from './types';
 
 /** Same origin as the page (ADR-013). The API serves the app, so no URL setting exists. */
@@ -76,6 +77,10 @@ export async function getLatestRunForStrategy(strategy: string): Promise<RunDTO 
 
 export async function getDataFreshness(): Promise<DataFreshnessDTO> {
   return fetchJson(`${API_BASE}/health/data-freshness`, { cache: 'no-store' });
+}
+
+export async function getMarketDataPolicy(): Promise<MarketDataPolicy> {
+  return fetchJson(`${API_BASE}/market-data/status`, { cache: 'no-store' });
 }
 
 export async function getRuns(

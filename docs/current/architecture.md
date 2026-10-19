@@ -11,11 +11,12 @@ flowchart LR
   user(["Investor / operator"]) -->|"web app and JSON /api/v1, same origin"| api["api — FastAPI + APScheduler<br/>serves the Vite build · 127.0.0.1:8000"]
   api --> db[("PostgreSQL 16")]
   api --> redis[("Redis 7")]
-  api -->|EOD bhavcopy, corporate actions| nse[("NSE archives + API")]
-  api -->|legacy EOD| bse[("BSE archives")]
+  api -->|optional direct adapter, disabled by default| nse[("NSE archives + API")]
+  api -->|optional direct adapter, disabled by default| bse[("BSE archives")]
+  operator["operator-authorized CSV"] -->|import-eod / import-benchmark, offline| api
 ```
 
-Docker Compose runs three services: `db`, `redis`, `api`. One image (root `Dockerfile`) builds the web app with Node and serves it from the API at `/`, so the browser calls `/api/v1` on the same origin (ADR-013). Every published port binds to `127.0.0.1`; `APP_BIND` opts the app port in to LAN access (ADR-012). `make up-dev` adds Adminer (8080) and RedisInsight (5540). The `api` container runs migrations on start. One process serves HTTP and runs the scheduler (ADR-007).
+Docker Compose runs three services: `db`, `redis`, `api`. One image (root `Dockerfile`) builds the web app with Node and serves it from the API at `/`, so the browser calls `/api/v1` on the same origin (ADR-013). Every published port binds to `127.0.0.1`; the app has no authentication and is intended for one local user. `APP_BIND` can expose it to a network, but that instance is not secure without an authenticating proxy (ADR-012). `make up-dev` adds Adminer (8080) and RedisInsight (5540). The `api` container runs migrations on start. One process serves HTTP and runs the scheduler (ADR-007).
 
 ## Layers
 
@@ -64,15 +65,16 @@ Run tables are append-only per `run_id` (ADR-006). Triggers enforce the history 
 
 | Source | Adapter | Use |
 |---|---|---|
-| NSE EOD bhavcopy (current) | `providers/bhavcopy.py`, `providers/nse_client.py` | Daily prices from 2019-09-30 |
+| NSE EOD bhavcopy (current) | `providers/bhavcopy.py`, `providers/nse_client.py` | Optional direct adapter, explicitly disabled by default; requires operator authorization. |
 | NSE legacy archive | research backfill use cases | Prices 1994-11-03 → 2019-09-29 |
-| BSE bhavcopy | `providers/bse_bhavcopy.py` | Legacy prices and `POST /market-data/refresh` |
-| NSE corporate actions API | `application/services/corporate_actions.py` | Split/bonus adjustment factors. API caps at 20 rows per symbol. |
+| BSE bhavcopy | `providers/bse_bhavcopy.py` | Optional direct adapter, explicitly disabled by default; requires operator authorization. |
+| Authorized CSV exports | `momentum25 import-eod`, `momentum25 import-benchmark` | Supported offline daily-bar, corporate-action and benchmark imports. |
+| NSE corporate actions API | `application/services/corporate_actions.py` | Optional direct refresh when explicitly enabled. The public data workflow accepts action CSVs. |
 | Zerodha Kite Connect | `providers/kite.py` | Adapter exists. Nothing calls it. |
 
 ## Configuration
 
-All settings come from `M25_*` environment variables (`infrastructure/config/settings.py`). Key ones: `M25_DATABASE_URL`, `M25_REDIS_URL`, `M25_SCHEDULER_ENABLED` (default `false`; `.env.example` sets `true`), `M25_SCHEDULE_CRON` (default `30 18 * * 1-5`, Asia/Kolkata), `M25_STRATEGY_DIR`, `M25_ALLOWED_HOSTS` (host names the API answers to; default loopback), `M25_WEB_DIST_DIR` (built web app to serve; empty = API only). See [operations/deployment.md](../operations/deployment.md).
+All settings come from `M25_*` environment variables (`infrastructure/config/settings.py`). Key ones: `M25_DATABASE_URL`, `M25_REDIS_URL`, `M25_DIRECT_EXCHANGE_DOWNLOADS_ENABLED` (default `false`), `M25_SCHEDULER_ENABLED` (default `false`; `.env.example` also sets `false`), `M25_SCHEDULE_CRON` (default `30 18 * * 1-5`, Asia/Kolkata), `M25_STRATEGY_DIR`, `M25_ALLOWED_HOSTS` (host names the API answers to; default loopback), `M25_WEB_DIST_DIR` (built web app to serve; empty = API only). See [operations/deployment.md](../operations/deployment.md).
 
 ## Drift from the ADD
 
@@ -86,9 +88,9 @@ The ADD was written for a greenfield MVP (milestones M0–M8). The code has grow
 | D4 | Redis is a later SaaS step (ADD §24, ADR-007). | Redis is a required service for caching, locking and the refresh gate. | Amend ADR-007 or write a new ADR. |
 | D5 | Gate engines count in the momentum score (ADD §21). | `ScoringEngineImpl` drops gate engines from both weighted scores. The docstring proves this is rank-neutral. | Amend ADD §21. |
 | D6 | API: `GET /rankings/latest`, `GET /rankings/{run_id}` (ADD §14). | `GET /rankings/runs/{run_id}`; the latest run comes from `GET /runs/latest`. | Amend ADD §14 and IMPLEMENTATION_SPEC §5. |
-| D7 | CLI commands `ingest` and `screen` (ADD §10). | Both print "implemented in milestone M1/M4" and exit. Runs go through the API or scheduler. | Implement or remove them. |
+| D7 | CLI commands `ingest` and `screen` (ADD §10). | `ingest` exits nonzero with the offline `import-eod` replacement; `screen` runs over stored data without downloads. | Resolved in release hardening. |
 | D8 | Layers: domain, application, infrastructure, interface. | `app/services/` sits outside all four and no contract covers it. | Move it into `application` or `interface`, and add a contract. |
 | D9 | Import contracts run in CI (README claimed this). | CI runs ruff, mypy, pytest, `npm run lint`, `npm run build`. Not `lint-imports`. | Add `lint-imports` to `.github/workflows/ci.yml`. |
-| D10 | `POST /runs` triggers a refresh (ADD §16). | `POST /runs` only creates a `PENDING` row. Nothing executes it. `POST /runs/execute` runs the pipeline; the web UI and the scheduler use that path. | Make `POST /runs` execute, or remove it. |
+| D10 | `POST /runs` triggers a refresh (ADD §16). | `POST /runs` schedules the offline-by-default ingest-and-screen pipeline; direct downloads require explicit opt-in. | Resolved in the 2026-10-19 E2E audit. |
 
 The Wickstreet program ([ADD Amendment A1](../architecture/ADD-amendment-A1.md), ADR-011 to ADR-014) began on 2026-10-17. See [state.md](state.md#in-flight).

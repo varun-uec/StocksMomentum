@@ -76,8 +76,7 @@ observability, reliability, security, performance, and DevOps dimensions.
 
 | Gap | Impact | Recommendation |
 |---|---|---|
-| No authentication | MVP decision (ADR-010) | Add JWT/OAuth2 before public deployment |
-| No authorization | MVP decision | Add RBAC after auth |
+| No authentication or authorization | Deliberate single-user deployment model | Keep the application loopback-only. Any network-exposed instance is unauthenticated and not secure; put an authenticating proxy in front of it. This is not a multi-user public service. |
 | No secrets vault | Env vars visible in process list | Use HashiCorp Vault or AWS Secrets Manager |
 | No dependency scanning | Vulnerable deps may go undetected | Add `pip-audit` / `npm audit` to CI |
 | No TLS termination | Traffic between services is unencrypted | Terminate TLS at load balancer |
@@ -133,7 +132,7 @@ observability, reliability, security, performance, and DevOps dimensions.
 
 | Item | Effort | Impact |
 |---|---|---|
-| Add authentication | Medium | Security |
+| Add authentication if a future deployment must serve remote or multiple users | Medium | Security |
 | Implement historical backfill CLI | Medium | Data completeness |
 | Add monitoring stack to compose | Low | Observability |
 | Add dependency scanning to CI | Low | Security |
@@ -161,23 +160,23 @@ observability, reliability, security, performance, and DevOps dimensions.
 
 - Strong observability foundation with structured logging, metrics, and tracing
 - Comprehensive reliability patterns (retry, circuit breaker, timeout, graceful shutdown)
-- Good security posture for MVP (headers, rate limiting, input validation, non-root)
+- Good local-use boundary (loopback binding, headers, rate limiting, input validation, non-root); no remote authentication
 - Production-ready Docker setup with multi-stage builds
 - CI/CD pipeline with linting, testing, and type checking
 
 ### Risks
 
-1. **No authentication**: The platform is fully open. Deploy only on private networks until auth is added.
+1. **No authentication**: the single-user app is loopback-only by default. Do not expose it to a network without an authenticating proxy; Host/Origin checks are not access control.
 2. **No monitoring stack**: Metrics are collected but not visualized or alerted on.
 3. **No staging environment**: Production changes are not integration-tested before deployment.
 4. **No automated backfill**: Historical data must be loaded manually, which is error-prone.
 
 ### Recommendation
 
-The platform is **ready for internal/private deployment** with the following caveats:
-- Deploy behind a VPN or private network (no auth)
+The platform is suitable for **local single-user evaluation** with the following caveats:
+- Keep the app bound to loopback. A VPN or private subnet alone does not authenticate users; any network exposure needs an authenticating proxy.
 - Set up Prometheus + Grafana for metrics visualization
 - Run the benchmark script to establish performance baselines
-- Implement the high-priority technical debt items before public deployment
+- Add authentication before supporting remote or multi-user deployments; this application is not a public hosted service.
 
-**Production readiness score: 7/10** — Functional and observable, but needs auth and monitoring for public deployment.
+Local single-user evaluation is supported with the caveats above. Monitoring and operational infrastructure remain limited. A network-exposed instance requires an authenticating proxy.
