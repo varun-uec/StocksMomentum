@@ -28,19 +28,20 @@ export interface CompareLine {
 }
 
 /** The other series rebased to `main`'s close at their first shared date. */
-export function rebase(main: Close[], other: Close[]): { points: { date: string; price: number }[]; from: string } | null {
+export function rebase(main: Close[], other: Close[], anchorDate?: string): { points: { date: string; price: number }[]; from: string } | null {
   const mainClose = new Map(main.map((b) => [b.date, b.close]));
-  const start = other.findIndex((b) => mainClose.has(b.date) && b.close > 0);
+  const start = other.findIndex((b) => mainClose.has(b.date) && b.close > 0 && (!anchorDate || b.date >= anchorDate));
   if (start < 0) return null;
   const anchor = other[start];
   const factor = mainClose.get(anchor.date)! / anchor.close;
-  return { points: other.slice(start).map((b) => ({ date: b.date, price: b.close * factor })), from: anchor.date };
+  return { points: other.filter((b) => mainClose.has(b.date)).map((b) => ({ date: b.date, price: b.close * factor })), from: anchor.date };
 }
 
 export function useCompare(
   symbols: string[],
   main: Close[],
   interval: ChartInterval,
+  anchorDate?: string,
 ): CompareLine[] {
   const data = useQueries({
     queries: symbols.map((symbol) => ({
@@ -59,18 +60,18 @@ export function useCompare(
       symbols.map((symbol, i) => {
         const color = COLORS[i % COLORS.length];
         const bars = data[i]?.bars.map((b) => ({ date: b.date, close: parseFloat(b.close) })) ?? [];
-        const rebased = main.length ? rebase(main, bars) : null;
+        const rebased = main.length ? rebase(main, bars, anchorDate) : null;
         if (!rebased) return { symbol, color, line: null, change: null, from: null };
-        const first = rebased.points[0].price;
+        const first = rebased.points.find((p) => p.date === rebased.from)!.price;
         const last = rebased.points[rebased.points.length - 1].price;
         return {
           symbol,
           color,
-          line: { points: rebased.points, color, lineWidth: 2 },
+          line: { points: rebased.points, color, lineWidth: 2, percentSafe: true },
           change: (last / first - 1) * 100,
           from: rebased.from,
         };
       }),
-    [symbols, main, data],
+    [symbols, main, data, anchorDate],
   );
 }

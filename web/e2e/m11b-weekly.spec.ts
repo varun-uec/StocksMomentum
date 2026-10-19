@@ -18,7 +18,9 @@ test('the interval switch shows weekly bars and indicators, and is saved with th
   await ready(page, 'daily');
   const daily = Number((await footnote(page, 'daily').textContent())!.split(' ')[0]);
 
+  await page.getByText('Studies', { exact: true }).click();
   await page.getByLabel('RSI (14)', { exact: true }).check();
+  await page.keyboard.press('Escape');
   const weeklySeries = page.waitForResponse(
     (r) => r.url().includes('/indicators/series') && r.url().includes('interval=1W') && r.ok(),
   );

@@ -98,6 +98,9 @@ export interface ChartDrawing {
   color: string;
   /** Line width in px, 1 to 4. The server fills 2 for drawings saved before M13. */
   width?: number;
+  locked?: boolean;
+  hidden?: boolean;
+  dash?: 'solid' | 'dashed' | 'dotted';
   /** A text note's text; null for every other kind. */
   text?: string | null;
 }
@@ -396,9 +399,10 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
     target.useMediaCoordinateSpace(({ context, mediaSize }) => {
       context.lineCap = 'round';
       for (const drawing of state.drawings) {
+        if (drawing.hidden) continue;
         const selected = drawing.id === state.selectedId;
         this._renderDrawing(context, mediaSize, chart, priceSeries, drawing, selected);
-        if (selected) this._paintHandles(context, chart, priceSeries, drawing);
+        if (selected && !drawing.locked) this._paintHandles(context, chart, priceSeries, drawing);
       }
       if (state.draft?.length) {
         this._paintDraft(context, mediaSize, chart, priceSeries, state);
@@ -429,7 +433,7 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
     const width = drawing.width ?? 2;
     ctx.strokeStyle = drawing.color;
     ctx.lineWidth = selected ? width + 1 : width;
-    ctx.setLineDash([]);
+    ctx.setLineDash(drawing.dash === 'dashed' ? [7, 5] : drawing.dash === 'dotted' ? [2, 4] : []);
     const screen = (i: number) => (drawing.points[i] ? DrawingsPaneRenderer._screen(chart, series, drawing.points[i]) : null);
     const line = (a: ScreenPoint, b: ScreenPoint) => {
       ctx.beginPath();

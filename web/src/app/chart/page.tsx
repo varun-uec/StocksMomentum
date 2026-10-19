@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
@@ -33,15 +33,15 @@ import { LAYOUTS, useLayout, useRightPanel, useSymbolDrawings, useWorkspaceChart
 /** Shown on a fresh install, before the owner has opened any symbol. */
 const FIRST_SYMBOL = 'RELIANCE';
 /** Header, toolbar and footer around the chart, in px. */
-const CHROME_HEIGHT = 300;
+const CHROME_HEIGHT = 224;
 /** A grid cell's own header and range row, in px. */
-const CELL_CHROME = 56;
-const GRID_GAP = 8;
+const CELL_CHROME = 36;
+const GRID_GAP = 3;
 /** The single chart's toolbar rows and footnote, which a grid does not have, in px. */
-const GRID_EXTRA = 90;
+const GRID_EXTRA = 26;
 
 function useChartHeight(): number {
-  const measure = () => Math.max(320, window.innerHeight - CHROME_HEIGHT);
+  const measure = () => Math.max(180, window.innerHeight - CHROME_HEIGHT - (window.innerWidth < 1024 ? 76 : 0));
   const [height, setHeight] = useState(measure);
   useEffect(() => {
     const onResize = () => setHeight(measure());
@@ -118,6 +118,8 @@ function CellFrame({
   crosshair,
   onActivate,
   onSearch,
+  onIndicators,
+  onAlert,
 }: {
   chartId: string;
   symbol: string;
@@ -127,6 +129,8 @@ function CellFrame({
   crosshair?: CrosshairSync;
   onActivate: () => void;
   onSearch: () => void;
+  onIndicators: () => void;
+  onAlert: (price: number) => void;
 }) {
   return (
     <section
@@ -134,22 +138,15 @@ function CellFrame({
       aria-current={active ? 'true' : undefined}
       onPointerDownCapture={onActivate}
       onFocusCapture={onActivate}
-      className={`min-w-0 rounded-lg border p-1.5 ${
+      className={`grid-cell min-w-0 rounded-sm border p-1 ${
         active ? 'border-indigo-500 ring-1 ring-indigo-500/40' : 'border-slate-200 dark:border-slate-800'
       }`}
     >
-      <div className="flex flex-wrap items-baseline gap-x-2 text-xs mb-0.5">
-        <button type="button" onClick={onSearch} className={`font-semibold ${focusRing}`} title="Change this chart's symbol">
-          {symbol}
-        </button>
-        <CompareChips
-          symbol={symbol}
-          compare={slot.compare}
-          onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))}
-        />
-      </div>
       {slot.shell.ready ? (
-        <PriceChart {...slot.chartProps} height={height} compact crosshairSync={crosshair} />
+        <PriceChart {...slot.chartProps} chartLabel={<>
+          <button type="button" onClick={onSearch} className={`font-semibold text-xs ${focusRing}`} title="Change this chart's symbol">{symbol}</button>
+          <CompareChips symbol={symbol} compare={slot.compare} onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))} />
+        </>} height={height} compact toolRail={active} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
       ) : (
         <div style={{ height }} />
       )}
@@ -197,10 +194,12 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { panel, setPanel } = useRightPanel();
+  const [panelOverlay, setPanelOverlay] = useState(false);
   const [alertPrice, setAlertPrice] = useState<number>();
   const alertAt = (price: number) => {
     setAlertPrice(price);
     setPanel('alerts');
+    setPanelOverlay(window.innerWidth < 1024);
   };
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
@@ -281,8 +280,8 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const change = last && prev ? (parseFloat(last.close) / parseFloat(prev.close) - 1) * 100 : null;
 
   return (
-    <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 py-3">
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+    <main className="chart-workspace w-full mx-auto px-2 sm:px-3 py-2">
+      <header className="workspace-header flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
         <h1 className="text-lg font-bold tracking-tight">
           <button
             type="button"
@@ -293,7 +292,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
             {symbol}
           </button>
         </h1>
-        {name && <span className="text-sm text-slate-500 dark:text-slate-400">{name}</span>}
+        {name && <span className="symbol-company hidden xl:inline text-sm text-slate-500 dark:text-slate-400">{name}</span>}
         {last && <span className="text-sm font-semibold tabular-nums">{parseFloat(last.close).toFixed(2)}</span>}
         {change !== null && (
           <span className={`text-sm tabular-nums ${change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
@@ -304,6 +303,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         {!multi && (
           <CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} />
         )}
+        <span className="hidden sm:inline text-[10px] uppercase tracking-wider text-slate-500">NSE · EOD</span>
         <span className="flex-1" />
         <select
           aria-label="Layout"
@@ -342,6 +342,8 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         >
           Compare
         </button>
+        <button type="button" className={`${btn} hidden sm:inline-block`} onClick={() => { setPanel('details'); setPanelOverlay(window.innerWidth < 1024); }}>Analyse</button>
+        <Link to={`/stock/${encodeURIComponent(symbol)}`} className={`${btn} hidden md:inline-block`}>Research</Link>
         <SaveState documents={[workspace, drawings]} />
         <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={btn}>
           Indicators{overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}
@@ -357,17 +359,17 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         </button>
         <button
           type="button"
-          onClick={() => setPanel(panel ? null : 'watchlist')}
+          onClick={() => { if (window.innerWidth < 1024 || grid.slots.length >= 9) { setPanelOverlay(!panelOverlay); if (!panel) setPanel('watchlist'); } else setPanel(panel ? null : 'watchlist'); }}
           aria-pressed={panel !== null}
-          className={`hidden lg:inline-block px-2 py-0.5 rounded-md text-xs border border-slate-200 dark:border-slate-700 ${focusRing} ${
+          className={`inline-block px-2 py-0.5 rounded-md text-xs border border-slate-200 dark:border-slate-700 ${focusRing} ${
             panel ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'
           }`}
         >
-          Panel
+          {panel ? 'Hide panel' : 'Panel'}
         </button>
       </header>
 
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <div className="flex-1 min-w-0">
           {!multi ? (
             shell.ready ? (
@@ -395,25 +397,23 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
                   crosshair: grid.sync.crosshair ? crosshair : undefined,
                   onActivate: () => activate(chartId),
                   onSearch: () => openSearch(''),
+                  onIndicators: () => setIndicatorsOpen(true),
+                  onAlert: alertAt,
                 };
-                return chartId === activeId ? (
-                  <CellFrame key={chartId} {...cell} slot={slot} />
-                ) : (
-                  <GridCell key={chartId} {...cell} strategyName={strategyName} syncedInterval={syncedInterval} />
-                );
+                return <GridCell key={chartId} {...cell} strategyName={strategyName} syncedInterval={syncedInterval} />;
               })}
             </div>
           )}
         </div>
-        {panel && (
-          <div className="hidden lg:block w-72 shrink-0">
+        {panel && (grid.slots.length < 9 || panelOverlay) && (
+          <div className="workspace-panel w-72 shrink-0" data-open={panelOverlay}>
             <SidePanel
               symbol={symbol}
               strategy={strategyName}
               panel={panel}
-              onPanel={setPanel}
+              onPanel={(next) => { setPanel(next); if (!next) setPanelOverlay(false); }}
               onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
-              height={height + 120}
+              height={height + 64}
               alertPrice={alertPrice}
             />
           </div>
@@ -424,6 +424,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}
         active={overlays.indicators}
+        anchorDate={shell.chartProps.initialWindow?.from}
         onChange={(indicators) => updateOverlays({ indicators, presetEdited: true })}
         legend={catalogue.legend}
         paneCount={catalogue.paneCount}

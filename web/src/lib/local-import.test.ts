@@ -37,7 +37,7 @@ describe('importLocalDrawings', () => {
     const [url, init] = http.mock.calls[0];
     expect(url).toBe('/api/v1/drawings/TCS');
     expect(init.headers['If-None-Match']).toBe('*');
-    expect(JSON.parse(init.body)).toEqual({ price_basis: 'traded', drawings: [{ ...line, width: 2, text: null }] });
+    expect(JSON.parse(init.body)).toEqual({ price_basis: 'traded', drawings: [{ ...line, width: 2, text: null, locked: false, hidden: false, dash: 'solid' }] });
     expect(localStorage.getItem('chart-prefs:TCS')).not.toBeNull();
 
     expect(await importLocalDrawings(http)).toBe(0);
@@ -100,7 +100,7 @@ describe('legacyCharts', () => {
       ['chart-overlays:A', JSON.stringify({ indicators: [sma, { id: 'gone' }], presetId: 'nope', showSignals: false, presetEdited: true })],
     ]);
     expect(Object.keys(charts)).toEqual(['analysis']);
-    expect(charts.analysis.indicators).toEqual([{ id: 'sma', params: expect.objectContaining({ period: 30 }), uid: 'sma-1' }]);
+    expect(charts.analysis.indicators).toEqual([{ id: 'sma', params: expect.objectContaining({ period: 30 }), uid: 'sma-1', hidden: false, color: null }]);
     expect(charts.analysis).toMatchObject({ show_signals: false, preset_edited: true, range: '1Y' });
   });
 

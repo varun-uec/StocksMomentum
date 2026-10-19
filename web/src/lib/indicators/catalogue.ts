@@ -239,6 +239,16 @@ export const INDICATORS: IndicatorDef[] = [
   },
 
   // ── Sub-panes fed by the backend series ──────────────────────────────
+  {
+    id: 'display_rsi', label: 'RSI · configurable', group: 'Display oscillators', kind: 'pane', source: 'browser',
+    note: 'Display only. Alerts and screening retain backend RSI (14).', params: [p('period', 'Period', 14, 2, 500)],
+    pane: { id: 'display_rsi', label: 'RSI · display', series: [{ key: 'display_rsi', type: 'line', color: '#b45309' }], guides: [GUIDE(30), GUIDE(70)] }, compute: osc.displayRsi,
+  },
+  {
+    id: 'display_macd', label: 'MACD · configurable', group: 'Display oscillators', kind: 'pane', source: 'browser',
+    note: 'Display only. Alerts and screening retain backend MACD (12,26,9).', params: [p('fast', 'Fast', 12), p('slow', 'Slow', 26, 2), p('signal', 'Signal', 9)],
+    pane: { id: 'display_macd', label: 'MACD · display', series: [{ key: 'display_macd', type: 'line', color: '#818cf8' }, { key: 'display_macd_signal', type: 'line', color: '#b45309' }, { key: 'display_macd_hist', type: 'histogram', sign: { positive: '#278c7680', negative: '#e11d4880' } }] }, compute: osc.displayMacd,
+  },
   backendPane('rsi', 'RSI (14)', 'Backend indicator series.'),
   backendPane('macd', 'MACD (12,26,9)', 'Backend indicator series.'),
   backendPane('adx', 'ADX (14)', 'Backend indicator series.'),

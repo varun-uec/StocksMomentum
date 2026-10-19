@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
+import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { focusRing } from '@/lib/theme';
 
@@ -463,7 +464,7 @@ function MobileSheet({
   }, [onClose]);
 
   return (
-    <div className="md:hidden fixed inset-0 z-[60]">
+    <div className="lg:hidden fixed inset-0 z-[60]">
       <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} aria-hidden="true" />
       <div
         ref={panelRef}
@@ -491,6 +492,7 @@ function MobileSheet({
 
 export function NavBar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -500,6 +502,13 @@ export function NavBar() {
     setSearchOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (pathname.startsWith('/chart')) return;
+    const command = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(true); } };
+    window.addEventListener('keydown', command);
+    return () => window.removeEventListener('keydown', command);
+  }, [pathname]);
+
   const moreActive = RESEARCH_TOOLS.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   );
@@ -507,17 +516,17 @@ export function NavBar() {
   return (
     <>
       <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-14 gap-1">
+        <div className="w-full mx-auto px-3 sm:px-4">
+          <div className="flex items-center h-12 gap-1">
             {/* Brand */}
             <Link
               to="/"
               className="flex items-center gap-2 mr-4 text-sm font-bold tracking-tight text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
             >
-              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-extrabold">
+              <span className="flex items-center justify-center w-7 h-7 rounded-md bg-indigo-600 text-white text-xs font-extrabold">
                 W
               </span>
-              <span className="hidden sm:inline">Wickstreet</span>
+              <span className="brand-name">wickstreet<span className="text-indigo-600">.</span></span>
             </Link>
 
             {/* Desktop Nav */}
@@ -533,7 +542,20 @@ export function NavBar() {
             <div className="flex items-center gap-3">
               <SymbolSearch className="hidden lg:block" />
               <ThemeToggle />
-              <span className="hidden sm:inline text-xs text-slate-600 dark:text-slate-400 font-medium">v0.2.0</span>
+      {/* Symbol search is the fastest route to any stock, so on mobile it gets
+          its own always-visible button rather than hiding inside a drawer. */}
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={searchOpen}
+        aria-label="Search for a symbol"
+        className={`lg:hidden ml-1 w-8 h-8 flex items-center justify-center rounded-md text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 ${focusRing}`}
+      >
+        {Icons.search}
+      </button>
+
+              <span className="hidden xl:inline text-[10px] uppercase tracking-widest text-slate-500">End of day · NSE</span>
             </div>
           </div>
         </div>
@@ -583,18 +605,6 @@ export function NavBar() {
         </ul>
       </nav>
 
-      {/* Symbol search is the fastest route to any stock, so on mobile it gets
-          its own always-visible button rather than hiding inside a drawer. */}
-      <button
-        type="button"
-        onClick={() => setSearchOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={searchOpen}
-        aria-label="Search for a symbol"
-        className={`lg:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center ${focusRing}`}
-      >
-        {Icons.search}
-      </button>
 
       {moreOpen && (
         <MobileSheet title="More" onClose={() => setMoreOpen(false)}>
@@ -614,11 +624,7 @@ export function NavBar() {
         </MobileSheet>
       )}
 
-      {searchOpen && (
-        <MobileSheet title="Search" onClose={() => setSearchOpen(false)} className="min-h-[70vh]">
-          <SymbolSearch className="w-full" inputClassName="w-full" />
-        </MobileSheet>
-      )}
+<SymbolSearchDialog open={searchOpen} initialText="" onClose={() => setSearchOpen(false)} onChoose={(symbol) => navigate(`${pathname.startsWith('/chart') ? '/chart' : '/stock'}/${encodeURIComponent(symbol)}`)} />
     </>
   );
 }

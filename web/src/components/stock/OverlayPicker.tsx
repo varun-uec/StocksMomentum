@@ -30,14 +30,17 @@ export function OverlayPicker({
   legend,
   paneCount,
   maxPanes,
+  anchorDate,
 }: {
   active: ActiveIndicator[];
   onChange: (next: ActiveIndicator[]) => void;
   legend: LegendEntry[];
   paneCount: number;
   maxPanes: number;
+  anchorDate?: string;
 }) {
   const [query, setQuery] = useState('');
+  const [removed, setRemoved] = useState<ActiveIndicator | null>(null);
 
   const groups = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -61,16 +64,18 @@ export function OverlayPicker({
 
   const add = (def: IndicatorDef) => {
     if (def.kind === 'pane' && paneFull) return;
-    onChange([...active, { uid: newUid(def.id), id: def.id, params: defaultParams(def) }]);
+    onChange([...active, { uid: newUid(def.id), id: def.id, params: { ...defaultParams(def), ...(def.params.some((p) => p.key === 'anchor') && anchorDate ? { anchor: anchorDate } : {}) } }]);
   };
 
-  const remove = (uid: string) => onChange(active.filter((a) => a.uid !== uid));
+  const remove = (uid: string) => { setRemoved(active.find((a) => a.uid === uid) ?? null); onChange(active.filter((a) => a.uid !== uid)); };
 
   const setParam = (uid: string, key: string, value: number | string) =>
     onChange(active.map((a) => (a.uid === uid ? { ...a, params: { ...a.params, [key]: value } } : a)));
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-slate-500">Display studies shape this chart. Screening and alerts always use the authoritative backend series.</p>
+      {removed && <button type="button" className="workstation-button" onClick={() => { onChange([...active, removed]); setRemoved(null); }}>Restore {INDICATOR_BY_ID.get(removed.id)?.label}</button>}
       <input
         type="search"
         value={query}
@@ -83,6 +88,7 @@ export function OverlayPicker({
           if (first) add(first);
         }}
         placeholder="Search indicators…"
+        aria-label="Search indicators"
         className={`w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm ${focusRing}`}
       />
 
@@ -106,6 +112,7 @@ export function OverlayPicker({
                   <li key={def.id}>
                     <button
                       type="button"
+                      aria-label={`${def.label} · ${def.source}`}
                       onClick={() => add(def)}
                       disabled={!canAdd(def)}
                       className={`w-full text-left px-2 py-1 rounded-md text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent ${focusRing}`}
@@ -148,6 +155,9 @@ export function OverlayPicker({
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                     {def.label}
                   </span>
+                  <span className="flex items-center gap-2">
+                  <input type="color" aria-label={`Colour for ${def.label}`} value={instance.color ?? '#278c76'} onChange={(e) => onChange(active.map((a) => a.uid === instance.uid ? { ...a, color: e.target.value } : a))} className="w-6 h-6 cursor-pointer" />
+                  <button type="button" aria-label={`${instance.hidden ? 'Show' : 'Hide'} ${def.label}`} className="workstation-button" onClick={() => onChange(active.map((a) => a.uid === instance.uid ? { ...a, hidden: !a.hidden } : a))}>{instance.hidden ? 'Show' : 'Hide'}</button>
                   <button
                     type="button"
                     onClick={() => remove(instance.uid)}
@@ -155,6 +165,7 @@ export function OverlayPicker({
                   >
                     Remove
                   </button>
+                  </span>
                 </div>
                 {def.params.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-2">

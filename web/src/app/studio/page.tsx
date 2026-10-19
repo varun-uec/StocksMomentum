@@ -78,9 +78,17 @@ export default function StudioPage() {
         title="Strategy Studio"
         subtitle="State a hypothesis, change registered rules within their bounds, and judge the change."
       />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <ol aria-label="Research workflow" className="grid sm:grid-cols-3 gap-3 text-xs text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-4">
+          <li><span className="font-semibold text-indigo-700 dark:text-indigo-300">01 · Hypothesis</span><p className="mt-1">Group related configurations in a family.</p></li>
+          <li><span className="font-semibold text-indigo-700 dark:text-indigo-300">02 · Evidence</span><p className="mt-1">Inspect screening and in-sample research separately.</p></li>
+          <li><span className="font-semibold text-indigo-700 dark:text-indigo-300">03 · Hold-out</span><p className="mt-1">Use the family’s bounded out-of-sample evaluation deliberately.</p></li>
+        </ol>
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid gap-6 lg:grid-cols-[18rem_1fr]">
         <aside className="space-y-4">
           <Card title="Families">
+            {families.isError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">Could not load families. <button type="button" className="underline" onClick={() => families.refetch()}>Retry</button></p>}
             {families.isLoading && <LoadingSpinner text="Loading families…" />}
             {families.data?.length === 0 && <EmptyState message="No families yet." />}
             <ul className="space-y-1">

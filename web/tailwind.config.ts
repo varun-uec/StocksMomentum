@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss';
-import { chartPalette } from './src/lib/theme';
+import { chartPalette, colors } from './src/lib/theme';
 
 /**
  * Design tokens live in `src/lib/theme.ts` and are wired in here so the same
@@ -12,7 +12,7 @@ const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
-      colors: { chart: chartPalette },
+      colors: { ...colors, chart: chartPalette },
       fontSize: {
         pageTitle: ['1.5rem', { lineHeight: '2rem', fontWeight: '700' }],
         sectionTitle: ['1.125rem', { lineHeight: '1.75rem', fontWeight: '600' }],

@@ -28,3 +28,9 @@ describe('rebase', () => {
     expect(rebase(main, [])).toBeNull();
   });
 });
+
+test('preset rebasing keeps earlier history available at the same stable comparison factor', () => {
+  const main = [{ date: '2026-01-01', close: 100 }, { date: '2026-07-01', close: 200 }, { date: '2026-08-01', close: 220 }];
+  const other = [{ date: '2026-01-01', close: 25 }, { date: '2026-07-01', close: 50 }, { date: '2026-08-01', close: 60 }];
+  expect(rebase(main, other, '2026-07-01')).toEqual({ from: '2026-07-01', points: [{ date: '2026-01-01', price: 100 }, { date: '2026-07-01', price: 200 }, { date: '2026-08-01', price: 240 }] });
+});

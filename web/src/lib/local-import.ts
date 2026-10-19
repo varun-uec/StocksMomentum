@@ -123,7 +123,7 @@ export function legacyCharts(entries: Entries): Record<string, ChartSettings> {
   if (settings) for (const id of CHARTS_WITH_SETTINGS) charts[id] = { ...DEFAULT_CHART, ...settings };
   if (overlays) {
     for (const id of CHARTS_WITH_OVERLAYS) {
-      const indicators = overlays.indicators.map((i, n) => ({ ...i, uid: `${i.id}-${n + 1}` }));
+      const indicators = overlays.indicators.map((i, n) => ({ ...i, hidden: false, color: null, uid: `${i.id}-${n + 1}` }));
       charts[id] = { ...(charts[id] ?? DEFAULT_CHART), ...overlays, indicators };
     }
   }

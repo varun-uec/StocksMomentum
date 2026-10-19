@@ -270,3 +270,22 @@ export function relativeStrength(
 
 /** Re-exported so the catalogue and the strategies share one implementation. */
 export { ema, sma };
+
+/** Configurable chart-only studies. These keys cannot be used by alerts. */
+export function displayRsi(bars: Bar[], params: Params): PaneValues {
+  return { display_rsi: rsi(bars, Math.max(2, Math.round(n(params, 'period', 14)))) };
+}
+
+export function displayMacd(bars: Bar[], params: Params): PaneValues {
+  const fast = Math.max(1, Math.round(n(params, 'fast', 12)));
+  const slow = Math.max(fast + 1, Math.round(n(params, 'slow', 26)));
+  const signalPeriod = Math.max(1, Math.round(n(params, 'signal', 9)));
+  const closes = bars.map((b) => b.close);
+  const f = ema(closes, fast);
+  const s = ema(closes, slow);
+  const line = bars.map((_, i) => f[i] === null || s[i] === null ? null : f[i]! - s[i]!);
+  const start = line.findIndex((v) => v !== null);
+  const signal = nulls(bars.length);
+  if (start >= 0) ema(line.slice(start) as number[], signalPeriod).forEach((v, i) => { signal[start + i] = v; });
+  return { display_macd: line, display_macd_signal: signal, display_macd_hist: line.map((v, i) => v === null || signal[i] === null ? null : v - signal[i]!) };
+}

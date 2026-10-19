@@ -43,12 +43,14 @@ export function DrawingMenu({
   at,
   onChange,
   onDelete,
+  onEditText,
   onClose,
 }: {
   drawing: ChartDrawing;
   at: { x: number; y: number };
   onChange: (next: ChartDrawing) => void;
   onDelete: () => void;
+  onEditText: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ export function DrawingMenu({
       role="menu"
       aria-label="Drawing"
       onKeyDown={(e) => closeOnEscape(e, onClose)}
-      style={{ left: at.x, top: at.y }}
+      style={{ left: Math.max(0, at.x - 80), top: Math.max(0, Math.min(at.y, 140)), maxWidth: 'calc(100% - 8px)' }}
       className={MENU_CLASS}
     >
       <div role="group" aria-label="Colour" className="flex gap-1">
@@ -93,22 +95,23 @@ export function DrawingMenu({
           </button>
         ))}
       </div>
+      <div role="group" aria-label="Dash pattern" className="flex gap-1">
+        {(['solid', 'dashed', 'dotted'] as const).map((dash) => <button key={dash} type="button" role="menuitemradio" aria-checked={(drawing.dash ?? 'solid') === dash} aria-label={dash} className={ITEM_CLASS} onClick={() => onChange({ ...drawing, dash })}>{dash}</button>)}
+      </div>
       <div className="flex flex-col">
+        <button type="button" role="menuitem" className={ITEM_CLASS} onClick={() => onChange({ ...drawing, locked: !drawing.locked })}>{drawing.locked ? 'Unlock' : 'Lock'}</button>
+        <button type="button" role="menuitem" className={ITEM_CLASS} onClick={() => { onChange({ ...drawing, hidden: !drawing.hidden }); onClose(); }}>{drawing.hidden ? 'Show' : 'Hide'}</button>
         {drawing.kind === 'text' && (
           <button
             type="button"
             role="menuitem"
             className={ITEM_CLASS}
-            onClick={() => {
-              const text = window.prompt('Note text', drawing.text ?? '')?.trim().slice(0, 200);
-              if (text) onChange({ ...drawing, text });
-              onClose();
-            }}
+            onClick={onEditText}
           >
             Edit text…
           </button>
         )}
-        <button type="button" role="menuitem" className={`${ITEM_CLASS} text-rose-600 dark:text-rose-400`} onClick={onDelete}>
+        <button type="button" role="menuitem" disabled={drawing.locked} className={`${ITEM_CLASS} text-rose-600 dark:text-rose-400 disabled:opacity-40`} onClick={onDelete}>
           Delete
         </button>
       </div>
@@ -158,7 +161,7 @@ export function ChartMenu({
       role="menu"
       aria-label="Chart"
       onKeyDown={(e) => closeOnEscape(e, onClose)}
-      style={{ left: at.x, top: at.y }}
+      style={{ left: Math.max(0, at.x - 80), top: Math.max(0, Math.min(at.y, 140)), maxWidth: 'calc(100% - 8px)' }}
       className={`${MENU_CLASS} flex flex-col`}
     >
       <button type="button" role="menuitem" className={ITEM_CLASS} onClick={run(onReset)}>

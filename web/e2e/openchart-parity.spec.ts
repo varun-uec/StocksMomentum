@@ -47,6 +47,7 @@ test('D3: RSI from the indicator dialog reads once, and the pane row turns it of
   await expect(readout).toBeVisible();
   await expect(readout.getByText(/^RSI \(14\):/)).toHaveCount(1);
 
+  await page.getByText('Studies', { exact: true }).click();
   const rsi = page.getByRole('checkbox', { name: 'RSI (14)' });
   await expect(rsi).toBeChecked();
   await rsi.click();
@@ -66,6 +67,7 @@ test('D4: the crosshair readout stays clear of the price axis', async ({ page })
 test('D5, D10: workspace keys work after a checkbox click, and Enter adds the first indicator match', async ({ page }) => {
   await page.goto('/chart/RELIANCE');
   await ready(page);
+  await page.getByText('Studies', { exact: true }).click();
   await page.getByRole('checkbox', { name: 'MA20', exact: true }).click();
   await page.keyboard.press('Alt+KeyI');
   const dialog = page.getByRole('dialog', { name: 'Indicators' });

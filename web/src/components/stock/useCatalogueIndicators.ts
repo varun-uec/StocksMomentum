@@ -66,6 +66,7 @@ export function useCatalogueIndicators(
   benchmark: CloseBar[],
   /** Removes an indicator whose pane the chart's pane row turned off. */
   onIndicatorsChange: (next: ActiveIndicator[]) => void,
+  windowAnchor?: string,
 ): { lines: ChartOverlayLine[]; legend: LegendEntry[]; paneCount: number; paneProps: PaneProps } {
   const overlays = useMemo(() => {
     const lines: ChartOverlayLine[] = [];
@@ -73,10 +74,10 @@ export function useCatalogueIndicators(
     if (bars.length === 0) return { lines, legend };
     for (const instance of indicators) {
       const def = INDICATOR_BY_ID.get(instance.id);
-      if (!def?.overlay) continue;
+      if (!def?.overlay || instance.hidden) continue;
       let series: OverlaySeries[] = [];
       try {
-        series = def.overlay(bars, instance.params);
+        series = def.overlay(bars, (instance.id === 'avwap' || instance.id === 'avwap_bands') && !instance.params.anchor && windowAnchor ? { ...instance.params, anchor: windowAnchor } : instance.params);
       } catch {
         // A parameter combination the maths cannot serve (period longer than
         // the loaded range) drops that indicator, never the whole chart.
@@ -86,19 +87,19 @@ export function useCatalogueIndicators(
         if (s.points.length === 0) continue;
         lines.push({
           points: s.points,
-          color: s.color,
+          color: instance.color ?? s.color,
           lineWidth: 1,
           ...(s.dashed ? { lineStyle: 2 as unknown as ChartOverlayLine['lineStyle'] } : {}),
         });
         legend.push({
           label: s.label,
-          color: s.color,
+          color: instance.color ?? s.color,
           value: s.points[s.points.length - 1].price.toFixed(2),
         });
       }
     }
     return { lines, legend };
-  }, [indicators, bars]);
+  }, [indicators, bars, windowAnchor]);
 
   // Browser-computed pane values merged into the backend indicator series.
   const panes = useMemo(() => {
@@ -108,8 +109,8 @@ export function useCatalogueIndicators(
     const ids: string[] = [];
     for (const instance of indicators) {
       const def = INDICATOR_BY_ID.get(instance.id);
-      if (!def?.pane) continue;
-      defs.push(def.pane);
+      if (!def?.pane || instance.hidden) continue;
+      defs.push(instance.color ? { ...def.pane, series: def.pane.series.map((s) => ({ ...s, color: instance.color! })) } : def.pane);
       ids.push(def.pane.id);
       if (!def.compute || bars.length === 0) continue;
       let values: Record<string, (number | null)[]> = {};
@@ -142,7 +143,7 @@ export function useCatalogueIndicators(
     paneProps: {
       indicatorSeries: panes.indicatorSeries,
       extraPaneDefs: panes.defs,
-      activePanes: [...base.activePanes, ...panes.ids].filter((id, i, all) => all.indexOf(id) === i),
+      activePanes: [...base.activePanes.filter((id) => !indicators.some((i) => i.hidden && INDICATOR_BY_ID.get(i.id)?.pane?.id === id)), ...panes.ids].filter((id, i, all) => all.indexOf(id) === i),
       // The chart's pane row owns the backend panes. Turning off a pane there that
       // an added indicator also draws (RSI, MACD, ADX) removes that indicator too.
       onActivePanesChange: (next) => {

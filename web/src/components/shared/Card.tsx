@@ -13,7 +13,7 @@ interface CardProps {
 export function Card({ title, subtitle, children, className = '', badge }: CardProps) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm ${className}`}
+      className={`rounded-lg border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 ${className}`}
     >
       {(title || badge) && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700/40 gap-4">
@@ -71,7 +71,7 @@ export function MetricCard({
             : 'text-slate-800 dark:text-slate-200'));
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 px-4 py-3 shadow-sm">
+    <div className="rounded-md border-l-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
       <div
         className={`text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 ${
           hint ? 'underline decoration-dotted decoration-slate-400 underline-offset-2 cursor-help w-fit' : ''

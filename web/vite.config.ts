@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
-const API_TARGET = 'http://localhost:8000';
+const API_TARGET = process.env.WICKSTREET_API_TARGET ?? 'http://localhost:8000';
 
 export default defineConfig({
   plugins: [react()],

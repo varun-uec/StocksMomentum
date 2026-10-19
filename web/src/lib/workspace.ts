@@ -83,7 +83,7 @@ export const workspaceSpec: DocumentSpec<WorkspaceBody> = {
 
 type Drawing = DrawingsBody['drawings'][number];
 /** A drawing as the app builds it; the server fills `width` and `text` when absent. */
-export type DrawingInput = Omit<Drawing, 'width' | 'text'> & Partial<Pick<Drawing, 'width' | 'text'>>;
+export type DrawingInput = Omit<Drawing, 'width' | 'text' | 'locked' | 'hidden' | 'dash'> & Partial<Pick<Drawing, 'width' | 'text' | 'locked' | 'hidden' | 'dash'>>;
 
 /**
  * A drawings document: point prices are traded prices, adjusted only to draw
@@ -92,7 +92,7 @@ export type DrawingInput = Omit<Drawing, 'width' | 'text'> & Partial<Pick<Drawin
  */
 export const drawingsBody = (drawings: DrawingInput[]): DrawingsBody => ({
   price_basis: 'traded',
-  drawings: drawings.map((d) => ({ ...d, width: d.width ?? 2, text: d.text ?? null })),
+  drawings: drawings.map((d) => ({ ...d, width: d.width ?? 2, text: d.text ?? null, locked: d.locked ?? false, hidden: d.hidden ?? false, dash: d.dash ?? 'solid' })),
 });
 
 const drawingSpecs = new Map<string, DocumentSpec<DrawingsBody>>();
@@ -141,6 +141,7 @@ export function useSymbolDrawings(symbol: string) {
     ready: doc.status !== 'loading',
     status: doc.status,
     savedAt: doc.savedAt,
+    revision: doc.revision,
     retry: doc.retry,
     update: (drawings: DrawingInput[]) => doc.update(() => drawingsBody(drawings)),
   };

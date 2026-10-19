@@ -92,10 +92,10 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
     if (!history) return { ohlcv: undefined, maWarmup: [] };
     const start = rangeStartIndex(history.bars.map((b) => b.date), timeframe);
     return {
-      ohlcv: { ...history, bars: history.bars.slice(start) },
-      maWarmup: history.bars.slice(Math.max(0, start - MA_WARMUP), start).map((b) => parseFloat(b.close)),
+      ohlcv: intervals ? history : { ...history, bars: history.bars.slice(start) },
+      maWarmup: intervals ? [] : history.bars.slice(Math.max(0, start - MA_WARMUP), start).map((b) => parseFloat(b.close)),
     };
-  }, [history, timeframe]);
+  }, [history, timeframe, intervals]);
 
   // Decode the backend's decimal-string bars into the chart's number-typed
   // series (values the backend did not produce are null).
@@ -129,11 +129,13 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
   return {
     timeframe,
     ready,
+    adjustments: history?.adjustments,
     bars: ohlcv?.bars ?? [],
     /** Spread straight into `<PriceChart {...chartProps} />`. */
     chartProps: {
       bars: ohlcv?.bars ?? [],
       maWarmup,
+      initialWindow: intervals && history?.bars.length ? { from: history.bars[rangeStartIndex(history.bars.map((b) => b.date), timeframe)].date, to: history.bars[history.bars.length - 1].date } : undefined,
       timeframe,
       onTimeframeChange: setTimeframe,
       interval,

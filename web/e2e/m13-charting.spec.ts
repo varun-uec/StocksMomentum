@@ -54,7 +54,7 @@ test('every M13 tool draws and is saved', async ({ page, request }) => {
   await page.goto('/chart/INFY');
   await ready(page);
   const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
-  page.on('dialog', (d) => void d.accept('Base breakout'));
+
   const tools: [string, [number, number][]][] = [
     ['Trendline', [[0.12, 0.12], [0.25, 0.25]]],
     ['Ray', [[0.2, 0.2], [0.3, 0.25]]],
@@ -72,6 +72,7 @@ test('every M13 tool draws and is saved', async ({ page, request }) => {
   for (const [name, clicks] of tools) {
     await rail.getByRole('button', { name, exact: true }).click();
     for (const [x, y] of clicks) await clickAt(page, x, y);
+    if (name === 'Text note') { await page.getByLabel('Annotation text').fill('Base breakout'); await page.getByRole('button', { name: 'Save note' }).click(); }
     await expect(rail.getByRole('button', { name: 'Select' })).toHaveAttribute('aria-pressed', 'true'); // the tool finished
   }
   await expect.poll(async () => (await drawings(request, 'INFY')).map((d) => d.kind).sort()).toEqual(
@@ -105,10 +106,11 @@ for (const drawing of DRAWING_LIFECYCLE_CASES) {
   test(`${drawing.name} supports move, edit, delete, undo, redo and restore`, async ({ page, request }) => {
     await page.goto('/chart/INFY');
     await ready(page);
-    page.on('dialog', (dialog) => void dialog.accept('Lifecycle note'));
+
     const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
     await rail.getByRole('button', { name: drawing.name, exact: true }).click();
     for (const [x, y] of drawing.clicks) await clickAt(page, x, y);
+    if (drawing.name === 'Text note') { await page.getByLabel('Annotation text').fill('Lifecycle note'); await page.getByRole('button', { name: 'Save note' }).click(); }
     await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
     const original = (await drawings(request, 'INFY'))[0];
 
@@ -303,7 +305,9 @@ test('monthly bars draw with monthly indicators and are saved with the chart', a
   await expect(daily).toBeVisible();
   const sessions = Number((await daily.textContent())!.split(' ')[0]);
 
+  await page.getByText('Studies', { exact: true }).click();
   await page.getByLabel('RSI (14)', { exact: true }).check();
+  await page.keyboard.press('Escape');
   const monthlySeries = page.waitForResponse(
     (r) => r.url().includes('/indicators/series') && r.url().includes('interval=1M') && r.ok(),
   );

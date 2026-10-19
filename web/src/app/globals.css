@@ -33,3 +33,61 @@ body {
   }
 }
 
+
+/* Wickstreet workstation: paper/ink surfaces, a restrained sea-green accent,
+   and one compact geometry across analytical and research routes. */
+:root { color-scheme: light; --ws-surface: #fff; --ws-line: #dce3e7; --ws-muted: #edf1f3; --ws-ink: #19262e; --ws-accent: #176f5c; }
+.dark { color-scheme: dark; --ws-surface: #19262e; --ws-line: #304550; --ws-muted: #24343e; --ws-ink: #edf1f3; --ws-accent: #7cc5b1; }
+body { font-feature-settings: 'cv11', 'ss01'; }
+button, input, select, summary { touch-action: manipulation; }
+button, a, input, select, summary { scroll-margin: 5rem; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--ws-accent); outline-offset: 3px; }
+.brand-name { font-weight: 750; letter-spacing: -.045em; font-size: 18px; }
+.workstation-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--ws-line); border-radius: 4px; padding: 4px 8px; font-size: 11px; white-space: nowrap; cursor: pointer; background: var(--ws-surface); color: var(--ws-ink); }
+.workstation-button:hover { background: var(--ws-muted); }
+.chart-workspace { background: var(--ws-surface); }
+.workspace-header { min-height: 32px; padding-bottom: 6px; border-bottom: 1px solid var(--ws-line); }
+.chart-controls { min-height: 32px; }
+.chart-controls > * { flex-shrink: 0; }
+.chart-legend { min-height: 23px; overflow-x: auto; scrollbar-width: thin; white-space: nowrap; color: var(--ws-ink); }
+.study-options { position: relative; }
+.study-options > summary { list-style: none; }
+.study-options > summary::-webkit-details-marker { display: none; }
+.study-options[open] > summary { color: var(--ws-accent); border-color: currentColor; }
+.study-options-content { position: absolute; top: 34px; right: 0; width: min(420px, calc(100vw - 32px)); padding: 14px; display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--ws-line); border-radius: 6px; background: var(--ws-surface); box-shadow: 0 12px 32px #0002; z-index: 30; }
+.price-workstation [aria-label='Drawing tools'] { flex-shrink: 0; max-height: var(--plot-height); overflow-y: auto; scrollbar-width: thin; border-right: 1px solid var(--ws-line); padding-right: 3px; }
+.grid-cell .chart-controls { min-height: 24px; margin: 0; gap: 2px; }
+.grid-cell .chart-controls button { padding: 2px 5px; }
+.grid-cell [aria-label='Drawing tools'] button { width: 26px; height: 28px; flex-shrink: 0; }
+.grid-cell[aria-current='true'] { border-color: var(--ws-accent); }
+.workspace-panel > aside { border-radius: 4px; }
+.chart-workspace > header h1 { letter-spacing: -.03em; }
+@media (max-width: 1023px) {
+  .workspace-panel { display: none; }
+  .workspace-panel[data-open='true'] { display: block; position: fixed; z-index: 40; right: 8px; top: 104px; width: min(340px, calc(100vw - 16px)); max-height: calc(100dvh - 170px); box-shadow: 0 12px 50px #0004; }
+  .workspace-panel > aside { max-height: calc(100dvh - 170px); }
+  .chart-controls { flex-wrap: wrap; gap: 4px; }
+  .chart-controls > :first-child { max-width: 100%; }
+  .chart-workspace { padding-top: 4px; }
+}
+@media (max-width: 600px) {
+  .brand-name { font-size: 16px; }
+  .workspace-header { gap: 4px 8px; }
+  .workspace-header > [role='status'] { font-size: 10px; }
+  .workspace-header > h1 { font-size: 16px; }
+  .chart-controls { font-size: 11px; }
+  .chart-controls > [role='group'][aria-label='Price scale'] { display: none; }
+  .chart-controls > button[aria-pressed] { display: none; }
+  .chart-controls .study-options { margin-left: auto; }
+  .study-options-content { right: -40px; }
+  .price-workstation [aria-label='Drawing tools'] button { width: 28px; height: 32px; flex-shrink: 0; }
+  .grid-cell .chart-controls [aria-label='Interval'] { display: none; }
+}
+.dark .text-slate-500 { color: #95a5b0; }
+.workstation-button:disabled { opacity: .45; cursor: default; }
+.study-options-content[aria-label='Drawing objects'] { left: 0; right: auto; max-height: min(460px, 60dvh); overflow-y: auto; }
+.grid-cell .chart-controls { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+@media (pointer: coarse) {
+  .workstation-button, .workspace-header button, .chart-controls button, .chart-controls select { min-height: 32px; }
+  .price-workstation [aria-label='Drawing tools'] button { min-width: 32px; min-height: 36px; }
+}

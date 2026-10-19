@@ -498,6 +498,8 @@ type AlertSchemas = import('./api-schema').components['schemas'];
 export type AlertDTO = AlertSchemas['AlertDTO'];
 export type AlertListDTO = AlertSchemas['AlertListDTO'];
 export type CreateAlertRequest = AlertSchemas['CreateAlertRequest'];
+export type EditAlertRequest = AlertSchemas['EditAlertRequest'];
+export const editAlert = (id: number, body: EditAlertRequest): Promise<AlertDTO> => fetchJson(`${API_BASE}/alerts/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export type AlertEvaluationDTO = AlertSchemas['AlertEvaluationDTO'];
 
 export const getAlerts = (): Promise<AlertListDTO> => fetchJson(`${API_BASE}/alerts`, { cache: 'no-store' });

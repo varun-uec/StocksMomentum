@@ -14,6 +14,8 @@ export interface ActiveIndicator {
   uid: string;
   id: string;
   params: Params;
+  color?: string | null;
+  hidden?: boolean;
 }
 
 export interface OverlayPreferences {
@@ -46,7 +48,7 @@ function validIndicator(value: unknown): ActiveIndicator | null {
     if (param.type === 'number' && typeof raw === 'number' && Number.isFinite(raw)) params[param.key] = raw;
     if (param.type !== 'number' && typeof raw === 'string') params[param.key] = raw;
   }
-  return { uid: typeof v.uid === 'string' ? v.uid : newUid(v.id), id: v.id, params };
+  return { uid: typeof v.uid === 'string' ? v.uid : newUid(v.id), id: v.id, params, color: typeof v.color === 'string' ? v.color : null, hidden: v.hidden === true };
 }
 
 export const LEGACY_OVERLAY_KEY_PREFIX = 'chart-overlays:';
@@ -101,7 +103,7 @@ export function useOverlayPreferences(chartId: string): {
 
   const update = (patch: Partial<OverlayPreferences>) => {
     const settings: Partial<ChartSettings> = {};
-    if (patch.indicators) settings.indicators = patch.indicators;
+    if (patch.indicators) settings.indicators = patch.indicators.map((i) => ({ ...i, hidden: i.hidden ?? false }));
     if (patch.presetId !== undefined) settings.preset_id = patch.presetId;
     if (patch.showSignals !== undefined) settings.show_signals = patch.showSignals;
     if (patch.presetEdited !== undefined) settings.preset_edited = patch.presetEdited;

@@ -478,7 +478,7 @@ export interface paths {
         put?: never;
         /**
          * Trigger Refresh
-         * @description Trigger an on-demand screening run (created as PENDING; executed in M4/M7).
+         * @description Create a run and screen stored data, optionally using an enabled data adapter.
          */
         post: operations["trigger_refresh_api_v1_runs_post"];
         delete?: never;
@@ -500,15 +500,15 @@ export interface paths {
          * Execute Screening
          * @description Execute the full end-to-end screening pipeline.
          *
-         *     Fetches live NSE market data, computes indicators, runs the strategy
-         *     engine, and persists scores and rankings.
+         *     By default, screens locally stored bars, computes indicators, runs the
+         *     strategy engine, and persists scores and rankings. Direct exchange fetches
+         *     require operator opt-in. ``force=true`` is rejected unless downloads are
+         *     enabled.
          *
          *     Default (``background=true``): creates a ``PENDING`` run and returns it
          *     immediately (``202``); the pipeline runs after the response is sent and
          *     the caller polls ``GET /runs/{id}`` for completion. A synchronous
-         *     ``ExecuteScreening`` run over the full universe was 300+ sequential NSE
-         *     fetches followed by scoring every security inside one HTTP request --
-         *     long enough to exceed most gateway timeouts (Phase 1.6).
+         *     A synchronous full-universe screen can exceed ordinary gateway timeouts.
          *
          *     ``background=false``: blocks and returns the ``COMPLETED`` run directly
          *     (``201``), matching the pre-Phase-1.6 behaviour -- used by tests and the
@@ -1072,7 +1072,11 @@ export interface paths {
         delete: operations["delete_alert_api_v1_alerts__alert_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Edit Alert
+         * @description Replace an armed rule at its expected revision; refresh captured drawings.
+         */
+        patch: operations["edit_alert_api_v1_alerts__alert_id__patch"];
         trace?: never;
     };
     "/api/v1/alerts/{alert_id}/rearm": {
@@ -1209,6 +1213,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/market-data/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Market Data Policy
+         * @description Expose whether direct exchange downloads were explicitly enabled.
+         */
+        get: operations["market_data_policy_api_v1_market_data_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/market-data/refresh": {
         parameters: {
             query?: never;
@@ -1293,7 +1317,7 @@ export interface components {
              * Condition
              * @enum {string}
              */
-            condition: "crosses_above" | "crosses_below" | "above" | "below";
+            condition: "crosses_above" | "crosses_below" | "above" | "below" | "enters_zone" | "leaves_zone";
             /** Threshold */
             threshold: string;
             /**
@@ -1320,6 +1344,9 @@ export interface components {
             seen: boolean;
             /** Created At */
             created_at: string | null;
+            /** Revision */
+            revision: number;
+            drawing: components["schemas"]["DrawingAlertDTO"] | null;
         };
         /**
          * AlertEvaluationDTO
@@ -1600,9 +1627,15 @@ export interface components {
              * Condition
              * @enum {string}
              */
-            condition: "crosses_above" | "crosses_below" | "above" | "below";
+            condition: "crosses_above" | "crosses_below" | "above" | "below" | "enters_zone" | "leaves_zone";
             /** Threshold */
             threshold: number | string;
+            /** Drawing Id */
+            drawing_id?: string | null;
+            /** Expected Drawing Revision */
+            expected_drawing_revision?: number | null;
+            /** Expected Data Version */
+            expected_data_version?: string | null;
         };
         /**
          * CreateFamilyRequest
@@ -1695,6 +1728,33 @@ export interface components {
             rule_diffs: number;
         };
         /**
+         * DrawingAlertDTO
+         * @description The immutable drawing snapshot used by an armed or triggered rule.
+         */
+        DrawingAlertDTO: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Points */
+            points: components["schemas"]["DrawingAnchorDTO"][];
+            /** Revision */
+            revision: number;
+        };
+        /**
+         * DrawingAnchorDTO
+         * @description One traded-price anchor in the captured drawing.
+         */
+        DrawingAnchorDTO: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Price */
+            price: string;
+        };
+        /**
          * DrawingPointV1
          * @description One anchor: a date and the traded price on that date, not adjusted (ADR-013 §5).
          */
@@ -1727,6 +1787,56 @@ export interface components {
             width: number;
             /** Text */
             text?: string | null;
+            /**
+             * Locked
+             * @default false
+             */
+            locked: boolean;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden: boolean;
+            /**
+             * Dash
+             * @default solid
+             * @enum {string}
+             */
+            dash: "solid" | "dashed" | "dotted";
+        };
+        /**
+         * EditAlertRequest
+         * @description Replace an armed rule only if its revision still matches.
+         */
+        EditAlertRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "close" | "rsi14" | "adx14" | "atr14" | "macd_line" | "macd_signal" | "macd_histogram";
+            /**
+             * Interval
+             * @default 1D
+             * @enum {string}
+             */
+            interval: "1D" | "1W" | "1M";
+            /**
+             * Condition
+             * @enum {string}
+             */
+            condition: "crosses_above" | "crosses_below" | "above" | "below" | "enters_zone" | "leaves_zone";
+            /** Threshold */
+            threshold: number | string;
+            /** Drawing Id */
+            drawing_id?: string | null;
+            /** Expected Drawing Revision */
+            expected_drawing_revision?: number | null;
+            /** Expected Data Version */
+            expected_data_version?: string | null;
+            /** Expected Revision */
+            expected_revision: number;
         };
         /**
          * ElliottWaveAnalysis
@@ -2278,6 +2388,13 @@ export interface components {
             params: {
                 [key: string]: number | string;
             };
+            /** Color */
+            color?: string | null;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden: boolean;
         };
         /**
          * LiveStockAnalysis
@@ -5739,6 +5856,41 @@ export interface operations {
             };
         };
     };
+    edit_alert_api_v1_alerts__alert_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditAlertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rearm_alert_api_v1_alerts__alert_id__rearm_post: {
         parameters: {
             query?: never;
@@ -5907,6 +6059,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_data_policy_api_v1_market_data_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
                 };
             };
         };

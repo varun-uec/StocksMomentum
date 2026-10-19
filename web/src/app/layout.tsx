@@ -14,7 +14,7 @@ export default function RootLayout() {
         <StrategyProvider>
           <NavBar />
           <ConflictBanner />
-          <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+          <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
             <Outlet />
             <SiteFooter />
           </div>

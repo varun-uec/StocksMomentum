@@ -1,0 +1,27 @@
+# Wickstreet transformation — 2026-10-19
+
+Baseline: `b8a9a1b`, clean working tree. Existing audit and accepted architecture reviewed; no repeat compatibility audit or competitor source exposure. Local-only implementation. Synthetic PostgreSQL container `wickstreet-transform-tests`, port 55439; application database untouched, exchange downloads and scheduler disabled.
+
+## Evidence gates
+
+- Baseline full Playwright suite running, including the previously order-dependent 200% reflow regression.
+- Before screenshots preserved under `audit-evidence/transformation/before/`.
+- Design provenance: D17–D21 in the append-only design record.
+
+## Increments
+
+1. Charting foundation: shell, initial visible history windows, study legends, responsive geometry.
+2. Workspace: stable grid cells, contextual drawing management, display-study configuration.
+3. Monitoring: armed-alert editing, levels, history and bounded drawing snapshots (ADR amendment).
+4. Product refinement and regression/performance evidence.
+
+## Completed implementation / verification in progress
+
+- Baseline 200% equivalent reflow, reduced motion and mobile keyboard navigation: 3/3 pass before UI changes. Full baseline reached150 passes; concurrent Playwright invocations shared its artifact directory, causing two ENOENT harness failures and one unrun test. This was an orchestration error; final full-suite runs are serial.
+- Original drawing load/merge store unchanged. Traded-price conversion, per-drawing undo and conflict resolution retained.
+- Chart-first shell, full-history preset windows, stable comparison anchors, chart legends, contextual study/object inspectors, stable grid cells and drawing rails implemented.
+- Editable display RSI/MACD use separate keys; backend alert studies untouched. Indicator colour/visibility and drawing lock/visibility/dashes round-trip in server documents.
+- Backend increments `f76ada7`, `677b41b`: revision-safe armed-alert edits, drawing snapshots, corporate-action-safe re-arm, stale drawing/data guards. 874 backend tests, strict mypy, Ruff and layer contracts pass.
+- Web unit suite110 passes; lint/typecheck clean. Focused integrated browser pass16/18: remaining two were overly narrow date and first-save polling test assumptions, corrected. Accessibility axe checks pass on dashboard/chart/Studio in both themes.
+- Screenshot measurements: desktop plot1076×676 (previous1068×600), y163 (previous198). Phone334×544, y215 (previous319×544, y345), no document overflow. Grid headers subsequently consolidated into one row.
+- Full regression suite running serially on a fresh synthetic database. No publication, exchange download or real-data mutation.

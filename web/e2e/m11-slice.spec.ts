@@ -13,6 +13,12 @@ async function chartReady(page: Page): Promise<void> {
   await expect(page.getByText(/\d+ daily bars from the stored NSE series/)).toBeVisible();
 }
 
+async function changeStudy(page: Page, label: string, checked: boolean) {
+  const details = page.locator('details').filter({ has: page.getByText('Studies', { exact: true }) });
+  if (!(await details.getAttribute('open'))) { if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await page.getByText('Studies', { exact: true }).click(); }
+  await checkbox(page, label).setChecked(checked);
+}
+
 /** A point on the price pane, as fractions of the chart box. */
 async function at(page: Page, fx: number, fy: number): Promise<{ x: number; y: number }> {
   const box = (await chart(page).boundingBox())!;
@@ -99,8 +105,8 @@ test('Analyse → Draw → Restore: state survives a reload and a second browser
   await chartReady(page);
 
   // Analyse: one more moving average, the RSI pane, the full range.
-  await checkbox(page, 'MA20').check();
-  await checkbox(page, 'RSI (14)').check();
+  await changeStudy(page, 'MA20', true);
+  await changeStudy(page, 'RSI (14)', true);
   await page.getByRole('button', { name: 'MAX', exact: true }).click();
   await chartReady(page);
 
@@ -309,9 +315,9 @@ test('two windows changing different chart settings merge silently', async ({ pa
   await second.goto('/chart/TCS');
   await chartReady(second);
 
-  await checkbox(page, 'MA20').check();
+  await changeStudy(page, 'MA20', true);
   await expect.poll(async () => (await serverChart(request))?.mas).toContain(20);
-  await checkbox(second, 'RSI (14)').check(); // based on the older revision
+  await changeStudy(second, 'RSI (14)', true); // based on the older revision
   await expect.poll(() => serverChart(request)).toMatchObject({ mas: expect.arrayContaining([20, 50, 200]), panes: ['rsi'] });
   await settled(second);
   await expect(second.getByRole('alert')).toHaveCount(0);
@@ -326,9 +332,9 @@ test('two windows changing the same chart setting get the conflict notice; nothi
   await second.goto('/chart/TCS');
   await chartReady(second);
 
-  await checkbox(page, 'MA20').check(); // window 1: mas [20, 50, 200]
+  await changeStudy(page, 'MA20', true); // window 1: mas [20, 50, 200]
   await expect.poll(async () => (await serverChart(request))?.mas).toContain(20);
-  await checkbox(second, 'MA50').uncheck(); // window 2, on the old revision: mas [200]
+  await changeStudy(second, 'MA50', false); // window 2, on the old revision: mas [200]
 
   const notice = second.getByRole('alert');
   await expect(notice).toContainText('Your chart settings changed in another window');
