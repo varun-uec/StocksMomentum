@@ -144,7 +144,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ShellContext.Provider value={shell}>
-      <div className="ws-shell">
+      <div className="ws-shell" data-route={onChart ? 'chart' : undefined}>
         <header className="ws-header">
           <nav aria-label="Workstation" className="flex items-center gap-1 shrink-0">
             <AppMenu onShortcuts={() => setShortcutsOpen(true)} />
@@ -183,7 +183,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
             panel
           )}
         </div>
-        <footer className="ws-status">
+        {!onChart && <footer className="ws-status">
           <span className="hidden sm:inline">End of day · NSE</span>
           <span className="flex-1" />
           <span>
@@ -193,7 +193,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
             </a>
           </span>
           <Link to="/about" className="underline hover:text-[var(--ws-ink)]">About Wickstreet</Link>
-        </footer>
+        </footer>}
         <PhoneNav />
       </div>
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

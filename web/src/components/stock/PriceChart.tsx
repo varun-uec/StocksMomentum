@@ -432,6 +432,7 @@ export function PriceChart({
   onAlertAtPrice,
   chrome,
   legendTitle,
+  bare = false,
   compact = false,
   chartLabel,
   crosshairSync,
@@ -481,6 +482,8 @@ export function PriceChart({
   onAlertAtPrice?: (price: number) => void;
   /** Render the chrome into page slots instead of inline (the active workspace chart). */
   chrome?: ChartChrome;
+  /** No controls of its own: the workspace toolbar acts on it when it is active (grid cells). */
+  bare?: boolean;
   /** The overlay legend's first words, e.g. "RELIANCE · 1D · NSE" (workstation only). */
   legendTitle?: string;
   /** Compact grid toolbar; optional active-cell drawing rail; no legend or footnote. */
@@ -1669,6 +1672,12 @@ export function PriceChart({
         )}
     </>
   );
+  const footText = isLoading
+    ? 'Loading price series…'
+    : (footnote ??
+      `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the stored closes.${
+        bars.at(-1)?.partial ? ` The last ${interval === '1M' ? 'month' : 'week'} is not complete.` : ''
+      }${dataVersion ? ` Data version ${dataVersion}.` : ''}`);
   const lastBar = parsed.at(-1);
   const previousClose = parsed.at(-2)?.close;
   const shownBar = readout?.bar ?? lastBar;
@@ -1742,9 +1751,9 @@ export function PriceChart({
 
   return (
     <div className="price-workstation" style={{ '--plot-height': `${height}px` } as React.CSSProperties}>
-      {chrome ? (
+      {bare && !chrome ? null : chrome ? (
         <>
-          {chartLabel && <div className="chart-controls flex items-center gap-1 mb-1">{chartLabel}</div>}
+          {chartLabel && !bare && <div className="chart-controls flex items-center gap-1 mb-1">{chartLabel}</div>}
           {chrome.toolbar && createPortal(intervalGroup, chrome.toolbar)}
           {chrome.chartType && createPortal(chartTypeSelect, chrome.chartType)}
           {chrome.history && createPortal(<>{history}{objects}</>, chrome.history)}
@@ -1757,7 +1766,16 @@ export function PriceChart({
             </InspectorDisclosure>,
             chrome.settings,
           )}
-          {chrome.rangeBar && createPortal(<>{rangeButtons}{scaleGroup}{fitButton}</>, chrome.rangeBar)}
+          {chrome.rangeBar && createPortal(
+            <>
+              {rangeButtons}
+              <span className="flex-1" />
+              <span className="chart-footnote" title={footText}>{footText}</span>
+              {scaleGroup}
+              {fitButton}
+            </>,
+            chrome.rangeBar,
+          )}
         </>
       ) : (
       <div className={`chart-controls flex items-center ${compact ? 'gap-1 mb-1' : 'gap-2 mb-1'}`}>
@@ -1872,8 +1890,9 @@ export function PriceChart({
         {!isLoading && bars.length === 0 && <div role="status" className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">No stored bars for this security. Import EOD data from Data to begin.</div>}
         {isLoading && <div role="status" className="absolute top-3 left-3 text-xs text-slate-500">Loading stored history…</div>}
         {chrome && !compact && overlayLegend}
+        {bare && chartLabel && <div className="chart-cell-label">{chartLabel}</div>}
         {readout && (compact || !chrome) && (
-          <div data-testid="crosshair-readout" className="pointer-events-none absolute top-2 left-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">
+          <div data-testid="crosshair-readout" className={`pointer-events-none absolute ${bare ? 'top-6' : 'top-2'} left-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm`}>
             <div className="font-medium text-slate-700 dark:text-slate-300">
               {readout.date}
               {compact && readout.bar && <span className="font-normal tabular-nums"> · C {readout.bar.close.toFixed(2)}</span>}
@@ -1893,16 +1912,7 @@ export function PriceChart({
         )}
       </div>
       </div>
-      {!compact && (
-      <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-        {isLoading
-          ? 'Loading price series…'
-          : (footnote ??
-            `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the stored closes.${
-              bars.at(-1)?.partial ? ` The last ${interval === '1M' ? 'month' : 'week'} is not complete.` : ''
-            }${dataVersion ? ` Data version ${dataVersion}.` : ''}`)}
-      </p>
-      )}
+      {!compact && !chrome?.rangeBar && <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">{footText}</p>}
     </div>
   );
 }

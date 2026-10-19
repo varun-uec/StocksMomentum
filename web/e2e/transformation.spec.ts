@@ -163,6 +163,7 @@ test('armed alert editing and rectangular drawing snapshots form one chart workf
 });
 
 test('responsive workspace evidence in both themes and dense layouts', async ({ page }) => {
+  test.slow(); // five viewports, two themes and a 16-chart grid
   mkdirSync(evidence, { recursive: true });
   const measurements: object[] = [];
   for (const [width, height, theme] of [[1440, 900, 'light'], [1440, 900, 'dark'], [768, 1024, 'light'], [390, 844, 'light'], [720, 450, 'dark']] as const) {

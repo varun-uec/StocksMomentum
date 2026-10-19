@@ -154,14 +154,14 @@ function CellFrame({
       onFocusCapture={onActivate}
       data-plot-cell
       className={`grid-cell min-w-0 min-h-0 overflow-hidden rounded-sm border p-1 ${
-        active ? 'border-indigo-500 ring-1 ring-indigo-500/40' : 'border-slate-200 dark:border-slate-800'
+        active ? 'border-[var(--ws-accent)]' : 'border-[var(--ws-line)]'
       }`}
     >
       {slot.shell.ready ? (
         <PriceChart {...slot.chartProps} chartLabel={<>
           <button type="button" onClick={onSearch} className={`font-semibold text-xs ${focusRing}`} title="Change this chart's symbol">{symbol}</button>
           <CompareChips symbol={symbol} compare={slot.compare} onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))} />
-        </>} height={160} autoHeight compact toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
+        </>} height={160} autoHeight compact bare toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
       ) : (
         <div className="h-full" />
       )}
@@ -417,6 +417,11 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       </div>
       <div className="chart-rangebar">
         <span ref={setRangeSlot} className="chart-slot contents" />
+        <span className="hidden md:inline text-[10px] uppercase tracking-wider text-slate-500">EOD · NSE</span>
+        <span className="hidden sm:inline text-[10px] text-slate-500">
+          Charts by{' '}
+          <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline">TradingView Lightweight Charts™</a>
+        </span>
       </div>
       <IndicatorDialog
         open={indicatorsOpen}

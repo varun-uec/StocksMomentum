@@ -31,11 +31,11 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | chart toolbar Undo/Redo icons ≥1280 px; ⋯ menu below; keys | `Objects`, keys | y | server document | m13-charting "undo and redo" | moved |
 | C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | overlay legend at plot top-left: title, OHLC + change, one line per study with × and ⚙ (research pages keep the row above the plot) | Legend | y | — | transformation "study legends", "overlay legend" | moved |
 | C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | inside the overlay legend on the active chart; plot top-left elsewhere | Hover | y | — | openchart-parity D4, transformation "overlay legend" | moved |
-| C22 | Footnote "N daily bars from the stored NSE series", data version | below plot | below plot | Read | y | — | m11b-weekly | pass |
+| C22 | Footnote "N daily bars from the stored NSE series", data version | below plot | /chart: bottom range bar, truncated, full text in `title`; research pages: below plot | Read, hover | y | — | m11b-weekly | moved |
 | C23 | Chart context menu: reset, indicators, scale, alert at price | plot right-click | same | Right-click, Shift+F10 | y | — | m13-charting "chart menu" | pass |
 | C24 | Pan / zoom by wheel, drag, keys | plot | plot | Mouse, keys | y | — | m13-charting "mouse wheel" | pass |
-| C25 | Grid cells: per-cell symbol button, compare chips, range select, active border | each cell | each cell | Click cell | y | — | m13-layouts, transformation "grid activation", "rail portal gate" | pass |
-| C26 | Chart library credit | site footer | shell status edge (`footer`) on every route; ☰ app menu | Page bottom | y | — | m10-stack "credited on every page" | moved |
+| C25 | Grid cells: per-cell symbol button, compare chips, range select, active border | each cell | cell label over the plot (symbol button, compare chips); range, interval and tools in the top toolbar, rail and range bar act on the active cell; `--ws-accent` border | Click cell | y | — | m13-layouts, transformation "grid activation", "rail portal gate" | moved |
+| C26 | Chart library credit | site footer | shell status edge (`footer`) on every route except /chart, where the range bar carries it at ≥640 px; ☰ app menu | Page bottom | y | — | m10-stack "credited on every page" | moved |
 | C27 | Alert button (new): opens the Alerts panel for the chart's symbol | — | chart toolbar ≥1024 px; ⋯ menu below | `Alert` | y | `/alerts` | transformation "folds lower-priority controls" | new |
 
 ## Drawing tools and objects

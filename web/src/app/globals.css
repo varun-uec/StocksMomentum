@@ -131,3 +131,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .chart-toolbar .study-options-content[aria-label='Drawing objects'] { left: auto; right: 0; }
 /* The workstation chart's overlay legend (D23): it never blocks the plot except at its buttons. */
 .chart-overlay-legend { position: absolute; z-index: 10; top: 4px; left: 6px; max-width: calc(100% - 80px); pointer-events: none; display: flex; flex-direction: column; gap: 1px; font-size: 11px; line-height: 16px; color: var(--ws-ink); text-shadow: 0 0 3px var(--ws-surface); }
+/* /chart: the range bar replaces the shell's status edge (A3.4). */
+.ws-shell[data-route='chart'] { --ws-status: 0px; }
+.chart-footnote { min-width: 0; flex-shrink: 1 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #5f7280; }
+.dark .chart-footnote { color: #95a5b0; }
+.chart-cell-label { position: absolute; z-index: 10; top: 2px; left: 4px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-radius: 3px; background: color-mix(in srgb, var(--ws-surface) 85%, transparent); }
