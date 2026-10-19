@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, resetDocuments, test } from './fixtures';
 
 /**
  * Regressions for the defects the OpenChart parity audit (2026-10-19) found.
@@ -97,7 +97,7 @@ test('D6: a double-click with a two-point tool saves nothing; two distinct click
 test('D8: a cell the layout opens keeps its own symbol when another cell changes', async ({ page }) => {
   await page.goto('/chart/TCS');
   await ready(page);
-  await page.getByRole('combobox', { name: 'Layout' }).selectOption('2x2');
+  await chooseLayout(page, '2x2');
   const charts = page.getByTestId('price-chart');
   await expect(charts).toHaveCount(4);
   const second = (await charts.nth(1).boundingBox())!;
@@ -114,7 +114,7 @@ test('D8: a cell the layout opens keeps its own symbol when another cell changes
 test('D9: a synced readout clears after a dialog opened over the hovered chart', async ({ page }) => {
   await page.goto('/chart/TCS');
   await ready(page);
-  await page.getByRole('combobox', { name: 'Layout' }).selectOption('2x1');
+  await chooseLayout(page, '2x1');
   const charts = page.getByTestId('price-chart');
   await expect(charts).toHaveCount(2);
   const first = (await charts.nth(0).boundingBox())!;

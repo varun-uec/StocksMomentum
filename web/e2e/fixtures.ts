@@ -88,12 +88,21 @@ export async function openPanelTab(page: Page, name: string | RegExp): Promise<v
 /** Open the toolbar's layout chooser, which also holds Sync (D23). */
 export async function openLayoutMenu(page: Page): Promise<Locator> {
   const panel = page.getByRole('group', { name: 'Layout and sync' });
-  if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Layout', exact: true }).click();
+  if (!(await panel.isVisible())) {
+    const layout = page.getByRole('button', { name: 'Layout', exact: true });
+    // Below 1024 px the layout chooser sits in the toolbar's ⋯ menu.
+    if (!(await layout.isVisible())) await page.getByRole('button', { name: 'More chart controls' }).click();
+    await layout.click();
+  }
   await expect(panel).toBeVisible();
   return panel;
 }
 
 /** Choose a chart layout, e.g. '2x2'. */
 export async function chooseLayout(page: Page, layout: string): Promise<void> {
-  await (await openLayoutMenu(page)).locator(`input[name="layout"][value="${layout}"]`).check();
+  // A choice made while the workspace document loads can be replaced by the loaded one; choose until it holds.
+  await expect(async () => {
+    await (await openLayoutMenu(page)).locator(`input[name="layout"][value="${layout}"]`).click();
+    await expect(page.locator('main.chart-page')).toHaveAttribute('data-layout', layout, { timeout: 1500 });
+  }).toPass();
 }

@@ -113,7 +113,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .chart-toolbar { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 4px; }
 .chart-toolbar > * { flex-shrink: 0; }
 .chart-toolbar h1 { letter-spacing: -.03em; }
-.chart-toolbar-button { display: inline-flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; color: var(--ws-ink); }
+.chart-toolbar-button { align-items: center; height: 28px; padding: 0 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; color: var(--ws-ink); }
 .chart-toolbar-button:hover { background: var(--ws-muted); }
 .chart-toolbar-button:disabled { opacity: .4; }
 .chart-toolbar-sep { width: 1px; height: 20px; background: var(--ws-line); }

@@ -239,3 +239,27 @@ test('drawing menu arrows navigate and a style edit retains keyboard focus', asy
   await page.keyboard.press('Escape');
   await expect(chart).toBeFocused();
 });
+
+test('below 1024 px the chart toolbar folds lower-priority controls into one menu', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/chart/RELIANCE'); await ready(page);
+  const header = page.locator('header.ws-header');
+  await expect(header.getByRole('heading', { name: 'RELIANCE', exact: true })).toBeVisible();
+  await expect(header.getByRole('button', { name: /Indicators/ })).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Compare', exact: true })).toHaveCount(0);
+  await header.getByRole('button', { name: 'More chart controls' }).click();
+  const menu = page.getByRole('group', { name: 'More chart controls' });
+  await expect(menu.getByRole('button')).toHaveText(['Compare', 'Alert', '']);
+  await chooseLayout(page, '2x1');
+  await expect(page.getByRole('region', { name: /^Chart / })).toHaveCount(2);
+  await chooseLayout(page, '1x1');
+  await page.keyboard.press('Escape'); // close the menu before the phone width
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(header.getByRole('button', { name: /Indicators/ })).toHaveCount(0);
+  await header.getByRole('button', { name: 'More chart controls' }).click();
+  await menu.getByRole('button', { name: 'Indicators' }).click();
+  await expect(page.getByRole('dialog', { name: /Indicators/ })).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

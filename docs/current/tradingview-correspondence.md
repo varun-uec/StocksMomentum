@@ -10,9 +10,9 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 
 | # | Capability | Prev | Now | How a user finds it | No-nav | APIs | Verified | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Symbol title (`h1`), opens search | /chart header | /chart header | Click symbol, type, `/`, Ctrl/⌘+K | y | `searchSecurities` | m11-slice "Find" | pass |
-| C2 | Company name, last close, change % | /chart header | /chart header | Next to symbol | y | `getOhlcv` | transformation "global command search" | pass |
-| C3 | Compare (+), chips with remove | /chart header | /chart header | "Compare" button | y | `getOhlcv` | m13-charting "compared symbol" | pass |
+| C1 | Symbol title (`h1`), opens search | /chart header | chart toolbar in the shell header bar (route slot) | Click symbol, type, `/`, Ctrl/⌘+K | y | `searchSecurities` | m11-slice "Find", transformation "folds lower-priority controls" | moved |
+| C2 | Company name, last close, change % | /chart header | chart toolbar (name ≥1536 px; price and change ≥640 px) | Next to symbol | y | `getOhlcv` | transformation "global command search" | moved |
+| C3 | Compare (+), chips with remove | /chart header | chart toolbar ≥1024 px; ⋯ menu below | "+ Compare" | y | `getOhlcv` | m13-charting "compared symbol", transformation "folds lower-priority controls" | moved |
 | C4 | Interval D / W / M | chart controls row | chart controls row | `Interval` group | y | `getOhlcv` | m11b-weekly, m13-charting "monthly" | pass |
 | C5 | Range presets 1W 1M 3M 6M 1Y MAX | chart controls row | chart controls row | Range buttons | y | — | m13-charting "every visible range", transformation "range presets" | pass |
 | C6 | Chart type (candles, bars, line, area, Heikin-Ashi) | chart controls `select` | chart controls `select` | `Chart type` | y | — | m13-charting "every chart type" | pass |
@@ -20,10 +20,10 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C8 | Volume pane toggle | chart controls | chart controls | `Volume` button | y | — | manual | pass |
 | C9 | MA 10/20/50/100/200 quick toggles; RSI/MACD/ADX pane row | "Studies" popover | "Studies" popover | `Studies` | y | `getIndicatorSeries` | openchart-parity D3 | pass |
 | C10 | Fit all history | chart controls `Fit` | chart controls `Fit` | `Fit`, Alt+R | y | — | m13-charting "chart menu resets" | pass |
-| C11 | Indicators dialog | /chart header; chart menu | same | `Indicators`, Alt+I | y | — | m13-charting "Alt+I" | pass |
-| C12 | Layout 1…4×4 | /chart header `Layout` select | same | `Layout` | y | server document | m13-layouts "all documented" | pass |
-| C13 | Sync symbol / interval / crosshair | /chart header (multi only) | same | `Sync` group | y | server document | m13-layouts "sync" | pass |
-| C14 | Save state | /chart header | same | `Saved ✓` status | y | — | m11-slice "Restore" | pass |
+| C11 | Indicators dialog | /chart header; chart menu | chart toolbar "fx Indicators" ≥640 px, ⋯ menu below; chart menu | `Indicators`, Alt+I | y | — | m13-charting "Alt+I", transformation "folds lower-priority controls" | moved |
+| C12 | Layout 1…4×4 | /chart header `Layout` select | chart toolbar Layout popover (radios); ⋯ menu below 1024 px | Grid icon | y | server document | m13-layouts "all documented" (`chooseLayout`) | moved |
+| C13 | Sync symbol / interval / crosshair | /chart header (multi only) | Layout popover (multi only) | Grid icon → Sync | y | server document | m13-layouts "sync" (`openLayoutMenu`) | moved |
+| C14 | Save state | /chart header | chart toolbar, right end | `Saved ✓` status | y | — | m11-slice "Restore" | moved |
 | C15 | Keyboard shortcuts dialog | /chart header `?` | shell: `?` on every route; ☰ app menu | `?` key, ☰ → Keyboard shortcuts | y | — | m12-shell "? lists" | moved |
 | C16 | Panel toggle | /chart header `Panel` | right icon strip (click the open tab to collapse); `Panel` header button below 1024 px | Strip icons | y | server document | m12-shell "panel is saved", transformation "touch controls" | moved |
 | C17 | Analyse (opens Details panel) | /chart header | strip `Details` tab (the Assessment) | Strip icon | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
@@ -36,6 +36,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C24 | Pan / zoom by wheel, drag, keys | plot | plot | Mouse, keys | y | — | m13-charting "mouse wheel" | pass |
 | C25 | Grid cells: per-cell symbol button, compare chips, range select, active border | each cell | each cell | Click cell | y | — | m13-layouts, transformation "grid activation" | pass |
 | C26 | Chart library credit | site footer | shell status edge (`footer`) on every route; ☰ app menu | Page bottom | y | — | m10-stack "credited on every page" | moved |
+| C27 | Alert button (new): opens the Alerts panel for the chart's symbol | — | chart toolbar ≥1024 px; ⋯ menu below | `Alert` | y | `/alerts` | transformation "folds lower-priority controls" | new |
 
 ## Drawing tools and objects
 

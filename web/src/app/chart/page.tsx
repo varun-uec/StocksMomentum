@@ -52,7 +52,7 @@ export default function ChartPage() {
   return <ChartWorkspace symbol={routeSymbol.toUpperCase()} />;
 }
 
-const btn = `chart-toolbar-button ${focusRing}`;
+const btn = `chart-toolbar-button inline-flex ${focusRing}`;
 
 const LAYOUT_ICON = (
   <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -61,9 +61,9 @@ const LAYOUT_ICON = (
 );
 
 /** The layout chooser and, with more than one chart, what the charts share. */
-function LayoutPopover({ grid, multi }: { grid: ReturnType<typeof useLayout>; multi: boolean }) {
+function LayoutPopover({ grid, multi, className }: { grid: ReturnType<typeof useLayout>; multi: boolean; className?: string }) {
   return (
-    <Popover label="Layout" panelLabel="Layout and sync" title={`Layout: ${grid.layout.label}`} icon={LAYOUT_ICON} panelClassName="right-0 w-56 p-2 text-xs">
+    <Popover label="Layout" panelLabel="Layout and sync" className={className} title={`Layout: ${grid.layout.label}`} icon={LAYOUT_ICON} panelClassName="right-0 w-56 p-2 text-xs">
       {(close) => (
         <>
           <fieldset>
@@ -275,6 +275,9 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const prev = shell.bars.at(-2);
   const change = last && prev ? (parseFloat(last.close) / parseFloat(prev.close) - 1) * 100 : null;
 
+  const compareFull = compareSymbols.length >= MAX_COMPARE;
+  const compareTitle = `Compare with another symbol (up to ${MAX_COMPARE})`;
+  const indicatorsLabel = `Indicators${overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}`;
   const toolbar = (
     <div className="chart-toolbar">
       <h1 className="text-[15px] font-bold tracking-tight">
@@ -288,39 +291,44 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         </button>
       </h1>
       {name && <span className="symbol-company hidden 2xl:inline text-xs text-slate-500 dark:text-slate-400 truncate max-w-48">{name}</span>}
-      {last && <span className="text-xs font-semibold tabular-nums">{parseFloat(last.close).toFixed(2)}</span>}
+      {last && <span className="hidden sm:inline text-xs font-semibold tabular-nums">{parseFloat(last.close).toFixed(2)}</span>}
       {change !== null && (
-        <span className={`text-xs tabular-nums ${change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+        <span className={`hidden sm:inline text-xs tabular-nums ${change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
           {change >= 0 ? '+' : ''}
           {change.toFixed(2)}%
         </span>
       )}
-      <span className="chart-toolbar-sep" />
-      <button
-        type="button"
-        onClick={() => openSearch('', true)}
-        disabled={compareSymbols.length >= MAX_COMPARE}
-        title={`Compare with another symbol (up to ${MAX_COMPARE})`}
-        className={btn}
-      >
+      <span className="chart-toolbar-sep hidden lg:block" />
+      <button type="button" onClick={() => openSearch('', true)} disabled={compareFull} title={compareTitle} className={`${btn} hidden lg:inline-flex`}>
         <span aria-hidden="true">+ </span>Compare
       </button>
-      {!multi && <CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} />}
-      <span className="chart-toolbar-sep" />
-      <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={btn}>
-        <span aria-hidden="true" className="italic font-serif">fx </span>Indicators{overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}
+      {!multi && <span className="hidden lg:contents"><CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} /></span>}
+      <span className="chart-toolbar-sep hidden sm:block" />
+      <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={`${btn} hidden sm:inline-flex`}>
+        <span aria-hidden="true" className="italic font-serif">fx </span>{indicatorsLabel}
       </button>
-      <button type="button" onClick={() => openPanel('alerts')} title="Create an alert for this symbol" className={btn}>
+      <button type="button" onClick={() => openPanel('alerts')} title="Create an alert for this symbol" className={`${btn} hidden lg:inline-flex`}>
         Alert
       </button>
       <span className="flex-1" />
-      <LayoutPopover grid={grid} multi={multi} />
+      <LayoutPopover grid={grid} multi={multi} className="hidden lg:block" />
+      {/* Below 1024 px the lower-priority controls fold into one menu. */}
+      <Popover label="More chart controls" icon={<span aria-hidden="true" className="text-base leading-none">⋯</span>} className="lg:hidden" panelClassName="right-0 w-52 p-1 flex flex-col items-stretch">
+        {(close) => (
+          <>
+            <button type="button" onClick={() => { close(); openSearch('', true); }} disabled={compareFull} title={compareTitle} className={`${btn} justify-start`}>Compare</button>
+            <button type="button" onClick={() => { close(); setIndicatorsOpen(true); }} className={`${btn} justify-start sm:hidden`}>{indicatorsLabel}</button>
+            <button type="button" onClick={() => { close(); openPanel('alerts'); }} className={`${btn} justify-start`}>Alert</button>
+            <div className="flex items-center gap-2 px-2 py-1 text-xs">Layout <LayoutPopover grid={grid} multi={multi} /></div>
+          </>
+        )}
+      </Popover>
       <SaveState documents={[workspace, drawings]} />
     </div>
   );
 
   return (
-    <main className="chart-page">
+    <main className="chart-page" data-layout={grid.layout.id}>
       {routeSlot && createPortal(toolbar, routeSlot)}
       {!multi ? (
         <div className="chart-stage" data-plot-cell>
