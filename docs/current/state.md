@@ -57,6 +57,7 @@ The single-user app has no authentication and must remain loopback-only. An unau
 | 2026-10-18 | M11b weekly bars, M12 workspace shell, M13 professional charting, M15 daily alerts | Done; M13 and M15 accepted | [M11b](../history/audits/2026-10-18-m11b-weekly-report.md), [M12](../history/audits/2026-10-18-m12-shell-report.md), [M13](../history/audits/2026-10-18-m13-charting-report.md), [M15](../history/audits/2026-10-18-m15-alerts-report.md) |
 | 2026-10-19 | M14 Strategy Studio: history tables, point-in-time port, manifests, families, evaluations, `/studio` | Done; every ADR-014 hard-gate test passes | [M14 report](../history/audits/2026-10-19-m14-strategy-studio-report.md), [re-run](../history/audits/2026-10-19-m14-pit-rerun-report.md) |
 | 2026-10-19 | M16 release readiness | Focused hardening verified; publication on hold for owner decisions | [RC report](../history/audits/2026-10-19-m16-release-candidate-report.md), [hardening evidence](../../audit-evidence/benchmarks/release-hardening.md) |
+| 2026-10-19 | OpenChart compatibility and UX parity (documentation-only reference) | 10 defects fixed; capability mean 1.8 of 4 over 39 rows; drawings and alerts are the main gaps | [report](../../OPENCHART_COMPATIBILITY_AUDIT.md), [backlog](../../OPENCHART_GAP_BACKLOG.md) |
 
 **Swing targets (Phase 3/3b).** Hold-out from 2025-01-01: 3,211 trades, hit rate 64.0%, average R −0.021. Six exit-plan variants all made average R worse in-sample (−0.105 to −0.396). Closed. The stop-loss part shipped as a risk-only figure. Log: [phase3b](../research/2026-08-phase3b-target-methodology-log.md).
 
@@ -109,6 +110,14 @@ Fixed during the 2026-10-19 E2E audit:
 - **Zero rank values placed filtered names among qualified names.** The screener sorts unranked rows last and displays a dash with an explanation.
 - **The mobile bottom navigation could cover the last page content.** The shared shell reserves safe-area-aware trailing space; a browser check confirms the chart status can scroll clear of it.
 - **Fast chart search could lose an early key or close a newly reopened dialog.** The search input now receives focus explicitly and the redundant native-dialog close callback is removed; the interaction passed 20 repeated browser runs.
+
+Fixed during the 2026-10-19 OpenChart parity audit ([report](../../OPENCHART_COMPATIBILITY_AUDIT.md); regression spec `web/e2e/openchart-parity.spec.ts`):
+
+- **1W and 1M showed an empty chart when stored data lagged today.** Ranges counted back from today. They now count back from the last stored bar; one request loads the whole history per symbol and interval.
+- **Moving averages started inside the range.** MA200 on a 1Y chart drew 10 bars. The chart now feeds up to 199 earlier stored closes to the mean.
+- **A drawing placed while the symbol's drawings were loading was lost.** The document store dropped edits until its first load finished. It now keeps them and merges them onto the loaded version.
+- **Three browser tests failed in a full Playwright run.** The endurance test also raced the symbol change, the legacy strategy comparison had no second stored run, and the 200% reflow test read state an earlier spec left behind. The seed now screens a benchmark strategy too, and both tests set up their own state.
+- **Chart workspace interaction defects.** RSI added from the indicator dialog read twice and could not be turned off from the pane row; the crosshair box covered the price axis; workspace keys stopped after a checkbox click; a double-click saved a zero-length line; grid cells without a symbol followed the active chart with sync off; a synced crosshair box could stick after a dialog; Enter did nothing in indicator search.
 
 Release hardening (2026-10-19): direct exchange requests default off; normalized authorized CSV imports support EOD bars, corporate actions, and benchmark closes; `screen` evaluates stored data and the retired `ingest` command exits nonzero with its replacement path. The Data screen explains the offline import workflow. Playwright coverage exercises all 12 drawing tools through draw, select, move, recolor, undo/redo, delete, and reload; Strategy Studio insufficient-data and one-shot matured hold-out cases; corporate-action alert re-evaluation; and durable browser state after a named-volume database restart. See the release-hardening addendum in [E2E audit report](../../E2E_AUDIT_REPORT.md) for final check outcomes.
 

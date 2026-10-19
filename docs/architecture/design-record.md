@@ -16,6 +16,8 @@ Every contact with reference material, with its date and scope. It states what w
 | X4 | 2026-10-18 | Claude | TradingView Charting Library docs: keyboard shortcuts | Documented shortcut set | No |
 | X5 | before 2026-10-17 | Owner | TradingView as an everyday user | Observable behaviour of tradingview.com | No |
 | X6 | 2026-10-18 | Claude | TradingView Lightweight Charts™ `README` and `NOTICE` (Apache-2.0, a dependency) | Licence and attribution terms | Library code is a declared dependency, used under its licence |
+| X7 | 2026-10-19 | Claude | OpenChart README; openchart.co docs index, getting-started, alerts, data-providers, select-and-explain pages | Capability claims and documented behaviour for the parity audit ([clean-room record](../../OPENCHART_CLEAN_ROOM_RECORD.md)) | No |
+| X8 | 2026-10-19 | Claude | openchart.co home page and changelog; chart.chat (redirects to openchart.co) | Product claims, drawing context-menu item names, screenshot layout described in words | No. The desktop app was not installed or run. |
 
 ## Decisions
 
@@ -32,3 +34,10 @@ Each entry: the Wickstreet decision, the reference that prompted it (if any), an
 | D7 | 2026-10-18 | *(Superseded by D9.)* `/` opens search in M11, and moves to the indicator dialog in M13 | X4 (`/` opens indicators) | M11 has no indicator dialog. The move keeps TradingView habits once the dialog exists. |
 | D8 | 2026-10-18 | No scripting language and no AI agents | X1 (OpenChart offers both) | A1 §4. Momentum25's configurable, explained rules are the differentiator. |
 | D9 | 2026-10-18 | `/` stays symbol search in every milestone. Supersedes D7. M13 gives the indicator dialog its own shortcut. | X4 (`/` opens indicators) | Owner decision at the M11 review. Search is the first step of every workflow, and one key should keep one meaning. |
+| D10 | 2026-10-19 | A range preset (1W … 1Y) is a slice of the stored bars, counted back from the last bar, not from today | Own (parity audit defect D1) | Stored data can lag the calendar; a range must never show an empty chart while bars exist. |
+| D11 | 2026-10-19 | Moving averages use the stored closes before the range as warm-up | Own (D2) | An MA200 that starts 200 bars into the chart misleads. |
+| D12 | 2026-10-19 | The crosshair readout sits at the top left of the chart | Own (D4) | The right edge holds the price-axis labels. |
+| D13 | 2026-10-19 | A grid cell opened by a layout keeps its own symbol, starting from the active chart's | Own (D8) | With symbol sync off, one search must change one chart. |
+| D14 | 2026-10-19 | A click within the handle radius of the last anchor does not place a new anchor | Own (D6) | A double-click must not save a zero-length drawing. |
+| D15 | 2026-10-19 | Enter in indicator search adds the first match that can be added | Own (D10) | Matches Wickstreet's symbol search, so one key keeps one meaning across dialogs. |
+| D16 | 2026-10-19 | An edit made while a saved document loads is kept and merged onto the loaded version | Own (parity audit defect D11) | ADR-013 §5: never lose or silently overwrite the owner's work. |
