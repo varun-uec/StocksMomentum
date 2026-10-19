@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, openLayoutMenu, resetDocuments, test } from './fixtures';
 
 /** M13: multi-chart layouts with symbol, interval and crosshair sync. */
 
@@ -19,7 +19,7 @@ async function painted(page: Page, count: number): Promise<void> {
 test('a 2 × 2 layout keeps a symbol per chart, and the active chart follows the route', async ({ page, request }) => {
   await page.goto('/chart/TCS');
   await painted(page, 1);
-  await page.getByLabel('Layout').selectOption('2x2');
+  await chooseLayout(page, '2x2');
   await expect(page.getByRole('region', { name: /^Chart / })).toHaveCount(4);
   await expect(cell(page, 'main')).toHaveAttribute('aria-current', 'true');
   await expect(cell(page, 'c2')).toHaveAccessibleName('Chart c2: TCS'); // a new slot shows the open symbol
@@ -52,7 +52,7 @@ test('a 2 × 2 layout keeps a symbol per chart, and the active chart follows the
 test('sync shares the symbol and the interval, and turns off again', async ({ page, request }) => {
   await page.goto('/chart/TCS');
   await painted(page, 1);
-  await page.getByLabel('Layout').selectOption('2x1');
+  await chooseLayout(page, '2x1');
   await cell(page, 'c2').getByTestId('price-chart').click({ position: { x: 40, y: 40 } });
   await page.keyboard.press('Escape');
   await page.keyboard.type('INFY');
@@ -60,7 +60,7 @@ test('sync shares the symbol and the interval, and turns off again', async ({ pa
   await page.keyboard.press('Enter');
   await expect(cell(page, 'main')).toHaveAccessibleName('Chart main: TCS');
 
-  const sync = page.getByRole('group', { name: 'Sync' });
+  const sync = (await openLayoutMenu(page)).getByRole('group', { name: 'Sync' });
   await sync.getByLabel('Symbol').check();
   await expect(cell(page, 'main')).toHaveAccessibleName('Chart main: INFY');
   await sync.getByLabel('Symbol').uncheck();
@@ -75,7 +75,7 @@ test('sync shares the symbol and the interval, and turns off again', async ({ pa
 test('the crosshair moves on every chart of the layout', async ({ page }) => {
   await page.goto('/chart/TCS');
   await painted(page, 1);
-  await page.getByLabel('Layout').selectOption('2x1');
+  await chooseLayout(page, '2x1');
   await painted(page, 2);
   const main = cell(page, 'main').getByTestId('price-chart');
   const box = (await main.boundingBox())!;
@@ -97,7 +97,7 @@ test('all documented workspace layouts mount the expected number of charts', asy
     ['4x4', 16],
   ] as const;
   for (const [layout, count] of layouts) {
-    await page.getByLabel('Layout').selectOption(layout);
+    await chooseLayout(page, layout);
     if (count === 1) {
       // The single-chart view renders the active chart directly, without a grid-cell region.
       await expect(page.getByTestId('price-chart')).toHaveCount(1);

@@ -84,3 +84,16 @@ export async function openPanelTab(page: Page, name: string | RegExp): Promise<v
   if ((await tab.getAttribute('aria-selected')) !== 'true') await tab.click();
   await expect(tab).toHaveAttribute('aria-selected', 'true');
 }
+
+/** Open the toolbar's layout chooser, which also holds Sync (D23). */
+export async function openLayoutMenu(page: Page): Promise<Locator> {
+  const panel = page.getByRole('group', { name: 'Layout and sync' });
+  if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Layout', exact: true }).click();
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
+/** Choose a chart layout, e.g. '2x2'. */
+export async function chooseLayout(page: Page, layout: string): Promise<void> {
+  await (await openLayoutMenu(page)).locator(`input[name="layout"][value="${layout}"]`).check();
+}

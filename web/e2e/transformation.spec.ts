@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page, APIRequestContext } from '@playwright/test';
-import { expect, openPanelTab, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, openPanelTab, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/transformation/after');
 async function ready(page: Page) {
@@ -130,7 +130,7 @@ test('changing chart type preserves the price pane and drawings with only an osc
 
 test('grid activation keeps charts mounted and exposes one active drawing rail', async ({ page }) => {
   await page.goto('/chart/RELIANCE'); await ready(page);
-  await page.getByLabel('Layout', { exact: true }).selectOption('2x2');
+  await chooseLayout(page, '2x2');
   await expect(page.getByTestId('price-chart')).toHaveCount(4);
   await page.waitForLoadState('networkidle');
   const marks = await page.evaluate(() => performance.getEntriesByName('wickstreet:chart-painted').length);
@@ -178,7 +178,7 @@ test('responsive workspace evidence in both themes and dense layouts', async ({ 
     await page.screenshot({ path: resolve(evidence, `chart-${width}-${theme}.png`) });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByLabel('Layout', { exact: true }).selectOption('4x4');
+  await chooseLayout(page, '4x4');
   await expect(page.getByTestId('price-chart')).toHaveCount(16);
   await page.waitForLoadState('networkidle');
   await expect(page.getByLabel('Side panel', { exact: true })).toHaveCount(0);

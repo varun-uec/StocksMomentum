@@ -4,7 +4,7 @@ import os from 'node:os';
 import { resolve } from 'node:path';
 import type { APIRequestContext, Browser, Page } from '@playwright/test';
 import { BACKEND_DIR, E2E_DATABASE_URL } from './env';
-import { expect, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, resetDocuments, test } from './fixtures';
 
 const OUT = resolve(process.cwd(), '../audit-evidence/final-stabilisation/performance.json');
 const SYMBOLS = Array.from({ length: 16 }, (_, i) => `E2E10Y${i}`);
@@ -266,7 +266,7 @@ test('24-cycle 1×1 ↔ 4×4 chart endurance releases mounted chart DOM and canv
   await expect(page.getByTestId('price-chart')).toHaveCount(16);
   await page.waitForLoadState('networkidle');
 
-  await page.getByLabel('Layout').selectOption('1x1');
+  await chooseLayout(page, '1x1');
   await expect(page.getByTestId('price-chart')).toHaveCount(1);
   const initialCanvases = await page.locator('canvas').count();
   const startingHeap = await heapMb(page);
@@ -301,10 +301,10 @@ test('24-cycle 1×1 ↔ 4×4 chart endurance releases mounted chart DOM and canv
       })
       .toBe(0);
 
-    await page.getByLabel('Layout').selectOption('4x4');
+    await chooseLayout(page, '4x4');
     await expect(page.getByTestId('price-chart')).toHaveCount(16);
     await page.waitForLoadState('networkidle');
-    await page.getByLabel('Layout').selectOption('1x1');
+    await chooseLayout(page, '1x1');
     await expect(page.getByTestId('price-chart')).toHaveCount(1);
     if ((cycle + 1) % 4 === 0) {
       samples.push({

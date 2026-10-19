@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { expect, openAppMenu, openPanelTab, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, openAppMenu, openPanelTab, resetDocuments, test } from './fixtures';
 
 /** Browser-rendered evidence for the product audit; these tests do not mutate user data. */
 const screenshots = resolve(process.cwd(), '../audit-evidence/screenshots');
@@ -94,11 +94,11 @@ test('audit screenshots: dark desktop and mobile navigation', async ({ page }) =
 test('audit screenshots: 2 × 2 and 4 × 4 chart workspaces', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/chart/RELIANCE');
-  await page.getByLabel('Layout').selectOption('2x2');
+  await chooseLayout(page, '2x2');
   await expect(page.getByRole('region', { name: /^Chart / })).toHaveCount(4);
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length >= 4);
   await page.screenshot({ path: join(screenshots, 'chart-grid-4-desktop.png'), fullPage: true });
-  await page.getByLabel('Layout').selectOption('4x4');
+  await chooseLayout(page, '4x4');
   await expect(page.getByRole('region', { name: /^Chart / })).toHaveCount(16);
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length >= 16, undefined, { timeout: 60_000 });
   await page.screenshot({ path: join(screenshots, 'chart-grid-16-desktop.png'), fullPage: true });

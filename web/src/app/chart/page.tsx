@@ -7,18 +7,23 @@
  *
  * M13 adds layouts of up to 4 × 4 charts. The route's symbol is the active
  * chart's. Grid cells are compact charts; a click makes one active, and the
- * header, the dialogs and the keys act on it.
+ * toolbar, the dialogs and the keys act on it.
+ *
+ * The toolbar sits in the shell's header bar (D23), so the chart keeps one row
+ * of chrome. The plot fills its grid cell; nothing here assumes a fixed
+ * chrome height.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { createPortal, flushSync } from 'react-dom';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
 import { MAX_PANES } from '@/components/stock/useCatalogueIndicators';
 import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
 import { SaveState } from '@/components/workspace/SaveState';
+import { Popover } from '@/components/shell/Popover';
 import { useShell, useShellPanel } from '@/components/shell/shell-context';
 import { useWatchlistDetail, useWatchlistToggle } from '@/components/workspace/SidePanel';
 import { SymbolSearchDialog } from '@/components/workspace/SymbolSearchDialog';
@@ -33,24 +38,7 @@ import { LAYOUTS, useLayout, useSymbolDrawings, useWorkspaceChart, type Layout }
 
 /** Shown on a fresh install, before the owner has opened any symbol. */
 const FIRST_SYMBOL = 'RELIANCE';
-/** Header, toolbar and footer around the chart, in px. */
-const CHROME_HEIGHT = 224;
-/** A grid cell's own header and range row, in px. */
-const CELL_CHROME = 36;
 const GRID_GAP = 3;
-/** The single chart's toolbar rows and footnote, which a grid does not have, in px. */
-const GRID_EXTRA = 26;
-
-function useChartHeight(): number {
-  const measure = () => Math.max(180, window.innerHeight - CHROME_HEIGHT - (window.innerWidth < 1024 ? 76 : 0));
-  const [height, setHeight] = useState(measure);
-  useEffect(() => {
-    const onResize = () => setHeight(measure());
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  return height;
-}
 
 export default function ChartPage() {
   const { symbol: routeSymbol } = useParams();
@@ -64,7 +52,52 @@ export default function ChartPage() {
   return <ChartWorkspace symbol={routeSymbol.toUpperCase()} />;
 }
 
-const btn = `px-2 py-0.5 rounded-md text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-40 ${focusRing}`;
+const btn = `chart-toolbar-button ${focusRing}`;
+
+const LAYOUT_ICON = (
+  <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="3" y="3" width="6" height="6" rx="1" /><rect x="11" y="3" width="6" height="6" rx="1" /><rect x="3" y="11" width="6" height="6" rx="1" /><rect x="11" y="11" width="6" height="6" rx="1" />
+  </svg>
+);
+
+/** The layout chooser and, with more than one chart, what the charts share. */
+function LayoutPopover({ grid, multi }: { grid: ReturnType<typeof useLayout>; multi: boolean }) {
+  return (
+    <Popover label="Layout" panelLabel="Layout and sync" title={`Layout: ${grid.layout.label}`} icon={LAYOUT_ICON} panelClassName="right-0 w-56 p-2 text-xs">
+      {(close) => (
+        <>
+          <fieldset>
+            <legend className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Layout</legend>
+            {LAYOUTS.map((l) => (
+              <label key={l.id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-[var(--ws-muted)]">
+                <input
+                  type="radio"
+                  name="layout"
+                  value={l.id}
+                  checked={grid.layout.id === l.id}
+                  onChange={() => { grid.setLayout(l.id as Layout); close(); }}
+                  className="accent-indigo-600"
+                />
+                {l.label}
+              </label>
+            ))}
+          </fieldset>
+          {multi && (
+            <div role="group" aria-label="Sync" className="mt-2 pt-2 border-t border-[var(--ws-line)]">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sync</p>
+              {(['symbol', 'interval', 'crosshair'] as const).map((key) => (
+                <label key={key} className="flex items-center gap-2 px-1 py-1 cursor-pointer">
+                  <input type="checkbox" checked={grid.sync[key]} onChange={(e) => grid.setSync({ [key]: e.target.checked })} className="accent-indigo-600" />
+                  {key[0].toUpperCase() + key.slice(1)}
+                </label>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </Popover>
+  );
+}
 
 function CompareChips({ symbol, compare, onRemove }: { symbol: string; compare: CompareLine[]; onRemove: (symbol: string) => void }) {
   return compare.map((c) => (
@@ -93,7 +126,6 @@ function CellFrame({
   symbol,
   slot,
   active,
-  height,
   crosshair,
   onActivate,
   onSearch,
@@ -104,7 +136,6 @@ function CellFrame({
   symbol: string;
   slot: Slot;
   active: boolean;
-  height: number;
   crosshair?: CrosshairSync;
   onActivate: () => void;
   onSearch: () => void;
@@ -117,7 +148,8 @@ function CellFrame({
       aria-current={active ? 'true' : undefined}
       onPointerDownCapture={onActivate}
       onFocusCapture={onActivate}
-      className={`grid-cell min-w-0 rounded-sm border p-1 ${
+      data-plot-cell
+      className={`grid-cell min-w-0 min-h-0 overflow-hidden rounded-sm border p-1 ${
         active ? 'border-indigo-500 ring-1 ring-indigo-500/40' : 'border-slate-200 dark:border-slate-800'
       }`}
     >
@@ -125,9 +157,9 @@ function CellFrame({
         <PriceChart {...slot.chartProps} chartLabel={<>
           <button type="button" onClick={onSearch} className={`font-semibold text-xs ${focusRing}`} title="Change this chart's symbol">{symbol}</button>
           <CompareChips symbol={symbol} compare={slot.compare} onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))} />
-        </>} height={height} compact toolRail={active} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
+        </>} height={160} autoHeight compact toolRail={active} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
       ) : (
-        <div style={{ height }} />
+        <div className="h-full" />
       )}
     </section>
   );
@@ -146,7 +178,6 @@ function GridCell(
 
 function ChartWorkspace({ symbol }: { symbol: string }) {
   const navigate = useNavigate();
-  const height = useChartHeight();
   const { strategyName } = useStrategy();
   const grid = useLayout();
   const activeId = grid.active;
@@ -171,7 +202,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     setSearch((s) => ({ ...s, open: false, compare: false }));
   };
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
-  const { openPanel } = useShell();
+  const { openPanel, routeSlot } = useShell();
   // Dense layouts release the panel's width; it then opens over the charts.
   useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9 });
   const alertAt = (price: number) => openPanel('alerts', price);
@@ -204,10 +235,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const syncedInterval = grid.sync.interval
     ? { interval: shell.chartProps.interval, onChange: (next: ChartInterval) => workspace.update({ interval: next }) }
     : undefined;
-  const cellHeight = Math.max(
-    90,
-    Math.floor((height + GRID_EXTRA - (grid.layout.rows - 1) * GRID_GAP) / grid.layout.rows) - CELL_CHROME,
-  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -248,114 +275,81 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const prev = shell.bars.at(-2);
   const change = last && prev ? (parseFloat(last.close) / parseFloat(prev.close) - 1) * 100 : null;
 
-  return (
-    <main className="chart-workspace w-full mx-auto px-2 sm:px-3 py-2">
-      <header className="workspace-header flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-        <h1 className="text-lg font-bold tracking-tight">
-          <button
-            type="button"
-            onClick={() => openSearch('')}
-            title="Change symbol (type, /, or Ctrl/⌘+K)"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400"
-          >
-            {symbol}
-          </button>
-        </h1>
-        {name && <span className="symbol-company hidden xl:inline text-sm text-slate-500 dark:text-slate-400">{name}</span>}
-        {last && <span className="text-sm font-semibold tabular-nums">{parseFloat(last.close).toFixed(2)}</span>}
-        {change !== null && (
-          <span className={`text-sm tabular-nums ${change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-            {change >= 0 ? '+' : ''}
-            {change.toFixed(2)}%
-          </span>
-        )}
-        {!multi && (
-          <CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} />
-        )}
-        <span className="hidden sm:inline text-[10px] uppercase tracking-wider text-slate-500">NSE · EOD</span>
-        <span className="flex-1" />
-        <select
-          aria-label="Layout"
-          value={grid.layout.id}
-          onChange={(e) => grid.setLayout(e.target.value as Layout)}
-          className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 text-xs ${focusRing}`}
-        >
-          {LAYOUTS.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.label}
-            </option>
-          ))}
-        </select>
-        {multi && (
-          <span role="group" aria-label="Sync" className="inline-flex items-center gap-2 text-xs text-slate-500">
-            Sync
-            {(['symbol', 'interval', 'crosshair'] as const).map((key) => (
-              <label key={key} className="inline-flex items-center gap-1 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={grid.sync[key]}
-                  onChange={(e) => grid.setSync({ [key]: e.target.checked })}
-                  className="w-3 h-3 accent-indigo-500"
-                />
-                {key[0].toUpperCase() + key.slice(1)}
-              </label>
-            ))}
-          </span>
-        )}
+  const toolbar = (
+    <div className="chart-toolbar">
+      <h1 className="text-[15px] font-bold tracking-tight">
         <button
           type="button"
-          onClick={() => openSearch('', true)}
-          disabled={compareSymbols.length >= MAX_COMPARE}
-          title={`Compare with another symbol (up to ${MAX_COMPARE})`}
-          className={btn}
+          onClick={() => openSearch('')}
+          title="Change symbol (type, /, or Ctrl/⌘+K)"
+          className={`px-1.5 rounded hover:bg-[var(--ws-muted)] ${focusRing}`}
         >
-          Compare
+          {symbol}
         </button>
-        <Link to={`/stock/${encodeURIComponent(symbol)}`} className={`${btn} hidden md:inline-block`}>Research</Link>
-        <SaveState documents={[workspace, drawings]} />
-        <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={btn}>
-          Indicators{overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}
-        </button>
-      </header>
+      </h1>
+      {name && <span className="symbol-company hidden 2xl:inline text-xs text-slate-500 dark:text-slate-400 truncate max-w-48">{name}</span>}
+      {last && <span className="text-xs font-semibold tabular-nums">{parseFloat(last.close).toFixed(2)}</span>}
+      {change !== null && (
+        <span className={`text-xs tabular-nums ${change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+          {change >= 0 ? '+' : ''}
+          {change.toFixed(2)}%
+        </span>
+      )}
+      <span className="chart-toolbar-sep" />
+      <button
+        type="button"
+        onClick={() => openSearch('', true)}
+        disabled={compareSymbols.length >= MAX_COMPARE}
+        title={`Compare with another symbol (up to ${MAX_COMPARE})`}
+        className={btn}
+      >
+        <span aria-hidden="true">+ </span>Compare
+      </button>
+      {!multi && <CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} />}
+      <span className="chart-toolbar-sep" />
+      <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={btn}>
+        <span aria-hidden="true" className="italic font-serif">fx </span>Indicators{overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}
+      </button>
+      <button type="button" onClick={() => openPanel('alerts')} title="Create an alert for this symbol" className={btn}>
+        Alert
+      </button>
+      <span className="flex-1" />
+      <LayoutPopover grid={grid} multi={multi} />
+      <SaveState documents={[workspace, drawings]} />
+    </div>
+  );
 
-      <div className="flex gap-2">
-        <div className="flex-1 min-w-0">
-          {!multi ? (
-            shell.ready ? (
-              <PriceChart
-                {...slot.chartProps}
-                onOpenIndicators={() => setIndicatorsOpen(true)}
-                onAlertAtPrice={alertAt}
-                height={height}
-                autoHeight
-                toolRail
-              />
-            ) : (
-              <LoadingSpinner />
-            )
+  return (
+    <main className="chart-page">
+      {routeSlot && createPortal(toolbar, routeSlot)}
+      {!multi ? (
+        <div className="chart-stage" data-plot-cell>
+          {shell.ready ? (
+            <PriceChart {...slot.chartProps} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail />
           ) : (
-            <div
-              className="grid"
-              style={{ gap: GRID_GAP, gridTemplateColumns: `repeat(${grid.layout.cols}, minmax(0, 1fr))` }}
-            >
-              {grid.slots.map((chartId) => {
-                const cell = {
-                  chartId,
-                  symbol: symbolOf(chartId),
-                  active: chartId === activeId,
-                  height: cellHeight,
-                  crosshair: grid.sync.crosshair ? crosshair : undefined,
-                  onActivate: () => activate(chartId),
-                  onSearch: () => openSearch(''),
-                  onIndicators: () => setIndicatorsOpen(true),
-                  onAlert: alertAt,
-                };
-                return <GridCell key={chartId} {...cell} strategyName={strategyName} syncedInterval={syncedInterval} />;
-              })}
-            </div>
+            <LoadingSpinner />
           )}
         </div>
-      </div>
+      ) : (
+        <div
+          className="chart-stage grid"
+          style={{ gap: GRID_GAP, gridTemplateColumns: `repeat(${grid.layout.cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${grid.layout.rows}, minmax(0, 1fr))` }}
+        >
+          {grid.slots.map((chartId) => {
+            const cell = {
+              chartId,
+              symbol: symbolOf(chartId),
+              active: chartId === activeId,
+              crosshair: grid.sync.crosshair ? crosshair : undefined,
+              onActivate: () => activate(chartId),
+              onSearch: () => openSearch(''),
+              onIndicators: () => setIndicatorsOpen(true),
+              onAlert: alertAt,
+            };
+            return <GridCell key={chartId} {...cell} strategyName={strategyName} syncedInterval={syncedInterval} />;
+          })}
+        </div>
+      )}
       <IndicatorDialog
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}

@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import type { APIRequestContext, Page } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, resetDocuments, test } from './fixtures';
 
 const OUT = '../audit-evidence/r2/stress-benchmark.json';
 const SYMBOLS = Array.from({ length: 16 }, (_, i) => `E2E10Y${i}`);
@@ -182,9 +182,9 @@ test('R2 bounded endurance: navigate symbols, change layouts, add and delete dra
       return response.ok() ? (await response.json()).body.drawings.length : 0;
     }).toBe(0);
 
-    await page.getByLabel('Layout').selectOption('2x2');
+    await chooseLayout(page, '2x2');
     await expect(page.getByTestId('price-chart')).toHaveCount(4);
-    await page.getByLabel('Layout').selectOption('1x1');
+    await chooseLayout(page, '1x1');
     await expect(page.getByTestId('price-chart')).toHaveCount(1);
     if (i % 2 === 1) {
       samples.push({ symbol, heap_mb: await heapMb(page), canvas_count: await page.locator('canvas').count() });

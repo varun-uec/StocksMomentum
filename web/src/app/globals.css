@@ -45,8 +45,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .brand-name { font-weight: 750; letter-spacing: -.045em; font-size: 18px; }
 .workstation-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--ws-line); border-radius: 4px; padding: 4px 8px; font-size: 11px; white-space: nowrap; cursor: pointer; background: var(--ws-surface); color: var(--ws-ink); }
 .workstation-button:hover { background: var(--ws-muted); }
-.chart-workspace { background: var(--ws-surface); }
-.workspace-header { min-height: 32px; padding-bottom: 6px; border-bottom: 1px solid var(--ws-line); }
 .chart-controls { min-height: 32px; }
 .chart-controls > * { flex-shrink: 0; }
 .chart-legend { min-height: 23px; overflow-x: auto; scrollbar-width: thin; white-space: nowrap; color: var(--ws-ink); }
@@ -60,17 +58,12 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .grid-cell .chart-controls button { padding: 2px 5px; }
 .grid-cell [aria-label='Drawing tools'] button { width: 26px; height: 28px; flex-shrink: 0; }
 .grid-cell[aria-current='true'] { border-color: var(--ws-accent); }
-.chart-workspace > header h1 { letter-spacing: -.03em; }
 @media (max-width: 1023px) {
   .chart-controls { flex-wrap: wrap; gap: 4px; }
   .chart-controls > :first-child { max-width: 100%; }
-  .chart-workspace { padding-top: 4px; }
 }
 @media (max-width: 600px) {
   .brand-name { font-size: 16px; }
-  .workspace-header { gap: 4px 8px; }
-  .workspace-header > [role='status'] { font-size: 10px; }
-  .workspace-header > h1 { font-size: 16px; }
   .chart-controls { font-size: 11px; }
   .chart-controls > [role='group'][aria-label='Price scale'] { display: none; }
   .chart-controls > button[aria-pressed] { display: none; }
@@ -84,7 +77,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .study-options-content[aria-label='Drawing objects'] { left: 0; right: auto; max-height: min(460px, 60dvh); overflow-y: auto; }
 .grid-cell .chart-controls { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
 @media (pointer: coarse) {
-  .workstation-button, .workspace-header button, .chart-controls button, .chart-controls select { min-height: 32px; }
+  .workstation-button, .chart-toolbar button, .chart-controls button, .chart-controls select { min-height: 32px; }
   .price-workstation [aria-label='Drawing tools'] button { min-width: 32px; min-height: 36px; }
 }
 
@@ -92,7 +85,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 :root { --ws-header: 38px; --ws-status: 24px; --ws-phone-nav: 0px; }
 @media (max-width: 1023px) { :root { --ws-phone-nav: calc(4.5rem + env(safe-area-inset-bottom)); } }
 .ws-header { position: sticky; top: 0; z-index: 50; height: var(--ws-header); display: flex; align-items: center; gap: 6px; padding: 0 6px; background: var(--ws-surface); color: var(--ws-ink); border-bottom: 1px solid var(--ws-line); }
-.ws-route-slot { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 4px; }
+/* Clip sideways only, so a toolbar popover can still drop below the bar. */
+.ws-route-slot { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 4px; overflow-x: clip; }
 .ws-icon-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 4px; color: var(--ws-ink); }
 .ws-icon-button:hover, .ws-icon-button[aria-expanded='true'] { background: var(--ws-muted); }
 .ws-popover { position: absolute; z-index: 60; background: var(--ws-surface); color: var(--ws-ink); border: 1px solid var(--ws-line); border-radius: 6px; box-shadow: 0 12px 32px #0002; }
@@ -113,3 +107,13 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 @media (max-width: 599px) {
   .ws-dock-panel[data-overlay='true'] { top: auto; left: 0; width: auto; height: min(70dvh, 560px); }
 }
+/* /chart (D23): the toolbar lives in the header's route slot; the plot fills the rest. */
+.chart-page { height: calc(100dvh - var(--ws-header) - var(--ws-status) - var(--ws-phone-nav)); display: flex; flex-direction: column; background: var(--ws-surface); }
+.chart-stage { flex: 1; min-height: 0; padding: 4px 6px 2px; }
+.chart-toolbar { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 4px; }
+.chart-toolbar > * { flex-shrink: 0; }
+.chart-toolbar h1 { letter-spacing: -.03em; }
+.chart-toolbar-button { display: inline-flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; color: var(--ws-ink); }
+.chart-toolbar-button:hover { background: var(--ws-muted); }
+.chart-toolbar-button:disabled { opacity: .4; }
+.chart-toolbar-sep { width: 1px; height: 20px; background: var(--ws-line); }

@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
+import { Popover } from '@/components/shell/Popover';
 import { focusRing } from '@/lib/theme';
 
 // Minimal SVG icons — no emoji, consistent 20×20 viewBox.
@@ -396,45 +397,13 @@ function MobileSheet({
   );
 }
 
-/**
- * The ☰ app menu in the header bar: every route, the theme, the keyboard
- * shortcuts and the chart library credit. A disclosure, not an ARIA menu,
- * because it holds links and buttons. Escape or a click outside closes it.
- */
+/** The ☰ app menu in the header bar: every route, the theme, the keyboard shortcuts and the chart library credit. */
 export function AppMenu({ onShortcuts }: { onShortcuts: () => void }) {
   const { pathname } = useLocation();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => {
-    if (!open) return;
-    rootRef.current?.querySelector<HTMLElement>('nav a')?.focus();
-    const onPointer = (e: PointerEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); buttonRef.current?.focus(); } };
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-
-  const close = () => setOpen(false);
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-label="App menu"
-        aria-expanded={open}
-        aria-controls="app-menu"
-        title="App menu"
-        onClick={() => setOpen((o) => !o)}
-        className={`ws-icon-button ${focusRing}`}
-      >
-        {Icons.menu}
-      </button>
-      {open && (
-        <nav id="app-menu" aria-label="App menu" className="ws-popover left-0 top-[34px] w-60 py-1">
+    <Popover label="App menu" icon={Icons.menu} nav panelClassName="left-0 w-60 py-1">
+      {(close) => (
+        <>
           <ul>
             {APP_ROUTES.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} /></li>)}
           </ul>
@@ -455,9 +424,9 @@ export function AppMenu({ onShortcuts }: { onShortcuts: () => void }) {
           <p className="px-3 pt-1 pb-2 text-[11px] text-slate-500">
             Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline">TradingView Lightweight Charts™</a>
           </p>
-        </nav>
+        </>
       )}
-    </div>
+    </Popover>
   );
 }
 

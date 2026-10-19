@@ -441,7 +441,7 @@ export function PriceChart({
   isLoading?: boolean;
   /** Chart height in px; the Elliott Wave screen renders a much taller chart. */
   height?: number;
-  /** Fit a single workstation plot to its actual responsive toolbar geometry. */
+  /** Fit the plot to its `[data-plot-cell]` ancestor, after the chart's own controls and footnote. */
   autoHeight?: boolean;
   footnote?: string;
   markers?: ChartMarker[];
@@ -717,25 +717,28 @@ export function PriceChart({
     paneDefsRef.current = paneDefs;
   });
 
+  // The plot takes the height its cell (`[data-plot-cell]`) leaves after this
+  // chart's own controls above it and its footnote below it.
   useLayoutEffect(() => {
     if (!autoHeight || !containerRef.current) return;
     const container = containerRef.current;
+    const cell = container.closest('[data-plot-cell]');
+    const root = container.closest('.price-workstation');
+    if (!cell || !root) return;
     const measure = () => {
-      const top = container.getBoundingClientRect().top + window.scrollY;
-      const reserve = window.innerWidth < 1024 ? 84 : 44;
-      setFittedHeight(Math.max(128, Math.floor(window.innerHeight - top - reserve)));
+      const top = container.getBoundingClientRect().top;
+      const below = root.getBoundingClientRect().bottom - container.getBoundingClientRect().bottom;
+      const bottom = cell.getBoundingClientRect().bottom - parseFloat(getComputedStyle(cell).paddingBottom);
+      setFittedHeight(Math.max(compact ? 48 : 128, Math.floor(bottom - top - below)));
     };
     let frame = 0;
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
     const observer = new ResizeObserver(schedule);
-    const root = container.closest('.price-workstation');
-    const header = container.closest('main')?.querySelector('.workspace-header');
-    if (root) observer.observe(root);
-    if (header) observer.observe(header);
-    window.addEventListener('resize', schedule);
+    observer.observe(cell);
+    observer.observe(root);
     measure();
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener('resize', schedule); };
-  }, [autoHeight]);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [autoHeight, compact]);
 
   // Create the chart once; series are (re)built when the render mode changes.
   useEffect(() => {
