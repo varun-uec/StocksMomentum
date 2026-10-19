@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page, APIRequestContext } from '@playwright/test';
-import { chooseLayout, expect, openChartSettings, openPanelTab, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, openChartSettings, openPanelTab, pickTool, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/transformation/after');
 async function ready(page: Page) {
@@ -68,7 +68,7 @@ test('study legends, custom parameters, colour, visibility and restore survive a
 
 test('inline notes and drawing lock, visibility, dash and restoration are persisted', async ({ page, request }) => {
   await page.goto('/chart/RELIANCE'); await ready(page);
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Text note' }).click();
+  await pickTool(page, 'Text note');
   const chart = page.getByTestId('price-chart'); const box = (await chart.boundingBox())!;
   await page.mouse.click(box.x + box.width * .4, box.y + box.height * .3);
   await page.getByLabel('Annotation text').fill('Review the base after the close');
@@ -97,7 +97,7 @@ test('unfinished annotations cannot follow a switch to a cached symbol', async (
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'RELIANCE', exact: true })).toBeVisible();
   await ready(page);
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Text note' }).click();
+  await pickTool(page, 'Text note');
   const box = (await page.getByTestId('price-chart').boundingBox())!;
   await page.mouse.click(box.x + box.width * .4, box.y + box.height * .2);
   await page.getByLabel('Annotation text').fill('This belongs only to RELIANCE');
@@ -122,7 +122,7 @@ test('changing chart type preserves the price pane and drawings with only an osc
     await page.getByLabel('Chart type', { exact: true }).selectOption(type);
     await expect(page.getByTestId('price-chart').locator('canvas')).toHaveCount(count);
   }
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   const box = (await page.getByTestId('price-chart').boundingBox())!;
   await page.mouse.click(box.x + box.width * .4, box.y + box.height * .2);
   await expect.poll(async () => (await savedDrawings(request)).length).toBe(1);
@@ -138,7 +138,7 @@ test('grid activation keeps charts mounted and exposes one active drawing rail',
   await expect(page.getByRole('region', { name: 'Chart c2: RELIANCE', exact: true })).toHaveAttribute('aria-current', 'true');
   await expect(page.getByRole('toolbar', { name: 'Drawing tools' })).toHaveCount(1);
   expect(await page.evaluate(() => performance.getEntriesByName('wickstreet:chart-painted').length)).toBe(marks);
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   await page.getByRole('region', { name: 'Chart c2: RELIANCE', exact: true }).getByTestId('price-chart').click({ position: { x: 100, y: 60 } });
 });
 
@@ -194,10 +194,10 @@ test.describe('touch workspace', () => {
     const box = (await page.getByTestId('price-chart').boundingBox())!;
     expect(box.y).toBeLessThan(280);
     expect(box.y + box.height).toBeLessThanOrEqual(790);
-    await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).tap();
+    await pickTool(page, 'Horizontal line');
     await page.getByTestId('price-chart').tap({ position: { x: box.width * .4, y: 100 } });
     await expect.poll(async () => (await savedDrawings(request)).length).toBe(1);
-    await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Trendline', exact: true }).tap();
+    await pickTool(page, 'Trendline');
     await page.getByTestId('price-chart').tap({ position: { x: 80, y: 130 } });
     expect((await savedDrawings(request)).length).toBe(1);
     await page.getByTestId('price-chart').tap({ position: { x: 180, y: 180 } });
@@ -224,7 +224,7 @@ test('global command search keeps a security connected to research and its chart
 
 test('drawing menu arrows navigate and a style edit retains keyboard focus', async ({ page, request }) => {
   await page.goto('/chart/RELIANCE'); await ready(page);
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   const chart = page.getByTestId('price-chart'); const box = (await chart.boundingBox())!;
   await page.mouse.click(box.x + box.width * .4, box.y + box.height * .2);
   await chart.focus(); await page.keyboard.press('Shift+F10');
@@ -287,7 +287,7 @@ test.describe('chart chrome slots: the rail portal gate', () => {
   test('1, 8: the rail and the tool keys act on the active chart only; leaving a chart cancels its tool', async ({ page, request }) => {
     await twoByTwo(page);
     await activate(page, 'c2');
-    await rail(page).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+    await pickTool(page, 'Horizontal line');
     await expect(rail(page).getByRole('button', { name: 'Horizontal line', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await activate(page, 'main');
     await expect(rail(page).getByRole('button', { name: 'Horizontal line', exact: true })).toHaveAttribute('aria-pressed', 'false');
@@ -339,7 +339,7 @@ test.describe('chart chrome slots: the rail portal gate', () => {
   test('6, 7: layout changes retarget the rail to the surviving active chart and cancel an armed tool', async ({ page, request }) => {
     await page.goto('/chart/RELIANCE'); await ready(page);
     for (const layout of ['2x2', '4x4', '2x1', '1x1']) {
-      await rail(page).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+      await pickTool(page, 'Horizontal line');
       await chooseLayout(page, layout);
       await expect(rail(page)).toHaveCount(1);
       await expect(rail(page).getByRole('button', { name: 'Horizontal line', exact: true })).toHaveAttribute('aria-pressed', 'false');
@@ -349,7 +349,7 @@ test.describe('chart chrome slots: the rail portal gate', () => {
     await activate(page, 'c4');
     await chooseLayout(page, '2x1');
     await expect(page.locator('[aria-current="true"]')).toHaveCount(1);
-    await rail(page).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+    await pickTool(page, 'Horizontal line');
     const active = page.locator('section[aria-current="true"]').getByTestId('price-chart');
     const box = (await active.boundingBox())!;
     await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.3);
@@ -386,4 +386,41 @@ test('the overlay legend names the chart, follows the crosshair and removes a st
       return res.ok() ? (await res.json()).body.charts.main?.mas : null;
     })
     .toEqual([200]);
+});
+
+test('the grouped rail: flyouts, keys, last-used tools and the phone Draw sheet', async ({ page }) => {
+  await page.goto('/chart/RELIANCE'); await ready(page);
+  const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
+  const arrow = rail.getByRole('button', { name: 'Lines tools' });
+  const flyout = page.getByRole('group', { name: 'Lines tools' });
+  await arrow.click();
+  await expect(flyout.getByRole('button')).toHaveText(['Trendline', 'Ray', 'Extended line', 'Horizontal line', 'Horizontal ray', 'Vertical line', 'Cross line', 'Parallel channel'].map((n) => new RegExp(`^${n}`)));
+  await expect(flyout.getByRole('button', { name: 'Trendline' })).toHaveAttribute('aria-keyshortcuts', 'Alt+T');
+  await expect(flyout.getByRole('button', { name: 'Trendline' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(flyout.getByRole('button', { name: 'Ray', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect(flyout.getByRole('button', { name: 'Parallel channel' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(flyout).toHaveCount(0);
+  await expect(arrow).toBeFocused();
+
+  await arrow.click();
+  await flyout.getByRole('button', { name: 'Parallel channel' }).click();
+  await expect(flyout).toHaveCount(0);
+  // The group now shows its last-used tool, pressed; Trendline left the rail.
+  await expect(rail.getByRole('button', { name: 'Parallel channel' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(rail.getByRole('button', { name: 'Trendline' })).toHaveCount(0);
+  await rail.getByRole('button', { name: 'Parallel channel' }).click();
+  await expect(rail.getByRole('button', { name: 'Select' })).toHaveAttribute('aria-pressed', 'true');
+
+  // Below 640 px the rail is one Draw button; the groups open as a bottom sheet.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(rail).toBeHidden();
+  await page.getByRole('button', { name: 'Draw', exact: true }).click();
+  await expect(rail).toBeVisible();
+  await rail.getByRole('button', { name: 'Fib retracement' }).click();
+  await expect(rail).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Draw', exact: true })).toHaveAttribute('aria-expanded', 'false');
 });

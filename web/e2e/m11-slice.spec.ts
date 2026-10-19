@@ -1,5 +1,5 @@
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
-import { expect, openChartSettings, resetDocuments, test } from './fixtures';
+import { expect, openChartSettings, pickTool, resetDocuments, test } from './fixtures';
 
 /** M11 vertical slice: Find → Analyse → Draw → Restore (ADR-013 §5, M9 §3). */
 
@@ -132,7 +132,7 @@ test('Analyse → Draw → Restore: state survives a reload and a second browser
   await chartReady(page);
   await expect(checkbox(page, 'MA20')).toBeChecked();
   await expect(checkbox(page, 'RSI (14)')).toBeChecked();
-  await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove objects' })).toBeVisible();
 
   // Restore: a fresh browser opens the last symbol with the same state.
   const other = await browser.newContext();
@@ -141,7 +141,7 @@ test('Analyse → Draw → Restore: state survives a reload and a second browser
   await expect(second).toHaveURL(/\/chart\/TCS$/);
   await expect(second.getByTestId('price-chart').locator('canvas').first()).toBeVisible();
   await expect(second.getByLabel('MA20', { exact: true })).toBeChecked();
-  await expect(second.getByRole('button', { name: 'Clear' })).toBeVisible();
+  await expect(second.getByRole('button', { name: 'Remove objects' })).toBeVisible();
   await other.close();
 });
 
@@ -246,13 +246,13 @@ test('the existing research screens still save their charts (NFR-13)', async ({ 
   await page.goto('/stock/RELIANCE');
   await expect(chart(page).locator('canvas').first()).toBeVisible();
   await chart(page).scrollIntoViewIfNeeded();
-  await page.getByRole('button', { name: 'Horizontal ray' }).click();
+  await pickTool(page, 'Horizontal ray');
   await clickAt(page, 0.5, 0.3);
   await expect.poll(drawingCount(request, 'RELIANCE')).toBe(1);
   // Drawings belong to the symbol: the chart workspace shows the same one.
   await page.goto('/chart/RELIANCE');
   await chartReady(page);
-  await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove objects' })).toBeVisible();
 });
 
 test('chart settings saved in this browser before M11 are imported once; a server copy wins', async ({ browser, request }) => {
@@ -357,13 +357,13 @@ test('a drawing conflict on a research screen shows the same notice', async ({ p
   const second = await other.newPage();
   await second.goto('/stock/HDFCBANK');
   await second.getByTestId('price-chart').scrollIntoViewIfNeeded();
-  await expect(second.getByRole('button', { name: 'Clear' })).toBeVisible();
+  await expect(second.getByRole('button', { name: 'Remove objects' })).toBeVisible();
 
   await drag(page, [0.4, 0.25], [0.4, 0.15]); // window 1 moves it
   await expect
     .poll(async () => (await serverDrawings(request, 'HDFCBANK'))[0].points[0].price)
     .toBeGreaterThan(original.points[0].price);
-  await second.getByRole('button', { name: 'Clear' }).click(); // window 2, on the old revision, deletes it
+  await second.getByRole('button', { name: 'Remove objects' }).click(); // window 2, on the old revision, deletes it
 
   const notice = second.getByRole('alert');
   await expect(notice).toContainText('Your drawings on HDFCBANK changed in another window');

@@ -164,47 +164,159 @@ const RAIL_ICONS: Record<DrawingKind | 'select' | 'clear', React.ReactNode> = {
   clear: <path d="M6 6l1 11h6l1-11M4 6h12M8 6V4h4v2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />,
 };
 
-/** The drawing tools as a column left of the chart (design record D6). */
+/** The rail's tool groups, in TradingView's order (plan 2026-10-19, step 4). */
+const TOOL_GROUPS: { name: string; tools: DrawingKind[] }[] = [
+  { name: 'Lines', tools: ['trendline', 'ray', 'extended', 'hline', 'horizontal', 'vline', 'crossline', 'channel'] },
+  { name: 'Fibonacci', tools: ['fib'] },
+  { name: 'Shapes', tools: ['rectangle'] },
+  { name: 'Annotation', tools: ['text'] },
+  { name: 'Measure', tools: ['price_range'] },
+];
+
+/** Each group's last-used tool. Shared by every chart, so it survives a change of active chart. */
+const lastTool: Record<string, DrawingKind> = Object.fromEntries(TOOL_GROUPS.map((g) => [g.name, g.tools[0]]));
+
+/**
+ * The drawing tools as a column left of the chart (design record D6). Each
+ * group button shows its last-used tool; its corner arrow opens a flyout of the
+ * group. `collapsible` turns the rail into one "Draw" button below 640 px.
+ */
 function DrawingRail({
   tool,
   onTool,
   canClear,
   onClear,
+  collapsible = false,
 }: {
   tool: DrawingKind | null;
   onTool: (kind: DrawingKind | null) => void;
   canClear: boolean;
   onClear: () => void;
+  collapsible?: boolean;
 }) {
-  const button = (key: string, label: string, active: boolean, onClick: () => void, icon: React.ReactNode, hint = '', danger = false) => (
-    <button
-      key={key}
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-pressed={active}
-      title={hint ? `${label} (${hint})` : label}
-      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${focusRing} ${
-        active
-          ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
-          : danger
-            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-      }`}
-    >
-      <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true">
-        {icon}
-      </svg>
-    </button>
+  const [flyout, setFlyout] = useState<{ group: string; left: number; top: number } | null>(null);
+  const [drawOpen, setDrawOpen] = useState(false);
+  const flyoutRef = useRef<HTMLDivElement>(null);
+  const arrowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  if (tool) for (const g of TOOL_GROUPS) if (g.tools.includes(tool)) lastTool[g.name] = tool;
+
+  useEffect(() => {
+    if (!flyout) return;
+    flyoutRef.current?.querySelector<HTMLElement>('[aria-pressed="true"], button')?.focus();
+    const close = (e: PointerEvent) => {
+      if (!flyoutRef.current?.contains(e.target as Node) && !arrowRefs.current[flyout.group]?.contains(e.target as Node)) setFlyout(null);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [flyout]);
+
+  const pick = (kind: DrawingKind | null) => {
+    setFlyout(null);
+    setDrawOpen(false);
+    onTool(kind);
+  };
+  const toolTitle = (kind: DrawingKind) => (TOOL_HINT[kind] ? `${DRAWING_LABELS[kind]} (${TOOL_HINT[kind]})` : DRAWING_LABELS[kind]);
+  const iconClass = (active: boolean, danger = false) =>
+    `w-8 h-8 flex items-center justify-center rounded-md transition-colors ${focusRing} ${
+      active
+        ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
+        : danger
+          ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+    }`;
+  const icon = (key: keyof typeof RAIL_ICONS) => (
+    <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true">
+      {RAIL_ICONS[key]}
+    </svg>
   );
+  const openFlyout = (group: string) => {
+    if (flyout?.group === group) return setFlyout(null);
+    const box = arrowRefs.current[group]!.getBoundingClientRect();
+    // Keep the flyout on screen: the phone sheet sits at the bottom edge.
+    const height = TOOL_GROUPS.find((g) => g.name === group)!.tools.length * 32 + 10;
+    setFlyout({ group, left: Math.min(box.right + 4, window.innerWidth - 208), top: Math.max(8, Math.min(box.top - 4, window.innerHeight - 8 - height)) });
+  };
+  const onFlyoutKey = (e: React.KeyboardEvent) => {
+    const items = [...(flyoutRef.current?.querySelectorAll<HTMLElement>('button') ?? [])];
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      const group = flyout!.group;
+      setFlyout(null);
+      arrowRefs.current[group]?.focus();
+    }
+  };
+  const open = TOOL_GROUPS.find((g) => g.name === flyout?.group);
+  // The open phone sheet leaves the rail's stacking context, so it sits above the bottom nav.
+  const sheet = (toolbar: React.ReactNode) => (collapsible && drawOpen ? createPortal(toolbar, document.body) : toolbar);
+
   return (
-    <div role="toolbar" aria-label="Drawing tools" aria-orientation="vertical" className="flex flex-col gap-1 pt-1">
-      {button('select', 'Select', tool === null, () => onTool(null), RAIL_ICONS.select, 'Esc')}
-      {DRAWING_KINDS.map((kind) =>
-        button(kind, DRAWING_LABELS[kind], tool === kind, () => onTool(kind), RAIL_ICONS[kind], TOOL_HINT[kind])
+    <>
+      {collapsible && (
+        <button type="button" aria-expanded={drawOpen} onClick={() => setDrawOpen((v) => !v)} className={`chart-draw-button sm:hidden ${iconClass(drawOpen || tool !== null)}`} title="Drawing tools">
+          <span className="sr-only">Draw</span>
+          {icon('trendline')}
+        </button>
       )}
-      {canClear && button('clear', 'Clear', false, onClear, RAIL_ICONS.clear, '', true)}
-    </div>
+      {sheet(
+      <div
+        role="toolbar"
+        aria-label="Drawing tools"
+        aria-orientation="vertical"
+        className={`flex-col gap-1 pt-1 ${collapsible ? (drawOpen ? 'chart-draw-sheet flex' : 'hidden sm:flex') : 'flex'}`}
+      >
+        <button type="button" onClick={() => pick(null)} aria-label="Select" aria-pressed={tool === null} title="Select (Esc)" className={iconClass(tool === null)}>
+          {icon('select')}
+        </button>
+        {TOOL_GROUPS.map((group) => {
+          const shown = lastTool[group.name];
+          return (
+            <span key={group.name} className="relative inline-flex">
+              <button type="button" onClick={() => pick(shown === tool ? null : shown)} aria-label={DRAWING_LABELS[shown]} aria-pressed={tool === shown} title={toolTitle(shown)} className={iconClass(tool === shown)}>
+                {icon(shown)}
+              </button>
+              {group.tools.length > 1 && (
+                <button
+                  ref={(el) => { arrowRefs.current[group.name] = el; }}
+                  type="button"
+                  aria-label={`${group.name} tools`}
+                  aria-expanded={flyout?.group === group.name}
+                  aria-haspopup="true"
+                  onClick={() => openFlyout(group.name)}
+                  className={`chart-rail-arrow ${focusRing}`}
+                >
+                  <svg viewBox="0 0 6 6" aria-hidden="true"><path d="M6 0v6H0z" fill="currentColor" /></svg>
+                </button>
+              )}
+            </span>
+          );
+        })}
+        {canClear && (
+          <>
+            <span aria-hidden="true" className="chart-rail-sep" />
+            <button type="button" onClick={() => { setDrawOpen(false); onClear(); }} aria-label="Remove objects" title="Remove objects" className={iconClass(false, true)}>
+              {icon('clear')}
+            </button>
+          </>
+        )}
+      </div>,
+      )}
+      {open && flyout && createPortal(
+        <div ref={flyoutRef} role="group" aria-label={`${open.name} tools`} onKeyDown={onFlyoutKey} className="chart-rail-flyout" style={{ left: flyout.left, top: flyout.top }}>
+          {open.tools.map((kind) => (
+            <button key={kind} type="button" aria-label={DRAWING_LABELS[kind]} aria-keyshortcuts={TOOL_HINT[kind]} aria-pressed={tool === kind} onClick={() => pick(kind)} className={`chart-rail-flyout-item ${focusRing}`}>
+              {icon(kind)}
+              <span className="flex-1 text-left">{DRAWING_LABELS[kind]}</span>
+              {TOOL_HINT[kind] && <kbd className="text-[10px] text-slate-500">{TOOL_HINT[kind]}</kbd>}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -1513,6 +1625,7 @@ export function PriceChart({
       onTool={(kind) => (kind ? toggleDrawingTool(kind) : selectTool(null))}
       canClear={drawings.length > 0}
       onClear={clearDrawings}
+      collapsible={!!chrome}
     />
   );
   const activePaneSet = new Set(displayedPanes);

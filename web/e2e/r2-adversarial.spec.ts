@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { APIRequestContext, Page } from '@playwright/test';
-import { allowOneInjectedNetworkFailure, expect, resetDocuments, test } from './fixtures';
+import { allowOneInjectedNetworkFailure, expect, pickTool, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/r2');
 mkdirSync(evidence, { recursive: true });
@@ -64,8 +64,7 @@ test('R2 negative API cases stay JSON, reject hostile origins and never serve .e
 test('R2 a drawing save interrupted by network loss stays local and can be retried', async ({ page, request }) => {
   await page.goto('/chart/INFY');
   await chartReady(page);
-  const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
-  await rail.getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   await clickChart(page, 0.5, 0.4);
   await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
   const savedColor = (await drawings(request, 'INFY'))[0].color;
@@ -97,7 +96,7 @@ test('R2 delete versus edit across two windows requires a choice and preserves t
 }) => {
   await page.goto('/chart/TCS');
   await chartReady(page);
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   await clickChart(page, 0.5, 0.4);
   await expect.poll(async () => (await drawings(request, 'TCS')).length).toBe(1);
 

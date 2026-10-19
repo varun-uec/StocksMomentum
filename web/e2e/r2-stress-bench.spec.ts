@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import type { APIRequestContext, Page } from '@playwright/test';
-import { chooseLayout, expect, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, pickTool, resetDocuments, test } from './fixtures';
 
 const OUT = '../audit-evidence/r2/stress-benchmark.json';
 const SYMBOLS = Array.from({ length: 16 }, (_, i) => `E2E10Y${i}`);
@@ -167,8 +167,7 @@ test('R2 bounded endurance: navigate symbols, change layouts, add and delete dra
     }
     await expect(page.getByTestId('price-chart').first()).toHaveAttribute('aria-label', /2610 daily bars/);
     const chart = page.getByTestId('price-chart').first();
-    const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
-    await rail.getByRole('button', { name: 'Horizontal line', exact: true }).click();
+    await pickTool(page, 'Horizontal line');
     const bounds = (await chart.boundingBox())!;
     await page.mouse.click(bounds.x + bounds.width * 0.42, bounds.y + bounds.height * 0.4);
     await expect.poll(async () => {

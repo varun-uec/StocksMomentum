@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, openPanelTab, test } from './fixtures';
+import { expect, openPanelTab, pickTool, test } from './fixtures';
 
 async function chartReady(page: Page): Promise<void> {
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length > 0);
@@ -13,7 +13,7 @@ test('phase 1 writes chart, drawing and alert state in the browser', async ({ pa
 
   const chart = page.getByTestId('price-chart');
   const box = (await chart.boundingBox())!;
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4);
   await expect.poll(async () => {
     const response = await request.get('/api/v1/drawings/TCS');

@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
-import { chooseLayout, expect, openChartSettings, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, openChartSettings, pickTool, resetDocuments, test } from './fixtures';
 
 /**
  * Regressions for the defects the OpenChart parity audit (2026-10-19) found.
@@ -84,7 +84,7 @@ test('D6: a double-click with a two-point tool saves nothing; two distinct click
   await ready(page);
   const box = (await page.getByTestId('price-chart').boundingBox())!;
   const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
-  await rail.getByRole('button', { name: 'Trendline', exact: true }).click();
+  await pickTool(page, 'Trendline');
   await page.mouse.dblclick(box.x + box.width * 0.3, box.y + box.height * 0.3);
   await expect(rail.getByRole('button', { name: 'Trendline', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.2);

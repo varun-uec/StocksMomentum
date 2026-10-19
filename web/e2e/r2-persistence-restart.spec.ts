@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { expect, openPanelTab, resetDocuments, test } from './fixtures';
+import { expect, openPanelTab, pickTool, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/r2');
 mkdirSync(evidence, { recursive: true });
@@ -14,7 +14,7 @@ test('R2 phase 1 writes chart, drawing and alert state before the isolated datab
 
   const chart = page.getByTestId('price-chart');
   const box = (await chart.boundingBox())!;
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4);
   await expect.poll(async () => {
     const response = await request.get('/api/v1/drawings/TCS');

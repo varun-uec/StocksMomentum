@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, openChartSettings, resetDocuments, test } from './fixtures';
+import { expect, openChartSettings, pickTool, resetDocuments, test } from './fixtures';
 
 /** M11b: weekly bars, an interval switch apart from the range, one data version. */
 
@@ -51,7 +51,7 @@ test('a drawing made on weekly bars stays on the daily chart', async ({ page, re
   await ready(page, 'weekly');
 
   const box = (await page.getByTestId('price-chart').boundingBox())!;
-  await page.getByRole('button', { name: 'Horizontal ray' }).click();
+  await pickTool(page, 'Horizontal ray');
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.3);
   await expect
     .poll(async () => {
@@ -62,7 +62,7 @@ test('a drawing made on weekly bars stays on the daily chart', async ({ page, re
 
   await page.getByRole('button', { name: 'Daily bars' }).click();
   await ready(page, 'daily');
-  await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove objects' })).toBeVisible();
 });
 
 test('research screens keep daily bars and offer no interval switch', async ({ page }) => {

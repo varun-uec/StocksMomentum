@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
-import { expect, openChartSettings, resetDocuments, test } from './fixtures';
+import { expect, openChartSettings, pickTool, resetDocuments, test } from './fixtures';
 
 /** M13: professional charting. */
 
@@ -70,7 +70,7 @@ test('every M13 tool draws and is saved', async ({ page, request }) => {
     ['Text note', [[0.3, 0.6]]],
   ];
   for (const [name, clicks] of tools) {
-    await rail.getByRole('button', { name, exact: true }).click();
+    await pickTool(page, name);
     for (const [x, y] of clicks) await clickAt(page, x, y);
     if (name === 'Text note') { await page.getByLabel('Annotation text').fill('Base breakout'); await page.getByRole('button', { name: 'Save note' }).click(); }
     await expect(rail.getByRole('button', { name: 'Select' })).toHaveAttribute('aria-pressed', 'true'); // the tool finished
@@ -107,14 +107,13 @@ for (const drawing of DRAWING_LIFECYCLE_CASES) {
     await page.goto('/chart/INFY');
     await ready(page);
 
-    const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
-    await rail.getByRole('button', { name: drawing.name, exact: true }).click();
+    await pickTool(page, drawing.name);
     for (const [x, y] of drawing.clicks) await clickAt(page, x, y);
     if (drawing.name === 'Text note') { await page.getByLabel('Annotation text').fill('Lifecycle note'); await page.getByRole('button', { name: 'Save note' }).click(); }
     await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
     const original = (await drawings(request, 'INFY'))[0];
 
-    await rail.getByRole('button', { name: 'Select', exact: true }).click();
+    await pickTool(page, 'Select');
     const box = (await page.getByTestId('price-chart').boundingBox())!;
     const [bodyX, bodyY] = drawing.body;
     const dragX = 0.035;
@@ -184,7 +183,7 @@ test('every visible range changes the saved chart window', async ({ page, reques
 test('the drawing menu restyles a drawing; undo and redo step through edits; arrows move it', async ({ page, request }) => {
   await page.goto('/chart/INFY');
   await ready(page);
-  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  await pickTool(page, 'Horizontal line');
   await clickAt(page, 0.5, 0.4);
   await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
   const beforeDrag = (await drawings(request, 'INFY'))[0];

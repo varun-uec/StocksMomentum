@@ -4,7 +4,7 @@ import os from 'node:os';
 import { resolve } from 'node:path';
 import type { APIRequestContext, Browser, Page } from '@playwright/test';
 import { BACKEND_DIR, E2E_DATABASE_URL } from './env';
-import { chooseLayout, expect, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, pickTool, resetDocuments, test } from './fixtures';
 
 const OUT = resolve(process.cwd(), '../audit-evidence/final-stabilisation/performance.json');
 const SYMBOLS = Array.from({ length: 16 }, (_, i) => `E2E10Y${i}`);
@@ -281,8 +281,7 @@ test('24-cycle 1×1 ↔ 4×4 chart endurance releases mounted chart DOM and canv
     await expect(page).toHaveURL(new RegExp(`/chart/${symbol}$`));
 
     const chart = page.getByTestId('price-chart').first();
-    const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
-    await rail.getByRole('button', { name: 'Horizontal line', exact: true }).click();
+    await pickTool(page, 'Horizontal line');
     const box = (await chart.boundingBox())!;
     await page.mouse.click(box.x + box.width * 0.43, box.y + box.height * 0.4);
     await expect

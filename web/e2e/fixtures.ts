@@ -113,3 +113,19 @@ export async function openChartSettings(page: Page): Promise<void> {
   const open = await summary.evaluate((el) => (el.parentElement as HTMLDetailsElement).open);
   if (!open) await summary.click();
 }
+
+/** Pick a drawing tool from the grouped rail, through its group's flyout when it is not the shown tool (A4.1). */
+export async function pickTool(page: Page, name: string): Promise<void> {
+  const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
+  const draw = page.getByRole('button', { name: 'Draw', exact: true });
+  if (!(await rail.isVisible()) && (await draw.isVisible())) await draw.click();
+  const shown = rail.getByRole('button', { name, exact: true });
+  if (await shown.isVisible()) return shown.click();
+  for (const arrow of await rail.getByRole('button', { name: / tools$/ }).all()) {
+    await arrow.click();
+    const item = page.getByRole('group', { name: await arrow.getAttribute('aria-label') ?? '' }).getByRole('button', { name, exact: true });
+    if (await item.isVisible()) return item.click();
+    await page.keyboard.press('Escape');
+  }
+  throw new Error(`No drawing tool named ${name}`);
+}

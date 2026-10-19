@@ -136,3 +136,18 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .chart-footnote { min-width: 0; flex-shrink: 1 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #5f7280; }
 .dark .chart-footnote { color: #95a5b0; }
 .chart-cell-label { position: absolute; z-index: 10; top: 2px; left: 4px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-radius: 3px; background: color-mix(in srgb, var(--ws-surface) 85%, transparent); }
+/* The grouped drawing rail (A4.1): corner arrows, flyouts and the phone "Draw" sheet. */
+.chart-rail-arrow { position: absolute; right: -3px; bottom: 0; width: 10px; height: 10px; padding: 1px; color: #8a9aa5; opacity: .7; border-radius: 2px; }
+.chart-rail-arrow:hover, .chart-rail-arrow[aria-expanded='true'] { opacity: 1; color: var(--ws-ink); }
+.chart-rail-arrow svg { width: 6px; height: 6px; display: block; margin-left: auto; }
+.chart-rail-sep { width: 24px; height: 1px; margin: 2px auto; background: var(--ws-line); }
+.chart-rail-flyout { position: fixed; z-index: 60; min-width: 200px; padding: 4px; border: 1px solid var(--ws-line); border-radius: 6px; background: var(--ws-surface); color: var(--ws-ink); box-shadow: 0 6px 20px rgb(0 0 0 / .14); display: flex; flex-direction: column; }
+.chart-rail-flyout-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 4px; font-size: 13px; }
+.chart-rail-flyout-item:hover { background: var(--ws-muted); }
+.chart-rail-flyout-item[aria-pressed='true'] { color: var(--ws-accent); }
+@media (max-width: 639px) {
+  .chart-body { position: relative; }
+  .chart-rail { position: absolute; z-index: 20; left: 4px; bottom: 36px; width: auto; overflow: visible; border: 0; }
+  .chart-draw-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; flex-direction: row; flex-wrap: wrap; justify-content: center; padding: 8px; background: var(--ws-surface); border-top: 1px solid var(--ws-line); box-shadow: 0 -6px 20px rgb(0 0 0 / .14); }
+  .chart-draw-sheet .chart-rail-sep { width: 1px; height: 24px; margin: auto 2px; }
+}
