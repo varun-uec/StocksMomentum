@@ -492,6 +492,7 @@ export function PriceChart({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const navigationRangeRef = useRef<{ from: number; to: number } | null>(null);
   const priceSeriesRef = useRef<PriceSeries | null>(null);
   const maSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const overlaySeriesRef = useRef<ISeriesApi<'Line'>[]>([]);
@@ -732,6 +733,8 @@ export function PriceChart({
       crosshair: { mode: 0 },
     });
     chartRef.current = chart;
+    const rememberRange = (range: { from: number; to: number } | null) => { navigationRangeRef.current = range; };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(rememberRange);
     // The drawing primitive belongs to pane 0 for its entire lifetime.
     chart.panes()[0]?.setPreserveEmptyPane(true);
     const maSeries = maSeriesRef.current;
@@ -747,6 +750,7 @@ export function PriceChart({
     resizer.observe(container);
     return () => {
       resizer.disconnect();
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(rememberRange);
       drawingsLayerRef.current = null;
       drawingsLayer.detach();
       // `chart.remove()` tears down every series/pane on it in one call. The
@@ -1224,6 +1228,7 @@ export function PriceChart({
     const key = JSON.stringify([priceContext, timeframe, visibleRange?.from, visibleRange?.to, !!initialWindow]);
     if (lastWindow.current === key) return;
     lastWindow.current = key;
+    navigationRangeRef.current = null;
     const window = visibleRange ?? initialWindow;
     if (!window) {
       chart.timeScale().fitContent();
@@ -1359,15 +1364,17 @@ export function PriceChart({
   /** Arrow keys pan, Ctrl/⌘ with ↑/↓ (or + and -) zoom, Alt+R resets. True when the key was used. */
   const navigateChart = (e: React.KeyboardEvent): boolean => {
     const timeScale = chartRef.current?.timeScale();
-    const range = timeScale?.getVisibleLogicalRange();
+    const range = navigationRangeRef.current ?? timeScale?.getVisibleLogicalRange();
     if (!timeScale || !range) return false;
     const span = range.to - range.from;
+    // Keep successive key repeats cumulative before the next animation frame.
+    const setRange = (next: { from: number; to: number }) => { navigationRangeRef.current = next; timeScale.setVisibleLogicalRange(next); };
     const zoom = (factor: number) => {
       const centre = (range.from + range.to) / 2;
       const half = Math.max(5, (span * factor) / 2);
-      timeScale.setVisibleLogicalRange({ from: centre - half, to: centre + half });
+      setRange({ from: centre - half, to: centre + half });
     };
-    const pan = (bars: number) => timeScale.setVisibleLogicalRange({ from: range.from + bars, to: range.to + bars });
+    const pan = (bars: number) => setRange({ from: range.from + bars, to: range.to + bars });
     const mod = e.ctrlKey || e.metaKey;
     if (e.altKey && e.code === 'KeyR') timeScale.fitContent();
     else if ((mod && e.key === 'ArrowUp') || e.key === '+' || e.key === '=') zoom(0.8);
