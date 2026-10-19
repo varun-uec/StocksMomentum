@@ -48,3 +48,32 @@ async def test_a_split_inside_the_lookback_is_not_a_crash() -> None:
     ]
     ratings = await compute_universe_rs_ratings(universe, _Repo(), DAYS[-1], {"63": 1.0})
     assert ratings["SPLITTER"] > ratings["FLAT"]
+
+
+async def test_mcx_five_for_one_split_golden_case_keeps_its_twenty_percent_gain() -> None:
+    """The historical MCX failure was a raw-close 1:5 split read as a crash."""
+    split_index = 70
+    raw = [Decimal("500")] * split_index + [Decimal("100")] * 9 + [Decimal("120")]
+    factors = [Decimal("0.2")] * split_index + [Decimal("1")] * (len(DAYS) - split_index)
+    mcx = _bars(raw, factors)
+    flat = _bars([Decimal("100")] * len(DAYS), [Decimal("1")] * len(DAYS))
+
+    adjusted_start = mcx[-64].adj_close
+    adjusted_end = mcx[-1].adj_close
+    assert adjusted_start == Decimal("100")
+    assert adjusted_end == Decimal("120")
+    assert (adjusted_end / adjusted_start - 1) == Decimal("0.20")
+
+    class McxRepo:
+        async def get_series(
+            self, security_id: int, lookback_days: int, as_of: date
+        ) -> OHLCVSeries:
+            return OHLCVSeries(security_id, mcx if security_id == 1 else flat)
+
+    universe = [
+        Security(symbol=Symbol("MCX"), name="Synthetic MCX", id=1),
+        Security(symbol=Symbol("FLAT"), name="Flat control", id=2),
+    ]
+    ratings = await compute_universe_rs_ratings(universe, McxRepo(), DAYS[-1], {"63": 1.0})
+    assert ratings["MCX"] == 99
+    assert ratings["FLAT"] == 1

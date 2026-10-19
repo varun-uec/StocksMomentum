@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.application.dto.studio import CreateFamilyRequest, SubmitEvaluationRequest
 from momentum25.application.use_cases.strategy_evaluation import (
+    RetryEvaluation,
     RunEvaluation,
     SubmitEvaluation,
 )
@@ -316,6 +317,39 @@ async def test_a_restart_fails_unfinished_evaluations_and_retry_requeues(
     assert failed is not None and failed.status == "failed" and "restart" in (failed.error or "")
     assert await studio.evaluations.requeue(queued.id)
     assert not await studio.evaluations.requeue(queued.id)  # only a failed one
+
+
+async def test_interrupted_holdout_keeps_its_slot_and_retries_on_the_sealed_snapshot(
+    studio: _Studio,
+) -> None:
+    family_id, config_hash = await studio.family("rs1", "A low RS floor keeps the winners.")
+    parts = (studio.studio, studio.evaluations, studio.manifests, studio.market_at, POLICY)
+    queued = await SubmitEvaluation(*parts).execute(
+        family_id, SubmitEvaluationRequest(config_hash=config_hash, result_class="out_of_sample")
+    )
+    original_version = queued.data_version
+
+    assert await studio.evaluations.interrupt_unfinished() == 1
+    failed = await studio.evaluations.get(queued.id)
+    assert failed is not None and failed.status == "failed"
+    assert "restart" in (failed.error or "")
+
+    # A failed job still reserves the family's one hold-out slot. Recovery must
+    # retry that immutable evaluation instead of creating a fresh opportunity.
+    with pytest.raises(ConflictError, match="one Out-of-Sample Evaluation per family"):
+        await SubmitEvaluation(*parts).execute(
+            family_id,
+            SubmitEvaluationRequest(config_hash=config_hash, result_class="out_of_sample"),
+        )
+
+    retried = await RetryEvaluation(studio.evaluations).execute(queued.id)
+    assert retried.status == "queued"
+    await RunEvaluation(*parts).execute(queued.id)
+    completed = await studio.evaluations.get(queued.id)
+    assert completed is not None and completed.status == "completed"
+    assert completed.data_version == original_version
+    assert completed.result is not None
+    assert completed.result["notice"].startswith("One evaluation is not validation.")
 
 
 @pytest.fixture

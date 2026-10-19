@@ -24,7 +24,7 @@ export default function ChartGridPage() {
     <div
       data-testid="chart-grid"
       data-ready="true"
-      className="grid gap-1 p-1"
+      className="grid max-w-full gap-1 overflow-x-auto p-1"
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {Array.from({ length: n }, (_, i) => (

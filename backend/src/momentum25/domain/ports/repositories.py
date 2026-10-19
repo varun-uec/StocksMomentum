@@ -204,6 +204,12 @@ class ScreeningRunRepository(Protocol):
         """Return the most recent completed run for a strategy, or ``None``."""
         ...
 
+    async def get_completed_by_identity(
+        self, strategy_id: int, run_date: date, data_version: str, config_hash: str
+    ) -> ScreeningRun | None:
+        """Return the completed immutable snapshot matching its full run identity."""
+        ...
+
     async def save_results(
         self, run_id: int, scores: list[StockScore], rankings: list[Ranking]
     ) -> None:
@@ -369,8 +375,8 @@ class AlertRepository(Protocol):
         """Delete an alert; return False if it did not exist."""
         ...
 
-    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> None:
-        """Record the bar an active alert fired on. A fired alert is left as it is."""
+    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> bool:
+        """Record the bar if active; return whether this call won the one-shot transition."""
         ...
 
     async def rearm(self, alert_id: int, armed_after: date) -> Alert | None:

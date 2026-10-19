@@ -2,6 +2,13 @@ import { execFileSync } from 'node:child_process';
 import { expect, test as base, type Page } from '@playwright/test';
 import { BACKEND_DIR, E2E_DATABASE_URL } from './env';
 
+const injectedNetworkFailures = new WeakMap<Page, number>();
+
+/** Allow one deliberately aborted browser request in a test that verifies recovery. */
+export function allowOneInjectedNetworkFailure(page: Page): void {
+  injectedNetworkFailures.set(page, (injectedNetworkFailures.get(page) ?? 0) + 1);
+}
+
 /** These are normal boundary responses while a first document is being saved. */
 async function expectedResponseError(status: number, url: string, body: () => Promise<string>): Promise<boolean> {
   const path = new URL(url).pathname;
@@ -19,6 +26,13 @@ export const test = base.extend<{ page: Page }>({
     const problems: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() !== 'error') return;
+      if (
+        msg.text().includes('net::ERR_INTERNET_DISCONNECTED') &&
+        (injectedNetworkFailures.get(page) ?? 0) > 0
+      ) {
+        injectedNetworkFailures.set(page, injectedNetworkFailures.get(page)! - 1);
+        return;
+      }
       // HTTP failures are checked with their response URL below. Chromium's
       // generic console text omits the URL needed to distinguish expected 404s.
       if (/Failed to load resource: the server responded with a status of \d{3}/.test(msg.text())) return;

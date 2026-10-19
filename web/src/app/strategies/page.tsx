@@ -69,13 +69,13 @@ export default function StrategyResearchPage() {
                   key={s.name}
                   type="button"
                   onClick={() => setSelectedStrategy(s.name)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border inline-flex items-center gap-2 ${
+                  className={`max-w-full px-4 py-2 rounded-lg text-left text-sm font-medium transition-colors border inline-flex items-center gap-2 ${
                     selectedStrategy === s.name
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-600'
                   } ${focusRing}`}
                 >
-                  {s.name}
+                  <span className="break-all">{s.name}</span>
                   {s.kind === 'research' && (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
                       Research
@@ -249,8 +249,9 @@ export default function StrategyResearchPage() {
         <Card title="Strategy Comparison">
           <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-end gap-4 mb-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Strategy A (Baseline)</label>
+              <label htmlFor="strategy-comparison-a" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Strategy A (Baseline)</label>
               <select
+                id="strategy-comparison-a"
                 value={compareA}
                 onChange={(e) => setCompareA(e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm ${focusRing}`}
@@ -263,8 +264,9 @@ export default function StrategyResearchPage() {
               </select>
             </div>
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Strategy B (Comparison)</label>
+              <label htmlFor="strategy-comparison-b" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Strategy B (Comparison)</label>
               <select
+                id="strategy-comparison-b"
                 value={compareB}
                 onChange={(e) => setCompareB(e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm ${focusRing}`}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import func, insert, select
@@ -154,6 +155,22 @@ class SqlScreeningRunRepository:
                 *_LIVE_RUN_PREDICATES,
             )
             .order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
+        )
+        row = result.scalars().first()
+        return _to_domain(row) if row else None
+
+    async def get_completed_by_identity(
+        self, strategy_id: int, run_date: date, data_version: str, config_hash: str
+    ) -> ScreeningRun | None:
+        """Return an existing immutable completed snapshot by its full identity."""
+        result = await self._session.execute(
+            select(ScreeningRunModel).where(
+                ScreeningRunModel.strategy_id == strategy_id,
+                ScreeningRunModel.run_date == run_date,
+                ScreeningRunModel.data_version == data_version,
+                ScreeningRunModel.config_hash == config_hash,
+                ScreeningRunModel.status == RunStatus.COMPLETED.value,
+            )
         )
         row = result.scalars().first()
         return _to_domain(row) if row else None

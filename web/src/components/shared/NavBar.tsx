@@ -521,7 +521,7 @@ export function NavBar() {
             </Link>
 
             {/* Desktop Nav */}
-            <div className="hidden md:flex items-center gap-0.5">
+            <div className="hidden lg:flex items-center gap-0.5">
               {NAV_ITEMS.map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} />
               ))}
@@ -531,7 +531,7 @@ export function NavBar() {
             <div className="flex-1" />
 
             <div className="flex items-center gap-3">
-              <SymbolSearch className="hidden md:block" />
+              <SymbolSearch className="hidden lg:block" />
               <ThemeToggle />
               <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-600 font-medium">v0.2.0</span>
             </div>
@@ -543,7 +543,7 @@ export function NavBar() {
           content never reflows when navigation opens. */}
       <nav
         aria-label="Primary"
-        className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+        className="lg:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="flex items-stretch">
           {MOBILE_PRIMARY.map((item) => {
@@ -591,7 +591,7 @@ export function NavBar() {
         aria-haspopup="dialog"
         aria-expanded={searchOpen}
         aria-label="Search for a symbol"
-        className={`md:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center ${focusRing}`}
+        className={`lg:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center ${focusRing}`}
       >
         {Icons.search}
       </button>

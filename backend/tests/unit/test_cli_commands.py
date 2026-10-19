@@ -32,4 +32,4 @@ def test_screen_runs_against_stored_data_without_enabling_ingest(
 
     assert result.exit_code == 0, result.output
     assert received == {"strategy": "fixture", "ingest_enabled": False}
-    assert "Completed screening run 47" in result.output
+    assert "Screening result run 47" in result.output

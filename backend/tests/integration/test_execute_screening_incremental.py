@@ -232,3 +232,76 @@ async def test_background_execution_reaches_completed(db_session: AsyncSession) 
     run = await screening_run_repo.get(run_id)
     assert run is not None
     assert run.status == RunStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_repeated_screen_reuses_exact_completed_snapshot(
+    db_session: AsyncSession,
+) -> None:
+    """An immutable run with the same full identity is returned, not reinserted."""
+    from momentum25.domain.entities.market_data import OHLCVBar
+    from momentum25.domain.entities.run import ScreeningRun
+    from momentum25.domain.value_objects.types import RunTrigger
+    from momentum25.infrastructure.persistence.models import SecurityModel
+
+    security_repo = SqlSecurityRepository(db_session)
+    ohlcv_repo = SqlOHLCVRepository(db_session)
+    screening_run_repo = SqlScreeningRunRepository(db_session)
+    strategy_repo = SqlStrategyRepository(db_session)
+    strategy = _strategy()
+    strategy_id = await strategy_repo.upsert(strategy)
+    object.__setattr__(strategy, "id", strategy_id)
+    await db_session.commit()
+
+    sec = SecurityModel(symbol="REPEAT", name="Repeat Screen Co", is_active=True)
+    db_session.add(sec)
+    await db_session.flush()
+    await db_session.refresh(sec)
+    sessions = get_nse_trading_calendar().sessions_between(
+        date(2025, 1, 1), date.today()
+    )[-300:]
+    await ohlcv_repo.upsert_bars(
+        sec.id,
+        [
+            OHLCVBar(
+                date=session,
+                open=Decimal("100"),
+                high=Decimal("101"),
+                low=Decimal("99"),
+                close=Decimal("100"),
+                volume=1_000_000,
+                turnover_value=Decimal("100000000"),
+            )
+            for session in sessions
+        ],
+    )
+    latest = sessions[-1]
+    prior_snapshot = ScreeningRun(
+        strategy_id=strategy_id,
+        run_date=latest,
+        data_version=latest.isoformat(),
+        config_hash=strategy.config_hash,
+        trigger=RunTrigger.MANUAL,
+        status=RunStatus.COMPLETED,
+        stats={"total_evaluated": 1},
+    )
+    prior_id = await screening_run_repo.create(prior_snapshot)
+    await db_session.commit()
+
+    use_case = ExecuteScreening(
+        market_data_provider=_RecordingProvider({}),
+        security_repo=security_repo,
+        ohlcv_repo=ohlcv_repo,
+        screening_run_repo=screening_run_repo,
+        indicator_pipeline=IndicatorPipelineImpl(db_session),
+        strategy_engine=_make_engine(),
+        ingest_enabled=False,
+    )
+
+    returned_id = await use_case.execute(strategy_name=strategy.name)
+
+    assert returned_id == prior_id
+    unchanged = await screening_run_repo.get(prior_id)
+    assert unchanged is not None
+    assert unchanged.status == RunStatus.COMPLETED
+    assert unchanged.stats == {"total_evaluated": 1}

@@ -88,9 +88,9 @@ class SqlAlertRepository:
         await self._session.commit()
         return bool(result.rowcount)  # type: ignore[attr-defined]
 
-    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> None:
-        """Record the firing bar; the status condition makes a second firing a no-op."""
-        await self._session.execute(
+    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> bool:
+        """Record the firing bar; only the call that changes status reports success."""
+        result = await self._session.execute(
             update(AlertModel)
             .where(AlertModel.id == alert_id, AlertModel.status == "active")
             .values(
@@ -102,6 +102,7 @@ class SqlAlertRepository:
             )
         )
         await self._session.commit()
+        return bool(result.rowcount)  # type: ignore[attr-defined]
 
     async def rearm(self, alert_id: int, armed_after: date) -> Alert | None:
         """Make the alert watch again from bars after ``armed_after``."""

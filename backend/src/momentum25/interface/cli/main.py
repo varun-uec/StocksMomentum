@@ -100,7 +100,7 @@ def screen(strategy: str = typer.Option("minervini_trend_template")) -> None:
     except (RuntimeError, ValueError) as exc:
         typer.echo(f"Screening failed: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(f"Completed screening run {run_id} for {strategy} using stored data.")
+    typer.echo(f"Screening result run {run_id} for {strategy} using stored data.")
 
 
 @app.command(name="walk-forward")

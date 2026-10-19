@@ -346,6 +346,27 @@ class ExecuteScreening:
             ScreeningOrchestrator,
         )
 
+        strategy_id = getattr(strategy, "id", None)
+        find_completed = getattr(
+            self._screening_run_repo, "get_completed_by_identity", None
+        )
+        if existing_run_id is None and strategy_id is not None and find_completed is not None:
+            completed = await find_completed(
+                strategy_id,
+                trading_date,
+                trading_date.isoformat(),
+                strategy.config_hash,
+            )
+            if completed is not None and completed.id is not None:
+                _logger.info(
+                    "execute_screening_reused_completed_snapshot",
+                    run_id=completed.id,
+                    strategy=strategy.name,
+                    run_date=trading_date.isoformat(),
+                    config_hash=strategy.config_hash,
+                )
+                return int(completed.id)
+
         orchestrator = ScreeningOrchestrator(
             security_repo=self._security_repo,
             ohlcv_repo=self._ohlcv_repo,

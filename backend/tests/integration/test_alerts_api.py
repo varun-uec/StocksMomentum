@@ -6,6 +6,7 @@ the chart API's values for the same bars and ``data_version``.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from collections.abc import AsyncIterator
 from datetime import date, timedelta
@@ -18,7 +19,8 @@ import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from momentum25.domain.entities.alert import Alert, AlertSource
+from momentum25.application.use_cases.alerts import EvaluateAlerts
+from momentum25.domain.entities.alert import Alert, AlertSource, SeriesPoint
 from momentum25.infrastructure.config.strategy_loader import load_strategy_file
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import OHLCVDailyModel, SecurityModel
@@ -138,6 +140,46 @@ async def test_an_alert_watches_bars_after_the_last_session_and_fires_once(
     )
     assert (await client.delete(f"/api/v1/alerts/{row['id']}")).status_code == 204
     assert (await client.delete(f"/api/v1/alerts/{row['id']}")).status_code == 404
+
+
+async def test_overlapping_evaluations_only_report_a_new_firing_once(
+    client: httpx.AsyncClient,
+    db_session: AsyncSession,
+    security_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A manual check and the scheduled job may evaluate one alert together."""
+    created = await client.post("/api/v1/alerts", json=_alert())
+    assert created.status_code == 201
+    await _add_bars(db_session, security_id, _LATER, 300)
+
+    original_inputs = EvaluateAlerts.inputs
+    both_read = asyncio.Event()
+    readers = 0
+
+    async def wait_until_both_have_read(
+        evaluator: EvaluateAlerts, alert: Alert
+    ) -> tuple[list[SeriesPoint], str, Decimal]:
+        nonlocal readers
+        result = await original_inputs(evaluator, alert)
+        readers += 1
+        if readers == 2:
+            both_read.set()
+        await both_read.wait()
+        return result
+
+    monkeypatch.setattr(EvaluateAlerts, "inputs", wait_until_both_have_read)
+    responses = await asyncio.gather(
+        client.post("/api/v1/alerts/evaluate"),
+        client.post("/api/v1/alerts/evaluate"),
+    )
+    assert all(response.status_code == 200 for response in responses)
+
+    # Only the request whose conditional update changed active -> triggered
+    # should report a new firing. The other request observes the one-shot win.
+    assert sum(response.json()["fired"] for response in responses) == 1
+    [alert] = (await client.get("/api/v1/alerts")).json()["alerts"]
+    assert alert["status"] == "triggered"
 
 
 @pytest.mark.parametrize(

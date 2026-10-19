@@ -178,8 +178,7 @@ class EvaluateAlerts:
                 failed.append(alert.symbol)
                 continue
             firing = first_firing(alert.condition, threshold, alert.armed_after, points)
-            if firing is not None:
-                await self._alerts.fire(alert.id, firing, version)
+            if firing is not None and await self._alerts.fire(alert.id, firing, version):
                 fired += 1
         _logger.info("alerts_evaluated", evaluated=len(active), fired=fired, failed=len(failed))
         return AlertEvaluationDTO(evaluated=len(active), fired=fired, failed=sorted(set(failed)))
