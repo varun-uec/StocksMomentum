@@ -114,6 +114,7 @@ const NAV_ITEMS = [
 
 const RESEARCH_TOOLS = [
   { href: '/strategies', label: 'Strategies', icon: Icons.strategies },
+  { href: '/studio', label: 'Strategy Studio', icon: Icons.lab },
   { href: '/validation', label: 'Validation', icon: Icons.research },
   { href: '/historical', label: 'Historical', icon: Icons.historical },
   { href: '/analytics', label: 'Analytics', icon: Icons.analytics },

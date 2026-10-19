@@ -26,6 +26,7 @@ const routes: RouteObject[] = [
       { path: 'watchlist', ...page(() => import('./app/watchlist/page')) },
       { path: 'market', ...page(() => import('./app/market/page')) },
       { path: 'strategies', ...page(() => import('./app/strategies/page')) },
+      { path: 'studio', ...page(() => import('./app/studio/page')) },
       { path: 'validation', ...page(() => import('./app/validation/page')) },
       { path: 'backtest', ...page(() => import('./app/backtest/page')) },
       { path: 'historical', ...page(() => import('./app/historical/page')) },

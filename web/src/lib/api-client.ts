@@ -509,3 +509,33 @@ export const markAlertsSeen = (): Promise<void> => fetchJson(`${API_BASE}/alerts
 
 export const evaluateAlerts = (): Promise<AlertEvaluationDTO> =>
   fetchJson(`${API_BASE}/alerts/evaluate`, { method: 'POST' });
+
+// ── Strategy Studio (FR-25, M14) ─────────────────────────────────────
+
+type StudioSchemas = import('./api-schema').components['schemas'];
+
+export const getRuleRegistry = (): Promise<StudioSchemas['RuleRegistryDTO']> => fetchJson(`${API_BASE}/studio/rules`);
+
+export const getFamilies = (): Promise<StudioSchemas['FamilyDTO'][]> =>
+  fetchJson(`${API_BASE}/studio/families`, { cache: 'no-store' });
+
+export const createFamily = (body: StudioSchemas['CreateFamilyRequest']): Promise<StudioSchemas['FamilyDTO']> =>
+  fetchJson(`${API_BASE}/studio/families`, { method: 'POST', body: JSON.stringify(body) });
+
+export const saveStudioStrategy = (
+  familyId: number,
+  body: StudioSchemas['SaveStrategyRequest'],
+): Promise<StudioSchemas['StudioStrategyDTO']> =>
+  fetchJson(`${API_BASE}/studio/families/${familyId}/strategies`, { method: 'POST', body: JSON.stringify(body) });
+
+export const getEvaluations = (familyId: number): Promise<StudioSchemas['EvaluationDTO'][]> =>
+  fetchJson(`${API_BASE}/studio/families/${familyId}/evaluations`, { cache: 'no-store' });
+
+export const submitEvaluation = (
+  familyId: number,
+  body: StudioSchemas['SubmitEvaluationRequest'],
+): Promise<StudioSchemas['EvaluationDTO']> =>
+  fetchJson(`${API_BASE}/studio/families/${familyId}/evaluations`, { method: 'POST', body: JSON.stringify(body) });
+
+export const retryEvaluation = (id: number): Promise<StudioSchemas['EvaluationDTO']> =>
+  fetchJson(`${API_BASE}/studio/evaluations/${id}/retry`, { method: 'POST' });
