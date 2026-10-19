@@ -477,6 +477,18 @@ class AlertModel(Base):
     )
 
 
+
+class DataManifestModel(Base):
+    """A stored data-version manifest (ADR-014 §7); the primary key is its hash."""
+
+    __tablename__ = "data_manifests"
+
+    data_version: Mapped[str] = mapped_column(String(12), primary_key=True)
+    body: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
 # History tables of the versioned inputs, and their triggers in test schemas.
 HISTORY_TABLES = {
     name: history_table(Base.metadata.tables[name], Base.metadata) for name in VERSIONED

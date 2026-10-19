@@ -70,6 +70,10 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
   - `spec=` is not built yet. M13's indicator dialog and M15's alerts need it; M11b serves the four existing panes.
 - *(M13, as built)* **Monthly bars** (`interval=1M`): one bar per calendar month of sessions, with the same rules as weekly bars. One domain function, `period_bars`, builds both. Monthly indicators run on monthly bars. `partial` marks the running month. On monthly bars a drawing point shows on the bar of its month.
 - *(M13, as built)* The indicator dialog serves the browser catalogue, which is display-only (NFR-1a), so it still needs no `spec=`. M15's alerts add it.
+- *(M14, as built)* **Chart and alert `data_version` stays the per-symbol content hash.** The ADR-014 manifest does not replace it.
+  - Chart prices use the stored `adj_factor`. That factor is derived, and the history tables do not version it, so a revision number cannot rebuild a chart.
+  - The content hash already changes whenever a chart's inputs change, which is what chart and alert parity needs.
+  - Evaluations (ADR-014 §7) use the manifest. Its `data_version` is a different value with a different scope: the whole database at one revision, plus the code state.
 
 ### 5. Workspace persistence
 **Documents.** We store two kinds of JSON document, each versioned on its own:

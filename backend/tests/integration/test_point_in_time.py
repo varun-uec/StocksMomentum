@@ -27,6 +27,9 @@ from momentum25.infrastructure.persistence.point_in_time import (
     PointInTimeSource,
     current_revision,
 )
+from momentum25.infrastructure.persistence.repositories.data_manifests import (
+    SqlDataManifestRepository,
+)
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 START = date(2024, 1, 1)
@@ -172,3 +175,29 @@ async def test_without_corrections_point_in_time_matches_the_live_pipeline(
     pit = await PointInTimeIndicatorPipeline(db_session, source).compute("PIT", DECISION, {})
     live = await IndicatorPipelineImpl(db_session).compute("PIT", DECISION, {})
     assert pit == live
+
+
+async def test_a_stored_manifest_rebuilds_the_inputs_it_recorded(
+    db_session: AsyncSession,
+) -> None:
+    sid = await _security(db_session)
+    await _bars(db_session, sid)
+    manifests = SqlDataManifestRepository(db_session)
+    manifest = await manifests.capture()
+    assert await manifests.capture() == manifest  # idempotent: one row per hash
+    await db_session.commit()
+    seen = await PointInTimeSource(db_session, DECISION, manifest.revision).bars(sid, DECISION, 50)
+
+    # A correction and a bonus arrive after the manifest was recorded.
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == sid, OHLCVDailyModel.date == DECISION)
+        .values(close=Decimal("999"))
+    )
+    await _bonus(db_session, sid)
+
+    stored = await manifests.get(manifest.data_version)
+    assert stored is not None and stored == manifest
+    rebuilt = await PointInTimeSource(db_session, DECISION, stored.revision).bars(sid, DECISION, 50)
+    assert rebuilt == seen
+    assert (await manifests.capture()).data_version != manifest.data_version
