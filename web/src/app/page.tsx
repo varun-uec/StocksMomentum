@@ -239,7 +239,7 @@ export default function Home() {
         )}
 
         {!isLoading && !rankings && !rankingsError && (
-          <EmptyState message="No completed screening runs found for this strategy. Trigger a run from the API." />
+          <EmptyState message="No completed screening run for this strategy yet. Choose Refresh above to run one. On a new install the first run also downloads about 18 months of NSE data, which takes several minutes." />
         )}
       </div>
     </main>

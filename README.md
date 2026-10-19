@@ -22,6 +22,7 @@ make up                   # db, redis, api — runs migrations on start
 ```
 
 - App: http://localhost:8000 (the API serves the web app from the same origin)
+- **First run:** the database starts empty. Open the dashboard and choose "Refresh" once (or `curl -X POST localhost:8000/api/v1/runs/execute -H 'Content-Type: application/json' -d '{"strategy":"minervini_trend_template"}'`). It downloads about 18 months of NSE bhavcopies (about 340 files, several minutes), registers the securities and screens them. After that, the daily job and the Data page fetch one session at a time.
 - API docs: http://localhost:8000/docs
 - `make up-dev` also starts Adminer (8080) and RedisInsight (5540).
 - Every port listens on `127.0.0.1` only. There is no login, so anyone who can reach the port has full access. To open it to your LAN, set `APP_BIND=0.0.0.0` and add the host name to `M25_ALLOWED_HOSTS` (see [ADR-012](docs/architecture/adr/ADR-012-open-source-self-hosted.md)). Do not expose it to the internet without an authenticating reverse proxy.

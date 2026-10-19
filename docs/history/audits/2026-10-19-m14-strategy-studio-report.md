@@ -6,7 +6,7 @@
 
 | Step | Result | Commit |
 |---|---|---|
-| 14.1 Rule parameter schemas | 21 rules with type, unit, bounds, default and meaning. Strategy files are checked on load. | `d519791` |
+| 14.1 Rule parameter schemas | 23 rules with type, unit, bounds, default and meaning. Strategy files are checked on load. | `d519791` |
 | 14.2 History tables | Five versioned input tables, one revision sequence, provenance per row. | `c1975fa` |
 | 14.3 Point-in-time port | Bars, factors and universe as one decision saw them. `LookAheadError` on any later read. | `9cca60f` |
 | 14.4 Data-version manifest | `data_manifests` (migration 0017). A manifest records the revision, indicator version, rule registry, git commit and calendar. Stored manifests rebuild their inputs. | `6c93e0d`, `2229f0b` |

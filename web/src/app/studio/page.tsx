@@ -6,7 +6,7 @@
  * never calls a result "validated".
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -63,6 +63,14 @@ export default function StudioPage() {
   const families = useQuery({ queryKey: ['studio-families'], queryFn: getFamilies });
   const [familyId, setFamilyId] = useState<number | null>(null);
   const family = families.data?.find((f) => f.id === familyId) ?? null;
+  const mainRef = useRef<HTMLElement>(null);
+  // On a narrow screen the family view sits below the list and the form; bring it into view.
+  const choose = (id: number) => {
+    setFamilyId(id);
+    if (!window.matchMedia('(min-width: 1024px)').matches) {
+      requestAnimationFrame(() => mainRef.current?.scrollIntoView({ block: 'start' }));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -80,7 +88,7 @@ export default function StudioPage() {
                 <li key={f.id}>
                   <button
                     type="button"
-                    onClick={() => setFamilyId(f.id)}
+                    onClick={() => choose(f.id)}
                     aria-current={f.id === familyId}
                     className={`w-full text-left rounded-md px-2 py-1.5 text-sm ${focusRing} ${
                       f.id === familyId ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -96,12 +104,12 @@ export default function StudioPage() {
           <NewFamily
             onCreated={(f) => {
               void queryClient.invalidateQueries({ queryKey: ['studio-families'] });
-              setFamilyId(f.id);
+              choose(f.id);
             }}
             registry={registry.data}
           />
         </aside>
-        <main className="min-w-0 space-y-6">
+        <main ref={mainRef} className="min-w-0 space-y-6 scroll-mt-16">
           {!family && <EmptyState message="Choose a family, or state a new hypothesis." />}
           {family && registry.data && <FamilyView key={family.id} family={family} registry={registry.data} />}
         </main>

@@ -125,7 +125,9 @@ class RefreshLatestMarketData:
         }
         if not security_id_by_symbol:
             result.warnings.append(
-                f"No active securities are registered on {exchange}; nothing to map bars onto."
+                f"No active securities are registered on {exchange}, so no bars were stored. "
+                "On a new install, run a screening once first: it registers the securities "
+                "and loads about 18 months of history."
             )
 
         bars_by_security: dict[int, list[OHLCVBar]] = {}

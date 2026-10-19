@@ -120,4 +120,5 @@ Ready for private deployment. Missing for public deployment: authentication, a m
 
 - **Done:** M9 to M15 on branch `wickstreet/m10-m11`. The owner accepted M9, M10, M13, M15, ADR-013 and ADR-014. The owner's M11 usability assessment is still open.
 - **Under way:** M16, release readiness. See the [release-candidate report](../history/audits/2026-10-19-m16-release-candidate-report.md).
-- **Owner decisions:** the licence ([ADR-015](../architecture/adr/ADR-015-licence.md), Proposed; ADR-012 is accepted with it), formal trademark clearance and a domain, publication and push, deploying the RS fix, and re-routing the old research tools.
+- **Release blocker:** NSE's website terms forbid automated data collection and using the data for simulation. The app does both. See the [data-use check](../history/audits/2026-10-19-m16-nse-data-use.md).
+- **Owner decisions:** NSE data use, the licence ([ADR-015](../architecture/adr/ADR-015-licence.md), Proposed; ADR-012 is accepted with it), formal trademark clearance and a domain, publication and push, deploying the RS fix, and re-routing the old research tools.
