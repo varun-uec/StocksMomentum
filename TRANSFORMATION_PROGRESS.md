@@ -48,7 +48,7 @@ Local commits on `wickstreet/m10-m11`, none pushed: `b3baee1` phase breakdown; `
 
 - End of A4: full serial suite 174 passed, 6 skipped (opt-in benchmarks), 0 failed.
 - After A5–A8b: 191 passed, 6 skipped, 0 failed.
-- A9.3 final run: 190 passed, 2 failed, both from one 390 px overflow in the strategy picker's new one-row layout. Fixed by wrapping below 1024 px; both specs then passed. The full serial run is repeated after the A9 commit.
+- A9.3 final run: 190 passed, 2 failed, both from one 390 px overflow in the strategy picker's new one-row layout. Fixed by wrapping below 1024 px; both specs then passed. The repeat full serial run on `1a9a945`: 192 passed, 6 skipped, 0 failed.
 - NFR-11: warm P95 166 ms, cold P95 474 ms (limits 1 s, 3 s). `M13_BENCH`: 16 charts warm P95 1,288 ms, pan P5 61 fps; the A3.1 portal gate measured 1,338 ms.
 - Backend: one additive enum value (`right_panel: "objects"`); user-documents API tests 34/34; Ruff and strict mypy clean on the touched files. Web: 124 unit tests, zero-warning lint, typecheck and build pass.
 - Screenshots under `audit-evidence/` stay uncommitted, as for every earlier run.
