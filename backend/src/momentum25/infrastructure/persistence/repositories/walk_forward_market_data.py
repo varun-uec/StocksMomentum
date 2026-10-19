@@ -95,6 +95,8 @@ class SqlPriceHistoryProvider:
         )
         by_security: dict[int, tuple[list[date], list[Decimal]]] = {}
         for security_id, session_date, adj_close in result.all():
+            if adj_close is None:  # excluded by the query; this narrows the type
+                continue
             dates, closes = by_security.setdefault(security_id, ([], []))
             dates.append(session_date)
             closes.append(adj_close)
@@ -201,7 +203,7 @@ class StubAllActiveSecuritiesEligibilityProvider:
                 SecurityModel.listing_date.is_not(None),
             )
         )
-        return cls([(sid, listed) for sid, listed in result.all()])
+        return cls([(sid, listed) for sid, listed in result.all() if listed is not None])
 
     def facts_as_of(self, decision_date: date) -> list[EligibilityFacts]:
         """Return stub facts for every listed-by-``decision_date`` active security."""
@@ -268,7 +270,8 @@ class SqlSurvivorshipEligibilityProvider:
                 SecurityModel.listing_date.is_not(None),
             )
         )
-        return cls([(sid, listed, delisted) for sid, listed, delisted in result.all()])
+        rows = result.all()
+        return cls([(sid, listed, gone) for sid, listed, gone in rows if listed is not None])
 
     def facts_as_of(self, decision_date: date) -> list[EligibilityFacts]:
         """Return facts for every security listed and not yet delisted as of ``decision_date``."""

@@ -38,7 +38,7 @@ def _to_entity(row: AlertModel, symbol: str) -> Alert:
     )
 
 
-def _with_symbol() -> Select[tuple[AlertModel, str]]:
+def _with_symbol() -> Select[AlertModel, str]:
     return select(AlertModel, SecurityModel.symbol).join(
         SecurityModel, SecurityModel.id == AlertModel.security_id
     )
