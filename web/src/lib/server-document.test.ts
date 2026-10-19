@@ -69,6 +69,30 @@ describe('DocumentStore', () => {
     expect(store.getState()).toMatchObject({ status: 'saved', revision: 1 });
   });
 
+  test('an edit made while a missing document loads is kept and creates it', async () => {
+    const server = fakeServer(null);
+    const store = new DocumentStore(spec, server.http);
+    const loading = store.load();
+    store.update(() => ({ drawings: [{ id: 'new', price: 1 }] }));
+    expect(store.getState()).toMatchObject({ status: 'loading', body: { drawings: [{ id: 'new', price: 1 }] } });
+    await loading;
+    await settle();
+    expect(server.doc).toEqual({ revision: 1, body: { drawings: [{ id: 'new', price: 1 }] } });
+    expect(store.getState()).toMatchObject({ status: 'saved', revision: 1 });
+  });
+
+  test('an edit made while a saved document loads merges onto it, losing neither', async () => {
+    const server = fakeServer({ revision: 4, body: { drawings: [{ id: 'old', price: 2 }] } });
+    const store = new DocumentStore(spec, server.http);
+    const loading = store.load();
+    store.update((b) => ({ drawings: [...b.drawings, { id: 'new', price: 1 }] }));
+    await loading;
+    await settle();
+    expect(server.calls.at(-1)?.headers['If-Match']).toBe('"4"');
+    expect(server.doc?.body.drawings.map((d) => d.id).sort()).toEqual(['new', 'old']);
+    expect(store.getState().status).toBe('saved');
+  });
+
   test('an edit that changes nothing saves nothing', async () => {
     const server = fakeServer({ revision: 1, body: { drawings: [] } });
     const store = new DocumentStore(spec, server.http);

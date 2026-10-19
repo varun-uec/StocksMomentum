@@ -52,6 +52,8 @@ export class DocumentStore<T> {
   private listeners = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inFlight = false;
+  /** The owner edited before the first load finished; the load merges those edits in. */
+  private editedWhileLoading = false;
 
   constructor(
     readonly spec: DocumentSpec<T>,
@@ -71,16 +73,37 @@ export class DocumentStore<T> {
     try {
       const res = await this.http(this.spec.path, { cache: 'no-store' });
       if (res.status === 404) {
-        this.set({ status: 'saved', body: this.spec.defaults(), revision: null });
+        this.loaded(null);
         return;
       }
       if (!res.ok) throw new Error(`${res.status}`);
-      const doc = (await res.json()) as ServerDocument<T>;
-      this.base = doc.body;
-      this.set({ status: 'saved', body: doc.body, revision: doc.revision });
+      this.loaded((await res.json()) as ServerDocument<T>);
     } catch {
       this.set({ status: 'error' });
     }
+  }
+
+  /**
+   * Take the loaded version. Edits made while it loaded were made on the
+   * defaults, so they merge onto it like another window's save: a drawing
+   * placed the moment a chart appears is kept, and so is every saved one.
+   */
+  private loaded(doc: ServerDocument<T> | null): void {
+    const theirs = doc?.body ?? this.spec.defaults();
+    const revision = doc?.revision ?? null;
+    if (doc) this.base = doc.body;
+    if (!this.editedWhileLoading) {
+      this.set({ status: 'saved', body: theirs, revision });
+      return;
+    }
+    this.editedWhileLoading = false;
+    const merged = this.spec.merge(this.spec.defaults(), this.state.body, theirs);
+    if (merged.conflicted) {
+      this.set({ revision, status: 'conflict', conflict: { mine: merged.mine, theirs: merged.theirs } });
+      return;
+    }
+    this.set({ revision, body: merged.mine, status: 'unsaved' });
+    this.schedule();
   }
 
   /** Resolves once the first load has finished, whatever its outcome. */
@@ -97,12 +120,18 @@ export class DocumentStore<T> {
 
   /**
    * Apply a local edit and schedule a save. Ignored while a conflict waits.
-   * An edit that returns the body unchanged saves nothing.
+   * An edit that returns the body unchanged saves nothing. An edit made while
+   * the document loads waits for the load (see `loaded`).
    */
   update(edit: (body: T) => T): void {
-    if (this.state.status === 'conflict' || this.state.status === 'loading') return;
+    if (this.state.status === 'conflict') return;
     const body = edit(this.state.body);
     if (body === this.state.body) return;
+    if (this.state.status === 'loading') {
+      this.editedWhileLoading = true;
+      this.set({ body });
+      return;
+    }
     this.set({ body, status: 'unsaved' });
     this.schedule();
   }
