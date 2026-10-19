@@ -522,6 +522,56 @@ class DataManifestModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+
+class StrategyEvaluationModel(Base):
+    """One evaluation of a user strategy in one result class (ADR-014 §5–7).
+
+    The research namespace: evaluations never write screening runs.
+    """
+
+    __tablename__ = "strategy_evaluations"
+    __table_args__ = (
+        CheckConstraint(
+            "result_class IN ('screening', 'in_sample', 'out_of_sample')",
+            name="ck_strategy_evaluations_class",
+        ),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'completed', 'failed')",
+            name="ck_strategy_evaluations_status",
+        ),
+        # One Out-of-Sample Evaluation per family per hold-out window.
+        Index(
+            "uq_strategy_evaluations_holdout",
+            "family_id",
+            "window_start",
+            "window_end",
+            unique=True,
+            postgresql_where=text("result_class = 'out_of_sample'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    family_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("strategy_families.id"), nullable=False, index=True
+    )
+    config_hash: Mapped[str] = mapped_column(String, nullable=False)
+    result_class: Mapped[str] = mapped_column(String, nullable=False)
+    window_start: Mapped[date] = mapped_column(Date, nullable=False)
+    window_end: Mapped[date] = mapped_column(Date, nullable=False)
+    data_version: Mapped[str] = mapped_column(
+        String(12), ForeignKey("data_manifests.data_version"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default="queued")
+    progress_done: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    progress_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    tenant_id: Mapped[int | None] = mapped_column(BigInteger)  # SaaS extension point (ADR-010)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 # History tables of the versioned inputs, and their triggers in test schemas.
 HISTORY_TABLES = {
     name: history_table(Base.metadata.tables[name], Base.metadata) for name in VERSIONED

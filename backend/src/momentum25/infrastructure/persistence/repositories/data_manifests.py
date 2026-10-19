@@ -21,10 +21,10 @@ class SqlDataManifestRepository:
         """Bind the repository to a unit-of-work session."""
         self._session = session
 
-    async def capture(self) -> DataManifest:
-        """Record the current inputs and code state, and return the manifest."""
+    async def capture(self, revision: int | None = None) -> DataManifest:
+        """Record the inputs at ``revision`` (default: now) and today's code state."""
         manifest = DataManifest(
-            revision=await current_revision(self._session),
+            revision=await current_revision(self._session) if revision is None else revision,
             indicator_version=INDICATOR_VERSION,
             rule_registry_version=registry_version(),
             git_commit=get_git_commit(),

@@ -61,6 +61,10 @@ def visible(table_name: str, revision: int) -> Subquery:
     ).subquery(f"{table_name}_at")
 
 
+# Screening reads 257 to 277 bars per security; one read of 300 serves them all.
+_MIN_READ = 300
+
+
 class PointInTimeSource:
     """Market data as decision session ``decision`` saw it, at data ``revision``."""
 
@@ -70,6 +74,10 @@ class PointInTimeSource:
         self.decision = decision
         self.revision = revision
         self._ids: dict[str, int] | None = None
+        # One decision reads each security several times (indicators, context,
+        # RS rating) with different lookbacks. Keep the longest read per date.
+        self._bars: dict[tuple[int, date], tuple[int, list[OHLCVBar]]] = {}
+        self._action_cache: dict[int, list[RawCorporateAction]] = {}
 
     def guard(self, as_of: date) -> None:
         """Refuse any read dated after the decision session."""
@@ -116,6 +124,14 @@ class PointInTimeSource:
     async def bars(self, security_id: int, as_of: date, limit: int) -> list[OHLCVBar]:
         """The last ``limit`` bars dated on or before ``as_of``, adjusted as of the decision."""
         self.guard(as_of)
+        cached = self._bars.get((security_id, as_of))
+        if cached is None or (cached[0] < limit and len(cached[1]) == cached[0]):
+            fetch = max(limit, _MIN_READ)
+            cached = (fetch, await self._read_bars(security_id, as_of, fetch))
+            self._bars[(security_id, as_of)] = cached
+        return cached[1][-limit:]
+
+    async def _read_bars(self, security_id: int, as_of: date, limit: int) -> list[OHLCVBar]:
         b = visible("ohlcv_daily", self.revision)
         rows = (
             await self._session.execute(
@@ -149,6 +165,11 @@ class PointInTimeSource:
 
     async def _actions(self, security_id: int) -> list[RawCorporateAction]:
         """Corporate actions known at the revision with an ex-date by the decision."""
+        if security_id not in self._action_cache:
+            self._action_cache[security_id] = await self._read_actions(security_id)
+        return self._action_cache[security_id]
+
+    async def _read_actions(self, security_id: int) -> list[RawCorporateAction]:
         a = visible("corporate_actions", self.revision)
         rows = (
             await self._session.execute(

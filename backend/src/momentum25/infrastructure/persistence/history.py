@@ -152,10 +152,39 @@ $$"""
     return statements
 
 
+def evaluation_guard_ddl() -> list[str]:
+    """Keep a finished evaluation as it is, and every hold-out evaluation (ADR-014 §6).
+
+    A queued, running or failed evaluation may still change (progress, retry).
+    A completed one may not. An Out-of-Sample Evaluation is never deleted: it
+    records that the family spent its hold-out.
+    """
+    return [
+        """
+CREATE OR REPLACE FUNCTION guard_evaluation() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.status = 'completed' THEN
+        RAISE EXCEPTION 'strategy_evaluations: a completed evaluation is final (% refused)', TG_OP;
+    END IF;
+    IF TG_OP = 'DELETE' AND OLD.result_class = 'out_of_sample' THEN
+        RAISE EXCEPTION 'strategy_evaluations: an Out-of-Sample Evaluation is never deleted';
+    END IF;
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END
+$$""",
+        "DROP TRIGGER IF EXISTS strategy_evaluations_guard ON strategy_evaluations",
+        "CREATE TRIGGER strategy_evaluations_guard BEFORE UPDATE OR DELETE ON "
+        "strategy_evaluations FOR EACH ROW EXECUTE FUNCTION guard_evaluation()",
+    ]
+
+
 def install_on_create(metadata: MetaData) -> None:
     """Run the trigger DDL whenever ``metadata.create_all`` builds the schema (tests)."""
 
     @event.listens_for(metadata, "after_create")
     def _install(target: MetaData, connection: Connection, **_: object) -> None:
-        for statement in ddl_v1() + append_only_ddl(APPEND_ONLY):
+        for statement in ddl_v1() + append_only_ddl(APPEND_ONLY) + evaluation_guard_ddl():
             connection.execute(text(statement))

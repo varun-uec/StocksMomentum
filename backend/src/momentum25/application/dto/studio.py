@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -85,3 +85,32 @@ class SaveStrategyRequest(BaseModel):
 
     config: dict[str, Any]
     parent_config_hash: str
+
+
+class SubmitEvaluationRequest(BaseModel):
+    """Evaluate one family member in one result class."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    config_hash: str
+    result_class: Literal["screening", "in_sample", "out_of_sample"]
+
+
+class EvaluationDTO(BaseModel):
+    """An evaluation, its progress and, once complete, its result."""
+
+    id: int
+    family_id: int
+    config_hash: str
+    result_class: Literal["screening", "in_sample", "out_of_sample"]
+    label: str
+    window_start: date
+    window_end: date
+    data_version: str
+    status: Literal["queued", "running", "completed", "failed"]
+    progress_done: int
+    progress_total: int
+    result: dict[str, Any] | None
+    error: str | None
+    created_at: datetime
+    completed_at: datetime | None

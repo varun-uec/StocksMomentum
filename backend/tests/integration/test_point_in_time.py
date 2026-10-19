@@ -9,12 +9,20 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.application.use_cases.research.historical_screening import (
+    HistoricalScreeningUseCase,
+)
+from momentum25.domain.entities.security import Security
 from momentum25.domain.errors import LookAheadError
+from momentum25.domain.value_objects.types import Symbol
+from momentum25.infrastructure.config.settings import get_settings
+from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.persistence.models import (
     CorporateActionModel,
     OHLCVDailyModel,
@@ -201,3 +209,27 @@ async def test_a_stored_manifest_rebuilds_the_inputs_it_recorded(
     rebuilt = await PointInTimeSource(db_session, DECISION, stored.revision).bars(sid, DECISION, 50)
     assert rebuilt == seen
     assert (await manifests.capture()).data_version != manifest.data_version
+
+
+async def test_historical_screening_lets_a_look_ahead_fail_the_run(
+    db_session: AsyncSession,
+) -> None:
+    sid = await _security(db_session)
+    await _bars(db_session, sid)
+    revision = await current_revision(db_session)
+    source = PointInTimeSource(db_session, DECISION, revision)
+    # RS ratings read through a later source, so the raise happens per symbol.
+    later = PointInTimeSource(db_session, DAYS[-1], revision)
+    screening = HistoricalScreeningUseCase(
+        security_repo=None,
+        ohlcv_repo=PointInTimeOHLCVRepository(later),
+        screening_run_repo=None,
+        strategy_repo=None,
+        indicator_pipeline=PointInTimeIndicatorPipeline(db_session, source),
+        strategy_engine=None,
+    )
+    strategy = load_strategies_dir(Path(get_settings().strategy_dir))[0]
+    with pytest.raises(LookAheadError):  # not swallowed as a per-symbol failure
+        await screening.screen(
+            strategy, DAYS[-1], [Security(symbol=Symbol("PIT"), name="PIT", id=sid)]
+        )

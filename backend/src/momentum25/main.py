@@ -28,6 +28,9 @@ from momentum25.infrastructure.observability.metrics import (
 )
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
+from momentum25.infrastructure.persistence.repositories.evaluations import (
+    SqlEvaluationRepository,
+)
 from momentum25.infrastructure.redis.client import get_redis_provider
 from momentum25.infrastructure.redis.lock import RedisLockFactory
 from momentum25.infrastructure.scheduler.scheduler import SchedulerService
@@ -144,6 +147,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:  # noqa: BLE001 - startup must surface but not crash wiring
         _logger.error("strategy_sync_failed", error=str(exc))
     app.state.strategies_loaded = strategies_loaded
+
+    # Evaluations run in this process; a restart ends any that were running.
+    try:
+        async with get_database().session() as session:
+            interrupted = await SqlEvaluationRepository(session).interrupt_unfinished()
+        if interrupted:
+            _logger.warning("strategy_evaluations_interrupted", count=interrupted)
+    except Exception as exc:  # noqa: BLE001 - startup must surface but not crash wiring
+        _logger.error("strategy_evaluation_sweep_failed", error=str(exc))
 
     # Initialize scheduler. Registration must happen before start() so the
     # job actually exists when SchedulerService logs its post-start job

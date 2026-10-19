@@ -17,9 +17,15 @@ from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.errors import LookAheadError
 from momentum25.domain.research.data_quality import is_stale_as_of
 from momentum25.domain.value_objects.instrument import is_equity
-from momentum25.domain.value_objects.results import SectorStats, UniverseMembership
+from momentum25.domain.value_objects.results import (
+    Ranking,
+    SectorStats,
+    StockScore,
+    UniverseMembership,
+)
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import get_git_commit
 from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
@@ -163,13 +169,8 @@ class HistoricalScreeningUseCase:
         run.id = run_id
 
         try:
-            # 4. Evaluate each security
-            scores, memberships = await self._evaluate_universe(
-                securities, strategy, as_of_date
-            )
-
-            # 5. Rank
-            rankings = self._strategy_engine.rank(scores, strategy)
+            # 4–5. Evaluate each security, then rank
+            scores, rankings, memberships = await self.screen(strategy, as_of_date, securities)
 
             # 6. Persist
             await self._screening_run_repo.save_results(run_id, scores, rankings)
@@ -221,6 +222,18 @@ class HistoricalScreeningUseCase:
             await self._screening_run_repo.update(run)
             await self._commit()
             raise
+
+    async def screen(
+        self, strategy: Strategy, as_of_date: date, securities: list[Security]
+    ) -> tuple[list[StockScore], list[Ranking], list[UniverseMembership]]:
+        """Score and rank ``securities`` as of a date, and store nothing.
+
+        Strategy evaluation (ADR-014 §7) calls this with point-in-time
+        repositories. It uses only the OHLCV repository, the indicator pipeline
+        and the strategy engine.
+        """
+        scores, memberships = await self._evaluate_universe(securities, strategy, as_of_date)
+        return scores, self._strategy_engine.rank(scores, strategy), memberships
 
     async def _evaluate_universe(
         self,
@@ -284,6 +297,8 @@ class HistoricalScreeningUseCase:
                 scores.append(score)
                 memberships.append(UniverseMembership(security_id=security.id, eligible=True))
 
+            except LookAheadError:
+                raise  # a read past the decision invalidates the whole run
             except Exception as exc:
                 _logger.warning(
                     "historical_screening_symbol_failed",

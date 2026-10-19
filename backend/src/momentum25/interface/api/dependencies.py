@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -47,6 +47,14 @@ from momentum25.application.use_cases.stocks import (
     GetStockExplanation as GetStockExplanationBySymbol,
 )
 from momentum25.application.use_cases.strategies import GetStrategy, ListStrategies
+from momentum25.application.use_cases.strategy_evaluation import (
+    POLICY,
+    GetEvaluation,
+    ListEvaluations,
+    RetryEvaluation,
+    RunEvaluation,
+    SubmitEvaluation,
+)
 from momentum25.application.use_cases.studio import CreateFamily, ListFamilies, SaveStrategy
 from momentum25.application.use_cases.user_documents import GetUserDocument, SaveUserDocument
 from momentum25.application.use_cases.watchlist import (
@@ -64,6 +72,7 @@ from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
+from momentum25.infrastructure.persistence.evaluation_market import PointInTimeMarket
 from momentum25.infrastructure.persistence.repositories import (
     SqlAlertRepository,
     SqlBenchmarkIndexRepository,
@@ -75,6 +84,12 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlStudioRepository,
     SqlUserDocumentRepository,
     SqlWatchlistRepository,
+)
+from momentum25.infrastructure.persistence.repositories.data_manifests import (
+    SqlDataManifestRepository,
+)
+from momentum25.infrastructure.persistence.repositories.evaluations import (
+    SqlEvaluationRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 from momentum25.infrastructure.providers.nse_client import NSEMarketDataClient
@@ -646,3 +661,60 @@ async def get_save_strategy(
 ) -> AsyncIterator[SaveStrategy]:
     """Provide a SaveStrategy use-case instance."""
     yield SaveStrategy(studio)
+
+
+def _evaluation_parts(
+    session: AsyncSession,
+) -> tuple[
+    SqlStudioRepository,
+    SqlEvaluationRepository,
+    SqlDataManifestRepository,
+    Callable[[int], PointInTimeMarket],
+]:
+    calendar = get_nse_trading_calendar()
+    return (
+        SqlStudioRepository(session),
+        SqlEvaluationRepository(session),
+        SqlDataManifestRepository(session),
+        lambda revision: PointInTimeMarket(session, revision, calendar, POLICY.horizon),
+    )
+
+
+async def get_submit_evaluation() -> AsyncIterator[SubmitEvaluation]:
+    """Provide a SubmitEvaluation use-case instance (one session: manifest and row)."""
+    async with _shared_session() as session:
+        yield SubmitEvaluation(*_evaluation_parts(session))
+
+
+async def get_evaluation_repo() -> AsyncIterator[SqlEvaluationRepository]:
+    """Provide an evaluation repository instance."""
+    async with _managed_session() as session:
+        yield SqlEvaluationRepository(session)
+
+
+async def get_get_evaluation(
+    evaluations: Annotated[SqlEvaluationRepository, Depends(get_evaluation_repo)],
+) -> AsyncIterator[GetEvaluation]:
+    """Provide a GetEvaluation use-case instance."""
+    yield GetEvaluation(evaluations)
+
+
+async def get_list_evaluations(
+    evaluations: Annotated[SqlEvaluationRepository, Depends(get_evaluation_repo)],
+) -> AsyncIterator[ListEvaluations]:
+    """Provide a ListEvaluations use-case instance."""
+    yield ListEvaluations(evaluations)
+
+
+async def get_retry_evaluation(
+    evaluations: Annotated[SqlEvaluationRepository, Depends(get_evaluation_repo)],
+) -> AsyncIterator[RetryEvaluation]:
+    """Provide a RetryEvaluation use-case instance."""
+    yield RetryEvaluation(evaluations)
+
+
+async def run_evaluation_job(evaluation_id: int) -> None:
+    """Run one queued evaluation on its own session (a background task)."""
+    register_builtin_engines()
+    async with _shared_session() as session:
+        await RunEvaluation(*_evaluation_parts(session)).execute(evaluation_id)

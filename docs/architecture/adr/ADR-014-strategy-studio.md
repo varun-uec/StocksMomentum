@@ -93,6 +93,32 @@ No class claims future returns.
 - **Isolation:** evaluation runs are written to a research namespace. They never appear as production runs, never change `strategy_id=30` snapshots and never feed the default screener screen.
 - **Cost:** about 50 full-universe screening runs per evaluated year at 5-day sampling. Evaluations run as background jobs with progress reporting.
 
+### 8. As built (M14)
+These fill the gaps the ADR left to M14. The constants live in `EvaluationPolicy` (`domain/research/strategy_evaluation.py`), and every result stores them.
+
+- **Studio v1 configures only what the rule registry declares:** engines, rules, gates, parameters and weights. `universe`, `indicators`, `ranking` and `benchmark_index` are copied from the parent. A request that changes them gets 422.
+- **User strategies are fenced off.** `get_active`, the strategy list and the startup prune skip `kind = "user"`, so no live or research path can run one. A strategy file cannot overwrite one either.
+- **Families are append-only.** A trigger refuses any update or delete. Two families cannot state the same hypothesis (case and spacing ignored). A config's parent must be its family's root or a member.
+- **Hold-out windows sit on a fixed grid:** 36-month blocks from 2020-01-01. The current window is the latest block that the data covers and whose last 120-session forward window has closed. On data to 2026-08 that is 2023-01-01 → 2025-12-31. A new window opens only when the next block matures, so the window does not slide with each new session. 2020 is the first year with a broad universe (1,600+ names) and a year of history behind it.
+- **The research window** runs from the first session with 277 sessions of history (what the indicator pipeline needs) to the last decision whose forward window closes before the hold-out. Before any block has matured, it stops before the first block in the data.
+- **Decisions and outcomes.** Every 5th session. Each decision runs the real `StrategyEngine` on point-in-time inputs. Outcome per name: the 120-session return from the decision close to the exit close, less NIFTY500's (the strategy's benchmark). Both closes are read at the exit session, so they share one adjustment. A name with no bar at the exit keeps its last close.
+- **Metrics per decision:** Top-N mean excess return, qualified-set mean excess return, and Rank IC (Spearman of −rank with excess return, given 10 or more names).
+- **Statistics.** These follow the house protocol of the 2026-08-10 ranking report:
+  - mean across decisions;
+  - Newey-West standard error at lag ⌈120/5⌉ − 1 = 23;
+  - a two-sided normal p-value and its unadjusted 95% interval.
+  - A metric needs 30 usable decisions. Otherwise it reads "unavailable: insufficient data".
+- **Multiple testing:** Bonferroni. The factor is the number of families that submitted an Out-of-Sample Evaluation on the same window, this one included.
+- **Power:** the minimum detectable effect at 80% power and the adjusted level. The result reads "underpowered" when that effect is larger than a plausible one. The plausible effects are fixed in advance: 0.03 Rank IC, and 2 percentage points of 120-session excess return.
+- **Sufficiency.** An Out-of-Sample Evaluation is refused before it starts, and the hold-out is not spent, in two cases:
+  - no block has matured;
+  - more than half of the window's months have `reconstructed` inputs.
+- **Spending the hold-out.** The hold-out is spent when the evaluation is queued. A failed run can be retried on the same window and revision. If the code changed in between, the retry takes a manifest with the same revision and today's code. A completed evaluation is final, and an Out-of-Sample Evaluation is never deleted (trigger).
+- **Provenance by month.** A month with any visible `reconstructed` row in an input table gets "Incomplete historical provenance". For `securities`, the listing or delisting month counts.
+- **Regime warning:** the benchmark's return and largest fall over the window, stated plainly.
+- **Isolation.** Evaluations are stored in `strategy_evaluations`. They never write `screening_runs`.
+- **Jobs.** Evaluations run as in-process background tasks with progress. A restart fails unfinished ones, which can then be retried. One decision takes 18–28 s on the full universe, so a 36-month hold-out (about 150 decisions) takes roughly an hour.
+
 ## Consequences
 - The Studio judges a strategy with the same code that screens it, on data it can reproduce exactly.
 - The as-of port and the history tables also fix the point-in-time gaps for existing research.

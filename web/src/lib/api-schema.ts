@@ -669,6 +669,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/families/{family_id}/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Evaluations
+         * @description A family's evaluations, newest first.
+         */
+        get: operations["list_evaluations_api_v1_studio_families__family_id__evaluations_get"];
+        put?: never;
+        /**
+         * Submit Evaluation
+         * @description Queue an evaluation and run it after the response. Poll it for progress.
+         *
+         *     An Out-of-Sample Evaluation spends the family's hold-out when it is queued.
+         */
+        post: operations["submit_evaluation_api_v1_studio_families__family_id__evaluations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/evaluations/{evaluation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evaluation
+         * @description One evaluation with its progress and, once complete, its result.
+         */
+        get: operations["get_evaluation_api_v1_studio_evaluations__evaluation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/evaluations/{evaluation_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Evaluation
+         * @description Run a failed evaluation again, on the same window and data revision.
+         */
+        post: operations["retry_evaluation_api_v1_studio_evaluations__evaluation_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/securities": {
         parameters: {
             query?: never;
@@ -1787,6 +1853,59 @@ export interface components {
             rules_failed: number;
             /** Summary */
             summary: string;
+        };
+        /**
+         * EvaluationDTO
+         * @description An evaluation, its progress and, once complete, its result.
+         */
+        EvaluationDTO: {
+            /** Id */
+            id: number;
+            /** Family Id */
+            family_id: number;
+            /** Config Hash */
+            config_hash: string;
+            /**
+             * Result Class
+             * @enum {string}
+             */
+            result_class: "screening" | "in_sample" | "out_of_sample";
+            /** Label */
+            label: string;
+            /**
+             * Window Start
+             * Format: date
+             */
+            window_start: string;
+            /**
+             * Window End
+             * Format: date
+             */
+            window_end: string;
+            /** Data Version */
+            data_version: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Progress Done */
+            progress_done: number;
+            /** Progress Total */
+            progress_total: number;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Completed At */
+            completed_at: string | null;
         };
         /**
          * ExchangeRefreshResultDTO
@@ -3467,6 +3586,19 @@ export interface components {
             subdivisions: components["schemas"]["Subdivision"][];
         };
         /**
+         * SubmitEvaluationRequest
+         * @description Evaluate one family member in one result class.
+         */
+        SubmitEvaluationRequest: {
+            /** Config Hash */
+            config_hash: string;
+            /**
+             * Result Class
+             * @enum {string}
+             */
+            result_class: "screening" | "in_sample" | "out_of_sample";
+        };
+        /**
          * SymbolDrawingsDocument
          * @description A symbol's stored drawings and their revision.
          */
@@ -4811,6 +4943,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StudioStrategyDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_evaluations_api_v1_studio_families__family_id__evaluations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDTO"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_evaluation_api_v1_studio_families__family_id__evaluations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitEvaluationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_evaluation_api_v1_studio_evaluations__evaluation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evaluation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_evaluation_api_v1_studio_evaluations__evaluation_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evaluation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDTO"];
                 };
             };
             /** @description Validation Error */
