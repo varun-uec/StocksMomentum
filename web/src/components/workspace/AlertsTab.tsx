@@ -5,7 +5,7 @@
  */
 
 import { Link } from 'react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createAlert,
@@ -19,7 +19,7 @@ import {
   type AlertDTO,
   type CreateAlertRequest,
 } from '@/lib/api-client';
-import { factorAt } from '@/lib/traded-prices';
+import { alertBasisIsCurrent, alertEditThreshold, type AlertEditorBasis } from '@/components/workspace/alert-editor-basis';
 import { useSymbolDrawings } from '@/lib/workspace';
 import { focusRing } from '@/lib/theme';
 
@@ -66,6 +66,9 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
   const drawingDocument = useSymbolDrawings(editing?.symbol ?? symbol);
   const drawings = drawingDocument.drawings.filter((d) => ['hline', 'horizontal', 'rectangle'].includes(d.kind));
   const prices = useQuery({ queryKey: ['stock-ohlcv', editing?.symbol ?? symbol, '1D'], queryFn: () => getOhlcv(editing?.symbol ?? symbol, undefined, undefined, '1D') });
+  const currentVersionRef = useRef(prices.data?.data_version);
+  currentVersionRef.current = prices.data?.data_version;
+  const [basis, setBasis] = useState<AlertEditorBasis | null>(null);
   const linked = drawings.find((d) => d.id === drawingId);
   const rectangle = linked?.kind === 'rectangle';
   const [source, setSource] = useState<CreateAlertRequest['source']>('close');
@@ -73,7 +76,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
   const [interval, setBarInterval] = useState<NonNullable<CreateAlertRequest['interval']>>('1D');
   const [threshold, setThreshold] = useState(price !== undefined ? price.toFixed(2) : '');
 
-  useEffect(() => { setEditing(null); setDrawingId(''); setCondition('crosses_above'); setNotice(''); }, [symbol]);
+  useEffect(() => { setEditing(null); setDrawingId(''); setCondition('crosses_above'); setNotice(''); setBasis(null); }, [symbol]);
 
   // A price picked on the chart fills a close alert.
   useEffect(() => {
@@ -83,7 +86,20 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
     setCondition('crosses_above');
     setSource('close');
     setThreshold(price.toFixed(2));
-  }, [price]);
+    setBasis(currentVersionRef.current ? { symbol, version: currentVersionRef.current } : null);
+  }, [price, symbol]);
+
+  const startEditing = (alert: AlertDTO) => {
+    if (!prices.data || alert.symbol !== symbol) return;
+    setEditing(alert);
+    setSource(alert.source);
+    setCondition(alert.condition);
+    setBarInterval(alert.interval);
+    setThreshold(alertEditThreshold(alert, prices.data.adjustments));
+    setDrawingId(alert.drawing?.id ?? '');
+    setBasis({ symbol: alert.symbol, version: prices.data.data_version });
+    setNotice('');
+  };
 
   const create = useMutation({ mutationFn: createAlert, onError: () => { queryClient.invalidateQueries({ queryKey: ['stock-ohlcv'] }); }, onSuccess: () => { refresh(); setNotice('Alert armed. It will check future completed bars.'); } });
   const edit = useMutation({ onError: () => { refresh(); queryClient.invalidateQueries({ queryKey: ['stock-ohlcv'] }); }, mutationFn: ({ alert, body }: { alert: AlertDTO; body: CreateAlertRequest }) => editAlert(alert.id, { ...body, expected_revision: alert.revision }), onSuccess: () => { refresh(); setEditing(null); setDrawingId(''); setCondition('crosses_above'); setNotice('Alert updated and re-armed from the latest stored session.'); } });
@@ -99,7 +115,9 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
   }, [unseen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawingSaved = drawingDocument.status === 'saved' && drawingDocument.revision !== null;
-  const valid = (!!linked && drawingSaved) || (!drawingId && threshold.trim() !== '' && Number.isFinite(Number(threshold)));
+  const basisCurrent = alertBasisIsCurrent(basis, editing?.symbol ?? symbol, prices.data?.data_version);
+  const scalarEntered = !drawingId && threshold.trim() !== '';
+  const valid = (!!linked && drawingSaved) || (scalarEntered && basisCurrent && Number.isFinite(Number(threshold)));
   const conditions = rectangle ? [{ id: 'enters_zone' as const, label: 'enters zone' }, { id: 'leaves_zone' as const, label: 'leaves zone' }] : linked ? CONDITIONS.filter((c) => c.id.startsWith('crosses')) : CONDITIONS;
 
   return (
@@ -110,7 +128,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
         onSubmit={(e) => {
           e.preventDefault();
           if (!valid) return;
-          const body = { symbol: editing?.symbol ?? symbol, source: linked ? 'close' as const : source, condition, interval: linked ? '1D' as const : interval, threshold: linked ? '0' : threshold, drawing_id: drawingId || null, expected_drawing_revision: linked ? drawingDocument.revision : undefined, expected_data_version: prices.data?.data_version };
+          const body = { symbol: editing?.symbol ?? symbol, source: linked ? 'close' as const : source, condition, interval: linked ? '1D' as const : interval, threshold: linked ? '0' : threshold, drawing_id: drawingId || null, expected_drawing_revision: linked ? drawingDocument.revision : undefined, expected_data_version: linked ? prices.data?.data_version : basis?.version };
           if (editing) edit.mutate({ alert: editing, body }); else create.mutate(body);
         }}
       >
@@ -144,7 +162,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
             disabled={!!linked}
             inputMode="decimal"
             value={threshold}
-            onChange={(e) => setThreshold(e.target.value)}
+            onChange={(e) => { setThreshold(e.target.value); if (!basis && prices.data) setBasis({ symbol: editing?.symbol ?? symbol, version: prices.data.data_version }); }}
             className={`w-20 tabular-nums ${field}`}
           />
           <select aria-label="Interval" disabled={!!linked} value={linked ? '1D' : interval} onChange={(e) => setBarInterval(e.target.value as typeof interval)} className={field}>
@@ -155,6 +173,11 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
             ))}
           </select>
         </div>
+        {scalarEntered && !basisCurrent && <p role="alert" className="text-amber-700 dark:text-amber-400">
+          Chart data changed or the price basis is not loaded. Your entered value is kept; review the current basis before arming.
+          {editing ? <button type="button" disabled={!prices.data} className="block underline" onClick={() => startEditing(data?.alerts.find((a) => a.id === editing.id) ?? editing)}>Reload alert in current price basis</button>
+            : <button type="button" disabled={!prices.data} className="block underline" onClick={() => { if (prices.data) setBasis({ symbol, version: prices.data.data_version }); }}>Use entered level in current price basis</button>}
+        </p>}
         <div className="flex items-center gap-2">
           <button
             type="submit"
@@ -205,7 +228,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
               )}
               <span className="flex-1" />
               {a.symbol !== symbol && <Link to={`/chart/${encodeURIComponent(a.symbol)}`} className={`text-indigo-700 dark:text-indigo-300 ${focusRing}`}>Open chart</Link>}
-              {a.status === 'active' && <button disabled={!prices.data || a.symbol !== symbol} title={a.symbol !== symbol ? 'Open this symbol to edit its alert in the correct price basis' : 'Edit armed condition'} type="button" className={`text-indigo-700 dark:text-indigo-300 ${focusRing}`} onClick={() => { setEditing(a); setSource(a.source); setCondition(a.condition); setBarInterval(a.interval); setThreshold((Number(a.threshold) * (['rsi14', 'adx14'].includes(a.source) ? 1 : factorAt(prices.data?.adjustments ?? [], a.armed_after))).toString()); setDrawingId(a.drawing?.id ?? ''); setNotice(''); }}>Edit</button>}
+              {a.status === 'active' && <button disabled={!prices.data || a.symbol !== symbol} title={a.symbol !== symbol ? 'Open this symbol to edit its alert in the correct price basis' : 'Edit armed condition'} type="button" className={`text-indigo-700 dark:text-indigo-300 ${focusRing}`} onClick={() => startEditing(a)}>Edit</button>}
               {a.status === 'triggered' && (
                 <button type="button" onClick={() => rearm.mutate(a.id)} className={`text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}>
                   Re-arm

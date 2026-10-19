@@ -66,7 +66,13 @@ export function toTradedPrices(
   const before = new Map(saved.map((d) => [d.id, d]));
   return drawings.map((d) => {
     const original = before.get(d.id);
-    if (original && sameJson(toChartPrices([original], steps, periodBars)[0], d)) return original;
+    if (original) {
+      const projected = toChartPrices([original], steps, periodBars)[0];
+      if (sameJson(projected, d)) return original;
+      // Styling an interval-projected drawing must not move its saved anchors
+      // to the period's final date or reprice them across an intra-period split.
+      if (sameJson(projected.points, d.points)) return { ...d, points: original.points };
+    }
     return scale(d, steps, (price, factor) => price / factor);
   });
 }

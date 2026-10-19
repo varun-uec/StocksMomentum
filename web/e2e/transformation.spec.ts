@@ -6,6 +6,9 @@ import { expect, resetDocuments, test } from './fixtures';
 const evidence = resolve(process.cwd(), '../audit-evidence/transformation/after');
 async function ready(page: Page) {
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length > 0);
+  await expect(page.getByText('Loading stored history…', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('price-chart').first()).toHaveAttribute('aria-label', /Price chart, [1-9]\d* daily bars/);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 async function savedDrawings(request: APIRequestContext, symbol = 'RELIANCE') {
   const response = await request.get(`/api/v1/drawings/${symbol}`);
@@ -93,6 +96,7 @@ test('unfinished annotations cannot follow a switch to a cached symbol', async (
   await page.getByLabel('Look up a symbol', { exact: true }).fill('RELIANCE');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'RELIANCE', exact: true })).toBeVisible();
+  await ready(page);
   await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Text note' }).click();
   const box = (await page.getByTestId('price-chart').boundingBox())!;
   await page.mouse.click(box.x + box.width * .4, box.y + box.height * .2);
@@ -112,6 +116,7 @@ test('changing chart type preserves the price pane and drawings with only an osc
   await page.getByLabel('MA200', { exact: true }).uncheck();
   await page.getByLabel('RSI (14)', { exact: true }).check();
   await page.keyboard.press('Escape');
+  await expect(page.getByTestId('price-chart').locator('canvas')).toHaveCount(11);
   const count = await page.getByTestId('price-chart').locator('canvas').count();
   for (const type of ['line', 'heikin_ashi', 'candles']) {
     await page.getByLabel('Chart type', { exact: true }).selectOption(type);
@@ -187,9 +192,15 @@ test.describe('touch workspace', () => {
     await page.goto('/chart/RELIANCE'); await ready(page);
     const box = (await page.getByTestId('price-chart').boundingBox())!;
     expect(box.y).toBeLessThan(280);
+    expect(box.y + box.height).toBeLessThanOrEqual(790);
     await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).tap();
     await page.getByTestId('price-chart').tap({ position: { x: box.width * .4, y: 100 } });
     await expect.poll(async () => (await savedDrawings(request)).length).toBe(1);
+    await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Trendline', exact: true }).tap();
+    await page.getByTestId('price-chart').tap({ position: { x: 80, y: 130 } });
+    expect((await savedDrawings(request)).length).toBe(1);
+    await page.getByTestId('price-chart').tap({ position: { x: 180, y: 180 } });
+    await expect.poll(async () => (await savedDrawings(request)).length).toBe(2);
     await page.getByRole('button', { name: 'Panel', exact: true }).tap();
     await page.getByRole('tab', { name: 'Details', exact: true }).tap();
     await expect(page.getByRole('tabpanel', { name: 'Details', exact: true })).toBeVisible();
@@ -208,4 +219,23 @@ test('global command search keeps a security connected to research and its chart
   await expect(page).toHaveURL(/\/stock\/INFY$/);
   await page.getByRole('link', { name: 'Open in chart', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'INFY', exact: true })).toBeVisible();
+});
+
+test('drawing menu arrows navigate and a style edit retains keyboard focus', async ({ page, request }) => {
+  await page.goto('/chart/RELIANCE'); await ready(page);
+  await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+  const chart = page.getByTestId('price-chart'); const box = (await chart.boundingBox())!;
+  await page.mouse.click(box.x + box.width * .4, box.y + box.height * .2);
+  await chart.focus(); await page.keyboard.press('Shift+F10');
+  const menu = page.getByRole('menu', { name: 'Drawing', exact: true });
+  await expect(menu.getByRole('menuitemradio', { name: 'Indigo', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(menu.getByRole('menuitemradio', { name: 'Sky', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await savedDrawings(request))[0]?.color).toBe('#0ea5e9');
+  await expect(menu.getByRole('menuitemradio', { name: 'Sky', exact: true })).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(menu.getByRole('menuitem', { name: 'Delete', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(chart).toBeFocused();
 });

@@ -22,7 +22,7 @@
 
 import { InspectorDisclosure } from '@/components/workspace/InspectorDisclosure';
 import { useTheme } from '@/app/theme-provider';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   AreaSeries,
   BarSeries,
@@ -390,7 +390,8 @@ export function PriceChart({
   chartLabel,
   crosshairSync,
   isLoading = false,
-  height = 380,
+  height: requestedHeight = 380,
+  autoHeight = false,
   footnote,
   markers,
   overlayLine,
@@ -440,6 +441,8 @@ export function PriceChart({
   isLoading?: boolean;
   /** Chart height in px; the Elliott Wave screen renders a much taller chart. */
   height?: number;
+  /** Fit a single workstation plot to its actual responsive toolbar geometry. */
+  autoHeight?: boolean;
   footnote?: string;
   markers?: ChartMarker[];
   /** Polyline through arbitrary (date, price) points, e.g. a wave count. */
@@ -510,6 +513,8 @@ export function PriceChart({
   const barWord = { '1D': 'daily', '1W': 'weekly', '1M': 'monthly' }[interval];
   const { resolvedTheme } = useTheme();
   const maColors = useMemo(() => resolvedTheme === 'dark' ? { 10: '#fbbf24', 20: '#34d399', 50: '#a5b4fc', 100: '#f9a8d4', 200: '#b6c5d0' } as Record<number, string> : MA_COLORS, [resolvedTheme]);
+  const [fittedHeight, setFittedHeight] = useState(requestedHeight);
+  const height = autoHeight ? fittedHeight : requestedHeight;
   const [drawingTool, setDrawingTool] = useState<DrawingKind | null>(null);
   const [draftPoints, setDraftPoints] = useState<DrawingPoint[]>([]);
   const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);
@@ -517,6 +522,7 @@ export function PriceChart({
   const [drawings, setDrawings] = useState<ChartDrawing[]>(drawingsProp ?? []);
   useEffect(() => setDrawings(drawingsProp ?? []), [drawingsProp]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => { if (drawings.find((d) => d.id === selectedId)?.hidden) setSelectedId(null); }, [drawings, selectedId]);
   const [readout, setReadout] = useState<CrosshairReadout | null>(null);
   const [noteEditor, setNoteEditor] = useState<{ drawing: ChartDrawing; x: number; y: number } | null>(null);
   const [showVolume, setShowVolume] = useState(false);
@@ -711,6 +717,26 @@ export function PriceChart({
     paneDefsRef.current = paneDefs;
   });
 
+  useLayoutEffect(() => {
+    if (!autoHeight || !containerRef.current) return;
+    const container = containerRef.current;
+    const measure = () => {
+      const top = container.getBoundingClientRect().top + window.scrollY;
+      const reserve = window.innerWidth < 1024 ? 84 : 44;
+      setFittedHeight(Math.max(128, Math.floor(window.innerHeight - top - reserve)));
+    };
+    let frame = 0;
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
+    const observer = new ResizeObserver(schedule);
+    const root = container.closest('.price-workstation');
+    const header = container.closest('main')?.querySelector('.workspace-header');
+    if (root) observer.observe(root);
+    if (header) observer.observe(header);
+    window.addEventListener('resize', schedule);
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener('resize', schedule); };
+  }, [autoHeight]);
+
   // Create the chart once; series are (re)built when the render mode changes.
   useEffect(() => {
     const container = containerRef.current;
@@ -885,6 +911,8 @@ export function PriceChart({
     };
 
     let drag: { id: string; part: DrawingPart; start: ScreenPoint; origin: ChartDrawing; moved: boolean } | null = null;
+    let touchAnchor: { id: number; start: ScreenPoint; moved: boolean } | null = null;
+    let lastTouchAnchor = 0;
 
     const dragged = (current: ScreenPoint): ChartDrawing | null => {
       const chart = chartRef.current;
@@ -918,6 +946,7 @@ export function PriceChart({
     // library drops a second click that comes inside its double-click window,
     // which loses a fast user's second anchor.
     const onPlace = (e: MouseEvent) => {
+      if (e.type === 'click' && Date.now() - lastTouchAnchor < 600) return;
       const tool = drawingToolRef.current;
       if (!drawingsEnabledRef.current || !tool || e.button !== 0) return;
       const at = localPoint(e);
@@ -944,6 +973,10 @@ export function PriceChart({
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      if (drawingsEnabledRef.current && drawingToolRef.current && e.pointerType === 'touch') {
+        touchAnchor = touchAnchor ? null : { id: e.pointerId, start: localPoint(e), moved: false };
+        return;
+      }
       if (!drawingsEnabledRef.current || drawingToolRef.current || e.button !== 0) return;
       const at = localPoint(e);
       const hit = hitTestAll(
@@ -994,13 +1027,33 @@ export function PriceChart({
       setMenu({ id: hit?.id ?? null, x: at.x, y: at.y });
     };
 
+    // Lightweight Charts suppresses compatibility clicks after a touch. A tap
+    // still places one anchor; a swipe or cancelled gesture never places one.
+    const onTouchMove = (e: PointerEvent) => {
+      if (!touchAnchor || e.pointerId !== touchAnchor.id) return;
+      const at = localPoint(e);
+      if (Math.hypot(at.x - touchAnchor.start.x, at.y - touchAnchor.start.y) > 8) touchAnchor.moved = true;
+    };
+    const onTouchEnd = (e: PointerEvent) => {
+      if (!touchAnchor || e.pointerId !== touchAnchor.id) return;
+      const place = e.type === 'pointerup' && !touchAnchor.moved;
+      touchAnchor = null;
+      if (place) { onPlace(e); lastTouchAnchor = Date.now(); }
+    };
+
     container.addEventListener('pointerdown', onPointerDown, { capture: true });
+    window.addEventListener('pointermove', onTouchMove, { capture: true });
+    window.addEventListener('pointerup', onTouchEnd, { capture: true });
+    window.addEventListener('pointercancel', onTouchEnd, { capture: true });
     container.addEventListener('click', onPlace);
     container.addEventListener('contextmenu', onContextMenu);
     return () => {
       container.removeEventListener('pointerdown', onPointerDown, { capture: true });
       container.removeEventListener('contextmenu', onContextMenu);
       container.removeEventListener('click', onPlace);
+      window.removeEventListener('pointermove', onTouchMove, { capture: true });
+      window.removeEventListener('pointerup', onTouchEnd, { capture: true });
+      window.removeEventListener('pointercancel', onTouchEnd, { capture: true });
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
@@ -1343,7 +1396,7 @@ export function PriceChart({
   const moveSelected = (key: string): boolean => {
     const d = drawings.find((x) => x.id === selectedId);
     const series = priceSeriesRef.current;
-    if (!d || !series) return false;
+    if (!d || !series || d.hidden) return false;
     if (d.locked) return ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key);
     let shift = 0;
     let prices = d.points.map((p) => p.price);

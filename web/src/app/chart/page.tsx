@@ -380,6 +380,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
                 onOpenIndicators={() => setIndicatorsOpen(true)}
                 onAlertAtPrice={alertAt}
                 height={height}
+                autoHeight
                 toolRail
               />
             ) : (

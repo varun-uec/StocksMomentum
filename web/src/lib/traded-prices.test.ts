@@ -79,6 +79,15 @@ describe('drawings on weekly bars', () => {
     const moved = [{ ...chart[0], points: [{ date: '2026-07-03', price: 300 }] }];
     expect(toTradedPrices(moved, saved, GOLDIAM, weeks)[0].points[0]).toEqual({ date: '2026-07-03', price: 400 }); // 300 / 0.75
   });
+
+  test('style-only edits retain original anchors across an intra-week corporate action', () => {
+    const saved = [ray('a', '2026-07-08', 420.5)];
+    const chart = toChartPrices(saved, GOLDIAM, weeks);
+    const styled = { ...chart[0], hidden: true, locked: true, dash: 'dashed' as const, color: '#0ea5e9' };
+    const result = toTradedPrices([styled], saved, GOLDIAM, weeks)[0];
+    expect(result.points).toBe(saved[0].points);
+    expect(result).toMatchObject({ hidden: true, locked: true, dash: 'dashed', color: '#0ea5e9' });
+  });
 });
 
 describe('drawings on monthly bars', () => {
