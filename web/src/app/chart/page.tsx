@@ -82,7 +82,7 @@ export default function ChartPage() {
   return <ChartWorkspace symbol={routeSymbol.toUpperCase()} />;
 }
 
-const btn = `px-2 py-0.5 rounded-md text-xs text-slate-500 border border-slate-200 dark:border-slate-700 disabled:opacity-40 ${focusRing}`;
+const btn = `px-2 py-0.5 rounded-md text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-40 ${focusRing}`;
 
 function CompareChips({ symbol, compare, onRemove }: { symbol: string; compare: CompareLine[]; onRemove: (symbol: string) => void }) {
   return compare.map((c) => (
@@ -293,7 +293,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         {name && <span className="text-sm text-slate-500 dark:text-slate-400">{name}</span>}
         {last && <span className="text-sm font-semibold tabular-nums">{parseFloat(last.close).toFixed(2)}</span>}
         {change !== null && (
-          <span className={`text-sm tabular-nums ${change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <span className={`text-sm tabular-nums ${change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
             {change >= 0 ? '+' : ''}
             {change.toFixed(2)}%
           </span>

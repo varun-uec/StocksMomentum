@@ -132,6 +132,25 @@ async def test_a_later_correction_is_invisible_at_the_earlier_revision(
     assert then[0].close != Decimal("999") and now[0].close == Decimal("999")
 
 
+async def test_rolled_back_correction_does_not_advance_committed_revision(
+    db_session: AsyncSession,
+) -> None:
+    """Sequence gaps from aborted transactions must not change manifest identity."""
+    sid = await _security(db_session, "ROLLBACK")
+    await _bars(db_session, sid)
+    before = await current_revision(db_session)
+
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == sid, OHLCVDailyModel.date == DECISION)
+        .values(close=Decimal("999"))
+    )
+    await db_session.rollback()
+
+    assert await current_revision(db_session) == before
+    assert (await SqlDataManifestRepository(db_session).capture()).revision == before
+
+
 async def test_an_action_recorded_after_the_revision_is_unknown(db_session: AsyncSession) -> None:
     sid = await _security(db_session)
     await _bars(db_session, sid)
@@ -165,9 +184,7 @@ async def test_a_name_inactive_today_still_has_bars_at_the_decision(
     sid = await _security(db_session, delisting_date=DAYS[-1], is_active=False)
     await _bars(db_session, sid)
     source = PointInTimeSource(db_session, DECISION, await current_revision(db_session))
-    indicators = await PointInTimeIndicatorPipeline(db_session, source).compute(
-        "PIT", DECISION, {}
-    )
+    indicators = await PointInTimeIndicatorPipeline(db_session, source).compute("PIT", DECISION, {})
     assert indicators.sma50 is not None
     # The live pipeline drops it: it reads today's is_active (ADR-014 Context §5).
     live = await IndicatorPipelineImpl(db_session).compute("PIT", DECISION, {})

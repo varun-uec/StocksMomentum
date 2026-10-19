@@ -56,19 +56,23 @@ async def list_runs(
 async def trigger_refresh(
     body: TriggerRefreshRequest,
     background_tasks: BackgroundTasks,
+    response: Response,
     create: Annotated[TriggerRefresh, Depends(get_trigger_refresh)],
     fetch: Annotated[GetRun, Depends(get_get_run)],
 ) -> RunDTO:
     """Create a run and screen stored data, optionally using an enabled data adapter."""
     _require_downloads_if_forced(body.force)
-    run_id = await create.execute(body.strategy, body.force)
-    background_tasks.add_task(
-        run_screening_pipeline,
-        body.strategy,
-        force=body.force,
-        run_id=run_id,
-    )
-    return await fetch.execute(run_id)
+    triggered = await create.execute(body.strategy, body.force)
+    if triggered.should_execute:
+        background_tasks.add_task(
+            run_screening_pipeline,
+            body.strategy,
+            force=body.force,
+            run_id=triggered.run_id,
+        )
+    else:
+        response.status_code = status.HTTP_200_OK
+    return await fetch.execute(triggered.run_id)
 
 
 @router.post("/execute", response_model=RunDTO)
@@ -98,15 +102,18 @@ async def execute_screening(
     """
     if body.background:
         _require_downloads_if_forced(body.force)
-        run_id = await create.execute(body.strategy, body.force)
-        background_tasks.add_task(
-            run_screening_pipeline,
-            body.strategy,
-            force=body.force,
-            run_id=run_id,
-        )
-        response.status_code = status.HTTP_202_ACCEPTED
-        return await fetch.execute(run_id)
+        triggered = await create.execute(body.strategy, body.force)
+        if triggered.should_execute:
+            background_tasks.add_task(
+                run_screening_pipeline,
+                body.strategy,
+                force=body.force,
+                run_id=triggered.run_id,
+            )
+            response.status_code = status.HTTP_202_ACCEPTED
+        else:
+            response.status_code = status.HTTP_200_OK
+        return await fetch.execute(triggered.run_id)
 
     _require_downloads_if_forced(body.force)
     run_id = await execute.execute(

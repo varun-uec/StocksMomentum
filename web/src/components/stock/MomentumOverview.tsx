@@ -44,8 +44,8 @@ export function MomentumOverview({
           change === null
             ? undefined
             : change >= 0
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-rose-600 dark:text-rose-400'
+              ? 'text-emerald-700 dark:text-emerald-400'
+              : 'text-rose-700 dark:text-rose-400'
         }
       />
       <MetricCard label="52-week high" value={fmt(ind.high_52w)} />

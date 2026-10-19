@@ -65,7 +65,7 @@ export function StrategySelector() {
         ))}
       </select>
       {singleOption && (
-        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+        <span className="text-[11px] text-slate-600 dark:text-slate-400">
           {allStrategies
             ? `1 of ${allStrategies.length} strategies has a completed run`
             : 'Only one strategy has a completed run'}

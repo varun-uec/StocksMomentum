@@ -34,6 +34,7 @@ from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.results import SectorStats, StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import get_git_commit
+from momentum25.infrastructure.persistence.point_in_time import current_revision
 from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _logger = get_logger("screening_orchestrator")
@@ -90,7 +91,10 @@ class ScreeningOrchestrator:
         self._semaphore = asyncio.Semaphore(10)
 
     async def run_daily_screening(
-        self, trading_date: date, existing_run_id: int | None = None
+        self,
+        trading_date: date,
+        existing_run_id: int | None = None,
+        data_manifest: Any | None = None,
     ) -> ScreeningRunSummary:
         """Execute the full daily screening lifecycle for *trading_date*.
 
@@ -100,6 +104,7 @@ class ScreeningOrchestrator:
                 (status RUNNING -> COMPLETED/FAILED) instead of creating a new
                 one. Used by the background execution path (Phase 1.6), which
                 returns a run id to the client before the pipeline finishes.
+            data_manifest: Captured market-data and code identity for this run.
 
         Returns a :class:`ScreeningRunSummary` with counts and timing.
         """
@@ -138,21 +143,32 @@ class ScreeningOrchestrator:
         # 3. Ensure strategy is persisted so the run has a valid strategy_id
         strategy_id = await self._ensure_strategy_id()
 
-        # 4. Create (or adopt an existing PENDING) screening run
+        # 4. Create (or adopt an existing unfinished) screening run. Persist the
+        # lifecycle row before the expensive work so restart recovery can fail it
+        # explicitly. Result rows remain in one transaction with COMPLETED.
+        data_version = (
+            data_manifest.data_version if data_manifest is not None else str(latest or trading_date)
+        )
         if existing_run_id is not None:
             run = await self._screening_run_repo.get(existing_run_id)
             if run is None:
                 raise ValueError(f"existing_run_id {existing_run_id} not found")
+            if run.status == RunStatus.COMPLETED:
+                raise ValueError(f"Completed screening run {existing_run_id} is immutable")
             run.status = RunStatus.RUNNING
+            run.run_date = trading_date
+            run.data_version = data_version
+            run.config_hash = self._strategy.config_hash
             run.started_at = datetime.now(UTC)
-            run.data_version = str(latest or trading_date)
+            run.finished_at = None
+            run.error = None
             await self._screening_run_repo.update(run)
             run_id = existing_run_id
         else:
             run = ScreeningRun(
                 strategy_id=strategy_id,
                 run_date=trading_date,
-                data_version=str(latest or trading_date),
+                data_version=data_version,
                 config_hash=self._strategy.config_hash,
                 trigger=RunTrigger.MANUAL,
                 status=RunStatus.RUNNING,
@@ -160,6 +176,7 @@ class ScreeningOrchestrator:
             )
             run_id = await self._screening_run_repo.create(run)
             run.id = run_id
+        await self._commit()
 
         try:
             # 5. Concurrent processing with throttled semaphore
@@ -184,6 +201,20 @@ class ScreeningOrchestrator:
             # 6. Rank the scored universe
             rankings = self._strategy_engine.rank(scores, self._strategy)
 
+            # The live path reads ordinary current-row repositories. Detect a
+            # market-data commit that landed while those reads were in flight;
+            # otherwise a result could combine two revisions while claiming
+            # the manifest captured before either was read.
+            if data_manifest is not None:
+                observed_revision = await current_revision(self._screening_run_repo._session)
+                if observed_revision != data_manifest.revision:
+                    raise RuntimeError(
+                        "Market data changed during screening "
+                        f"(manifest revision {data_manifest.revision}, "
+                        f"current revision {observed_revision}); no result snapshot was saved. "
+                        "Retry screening to use the corrected data."
+                    )
+
             # 7. Persist scores, rankings, and rule results
             await self._screening_run_repo.save_results(run_id, scores, rankings)
             await self._screening_run_repo.save_universe_membership(run_id, memberships)
@@ -205,21 +236,24 @@ class ScreeningOrchestrator:
                 "duration_seconds": summary.duration_seconds,
                 "git_commit": get_git_commit(),
                 "indicator_version": INDICATOR_VERSION,
+                "data_manifest": (data_manifest.body() if data_manifest is not None else None),
+                "strategy_config_hash": self._strategy.config_hash,
                 "universe_source": "declared_liquidity_floor",
-                "total_skipped_ineligible_universe": (
-                    summary.total_skipped_ineligible_universe
-                ),
+                "total_skipped_ineligible_universe": (summary.total_skipped_ineligible_universe),
             }
             await self._screening_run_repo.update(run)
 
             # 9. Commit the unit of work so cross-session reads (e.g. API tests) see results
             await self._commit()
         except Exception as exc:
-            run.status = RunStatus.FAILED
-            run.finished_at = datetime.now(UTC)
-            run.error = str(exc)
-            await self._screening_run_repo.update(run)
-            await self._commit()
+            await self._rollback()
+            failed = await self._screening_run_repo.get(run_id)
+            if failed is not None:
+                failed.status = RunStatus.FAILED
+                failed.finished_at = datetime.now(UTC)
+                failed.error = str(exc)
+                await self._screening_run_repo.update(failed)
+                await self._commit()
             raise
 
         _logger.info(
@@ -347,18 +381,14 @@ class ScreeningOrchestrator:
 
                     score = self._strategy_engine.score_security(ctx, self._strategy)
                     scores.append(score)
-                    memberships.append(
-                        UniverseMembership(security_id=security.id, eligible=True)
-                    )
+                    memberships.append(UniverseMembership(security_id=security.id, eligible=True))
 
                     if score.hard_filters_passed:
                         summary.total_passed += 1
                     else:
                         summary.total_failed += 1
                 except Exception as exc:
-                    _logger.error(
-                        "symbol_screening_failed", symbol=symbol, error=str(exc)
-                    )
+                    _logger.error("symbol_screening_failed", symbol=symbol, error=str(exc))
                     summary.errors.append(f"{symbol}: {exc}")
                     summary.total_failed += 1
                     memberships.append(
@@ -369,7 +399,6 @@ class ScreeningOrchestrator:
 
         await asyncio.gather(*(_process(sym) for sym in security_by_symbol))
         return scores, memberships
-
 
     def _evaluate_universe_admission(
         self, series: OHLCVSeries, trading_date: date
@@ -396,9 +425,7 @@ class ScreeningOrchestrator:
             min_avg_turnover=Decimal(
                 str(universe_cfg.get("min_avg_turnover_inr", MIN_AVG_TURNOVER))
             ),
-            min_prior_sessions=int(
-                universe_cfg.get("min_history_days", MIN_PRIOR_SESSIONS)
-            ),
+            min_prior_sessions=int(universe_cfg.get("min_history_days", MIN_PRIOR_SESSIONS)),
         )
 
     async def _build_context(
@@ -415,6 +442,12 @@ class ScreeningOrchestrator:
         session = getattr(self._screening_run_repo, "_session", None)
         if session is not None:
             await session.commit()
+
+    async def _rollback(self) -> None:
+        """Discard partial result writes before recording a failed lifecycle row."""
+        session = getattr(self._screening_run_repo, "_session", None)
+        if session is not None:
+            await session.rollback()
 
 
 def _build_context(security: Any, indicators: Any) -> Any:

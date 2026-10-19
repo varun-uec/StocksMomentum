@@ -33,15 +33,27 @@ from momentum25.domain.entities.security import Security
 from momentum25.domain.errors import LookAheadError
 from momentum25.domain.ports.market_data import RawCorporateAction
 from momentum25.domain.value_objects.types import Symbol
-from momentum25.infrastructure.persistence.history import SEQUENCE
+from momentum25.infrastructure.persistence.history import VERSIONED
 from momentum25.infrastructure.persistence.models import HISTORY_TABLES, Base
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 
 async def current_revision(session: AsyncSession) -> int:
-    """The highest data revision stored so far (0 before any versioned write)."""
-    row = (await session.execute(text(f"SELECT last_value, is_called FROM {SEQUENCE}"))).one()
-    return int(row.last_value) if row.is_called else 0
+    """Return the highest *committed row-version* revision.
+
+    PostgreSQL sequences are deliberately non-transactional. Reading their
+    ``last_value`` makes an aborted correction appear to change the dataset,
+    which gives the same inputs a new manifest and breaks run idempotency.
+    Current-row revisions represent inserts and updates; a deleted row's
+    ``superseded_revision`` in its history table represents the delete. The
+    greatest visible value therefore changes only with committed data.
+    """
+    parts = [f"SELECT MAX(revision_id) AS revision FROM {table}" for table in VERSIONED] + [
+        f"SELECT MAX(superseded_revision) AS revision FROM {HISTORY_TABLES[table].name}"
+        for table in VERSIONED
+    ]
+    query = "SELECT COALESCE(MAX(revision), 0) FROM (" + " UNION ALL ".join(parts) + ") r"
+    return int((await session.execute(text(query))).scalar_one())
 
 
 def visible(table_name: str, revision: int) -> Subquery:
@@ -82,9 +94,7 @@ class PointInTimeSource:
     def guard(self, as_of: date) -> None:
         """Refuse any read dated after the decision session."""
         if as_of > self.decision:
-            raise LookAheadError(
-                f"Read as of {as_of} after the decision session {self.decision}"
-            )
+            raise LookAheadError(f"Read as of {as_of} after the decision session {self.decision}")
 
     async def universe(self) -> list[Security]:
         """Securities listed on or before the decision and not delisted by then."""

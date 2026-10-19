@@ -13,7 +13,7 @@ for the vertical slice.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
 
 from structlog import get_logger
@@ -21,7 +21,7 @@ from structlog import get_logger
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
-from momentum25.domain.value_objects.types import Symbol
+from momentum25.domain.value_objects.types import RunStatus, Symbol
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 _logger = get_logger("execute_screening")
@@ -57,6 +57,7 @@ class ExecuteScreening:
         screening_run_repo: Any,
         indicator_pipeline: Any,
         strategy_engine: Any,
+        data_manifest_repo: Any | None = None,
         ingest_enabled: bool = True,
     ) -> None:
         """Wire the use case with its collaborators."""
@@ -66,6 +67,7 @@ class ExecuteScreening:
         self._screening_run_repo = screening_run_repo
         self._indicator_pipeline = indicator_pipeline
         self._strategy_engine = strategy_engine
+        self._data_manifest_repo = data_manifest_repo
         self._ingest_enabled = ingest_enabled
 
     async def execute(
@@ -166,9 +168,7 @@ class ExecuteScreening:
                 raise ValueError("No symbols to screen")
 
             # 4. Upsert securities
-            securities = await self._upsert_securities(
-                symbols, max(b.date for b in all_bars)
-            )
+            securities = await self._upsert_securities(symbols, max(b.date for b in all_bars))
             symbol_to_security = {str(s.symbol): s for s in securities}
 
             # 5. Persist historical OHLCV data
@@ -186,7 +186,14 @@ class ExecuteScreening:
         if latest_bar_date is None:
             raise ValueError("No stored market data. Import authorized EOD data first.")
         screening_date = latest_bar_date or reference_date
-        run_id = await self._run_via_orchestrator(strategy, screening_date, existing_run_id)
+        manifest = (
+            await self._data_manifest_repo.capture()
+            if self._data_manifest_repo is not None
+            else None
+        )
+        run_id = await self._run_via_orchestrator(
+            strategy, screening_date, existing_run_id, manifest
+        )
 
         _logger.info("execute_screening_completed", run_id=run_id)
         return run_id
@@ -238,9 +245,7 @@ class ExecuteScreening:
             raise RuntimeError(msg)
         return SqlStrategyRepository(session)
 
-    async def _upsert_securities(
-        self, symbols: list[str], as_of: date
-    ) -> list[Security]:
+    async def _upsert_securities(self, symbols: list[str], as_of: date) -> list[Security]:
         """Upsert securities and return entities with database IDs.
 
         Enriches each security with the instrument master's ``listing_date``
@@ -340,6 +345,7 @@ class ExecuteScreening:
         strategy: Strategy,
         trading_date: date,
         existing_run_id: int | None = None,
+        data_manifest: Any | None = None,
     ) -> int:
         """Delegate the core pipeline to :class:`ScreeningOrchestrator`."""
         from momentum25.application.use_cases.screening_orchestrator import (
@@ -347,25 +353,61 @@ class ExecuteScreening:
         )
 
         strategy_id = getattr(strategy, "id", None)
-        find_completed = getattr(
-            self._screening_run_repo, "get_completed_by_identity", None
+        data_version = (
+            data_manifest.data_version if data_manifest is not None else trading_date.isoformat()
         )
-        if existing_run_id is None and strategy_id is not None and find_completed is not None:
-            completed = await find_completed(
-                strategy_id,
-                trading_date,
-                trading_date.isoformat(),
-                strategy.config_hash,
+        find_by_identity = getattr(self._screening_run_repo, "get_by_identity", None)
+        if existing_run_id is None and strategy_id is not None and find_by_identity is not None:
+            existing = await find_by_identity(
+                strategy_id, trading_date, data_version, strategy.config_hash
             )
-            if completed is not None and completed.id is not None:
-                _logger.info(
-                    "execute_screening_reused_completed_snapshot",
-                    run_id=completed.id,
-                    strategy=strategy.name,
-                    run_date=trading_date.isoformat(),
-                    config_hash=strategy.config_hash,
-                )
+            if existing is not None and existing.id is not None:
+                if existing.status.value == "COMPLETED":
+                    _logger.info(
+                        "execute_screening_reused_completed_snapshot",
+                        run_id=existing.id,
+                        strategy=strategy.name,
+                        run_date=trading_date.isoformat(),
+                        data_version=data_version,
+                        config_hash=strategy.config_hash,
+                    )
+                    return int(existing.id)
+                if existing.status.value in {"PENDING", "RUNNING"}:
+                    raise RuntimeError(
+                        f"An identical screening run is already {existing.status.value.lower()} "
+                        f"(run_id={existing.id})"
+                    )
+                # A failed run keeps its identity for an explicit deterministic retry.
+                existing_run_id = int(existing.id)
+        elif existing_run_id is not None and find_by_identity is not None:
+            completed = await find_by_identity(
+                strategy_id, trading_date, data_version, strategy.config_hash
+            )
+            if (
+                completed is not None
+                and completed.id is not None
+                and completed.id != existing_run_id
+                and completed.status == RunStatus.COMPLETED
+            ):
+                pending = await self._screening_run_repo.get(existing_run_id)
+                if pending is not None and pending.status != RunStatus.COMPLETED:
+                    pending.status = RunStatus.FAILED
+                    pending.finished_at = datetime.now(UTC)
+                    pending.error = (
+                        f"Inputs match completed run {completed.id}; "
+                        "retained that immutable snapshot."
+                    )
+                    await self._screening_run_repo.update(pending)
+                    await self._commit()
                 return int(completed.id)
+        elif existing_run_id is None and strategy_id is not None:
+            find_completed = getattr(self._screening_run_repo, "get_completed_by_identity", None)
+            if find_completed is not None:
+                completed = await find_completed(
+                    strategy_id, trading_date, data_version, strategy.config_hash
+                )
+                if completed is not None and completed.id is not None:
+                    return int(completed.id)
 
         orchestrator = ScreeningOrchestrator(
             security_repo=self._security_repo,
@@ -377,7 +419,11 @@ class ExecuteScreening:
             strategy_repo=None,
         )
 
-        await orchestrator.run_daily_screening(trading_date, existing_run_id=existing_run_id)
+        await orchestrator.run_daily_screening(
+            trading_date,
+            existing_run_id=existing_run_id,
+            data_manifest=data_manifest,
+        )
 
         if existing_run_id is not None:
             return existing_run_id

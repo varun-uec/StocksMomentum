@@ -1,0 +1,72 @@
+{
+  "measured_at": "2026-10-19",
+  "container": {
+    "name": "wickstreet-final-stabilisation-db",
+    "labels": {
+      "wickstreet.audit": "final-stabilisation",
+      "wickstreet.data": "synthetic-only"
+    },
+    "published_bind": "127.0.0.1:65440",
+    "volume": "wickstreet_final_stabilisation_pgdata"
+  },
+  "source_database": "wickstreet_final_e2e",
+  "restore_database": "wickstreet_restore_test",
+  "backup": {
+    "format": "pg_dump custom",
+    "bytes": 1832989,
+    "sha256": "b0bf95d9e2eca018abdf48c6745ae11a2d13db6b7c37d4200d66a8c06d192477",
+    "restore_exit_code": 0,
+    "restore_flags": ["--exit-on-error", "--no-owner", "--no-privileges"]
+  },
+  "counts_before_restore": {
+    "migration": "0020_committed_revision_indexes",
+    "fixture_marker": 1,
+    "securities": 22,
+    "ohlcv_daily": 57420,
+    "data_manifests": 11,
+    "screening_runs": 11,
+    "screening_results": 242,
+    "rule_results": 5808,
+    "universe_membership": 242,
+    "strategy_families": 1,
+    "strategy_evaluations": 13,
+    "alerts": 0,
+    "user_documents": 17,
+    "unfinished_runs": 0,
+    "unfinished_evaluations": 0
+  },
+  "counts_after_restore": {
+    "migration": "0020_committed_revision_indexes",
+    "fixture_marker": 1,
+    "securities": 22,
+    "ohlcv_daily": 57420,
+    "data_manifests": 11,
+    "screening_runs": 11,
+    "screening_results": 242,
+    "rule_results": 5808,
+    "universe_membership": 242,
+    "strategy_families": 1,
+    "strategy_evaluations": 13,
+    "alerts": 0,
+    "user_documents": 17,
+    "unfinished_runs": 0,
+    "unfinished_evaluations": 0
+  },
+  "database_restart": {
+    "container_restarted": true,
+    "pg_isready": "accepting connections",
+    "source_counts_after_restart_match": true,
+    "restore_counts_after_restart_match": true
+  },
+  "restored_application_smoke": {
+    "startup": "completed with scheduler disabled",
+    "strategies_loaded": 7,
+    "endpoint": "GET /api/v1/runs/latest?strategy=minervini_trend_template",
+    "http_status": 200,
+    "run_id": 11,
+    "run_status": "COMPLETED",
+    "data_version": "bfa15d5e3ce8",
+    "config_hash": "1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3"
+  },
+  "scope": "Synthetic test records only. The shared application database and its volume were not accessed."
+}

@@ -27,6 +27,9 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlSecurityRepository,
     SqlStrategyRepository,
 )
+from momentum25.infrastructure.persistence.repositories.data_manifests import (
+    SqlDataManifestRepository,
+)
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 
@@ -46,6 +49,7 @@ async def main() -> None:
         as_of = await ohlcv_repo.latest_date()
         if as_of is None:
             raise RuntimeError("synthetic E2E bars were not seeded")
+        manifest = await SqlDataManifestRepository(session).capture()
 
         orchestrator = ScreeningOrchestrator(
             security_repo=SqlSecurityRepository(session),
@@ -65,7 +69,7 @@ async def main() -> None:
         if previous is not None:
             if (
                 previous.run_date == as_of
-                and previous.data_version == as_of.isoformat()
+                and previous.data_version == manifest.data_version
                 and previous.config_hash == strategy.config_hash
             ):
                 print(f"synthetic screening snapshot already present: run_id={previous.id}")
@@ -74,7 +78,7 @@ async def main() -> None:
                 "E2E database contains a non-fixture screening run; refusing to seed over it"
             )
 
-        summary = await orchestrator.run_daily_screening(as_of)
+        summary = await orchestrator.run_daily_screening(as_of, data_manifest=manifest)
         print(
             f"seeded synthetic screening snapshot for {as_of}: "
             f"evaluated={summary.total_evaluated}, passed={summary.total_passed}"

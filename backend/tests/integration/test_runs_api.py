@@ -66,6 +66,14 @@ async def test_post_runs_schedules_execution_without_calling_a_market_provider(
     assert run["status"] == "PENDING"
     assert scheduled == [("minervini_trend_template", False, run["id"])]
 
+    repeated = await client.post(
+        "/api/v1/runs",
+        json={"strategy": "minervini_trend_template", "force": False},
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["id"] == run["id"]
+    assert scheduled == [("minervini_trend_template", False, run["id"])]
+
 
 async def test_forced_run_is_rejected_before_creating_a_run_when_downloads_are_disabled(
     client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch

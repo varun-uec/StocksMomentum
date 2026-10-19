@@ -58,9 +58,7 @@ class Versioned:
     @declared_attr
     def provenance(cls) -> Mapped[str]:  # noqa: N805 - SQLAlchemy passes the class
         """How far the row can be trusted as point in time; set per table."""
-        return mapped_column(
-            String, nullable=False, server_default=VERSIONED[_table_name(cls)][1]
-        )
+        return mapped_column(String, nullable=False, server_default=VERSIONED[_table_name(cls)][1])
 
     @declared_attr.directive
     def __table_args__(cls) -> tuple[Any, ...]:  # noqa: N805
@@ -68,9 +66,8 @@ class Versioned:
         allowed = ", ".join(f"'{p}'" for p in PROVENANCE)
         return (
             *getattr(cls, "_extra_table_args", ()),
-            CheckConstraint(
-                f"provenance IN ({allowed})", name=f"ck_{_table_name(cls)}_provenance"
-            ),
+            Index(f"ix_{_table_name(cls)}_revision_id", "revision_id"),
+            CheckConstraint(f"provenance IN ({allowed})", name=f"ck_{_table_name(cls)}_provenance"),
         )
 
 
@@ -127,9 +124,7 @@ class CorporateActionModel(Versioned, Base):
     _extra_table_args = (UniqueConstraint("security_id", "ex_date", "type"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    security_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("securities.id"), index=True
-    )
+    security_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("securities.id"), index=True)
     ex_date: Mapped[date] = mapped_column(Date, nullable=False)
     type: Mapped[str] = mapped_column(String, nullable=False)
     ratio: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
@@ -249,9 +244,7 @@ class CorporateActionInferenceLogModel(Base):
     prior_session_close: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     inferred_factor: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
     flagged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class SurvivorshipGapEventModel(Base):
@@ -269,9 +262,7 @@ class SurvivorshipGapEventModel(Base):
     last_seen_date: Mapped[date] = mapped_column(Date, nullable=False)
     detected_on_date: Mapped[date] = mapped_column(Date, nullable=False)
     gap_sessions: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ForwardReturnModel(Base):
@@ -497,9 +488,7 @@ class AlertModel(Base):
     condition: Mapped[str] = mapped_column(String, nullable=False)
     threshold: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     armed_after: Mapped[date] = mapped_column(Date, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String, nullable=False, server_default="active", index=True
-    )
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default="active", index=True)
     triggered_on: Mapped[date | None] = mapped_column(Date)
     trigger_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     data_version: Mapped[str | None] = mapped_column(String)
@@ -508,7 +497,6 @@ class AlertModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-
 
 
 class DataManifestModel(Base):
@@ -571,6 +559,7 @@ class StrategyEvaluationModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 # History tables of the versioned inputs, and their triggers in test schemas.
 HISTORY_TABLES = {

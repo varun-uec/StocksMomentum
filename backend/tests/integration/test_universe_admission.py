@@ -18,6 +18,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.application.use_cases.screening import ExecuteScreening
@@ -29,12 +30,22 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
-from momentum25.infrastructure.persistence.models import SecurityModel
+from momentum25.infrastructure.persistence.database import get_database
+from momentum25.infrastructure.persistence.models import (
+    OHLCVDailyModel,
+    RuleResultModel,
+    ScreeningResultModel,
+    SecurityModel,
+    UniverseMembershipModel,
+)
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
     SqlScreeningRunRepository,
     SqlSecurityRepository,
     SqlStrategyRepository,
+)
+from momentum25.infrastructure.persistence.repositories.data_manifests import (
+    SqlDataManifestRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import (
     INDICATOR_VERSION,
@@ -77,9 +88,7 @@ async def _seed_uptrend(
                 low=Decimal(str(price - 1)),
                 close=close,
                 volume=volume,
-                turnover_value=(
-                    close * Decimal(volume) if turnover == "auto" else turnover
-                ),
+                turnover_value=(close * Decimal(volume) if turnover == "auto" else turnover),
             )
         )
         price += 0.5
@@ -185,6 +194,83 @@ async def test_run_stats_record_indicator_version(db_session: AsyncSession) -> N
     runs, _ = await SqlScreeningRunRepository(db_session).list_runs("completed", 1, 0)
     assert runs[0].stats["indicator_version"] == INDICATOR_VERSION
     assert runs[0].stats["universe_source"] == "declared_liquidity_floor"
+
+
+@pytest.mark.asyncio
+async def test_partial_screening_writes_roll_back_before_failed_status_is_committed(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A late write failure must not commit scores from a FAILED run."""
+    security = await _seed_security(db_session, "ATOMIC")
+    await _seed_uptrend(db_session, security.id)
+    orchestrator = _orchestrator(db_session, _strategy())
+    repository = orchestrator._screening_run_repo
+    original_save_membership = repository.save_universe_membership
+
+    async def fail_after_membership_write(run_id: int, memberships: list[object]) -> None:
+        await original_save_membership(run_id, memberships)
+        raise RuntimeError("injected failure after score and membership writes")
+
+    monkeypatch.setattr(repository, "save_universe_membership", fail_after_membership_write)
+    with pytest.raises(RuntimeError, match="injected failure"):
+        await orchestrator.run_daily_screening(_TARGET)
+
+    runs, total = await repository.list_runs("failed", limit=10, offset=0)
+    assert total == 1 and runs[0].status.value == "FAILED"
+    assert "injected failure" in (runs[0].error or "")
+    for model in (ScreeningResultModel, RuleResultModel, UniverseMembershipModel):
+        assert (
+            await db_session.scalar(
+                select(func.count()).select_from(model).where(model.run_id == runs[0].id)
+            )
+            == 0
+        )
+
+
+@pytest.mark.asyncio
+async def test_concurrent_market_correction_aborts_mixed_revision_screening(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A correction committing during scoring cannot yield a mislabeled success."""
+    security = await _seed_security(db_session, "RVRACE")
+    await _seed_uptrend(db_session, security.id)
+    strategy = _strategy()
+    manifest = await SqlDataManifestRepository(db_session).capture()
+    await db_session.commit()
+
+    orchestrator = _orchestrator(db_session, strategy)
+    repository = orchestrator._screening_run_repo
+    original_evaluate = orchestrator._evaluate_universe
+
+    async def evaluate_then_correct(
+        securities: list[object], trading_date: date, summary: object
+    ) -> tuple[list[object], list[object]]:
+        result = await original_evaluate(securities, trading_date, summary)
+        async with get_database().session() as concurrent_writer:
+            await concurrent_writer.execute(
+                update(OHLCVDailyModel)
+                .where(
+                    OHLCVDailyModel.security_id == security.id,
+                    OHLCVDailyModel.date == trading_date,
+                )
+                .values(close=Decimal("999"))
+            )
+        return result
+
+    monkeypatch.setattr(orchestrator, "_evaluate_universe", evaluate_then_correct)
+    with pytest.raises(RuntimeError, match="Market data changed during screening"):
+        await orchestrator.run_daily_screening(_TARGET, data_manifest=manifest)
+
+    runs, total = await repository.list_runs("failed", limit=10, offset=0)
+    assert total == 1
+    assert "no result snapshot was saved" in (runs[0].error or "")
+    for model in (ScreeningResultModel, RuleResultModel, UniverseMembershipModel):
+        assert (
+            await db_session.scalar(
+                select(func.count()).select_from(model).where(model.run_id == runs[0].id)
+            )
+            == 0
+        )
 
 
 # ── Phase 0.1: the declared floor decides admission ──────────────────────────
@@ -383,6 +469,7 @@ async def test_ingestion_uses_the_turnover_carrying_fetch(db_session: AsyncSessi
 @pytest.mark.asyncio
 async def test_comparing_runs_of_different_indicator_versions_is_disclosed(
     db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A diff across indicator versions must flag itself as not like-for-like.
 
@@ -398,19 +485,19 @@ async def test_comparing_runs_of_different_indicator_versions_is_disclosed(
     await _seed_uptrend(db_session, sec.id)
 
     run_repo = SqlScreeningRunRepository(db_session)
-    await _orchestrator(db_session, _strategy()).run_daily_screening(_TARGET)
-    await _orchestrator(db_session, _strategy({"min_price_inr": 5})).run_daily_screening(
-        _TARGET
+    # Create the first fixture as a historical run produced by the old formula
+    # version. This keeps completed snapshots immutable during the test.
+    monkeypatch.setattr(
+        "momentum25.application.use_cases.screening_orchestrator.INDICATOR_VERSION", 1
     )
+    await _orchestrator(db_session, _strategy()).run_daily_screening(_TARGET)
+    monkeypatch.setattr(
+        "momentum25.application.use_cases.screening_orchestrator.INDICATOR_VERSION",
+        INDICATOR_VERSION,
+    )
+    await _orchestrator(db_session, _strategy({"min_price_inr": 5})).run_daily_screening(_TARGET)
     runs, _ = await run_repo.list_runs("completed", 2, 0)
     newer, older = runs[0], runs[1]
-
-    # Restamp one run as if it had been produced by the pre-correction formulas.
-    stale = dict(older.stats or {})
-    stale["indicator_version"] = 1
-    older.stats = stale
-    await run_repo.update(older)
-    await db_session.commit()
 
     report = await ValidateRunComparisonUseCase(run_repo).execute(older.id, newer.id)
 
@@ -431,9 +518,7 @@ async def test_same_version_comparison_is_not_flagged(db_session: AsyncSession) 
 
     run_repo = SqlScreeningRunRepository(db_session)
     await _orchestrator(db_session, _strategy()).run_daily_screening(_TARGET)
-    await _orchestrator(db_session, _strategy({"min_price_inr": 5})).run_daily_screening(
-        _TARGET
-    )
+    await _orchestrator(db_session, _strategy({"min_price_inr": 5})).run_daily_screening(_TARGET)
     runs, _ = await run_repo.list_runs("completed", 2, 0)
 
     report = await ValidateRunComparisonUseCase(run_repo).execute(runs[1].id, runs[0].id)

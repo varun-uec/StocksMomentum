@@ -48,7 +48,7 @@ function StalenessBanner({ freshness }: { freshness?: DataFreshnessDTO }) {
       <Badge color={isMarketClosed ? 'slate' : 'amber'}>{freshness.classification.replace('_', ' ')}</Badge>
       <span>{message}</span>
       {freshness.next_session && (
-        <span className="text-slate-400 dark:text-slate-500 ml-auto tabular-nums">
+        <span className="text-slate-600 dark:text-slate-400 ml-auto tabular-nums">
           Next session: {freshness.next_session}
         </span>
       )}
@@ -152,12 +152,12 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           <StrategySelector />
           {run && isScreening && activeRun && (
-            <div className="flex items-center gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
               <Badge color="amber">Run #{activeRun.id} screening in progress</Badge>
             </div>
           )}
           {run && !isScreening && (
-            <div className="flex items-center gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
               <Badge color="indigo">Run #{run.id}</Badge>
               <span className="tabular-nums">
                 Latest screening:{' '}
@@ -180,7 +180,7 @@ export default function Home() {
             >
               {isScreening ? 'Screening…' : 'Run screening'}
             </button>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] text-slate-600 dark:text-slate-400">
               Uses stored market data; it does not download exchange data.
             </span>
           </div>
@@ -212,7 +212,7 @@ export default function Home() {
               </div>
               {rankings.run?.finished_at && (
                 <div className="text-xs text-slate-500 text-left sm:text-right whitespace-nowrap bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/40 rounded-xl px-3 py-2 shadow-sm">
-                  <div className="text-slate-400 dark:text-slate-500">Last refresh</div>
+                  <div className="text-slate-600 dark:text-slate-400">Last refresh</div>
                   <div className="tabular-nums font-medium text-slate-700 dark:text-slate-300">
                     {new Date(rankings.run.finished_at).toLocaleString()}
                   </div>

@@ -66,7 +66,7 @@ export function SidePanel({
               aria-selected={panel === tab.id}
               onClick={() => onPanel(tab.id)}
               className={`px-2 py-1 rounded-md text-xs font-medium ${focusRing} ${
-                panel === tab.id ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                panel === tab.id ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               {tab.label}
@@ -111,7 +111,7 @@ function WatchlistTab({ symbol, strategy, onOpenSymbol }: { symbol: string; stra
         </button>
       </div>
       {isLoading && <p className="px-3 py-2 text-xs text-slate-500">Loading watchlist…</p>}
-      {!isLoading && items.length === 0 && <p className="px-3 py-2 text-xs text-slate-500">No symbols yet. Add the open symbol with Alt+W.</p>}
+      {!isLoading && items.length === 0 && <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No symbols yet. Add the open symbol with Alt+W.</p>}
       <ul>
         {items.map((item) => {
           const change = item.change_pct === null ? null : parseFloat(item.change_pct);
@@ -128,7 +128,7 @@ function WatchlistTab({ symbol, strategy, onOpenSymbol }: { symbol: string; stra
                 <span className="flex-1 font-semibold truncate">{item.symbol}</span>
                 {item.rank !== null && <span className="text-slate-400 tabular-nums">#{item.rank}</span>}
                 <span className="tabular-nums w-16 text-right">{item.close === null ? '—' : num(item.close)}</span>
-                <span className={`tabular-nums w-14 text-right ${change === null ? 'text-slate-400' : change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <span className={`tabular-nums w-14 text-right ${change === null ? 'text-slate-600 dark:text-slate-400' : change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                   {change === null ? '—' : `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`}
                 </span>
               </button>

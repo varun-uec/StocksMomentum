@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { SHORTCUTS } from '@/lib/shortcuts';
+import { focusRing } from '@/lib/theme';
 
 /** The workspace's keyboard shortcuts, in a native modal dialog (Esc closes). */
 export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -36,7 +37,7 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
         </tbody>
       </table>
       <form method="dialog" className="px-4 py-3 text-right">
-        <button type="submit" className="px-3 py-1 rounded-md border border-slate-300 dark:border-slate-600 text-xs">
+        <button type="submit" className={`px-3 py-1 rounded-md border border-slate-300 dark:border-slate-600 text-xs ${focusRing}`}>
           Close
         </button>
       </form>

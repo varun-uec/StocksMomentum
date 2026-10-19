@@ -31,6 +31,9 @@ from momentum25.infrastructure.persistence.repositories import SqlStrategyReposi
 from momentum25.infrastructure.persistence.repositories.evaluations import (
     SqlEvaluationRepository,
 )
+from momentum25.infrastructure.persistence.repositories.screening_run import (
+    SqlScreeningRunRepository,
+)
 from momentum25.infrastructure.redis.client import get_redis_provider
 from momentum25.infrastructure.redis.lock import RedisLockFactory
 from momentum25.infrastructure.scheduler.scheduler import SchedulerService
@@ -152,8 +155,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         async with get_database().session() as session:
             interrupted = await SqlEvaluationRepository(session).interrupt_unfinished()
+            interrupted_runs = await SqlScreeningRunRepository(session).interrupt_unfinished()
         if interrupted:
             _logger.warning("strategy_evaluations_interrupted", count=interrupted)
+        if interrupted_runs:
+            _logger.warning("screening_runs_interrupted", count=interrupted_runs)
     except Exception as exc:  # noqa: BLE001 - startup must surface but not crash wiring
         _logger.error("strategy_evaluation_sweep_failed", error=str(exc))
 

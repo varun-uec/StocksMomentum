@@ -15,6 +15,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.app.services.screening_job import run_screening_pipeline
@@ -27,11 +28,18 @@ from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.domain.value_objects.types import RunStatus
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
+from momentum25.infrastructure.persistence.models import (
+    OHLCVDailyModel,
+    ScreeningResultModel,
+)
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
     SqlScreeningRunRepository,
     SqlSecurityRepository,
     SqlStrategyRepository,
+)
+from momentum25.infrastructure.persistence.repositories.data_manifests import (
+    SqlDataManifestRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
@@ -257,9 +265,7 @@ async def test_repeated_screen_reuses_exact_completed_snapshot(
     db_session.add(sec)
     await db_session.flush()
     await db_session.refresh(sec)
-    sessions = get_nse_trading_calendar().sessions_between(
-        date(2025, 1, 1), date.today()
-    )[-300:]
+    sessions = get_nse_trading_calendar().sessions_between(date(2025, 1, 1), date.today())[-300:]
     await ohlcv_repo.upsert_bars(
         sec.id,
         [
@@ -305,3 +311,121 @@ async def test_repeated_screen_reuses_exact_completed_snapshot(
     assert unchanged is not None
     assert unchanged.status == RunStatus.COMPLETED
     assert unchanged.stats == {"total_evaluated": 1}
+
+
+@pytest.mark.asyncio
+async def test_same_session_correction_creates_traceable_immutable_run(
+    db_session: AsyncSession,
+) -> None:
+    """A changed bar on an already-screened date must not reuse the old snapshot."""
+    from momentum25.domain.entities.market_data import OHLCVBar
+    from momentum25.domain.entities.run import ScreeningRun
+    from momentum25.domain.value_objects.types import RunTrigger
+    from momentum25.infrastructure.persistence.models import SecurityModel
+
+    security_repo = SqlSecurityRepository(db_session)
+    ohlcv_repo = SqlOHLCVRepository(db_session)
+    runs = SqlScreeningRunRepository(db_session)
+    strategy_repo = SqlStrategyRepository(db_session)
+    strategy = _strategy()
+    strategy_id = await strategy_repo.upsert(strategy)
+    object.__setattr__(strategy, "id", strategy_id)
+    await db_session.commit()
+
+    security = SecurityModel(
+        symbol="CORRECTED",
+        name="Corrected Data Co",
+        isin="INE000000001",
+        is_active=True,
+    )
+    db_session.add(security)
+    await db_session.flush()
+    await db_session.refresh(security)
+    sessions = get_nse_trading_calendar().sessions_between(date(2025, 1, 1), date.today())[-300:]
+    bars = [
+        OHLCVBar(
+            date=session,
+            open=Decimal("100"),
+            high=Decimal("102"),
+            low=Decimal("98"),
+            close=Decimal("100"),
+            volume=1_000_000,
+            turnover_value=Decimal("100000000"),
+        )
+        for session in sessions
+    ]
+    await ohlcv_repo.upsert_bars(security.id, bars)
+    latest = sessions[-1]
+    prior = ScreeningRun(
+        strategy_id=strategy_id,
+        run_date=latest,
+        data_version=latest.isoformat(),
+        config_hash=strategy.config_hash,
+        trigger=RunTrigger.MANUAL,
+        status=RunStatus.COMPLETED,
+        stats={"legacy_snapshot": True, "input_close": "100"},
+    )
+    prior_id = await runs.create(prior)
+    await db_session.commit()
+
+    # Correct the latest bar without advancing the trading session. It is a
+    # real versioned input change and must select a different manifest.
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(
+            OHLCVDailyModel.security_id == security.id,
+            OHLCVDailyModel.date == latest,
+        )
+        .values(close=Decimal("101"))
+    )
+    await db_session.commit()
+
+    use_case = ExecuteScreening(
+        market_data_provider=_RecordingProvider({}),
+        security_repo=security_repo,
+        ohlcv_repo=ohlcv_repo,
+        screening_run_repo=runs,
+        indicator_pipeline=IndicatorPipelineImpl(db_session),
+        strategy_engine=_make_engine(),
+        data_manifest_repo=SqlDataManifestRepository(db_session),
+        ingest_enabled=False,
+    )
+    corrected_id = await use_case.execute(strategy_name=strategy.name)
+    assert corrected_id != prior_id
+
+    original = await runs.get(prior_id)
+    corrected = await runs.get(corrected_id)
+    corrected_bar = await db_session.get(OHLCVDailyModel, (security.id, latest))
+    assert original is not None and original.stats == {
+        "legacy_snapshot": True,
+        "input_close": "100",
+    }
+    assert corrected_bar is not None and corrected_bar.provenance == "recorded"
+    assert corrected is not None and corrected.status == RunStatus.COMPLETED
+    assert corrected.run_date == latest
+    assert corrected.data_version != latest.isoformat()
+    assert corrected.config_hash == strategy.config_hash
+    manifest_body = corrected.stats["data_manifest"]
+    assert manifest_body["revision"] > 0
+    assert corrected_bar.revision_id <= manifest_body["revision"]
+    assert (
+        corrected.data_version
+        == (await SqlDataManifestRepository(db_session).get(corrected.data_version)).data_version
+    )
+    assert corrected.stats["strategy_config_hash"] == corrected.config_hash
+    assert await runs.latest_completed(strategy_id) == corrected
+
+    result_count = await db_session.scalar(
+        select(func.count())
+        .select_from(ScreeningResultModel)
+        .where(ScreeningResultModel.run_id == corrected_id)
+    )
+    assert await use_case.execute(strategy_name=strategy.name) == corrected_id
+    assert (
+        await db_session.scalar(
+            select(func.count())
+            .select_from(ScreeningResultModel)
+            .where(ScreeningResultModel.run_id == corrected_id)
+        )
+        == result_count
+    )

@@ -139,7 +139,7 @@ function DrawingRail({
           ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
           : danger
             ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
       }`}
     >
       <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true">
@@ -200,7 +200,7 @@ export interface PaneDef {
   format?: (v: number) => string;
 }
 
-const MACD_SIGNAL_COLOR = '#f59e0b';
+const MACD_SIGNAL_COLOR = '#b45309';
 const MACD_HIST_POSITIVE = 'rgba(16,185,129,0.45)';
 const MACD_HIST_NEGATIVE = 'rgba(239,68,68,0.45)';
 
@@ -212,7 +212,7 @@ export const PANE_DEFS: PaneDef[] = [
   {
     id: 'rsi',
     label: 'RSI (14)',
-    series: [{ key: 'rsi14', type: 'line', color: '#f59e0b' }],
+    series: [{ key: 'rsi14', type: 'line', color: '#b45309' }],
     guides: [{ value: 30 }, { value: 70 }],
     format: fixed2,
   },
@@ -225,7 +225,7 @@ export const PANE_DEFS: PaneDef[] = [
         type: 'histogram',
         sign: { positive: MACD_HIST_POSITIVE, negative: MACD_HIST_NEGATIVE },
       },
-      { key: 'macd_line', type: 'line', color: '#6366f1', lastValueVisible: false },
+      { key: 'macd_line', type: 'line', color: '#4f46e5', lastValueVisible: false },
       { key: 'macd_signal', type: 'line', color: MACD_SIGNAL_COLOR, lastValueVisible: false },
     ],
     format: (v) => v.toFixed(3),
@@ -233,7 +233,7 @@ export const PANE_DEFS: PaneDef[] = [
   {
     id: 'adx',
     label: 'ADX (14)',
-    series: [{ key: 'adx14', type: 'line', color: '#a855f7' }],
+    series: [{ key: 'adx14', type: 'line', color: '#7e22ce' }],
     format: fixed2,
   },
 ];
@@ -288,11 +288,11 @@ export interface IndicatorSeriesBar {
 
 const MA_PERIODS = [10, 20, 50, 100, 200] as const;
 const MA_COLORS: Record<number, string> = {
-  10: '#f59e0b',
-  20: '#10b981',
-  50: '#6366f1',
-  100: '#ec4899',
-  200: '#94a3b8',
+  10: '#b45309',
+  20: '#047857',
+  50: '#4f46e5',
+  100: '#be185d',
+  200: '#475569',
 };
 
 /** Rolling simple mean of `closes`; `null` until the window is full. */
@@ -328,7 +328,7 @@ function ToggleButton({
       className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${focusRing} ${
         active
           ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
-          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
       }`}
     >
       {children}
@@ -1399,7 +1399,7 @@ export function PriceChart({
           Volume
         </ToggleButton>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-slate-500">Moving averages</span>
+          <span className="text-xs text-slate-600 dark:text-slate-300">Moving averages</span>
           {MA_PERIODS.map((period) => (
             <label
               key={period}
@@ -1411,14 +1411,15 @@ export function PriceChart({
                 onChange={(e) => toggleMas(period, e.target.checked)}
                 className="w-3 h-3 accent-indigo-500"
               />
-              <span style={{ color: MA_COLORS[period] }}>MA{period}</span>
+              <span aria-hidden="true" className="inline-block w-2 h-2 rounded-sm" style={{ backgroundColor: MA_COLORS[period] }} />
+              <span>MA{period}</span>
             </label>
           ))}
         </div>
         {showPaneControls && (
           <>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-500">Indicators</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300">Indicators</span>
               {PANE_DEFS.map((def) => (
                 <label
                   key={def.id}
@@ -1431,13 +1432,14 @@ export function PriceChart({
                     onChange={() => togglePane(def.id)}
                     className="w-3 h-3 accent-indigo-500"
                   />
-                  <span style={{ color: paneColor(def) }}>{def.label}</span>
+                  <span aria-hidden="true" className="inline-block w-2 h-2 rounded-sm" style={{ backgroundColor: paneColor(def) }} />
+                  <span>{def.label}</span>
                 </label>
               ))}
             </div>
             {drawingsEnabled && !toolRail && (
               <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-xs text-slate-500">Draw</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300">Draw</span>
                 {DRAWING_KINDS.map((kind) => (
                   <ToggleButton
                     key={kind}
@@ -1567,7 +1569,7 @@ export function PriceChart({
       </div>
       </div>
       {!compact && (
-      <p className="text-xs text-slate-500 mt-2">
+      <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
         {isLoading
           ? 'Loading price series…'
           : (footnote ??

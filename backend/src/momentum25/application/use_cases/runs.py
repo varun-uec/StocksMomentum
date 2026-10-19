@@ -7,6 +7,9 @@ and run lifecycle without computing scores.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
+
 from momentum25.application.dto.runs import RunDTO
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
@@ -97,15 +100,17 @@ class TriggerRefresh:
         strategies: StrategyRepository,
         ohlcv: OHLCVRepository,
         clock: Clock,
+        data_manifest_repo: Any | None = None,
     ) -> None:
         """Wire the use case with its repositories and the clock."""
         self._runs = runs
         self._strategies = strategies
         self._ohlcv = ohlcv
         self._clock = clock
+        self._data_manifest_repo = data_manifest_repo
 
-    async def execute(self, strategy_name: str, force: bool) -> int:
-        """Create a PENDING run and return its id.
+    async def execute(self, strategy_name: str, force: bool) -> TriggeredRun:
+        """Create or return the exact run identity and indicate whether to schedule it.
 
         Resolves the strategy and current data version, then records a run in the
         ``PENDING`` state. The actual ingest+screen execution is wired in M4/M7.
@@ -115,11 +120,40 @@ class TriggerRefresh:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
         latest = await self._ohlcv.latest_date()
-        data_version = latest.isoformat() if latest else "none"
+        manifest = (
+            await self._data_manifest_repo.capture()
+            if self._data_manifest_repo is not None
+            else None
+        )
+        data_version = (
+            manifest.data_version
+            if manifest is not None
+            else latest.isoformat()
+            if latest
+            else "none"
+        )
+        run_date = latest or self._clock.today()
+        find_by_identity = getattr(self._runs, "get_by_identity", None)
+        if find_by_identity is not None:
+            existing = await find_by_identity(
+                strategy.id, run_date, data_version, strategy.config_hash
+            )
+            if existing is not None and existing.id is not None:
+                if existing.status == RunStatus.FAILED:
+                    existing.status = RunStatus.PENDING
+                    existing.started_at = None
+                    existing.finished_at = None
+                    existing.error = None
+                    await self._runs.update(existing)
+                    session = getattr(self._runs, "_session", None)
+                    if session is not None:
+                        await session.commit()
+                    return TriggeredRun(int(existing.id), True)
+                return TriggeredRun(int(existing.id), False)
 
         run = ScreeningRun(
             strategy_id=strategy.id,
-            run_date=self._clock.today(),
+            run_date=run_date,
             data_version=data_version,
             config_hash=strategy.config_hash,
             trigger=RunTrigger.MANUAL,
@@ -134,4 +168,12 @@ class TriggerRefresh:
         session = getattr(self._runs, "_session", None)
         if session is not None:
             await session.commit()
-        return run_id
+        return TriggeredRun(run_id, True)
+
+
+@dataclass(frozen=True, slots=True)
+class TriggeredRun:
+    """A run identity plus whether this request owns a new background execution."""
+
+    run_id: int
+    should_execute: bool

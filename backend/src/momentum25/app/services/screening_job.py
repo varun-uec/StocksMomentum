@@ -28,6 +28,9 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlScreeningRunRepository,
     SqlSecurityRepository,
 )
+from momentum25.infrastructure.persistence.repositories.data_manifests import (
+    SqlDataManifestRepository,
+)
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 _logger = get_logger("screening_job")
@@ -65,8 +68,7 @@ async def run_screening_pipeline(
             # Supplying a provider is an explicit opt-in for tests/integrators;
             # the application default remains offline.
             ingest_enabled = (
-                market_data_provider is not None
-                or get_settings().direct_exchange_downloads_enabled
+                market_data_provider is not None or get_settings().direct_exchange_downloads_enabled
             )
         if ingest_enabled and market_data_provider is None:
             import httpx
@@ -91,6 +93,7 @@ async def run_screening_pipeline(
             screening_run_repo=screening_run_repo,
             indicator_pipeline=indicator_pipeline,
             strategy_engine=strategy_engine,
+            data_manifest_repo=SqlDataManifestRepository(session),
             ingest_enabled=ingest_enabled,
         )
 

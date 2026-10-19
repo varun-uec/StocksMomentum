@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/ (light)",
+    "violations": []
+  },
+  {
+    "path": "/ (dark)",
+    "violations": []
+  },
+  {
+    "path": "/chart/RELIANCE (light)",
+    "violations": []
+  },
+  {
+    "path": "/chart/RELIANCE (dark)",
+    "violations": []
+  },
+  {
+    "path": "/studio (light)",
+    "violations": []
+  },
+  {
+    "path": "/studio (dark)",
+    "violations": []
+  }
+]

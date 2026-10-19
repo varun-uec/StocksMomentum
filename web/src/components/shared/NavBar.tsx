@@ -533,7 +533,7 @@ export function NavBar() {
             <div className="flex items-center gap-3">
               <SymbolSearch className="hidden lg:block" />
               <ThemeToggle />
-              <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-600 font-medium">v0.2.0</span>
+              <span className="hidden sm:inline text-xs text-slate-600 dark:text-slate-400 font-medium">v0.2.0</span>
             </div>
           </div>
         </div>

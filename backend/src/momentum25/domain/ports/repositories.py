@@ -210,6 +210,12 @@ class ScreeningRunRepository(Protocol):
         """Return the completed immutable snapshot matching its full run identity."""
         ...
 
+    async def get_by_identity(
+        self, strategy_id: int, run_date: date, data_version: str, config_hash: str
+    ) -> ScreeningRun | None:
+        """Return the lifecycle row matching its full run identity, in any status."""
+        ...
+
     async def save_results(
         self, run_id: int, scores: list[StockScore], rankings: list[Ranking]
     ) -> None:

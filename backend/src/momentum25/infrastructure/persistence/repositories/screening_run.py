@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, insert, select
@@ -80,7 +80,12 @@ class SqlScreeningRunRepository:
         model = await self._session.get(ScreeningRunModel, run.id)
         if model is None:
             raise ValueError(f"Run {run.id} not found")
+        if model.status == RunStatus.COMPLETED.value:
+            raise ValueError(f"Completed screening run {run.id} is immutable")
         model.status = run.status.value
+        model.run_date = run.run_date
+        model.data_version = run.data_version
+        model.config_hash = run.config_hash
         model.started_at = run.started_at
         model.finished_at = run.finished_at
         model.error = run.error
@@ -116,9 +121,7 @@ class SqlScreeningRunRepository:
         if status:
             base = base.where(ScreeningRunModel.status == status.upper())
         if exclude_historical:
-            base = base.where(
-                ~ScreeningRunModel.data_version.like("historical:%")
-            )
+            base = base.where(~ScreeningRunModel.data_version.like("historical:%"))
         if exclude_research:
             base = base.where(
                 ~ScreeningRunModel.data_version.like("%:research:%"),
@@ -126,9 +129,7 @@ class SqlScreeningRunRepository:
             )
         if strategy_id is not None:
             base = base.where(ScreeningRunModel.strategy_id == strategy_id)
-        total = await self._session.scalar(
-            select(func.count()).select_from(base.subquery())
-        )
+        total = await self._session.scalar(select(func.count()).select_from(base.subquery()))
         result = await self._session.execute(
             base.order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
             .limit(limit)
@@ -174,6 +175,37 @@ class SqlScreeningRunRepository:
         )
         row = result.scalars().first()
         return _to_domain(row) if row else None
+
+    async def get_by_identity(
+        self, strategy_id: int, run_date: date, data_version: str, config_hash: str
+    ) -> ScreeningRun | None:
+        """Return the run lifecycle row for an exact strategy/data/config identity."""
+        result = await self._session.execute(
+            select(ScreeningRunModel).where(
+                ScreeningRunModel.strategy_id == strategy_id,
+                ScreeningRunModel.run_date == run_date,
+                ScreeningRunModel.data_version == data_version,
+                ScreeningRunModel.config_hash == config_hash,
+            )
+        )
+        row = result.scalars().first()
+        return _to_domain(row) if row else None
+
+    async def interrupt_unfinished(self) -> int:
+        """Fail pending/running screening rows after their owning process restarts."""
+        from sqlalchemy import update
+
+        result = await self._session.execute(
+            update(ScreeningRunModel)
+            .where(ScreeningRunModel.status.in_((RunStatus.PENDING.value, RunStatus.RUNNING.value)))
+            .values(
+                status=RunStatus.FAILED.value,
+                finished_at=datetime.now(UTC),
+                error="Interrupted by an application restart. Retry to run it again.",
+            )
+        )
+        await self._session.commit()
+        return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
     async def save_results(
         self, run_id: int, scores: list[StockScore], rankings: list[Ranking]
@@ -284,9 +316,9 @@ class SqlScreeningRunRepository:
         if horizon_days is not None:
             conditions.append(ForwardReturnModel.horizon_days == horizon_days)
         result = await self._session.execute(
-            select(ForwardReturnModel).where(*conditions).order_by(
-                ForwardReturnModel.security_id, ForwardReturnModel.horizon_days
-            )
+            select(ForwardReturnModel)
+            .where(*conditions)
+            .order_by(ForwardReturnModel.security_id, ForwardReturnModel.horizon_days)
         )
         return [
             ForwardReturn(
@@ -324,9 +356,7 @@ class SqlScreeningRunRepository:
         )
         return {row.security_id: row.forward_return for row in result.all()}
 
-    async def get_rankings(
-        self, run_id: int, limit: int, offset: int
-    ) -> tuple[list[Ranking], int]:
+    async def get_rankings(self, run_id: int, limit: int, offset: int) -> tuple[list[Ranking], int]:
         """Return a page of rankings for a run, and the run's total result count.
 
         The count query is skipped when the requested page starts at 0 and is
@@ -357,9 +387,7 @@ class SqlScreeningRunRepository:
         if offset == 0 and len(rows) < limit:
             total: int | None = len(rows)
         else:
-            total = await self._session.scalar(
-                select(func.count()).select_from(base.subquery())
-            )
+            total = await self._session.scalar(select(func.count()).select_from(base.subquery()))
         rankings = [
             Ranking(
                 security_id=r.security_id,

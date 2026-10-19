@@ -10,6 +10,7 @@ total_evaluated>0 but zero scored (see run #5, 2026-08-09, a Sunday).
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 
@@ -33,7 +34,10 @@ class _CapturingOrchestrator:
         pass
 
     async def run_daily_screening(
-        self, trading_date: date, existing_run_id: int | None = None
+        self,
+        trading_date: date,
+        existing_run_id: int | None = None,
+        data_manifest: object | None = None,
     ) -> object:
         _CapturingOrchestrator.last_trading_date = trading_date
 
@@ -45,6 +49,11 @@ class _CapturingOrchestrator:
 
 class _FakeScreeningRunRepo:
     _session = None
+
+    async def get_completed_by_identity(
+        self, strategy_id: int, run_date: date, data_version: str, config_hash: str
+    ) -> None:
+        return None
 
     async def list_runs(self, status: str, limit: int, offset: int) -> tuple[list, int]:
         class _Row:
@@ -79,7 +88,9 @@ async def test_run_via_orchestrator_screens_latest_bar_date_not_reference_date(
     latest = await use_case._ohlcv_repo.latest_date()
     screening_date = latest or reference_date
     await use_case._run_via_orchestrator(
-        strategy=object(), trading_date=screening_date, existing_run_id=None
+        strategy=SimpleNamespace(id=1, name="test", config_hash="test-config"),
+        trading_date=screening_date,
+        existing_run_id=None,
     )
 
     assert _CapturingOrchestrator.last_trading_date == latest_bar_date

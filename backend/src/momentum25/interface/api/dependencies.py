@@ -112,6 +112,7 @@ def get_live_refresh_gate() -> RefreshGate:
         cooldown_seconds=get_settings().live_refresh_cooldown_seconds,
     )
 
+
 # ── Repository providers ─────────────────────────────────────────────────
 
 
@@ -169,9 +170,7 @@ get_security_repository = get_security_repo
 
 
 async def get_get_rankings(
-    screening_run_repo: Annotated[
-        SqlScreeningRunRepository, Depends(get_screening_run_repository)
-    ],
+    screening_run_repo: Annotated[SqlScreeningRunRepository, Depends(get_screening_run_repository)],
     security_repo: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
     strategy_repo: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[GetRankings]:
@@ -184,9 +183,7 @@ async def get_get_rankings(
 
 
 async def get_get_stock_explanation(
-    screening_run_repo: Annotated[
-        SqlScreeningRunRepository, Depends(get_screening_run_repository)
-    ],
+    screening_run_repo: Annotated[SqlScreeningRunRepository, Depends(get_screening_run_repository)],
     strategies: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[GetStockExplanation]:
     """Provide a run/security-scoped GetStockExplanation use-case instance."""
@@ -257,6 +254,7 @@ async def get_trigger_refresh(
         strategies=strategies,
         ohlcv=ohlcv,
         clock=SystemClock(),
+        data_manifest_repo=SqlDataManifestRepository(runs._session),
     )
 
 
@@ -351,9 +349,7 @@ async def get_get_security_ohlcv(
     ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
 ) -> AsyncIterator[GetSecurityOHLCV]:
     """Provide a GetSecurityOHLCV use-case instance."""
-    yield GetSecurityOHLCV(
-        securities=securities, ohlcv=ohlcv, calendar=get_nse_trading_calendar()
-    )
+    yield GetSecurityOHLCV(securities=securities, ohlcv=ohlcv, calendar=get_nse_trading_calendar())
 
 
 async def get_get_index_close_series() -> AsyncIterator[GetIndexCloseSeries]:
@@ -425,6 +421,7 @@ async def get_execute_screening() -> AsyncIterator[ExecuteScreening]:
             screening_run_repo=screening_run_repo,
             indicator_pipeline=indicator_pipeline,
             strategy_engine=strategy_engine,
+            data_manifest_repo=SqlDataManifestRepository(session),
             ingest_enabled=settings.direct_exchange_downloads_enabled,
         )
 
@@ -441,8 +438,7 @@ async def get_refresh_corporate_actions() -> AsyncIterator[RefreshCorporateActio
         raise HTTPException(
             status_code=409,
             detail=(
-                "Direct exchange downloads are disabled. "
-                "Import an authorized data export instead."
+                "Direct exchange downloads are disabled. Import an authorized data export instead."
             ),
         )
     async with _shared_session() as session:
@@ -470,8 +466,7 @@ async def get_refresh_latest_market_data() -> AsyncIterator[RefreshLatestMarketD
         raise HTTPException(
             status_code=409,
             detail=(
-                "Direct exchange downloads are disabled. "
-                "Import an authorized data export instead."
+                "Direct exchange downloads are disabled. Import an authorized data export instead."
             ),
         )
     async with _shared_session() as session:

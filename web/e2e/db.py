@@ -9,6 +9,8 @@
           watch one fire on bars already stored (the synthetic fixture gets no new bars).
 ``holdout-provenance`` Set the isolated 2023–2025 E2E hold-out months to published or
           reconstructed, for the Strategy Studio insufficient-provenance case.
+``bump-synthetic-close`` Correct the latest synthetic E2E10Y0 bar by 0.0001 for
+          each invocation, forcing a new manifest and screening execution.
 
 The database URL comes from ``E2E_DATABASE_URL`` only. Every command verifies the
 database name returned by PostgreSQL before it can read or mutate anything.
@@ -38,13 +40,6 @@ VALUES
     ('GOLDIAM', 'Synthetic E2E fixture GOLDIAM', 'NSE', true)
 ON CONFLICT (symbol) DO UPDATE
 SET name = EXCLUDED.name, exchange = EXCLUDED.exchange, is_active = true;
-
-DELETE FROM ohlcv_daily
-WHERE security_id IN (
-    SELECT id FROM securities
-    WHERE symbol LIKE 'E2E10Y%'
-       OR symbol IN ('RELIANCE', 'TCS', 'INFY', 'ITC', 'HDFCBANK', 'GOLDIAM')
-);
 
 INSERT INTO ohlcv_daily (
     security_id, date, open, high, low, close, volume, turnover_value, adj_factor
@@ -90,7 +85,15 @@ CROSS JOIN LATERAL (
 ) parameters
 CROSS JOIN LATERAL (SELECT base_price * split_multiplier AS raw_price) prices
 WHERE s.symbol LIKE 'E2E10Y%'
-   OR s.symbol IN ('RELIANCE', 'TCS', 'INFY', 'ITC', 'HDFCBANK', 'GOLDIAM');
+   OR s.symbol IN ('RELIANCE', 'TCS', 'INFY', 'ITC', 'HDFCBANK', 'GOLDIAM')
+ON CONFLICT (security_id, date) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    turnover_value = EXCLUDED.turnover_value,
+    adj_factor = EXCLUDED.adj_factor;
 
 INSERT INTO benchmark_index_daily (index_code, date, close)
 SELECT 'NIFTY500', d::date, 10000 * exp(i * 0.00025)
@@ -117,7 +120,14 @@ def database_name(url: str) -> str:
 
 async def main(command: str, url: str, *arguments: str) -> None:
     """Verify and operate on a database dedicated to synthetic E2E fixtures."""
-    if command not in {"verify", "seed", "reset", "age-alerts", "holdout-provenance"}:
+    if command not in {
+        "verify",
+        "seed",
+        "reset",
+        "age-alerts",
+        "holdout-provenance",
+        "bump-synthetic-close",
+    }:
         sys.exit("usage: db.py {verify|seed|reset|age-alerts|holdout-provenance}")
     if command == "holdout-provenance":
         if len(arguments) != 1 or arguments[0] not in {"published", "reconstructed"}:
@@ -187,6 +197,18 @@ async def main(command: str, url: str, *arguments: str) -> None:
             return
         if command == "age-alerts":
             await conn.execute("UPDATE alerts SET armed_after = armed_after - 30")
+            return
+        if command == "bump-synthetic-close":
+            result = await conn.execute(
+                "UPDATE ohlcv_daily SET close = close + 0.0001, "
+                "turnover_value = (close + 0.0001) * volume "
+                "WHERE security_id = (SELECT id FROM securities WHERE symbol = 'E2E10Y0') "
+                "AND date = (SELECT max(o.date) FROM ohlcv_daily o "
+                "JOIN securities s ON s.id = o.security_id WHERE s.symbol = 'E2E10Y0')"
+            )
+            if result != "UPDATE 1":
+                sys.exit("refusing to correct a missing synthetic E2E10Y0 bar")
+            print("corrected one synthetic E2E10Y0 bar")
             return
         if command == "holdout-provenance":
             updated = await conn.execute(
