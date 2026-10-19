@@ -40,7 +40,7 @@ Both pass today (2 kept, 0 broken). The contracts do not cover `infrastructure` 
 
 ## Data stores
 
-**PostgreSQL** (ADR-004). 18 tables, 14 Alembic migrations (`0001` → `0014`).
+**PostgreSQL** (ADR-004). 27 tables, 19 Alembic migrations (`0001` → `0019`).
 
 | Group | Tables |
 |---|---|
@@ -48,11 +48,13 @@ Both pass today (2 kept, 0 broken). The contracts do not cover `infrastructure` 
 | Prices | `ohlcv_daily` (current provider, 2019-09-30 →), `legacy_ohlcv_daily` (NSE archive, 1994-11-03 →, overlaps the current provider to 2024), `bse_legacy_ohlcv_daily` (BSE archive, 2006-03-01 → 2024-01-01), `benchmark_index_daily` |
 | Corporate actions | `corporate_actions`, `corporate_action_inference_log` |
 | Universe and survivorship | `historical_universe`, `survivorship_gap_event`, `universe_membership` |
-| Strategy and runs | `strategies`, `screening_runs`, `screening_results`, `rule_results` |
+| Strategy and runs | `strategies` (`kind`: production, research or user), `screening_runs`, `screening_results`, `rule_results` |
+| Strategy Studio (ADR-014) | `strategy_families` (append-only), `strategy_evaluations` (the research namespace; a completed row is final), `data_manifests` |
+| History (ADR-014 §7) | `<table>_history` for `securities`, `ohlcv_daily`, `corporate_actions`, `benchmark_index_daily`, `historical_universe`; one sequence `data_revision_seq`; a `provenance` column on each versioned table |
 | Validation | `forward_returns` |
-| User | `watchlist_items`, `user_documents` (saved workspace and drawings, versioned by `revision`; ADR-013 §5) |
+| User | `watchlist_items`, `user_documents` (saved workspace and drawings, versioned by `revision`; ADR-013 §5), `alerts` |
 
-Run tables are append-only per `run_id` (ADR-006).
+Run tables are append-only per `run_id` (ADR-006). Triggers enforce the history tables, the append-only families and the final evaluations.
 
 **Redis.** Universe RS-rating cache, a distributed lock, and a refresh cooldown gate. The API falls back to no cooldown when Redis is down.
 

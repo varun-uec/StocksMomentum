@@ -44,7 +44,7 @@ E2E_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@localhost:5432/momen
                                       # also runs Playwright against that clone; use your POSTGRES_PORT
 ```
 
-Checks — all four must pass. CI runs the first three; run `lint-imports` by hand:
+Checks — all four must pass, and CI runs all four:
 
 ```bash
 make lint                 # ruff check src tests
@@ -63,7 +63,7 @@ Everything lives in [`docs/`](docs/README.md). Start there.
 - [Design](docs/current/design.md) — screening pipeline, rules and gates, scoring, determinism, walk-forward backtest.
 - [Capabilities](docs/current/capabilities.md) — every API endpoint, web page and CLI command.
 - [State](docs/current/state.md) — checks, delivery record, research verdicts, open defects, known limitations.
-- [Approved blueprint](docs/architecture/) — ADD, Implementation Spec, ADR-001 … ADR-014, strategy configs.
+- [Approved blueprint](docs/architecture/) — ADD, Implementation Spec, ADR-001 … ADR-015, strategy configs.
 
 ## Stack
 

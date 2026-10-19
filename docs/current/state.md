@@ -1,6 +1,6 @@
 # State
 
-As of 2026-10-18, branch `wickstreet/m10-m11`: Wickstreet M10 (Vite web app served by the API), M9 (reference study) and M11 (chart workspace vertical slice). Before that, the last code commit was `f492f81` (2026-08-18).
+As of 2026-10-19, branch `wickstreet/m10-m11` (local, never pushed): Wickstreet M9 to M15 are done, and M16 (release readiness) is under way. Before Wickstreet, the last code commit was `f492f81` (2026-08-18).
 
 ## Verdict
 
@@ -41,7 +41,10 @@ Deploy only on a private network. There is no authentication.
 | 2026-08-18 | Autonomous audit, 6 batches | PASS. 15 findings, 7 LOW fixed, 0 open | [final report](../history/autonomous-audit/FINAL_REPORT.md) |
 | 2026-10-18 | Wickstreet M10: Vite SPA served by the API, Host/Origin guard, loopback binding | S1–S7 pass; ADR-013 awaits acceptance | [spike report](../history/audits/2026-10-18-m10-stack-spike-report.md) |
 | 2026-10-18 | Wickstreet M9: reference study, wireframes, design record | For review | [study](../history/plans/2026-10-18-m9-reference-study.md) |
-| 2026-10-18 | Wickstreet M11: chart workspace vertical slice | Built and tested; awaits the M11 review gate | [report](../history/audits/2026-10-18-m11-vertical-slice-report.md) |
+| 2026-10-18 | Wickstreet M11: chart workspace vertical slice | Engineering gate closed; owner usability assessment open | [report](../history/audits/2026-10-18-m11-vertical-slice-report.md) |
+| 2026-10-18 | M11b weekly bars, M12 workspace shell, M13 professional charting, M15 daily alerts | Done; M13 and M15 accepted | [M11b](../history/audits/2026-10-18-m11b-weekly-report.md), [M12](../history/audits/2026-10-18-m12-shell-report.md), [M13](../history/audits/2026-10-18-m13-charting-report.md), [M15](../history/audits/2026-10-18-m15-alerts-report.md) |
+| 2026-10-19 | M14 Strategy Studio: history tables, point-in-time port, manifests, families, evaluations, `/studio` | Done; every ADR-014 hard-gate test passes | [M14 report](../history/audits/2026-10-19-m14-strategy-studio-report.md), [re-run](../history/audits/2026-10-19-m14-pit-rerun-report.md) |
+| 2026-10-19 | M16 release readiness | Under way | [RC report](../history/audits/2026-10-19-m16-release-candidate-report.md) |
 
 **Swing targets (Phase 3/3b).** Hold-out from 2025-01-01: 3,211 trades, hit rate 64.0%, average R −0.021. Six exit-plan variants all made average R worse in-sample (−0.105 to −0.396). Closed. The stop-loss part shipped as a risk-only figure. Log: [phase3b](../research/2026-08-phase3b-target-methodology-log.md).
 
@@ -69,11 +72,18 @@ Found while writing these docs. Not fixed.
 | 1 | Walk-forward fills at the first session's adjusted **close**. The brief (§5) says **open**. The loop reviews checked that decision and fill dates differ, not the price field. | `walk_forward.py::_apply`, `SqlPriceHistoryProvider` |
 | 2 | `POST /runs` creates a `PENDING` run that nothing executes. | `routers/runs.py`, `use_cases/runs.py` |
 | 3 | CLI `ingest` and `screen` are stubs. | `interface/cli/main.py` |
-| 4 | `lint-imports` is not in CI. | `.github/workflows/ci.yml` |
 | 5 | The research harness cannot apply parameter overrides: `apply_parameter_overrides` is never called. Every variant test so far was a one-off script. | `domain/research/services.py` |
 | 6 | `rs_sector_relative`, `rs_industry_relative`, `rs_line_uptrend` are still registered after v3 removed them. The v3 description names a high-tight-flag detector that does not exist. | `domain/engines/relative_strength.py`, strategy JSON |
-| 8 | Historical screening applies today's cumulative `adj_factor` to past dates, so a later split rescales earlier prices that price-level gates read. | `infrastructure/pipelines/indicator_pipeline.py::_to_dataframe` (ADR-014 §7) |
-| 9 | Historical screening reads bars only for `is_active` securities, which may drop names delisted after the decision date. Not yet verified against past runs. | `indicator_pipeline.py::_fetch_bars` (ADR-014 §7) |
+| 8 | The older historical research tools apply today's cumulative `adj_factor` to past dates. A later split shrinks the SMAs while the trend template reads the raw close, so `close > SMA` passes trivially. The Studio uses the point-in-time path and is not affected. Re-routing the old tools is the owner's call. | `indicator_pipeline.py::_to_dataframe`; [re-run report](../history/audits/2026-10-19-m14-pit-rerun-report.md) |
+| 9 | The older historical research tools take today's universe, not the one at the date. The point-in-time universe (Studio) uses listing and delisting dates. | `indicator_pipeline.py::_fetch_bars` |
+| 10 | Eleven dev-only npm advisories (typescript-eslint 7, tailwindcss 3 tool chain). Fixing them needs major upgrades. No runtime package is affected. | `web/package.json` |
+
+Fixed in M14 and M16 (2026-10-19):
+
+- **RS ratings read raw closes**, so a split inside the lookback read as a crash (MCX: −76% instead of +20%). This touched the live daily run. On the latest session, 28 names that failed the RS ≥ 70 gate now pass. Fixed in `18cab43`. **Not deployed:** the owner's running image is unchanged until rebuilt.
+- **CI never ran a check.** Every run on `main` since 2026-08-17 failed with `ruff: command not found` and `pytest: command not found`: the steps called the tools outside the uv environment. They now use `uv run`, install with `--frozen`, and run `lint-imports` (was defect 4). Confirmed only by reading the logs, because nothing has been pushed since.
+- **A look-ahead read was logged per symbol, not raised**, in historical screening. Fixed in `ad3d1c2`.
+- **The Docker image ignored `uv.lock`.** It installed the newest versions that `pyproject.toml` allowed, so production ran other versions than the tests did (44 of 67 packages differed). The image now installs the lock, and the lock now holds the versions the production image runs.
 
 Fixed in M10 and M11 (2026-10-18):
 
@@ -106,4 +116,8 @@ Ready for private deployment. Missing for public deployment: authentication, a m
 
 ## In flight
 
-**Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md), ADR-012 and ADR-014 are Proposed; ADR-011 and ADR-013 are accepted. M10 (stack spike), M9 (reference study) and M11 (chart workspace vertical slice) are done on branch `wickstreet/m10-m11`; the owner accepted M9 and M10. The M11 engineering gate closed on 2026-10-18 after four corrections and four checks: see the [M11 report](../history/audits/2026-10-18-m11-vertical-slice-report.md). The owner's usability assessment is still open. M11b (weekly bars, data version) is done: see the [M11b report](../history/audits/2026-10-18-m11b-weekly-report.md). M12 (workspace shell) is done: see the [M12 report](../history/audits/2026-10-18-m12-shell-report.md). M13 (professional charting: twelve drawing tools, indicator dialog, context menus, chart types and scales, monthly bars, compare, layouts up to 4 × 4 with sync) is done: see the [M13 report](../history/audits/2026-10-18-m13-charting-report.md). M15 (daily alerts in the app, on the chart's own series) is done: see the [M15 report](../history/audits/2026-10-18-m15-alerts-report.md). M14 (Strategy Studio) and M16 (release readiness) are authorised and under way; work paused at a safe point: see the [M14/M16 handoff](../history/audits/2026-10-18-m14-m16-handoff.md). Open: ADR-015 licence.
+**Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) governs it.
+
+- **Done:** M9 to M15 on branch `wickstreet/m10-m11`. The owner accepted M9, M10, M13, M15, ADR-013 and ADR-014. The owner's M11 usability assessment is still open.
+- **Under way:** M16, release readiness. See the [release-candidate report](../history/audits/2026-10-19-m16-release-candidate-report.md).
+- **Owner decisions:** the licence ([ADR-015](../architecture/adr/ADR-015-licence.md), Proposed; ADR-012 is accepted with it), formal trademark clearance and a domain, publication and push, deploying the RS fix, and re-routing the old research tools.

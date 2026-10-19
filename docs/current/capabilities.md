@@ -1,6 +1,6 @@
 # Capabilities
 
-Verified against the routers, pages and use cases on branch `wickstreet/m10-m11` (M10) on 2026-10-18. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
+Verified against the routers, pages and use cases on branch `wickstreet/m10-m11` (through M14) on 2026-10-19. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
 
 ## Summary
 
@@ -22,10 +22,12 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | 14 | Market-data refresh (NSE/BSE latest session) | Shipped | `/data` |
 | 15 | Health, data freshness, Prometheus metrics | Shipped | — |
 | 16 | Learn hub (methodology, scoring, rules, FAQ) | Shipped | `/learn/*` |
-| 17 | Chart workspace: type-to-search, drawings with select/move/delete, settings and drawings saved on the server (Wickstreet M11) | Shipped on branch `wickstreet/m10-m11`, awaiting the M11 review | `/chart`, `/chart/[symbol]` |
+| 17 | Chart workspace: search, 12 drawing tools, indicators (Alt+I), chart types and scales, 1D/1W/1M bars, compare, layouts up to 4 × 4 with sync, saved on the server (M11–M13) | Shipped on branch `wickstreet/m10-m11` | `/chart`, `/chart/[symbol]` |
+| 18 | Daily alerts on a chart series: close, RSI, ADX, ATR, MACD; fire once, re-arm (M15) | Shipped on branch `wickstreet/m10-m11` | chart side panel |
+| 19 | Strategy Studio: families with a hypothesis and lineage, registry-bounded configs, Screening Result / Historical Research — In-Sample / Out-of-Sample Evaluation, point in time (M14) | Shipped on branch `wickstreet/m10-m11` | `/studio` |
 | — | Fundamentals screening | Not built. Port and disabled engine only. | — |
 | — | Authentication, multi-tenancy | Not built (ADR-010). | — |
-| — | Intraday data, alerts, broker trading | Not built. | — |
+| — | Intraday data, broker trading, alert delivery outside the app | Not built. | — |
 
 ## API
 
@@ -43,7 +45,9 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | Market data | `POST /market-data/refresh` | Fetches the latest NSE/BSE session. No backfill, no screening. |
 | Watchlist | `GET /watchlist`, `GET /watchlist/detail`, `POST /watchlist/{symbol}`, `DELETE /watchlist/{symbol}` | |
 | Workspace | `GET`/`PUT /workspaces/{id}`, `GET`/`PUT /drawings/{symbol}` | Saved chart settings and drawings. `ETag`/`If-Match` concurrency: `412` with the current document, `428` without a precondition (ADR-013 §5). |
-| Strategies | `GET /strategies`, `GET /strategies/{name}` | |
+| Strategies | `GET /strategies`, `GET /strategies/{name}` | User strategies never appear here. |
+| Alerts | `GET /alerts`, `POST /alerts`, `DELETE /alerts/{id}`, `POST /alerts/{id}/rearm`, `POST /alerts/seen`, `POST /alerts/evaluate` | The daily job evaluates after every strategy has synced. |
+| Studio | `GET /studio/rules`; `GET`/`POST /studio/families`; `POST /studio/families/{id}/strategies`; `GET`/`POST /studio/families/{id}/evaluations`; `GET /studio/evaluations/{id}`, `POST /studio/evaluations/{id}/retry` | Saves are checked against the rule registry (422). Evaluations run in the background and return `202`; poll for progress. A second Out-of-Sample Evaluation in a family returns `409`. |
 | Validation | `GET /validation/historical/{name}`, `/alpha/{name}`, `/scorecard/{name}`, `/rules/{name}`, `/engines/{name}`; `POST /validation/experiment/run`, `POST /validation/dashboard` | Return-derived metrics carry a `measurability` block. |
 | Research | `POST /research/historical/screen`, `/compare/runs`, `/verify/determinism`, `/experiment/run`, `/corporate-actions/refresh`; `GET /research/evaluate/{name}`, `/contribution/{name}`, `/compare/strategies` | Two experiment endpoints exist: `/research/experiment/run` and `/validation/experiment/run`. |
 | Backtest | `POST /backtest/walk-forward` | Every response carries `benchmark_label` and `survivorship_warning`. |
@@ -64,6 +68,7 @@ A Vite single-page app: React 18, React Router 7, TypeScript, Tailwind. The API 
 | `/watchlist` | Saved symbols with live detail |
 | `/market` | Breadth and index context |
 | `/strategies` | Strategy list, comparison, contribution |
+| `/studio` | Strategy Studio: families, lineage, a config form from the rule registry, the three result classes |
 | `/validation` | Research dashboard: scorecard, alpha, rule and engine metrics |
 | `/analytics` | Contribution analysis across runs |
 | `/historical` | Browse past runs and their rankings |

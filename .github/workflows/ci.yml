@@ -29,11 +29,13 @@ jobs:
       - name: Install uv
         run: pip install uv
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync --all-extras --frozen
       - name: Ruff lint
-        run: ruff check src tests
+        run: uv run ruff check src tests
       - name: mypy typecheck
-        run: mypy src
+        run: uv run mypy src
+      - name: Architecture contracts
+        run: uv run lint-imports
 
   test-backend:
     name: Test (Backend)
@@ -72,9 +74,9 @@ jobs:
       - name: Install uv
         run: pip install uv
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync --all-extras --frozen
       - name: Run tests with coverage
-        run: pytest --cov=src --cov-report=xml --cov-report=term
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term
         env:
           M25_DATABASE_URL: postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_test
           M25_REDIS_URL: redis://localhost:6379/0
@@ -134,7 +136,7 @@ jobs:
         run: pip install uv
       - name: Install backend dependencies
         working-directory: ./backend
-        run: uv sync --all-extras
+        run: uv sync --all-extras --frozen
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
