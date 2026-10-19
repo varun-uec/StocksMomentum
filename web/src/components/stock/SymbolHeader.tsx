@@ -36,7 +36,6 @@ export function SymbolHeader({
   strategyName,
   current,
   bars,
-  asOf,
   children,
 }: {
   symbol: string;
@@ -44,8 +43,6 @@ export function SymbolHeader({
   current: View;
   /** The page's daily bars: the last close and its change come from them. */
   bars?: OHLCVBarDTO[];
-  /** The evaluation's data date, shown as "EOD as of". */
-  asOf?: string;
   /** The page's Momentum25 badges. */
   children?: ReactNode;
 }) {
@@ -87,7 +84,7 @@ export function SymbolHeader({
                 {change.toFixed(2)}%
               </span>
             )}
-            <span className="text-[11px] text-slate-500">EOD as of {asOf ?? last?.date}</span>
+            <span className="text-[11px] text-slate-500">EOD as of {last?.date}</span>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2">{children}</div>

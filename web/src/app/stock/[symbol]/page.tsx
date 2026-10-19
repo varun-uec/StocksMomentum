@@ -256,7 +256,7 @@ export default function StockResearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <SymbolHeader symbol={symbol} strategyName={strategyName} current="overview" bars={bars} asOf={live?.data_as_of}>
+      <SymbolHeader symbol={symbol} strategyName={strategyName} current="overview" bars={bars}>
         {explanation.rank && <Badge color="indigo">Rank #{explanation.rank}</Badge>}
         {explanation.percentile && <Badge color="blue">{explanation.percentile}th percentile</Badge>}
         <Badge color={explanation.overall_passed ? 'emerald' : 'rose'}>

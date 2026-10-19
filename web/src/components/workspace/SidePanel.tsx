@@ -185,7 +185,7 @@ function WatchlistTab({ symbol, strategy, runId, onOpenSymbol }: { symbol?: stri
       <label className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wide text-slate-500">Sort watchlist <select aria-label="Sort watchlist" className="bg-transparent text-xs" value={sort} onChange={(e) => setSort(e.target.value)}><option value="symbol">Symbol</option><option value="change">Daily change</option><option value="rank">Momentum rank</option></select></label>
       {isLoading && <p className="px-3 py-2 text-xs text-slate-500">Loading watchlist…</p>}
       {!isLoading && items.length === 0 && <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No symbols yet. Add the open symbol with Alt+W.</p>}
-      {data && (
+      {data && items.length > 0 && (
         <p data-testid="watchlist-run" className={`px-3 pb-1 text-[11px] ${runId !== undefined && data.run_id !== runId ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
           {data.run_id === null ? `${strategy} · no completed run` : runId !== undefined && data.run_id !== runId ? `Watchlist ranks: run #${data.run_id} (latest), not this view's run #${runId}` : `Ranks: ${strategy} · run #${data.run_id}`}
         </p>

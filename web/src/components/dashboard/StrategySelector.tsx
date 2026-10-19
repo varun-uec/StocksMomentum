@@ -43,7 +43,8 @@ export function StrategySelector() {
     : strategies[0].name;
 
   return (
-    <div className="flex flex-col gap-0.5">
+    // One row, so it fits the header bar; the single-option note is the select's description.
+    <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-1.5 gap-y-0.5">
       <label
         htmlFor="strategy-selector"
         className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
@@ -54,6 +55,7 @@ export function StrategySelector() {
         id="strategy-selector"
         value={selected}
         disabled={singleOption}
+        aria-describedby={singleOption ? 'strategy-selector-note' : undefined}
         title={strategies.find((s) => s.name === selected)?.description ?? undefined}
         onChange={(e) => setStrategyName(e.target.value)}
         className={`rounded-lg border border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 disabled:opacity-70 disabled:cursor-not-allowed ${focusRing}`}
@@ -65,7 +67,7 @@ export function StrategySelector() {
         ))}
       </select>
       {singleOption && (
-        <span className="text-[11px] text-slate-600 dark:text-slate-400">
+        <span id="strategy-selector-note" className="text-[11px] text-slate-600 dark:text-slate-400 lg:whitespace-nowrap">
           {allStrategies
             ? `1 of ${allStrategies.length} strategies has a completed run`
             : 'Only one strategy has a completed run'}

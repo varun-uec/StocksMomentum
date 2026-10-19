@@ -99,13 +99,13 @@ const Icons = {
   ),
 };
 
-// The investor surface sits at the top level: today's dashboard, the
+// The investor surface sits at the top level: the stock screener, the
 // watchlist, market breadth and the learn hub. The quant surfaces (historical
 // replay, strategy comparison, validation, analytics, the experiment lab) are
 // tools for building or auditing a strategy, not for daily use, so they stay
 // behind the "Research" menu.
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: Icons.dashboard },
+  { href: '/', label: 'Screener', icon: Icons.dashboard },
   { href: '/chart', label: 'Chart', icon: Icons.chart },
   { href: '/watchlist', label: 'Watchlist', icon: Icons.watchlist },
   { href: '/market', label: 'Market', icon: Icons.market },

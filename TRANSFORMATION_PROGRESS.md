@@ -41,3 +41,14 @@ Baseline: `b8a9a1b`, clean working tree. Existing audit and accepted architectur
 - Replaced single-chart fixed height assumptions with measured header/toolbar geometry and bottom-navigation clearance; touch tests assert the plot's bottom edge too.
 - Added context-menu arrow/Home/End focus coverage, retained focus through style changes, and ensured hidden drawings cannot remain selected for keyboard moves.
 - Stale alert edits refresh both alert revisions and price schedules; other-symbol alerts link directly back to their charts.
+
+## Workstation plan, Phase A — 2026-10-20
+
+Local commits on `wickstreet/m10-m11`, none pushed: `b3baee1` phase breakdown; `ac8a0ec` A1 baseline and ledger; `8fab319` A2.1 shell; `08b0229` A2.2 panel in the shell; `980215b` A2.3 header toolbar; `e2d21ba` A2.4 adaptive folding; `ba7182f` A3.1 rail portal gate; `06e8b65` A3.2 chrome slots; `537657c` A3.3 overlay legend; `30fe23b` A3.4 range bar and bare cells; `9fdcd15` A4.1 grouped rail; `c7c9717` A4.2 Object tree; `35883c9` A5–A8b Momentum25 integration, surfaces and journeys; then the A9 evidence and docs commit.
+
+- End of A4: full serial suite 174 passed, 6 skipped (opt-in benchmarks), 0 failed.
+- After A5–A8b: 191 passed, 6 skipped, 0 failed.
+- A9.3 final run: 190 passed, 2 failed, both from one 390 px overflow in the strategy picker's new one-row layout. Fixed by wrapping below 1024 px; both specs then passed. The full serial run is repeated after the A9 commit.
+- NFR-11: warm P95 166 ms, cold P95 474 ms (limits 1 s, 3 s). `M13_BENCH`: 16 charts warm P95 1,288 ms, pan P5 61 fps; the A3.1 portal gate measured 1,338 ms.
+- Backend: one additive enum value (`right_panel: "objects"`); user-documents API tests 34/34; Ruff and strict mypy clean on the touched files. Web: 124 unit tests, zero-warning lint, typecheck and build pass.
+- Screenshots under `audit-evidence/` stay uncommitted, as for every earlier run.

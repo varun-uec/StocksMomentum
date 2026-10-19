@@ -2,9 +2,22 @@
 
 Plan: [2026-10-19 workstation plan](../history/plans/2026-10-19-tradingview-workstation-plan.md). Rule: TradingView structure, Wickstreet skin (design record D23).
 
-The screen matrix (reference screen ↔ Wickstreet route) is added in phase A9.2. The capability ledger below starts at phase A1.3 from the baseline pass: on 2026-10-19 the full Playwright suite at `b3baee1` passed 164 tests on a fresh synthetic database, with 6 opt-in benchmark tests skipped (`M13_BENCH`). BL-01..BL-15 and the OpenChart fixes pass where each one is built today. Each relocation phase updates its rows in the same commit. A phase is not done while a row it touched is unverified.
+The screen matrix follows. The capability ledger below starts at phase A1.3 from the baseline pass: on 2026-10-19 the full Playwright suite at `b3baee1` passed 164 tests on a fresh synthetic database, with 6 opt-in benchmark tests skipped (`M13_BENCH`). BL-01..BL-15 and the OpenChart fixes pass where each one is built today. Each relocation phase updates its rows in the same commit. A phase is not done while a row it touched is unverified.
 
 Columns: **Prev** = location before the transformation. **Now** = current primary place. **No-nav** = the user finishes the task without leaving the view. **Verified** = the spec that proves it, or a manual check.
+
+## Screen matrix
+
+References are TradingView's public rendered pages, observed at 1440×900 on 2026-10-19 (structure only; screenshots stay outside the repository). Evidence is `audit-evidence/tradingview-clone/` (32 screenshots: four screens × 1920, 1440, 768, 390 × light, dark; `geometry.json`), made by `e2e/tradingview-clone-evidence.spec.ts`. Measured at 1440×900: header 38 px, rail 52 px, strip 45 px, range bar 30 px, no document overflow at any width. Plot: 1,031×796 px at 1440 (Codex 1,076×676), 378×698 px at 390 (Codex 334×544).
+
+| Reference | Route | Structure | Behaviour | Changes from Codex | Limits | Evidence |
+|---|---|---|---|---|---|---|
+| Supercharts chart | `/chart`, `/chart/:symbol` | One toolbar row in the shell header: ☰, symbol `h1`, price, Compare, D/W/M, chart type, fx Indicators, Alert, undo/redo, layout and sync, Save, settings gear. Grouped rail (Select, Lines, Fibonacci, Shapes, Annotation, Measure, Remove objects). Overlay legend. Strip with Watchlist, Assessment, Alerts and Object tree. Range bar with footnote, scales, Fit, EOD · NSE and credit. Bottom panel | Toolbar, rail, range bar and Object tree act on the active chart through portals (D25). Lower-priority controls fold into ⋯ below 1280 and 1024 px. The rail becomes one Draw sheet below 640 px | Was a page header with inline per-chart controls; grid cells had their own toolbars | No Replay (B2), no intraday intervals, rail lacks brushes, icons, patterns and projections (B3); bottom panel has no script editor or strategy tester (Phase C) | `chart-*.png` |
+| Stock Screener | `/` | Title and strategy picker in the header, provenance line, stat strip, column-set tabs, filter pills, dense table with sticky header and symbol column | A row opens the Assessment panel; `?run=` opens a historical run with its label | Was "Live Momentum Dashboard" with summary cards and a side detail card | Filters cover existing fields only (B1 adds ranges and saved screens). The picker lists production strategies only | `screener-*.png` |
+| Symbol page | `/stock/:symbol`, `/analysis`, `/elliott-wave` | Header: initial badge, name, `SYMBOL · NSE`, close and change, EOD as of, badges; tab row Overview, Analysis, Elliott Wave, Open in chart ↗ | Each "Why it ranks" item links to and focuses its evidence section; Back link with `?from=` | Was a page banner, an action bar and a section nav | No financials or news (no data source) | `symbol-*.png` |
+| Strategy tester (closest) | `/strategies`, `/studio`, `/backtest`, `/experiment`, `/validation`, `/historical`, `/analytics` | Research workspace: left strategy list, one tab row, flat sections | Strategy and `?from=` carry across tabs; Studio's hold-out flow and the Screening Result / In-Sample / Out-of-Sample labels are unchanged | Was seven separate pages behind a menu | Studio families stay inside Studio | `research-*.png` |
+| Symbol search | dialog | Title with close, search field, All · Stocks chips, rows symbol · name · stock · NSE | ↑↓, Enter, Esc; opens from typing, `/`, Ctrl/⌘+K | Was a smaller list without chips | NSE stocks only | m11-slice "Find" |
+| Indicators | dialog | Left category list from the catalogue, right searchable list, active studies below | Enter adds the first match | Was one grouped list | — | m13-charting "Alt+I" |
 
 ## Chart toolbar and chart controls
 
@@ -75,7 +88,7 @@ Every route keeps its URL. "Prev" is the site `NavBar`. Since A2.1 the desktop e
 | R6 | `/data` | NavBar; phone More | same | m16-release-hardening | pass |
 | R7 | `/strategies`, `/studio`, `/validation`, `/historical`, `/analytics`, `/experiment`, `/backtest` | Research menu; phone More | Research workspace: one tab row over the seven routes (URLs unchanged), a left strategy list from 1024 px, `?from=` kept across tabs. Studio families stay inside Studio (no other natural place) | m14-studio, m16-historical-pit, r2-accessibility, momentum25 "Research workspace" | moved |
 | R8 | `/stock/:symbol`, `/analysis`, `/elliott-wave` | symbol search; links | one `SymbolHeader`: name, `SYMBOL · NSE`, close and change, EOD as of, badges, tabs Overview / Analysis / Elliott Wave / Open in chart ↗, Watchlist star, Patterns, Create alert, Back link. SectionNav retired; each "Why it ranks" item links to and focuses its engine's evidence section | momentum-ranking-display, m11-slice, m10-stack, momentum25 "symbol pages share one header" | moved |
-| R9 | `/about` | footer link | same | manual | pass |
+| R9 | `/about` | footer link | shell status edge link; ☰ app menu | m10-stack "route /about" | moved |
 | R10 | `/lab/chart-grid` | none (diagnostic) | same | m13-bench | pass |
 | R11 | Symbol search box (desktop), search dialog (phone, Ctrl/⌘+K, `/` or typing off-chart) | NavBar | shell header bar | transformation "global command search", "unfinished annotations" | moved |
 | R12 | Theme light / dark / system | NavBar | ☰ app menu; phone More sheet | audit-visual "dark desktop" (`openAppMenu`) | moved |

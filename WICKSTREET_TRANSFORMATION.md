@@ -72,3 +72,18 @@ Automated axe checks cover dashboard, chart and Studio in both themes. Keyboard,
 - `c275f2b` — context-menu keyboard focus and stale-alert recovery.
 
 Final verification/evidence commit and repository state follow validation. [Concise progress record](TRANSFORMATION_PROGRESS.md).
+
+## Workstation plan, Phase A (2026-10-19 to 2026-10-20)
+
+Plan: [2026-10-19 workstation plan](docs/history/plans/2026-10-19-tradingview-workstation-plan.md). Rule: TradingView structure, Wickstreet skin (D23). Every capability's old and new place is in the [correspondence matrix and capability ledger](docs/current/tradingview-correspondence.md).
+
+- **Shell (A2):** one header bar on every route (☰ app menu, search pill, route slot), a right icon strip with the panel (D24), and a status edge with the chart credit.
+- **Chart (A2–A4):** the toolbar sits in the header bar. Lower-priority controls fold into ⋯ below 1280 and 1024 px. One grouped drawing rail with flyouts serves the active chart through portals (D25). It has an overlay legend, a bottom range bar and an Object tree panel tab. Grid cells keep no toolbars of their own.
+- **Momentum25 (A5):** the Assessment panel shows rank, qualification, provenance and per-criterion evidence, keyed on (symbol, strategy, run). Temporary "Show on chart" layers and a legend chip. Watchlist Rank and Qualified columns with a run notice. Screener column sets and filter pills. Alerts scoped to "This symbol" or "All". Same-origin `?from=` return paths.
+- **Surfaces (A6–A8):** the /chart bottom panel with an embedded screener. Restructured search and indicator dialogs. Flat sections everywhere. `/` is the Stock Screener, with a `?run=` historical mode. Symbol pages share one header and tab row. Research is one workspace. `ScreenerDetail`, `SymbolActionBar` and the section nav are retired, each field moved first.
+
+Evidence: [`audit-evidence/tradingview-clone/`](audit-evidence/tradingview-clone/) (32 screenshots, `geometry.json`). At 1440×900: header 38 px, rail 52 px, strip 45 px, range bar 30 px. The plot is 1,031×796 px at 1440 and 378×698 px at 390 (Codex: 334×544). No document overflow at 1920, 1440, 768, 390 or 720×450.
+
+Final serial run on a fresh synthetic `*_e2e` database: see [TRANSFORMATION_PROGRESS.md](TRANSFORMATION_PROGRESS.md). NFR-11 chart open: warm P95 166 ms, cold P95 474 ms. 16-chart grid: warm P95 1,288 ms (Codex 1,348 ms), pan P5 61 fps.
+
+Limits: the Screener's picker lists production strategies only. The Assessment does not mark passing gates, because the API lists only failing gate rules. Data has one settings section, so it has no left nav. Markets has no symbol rows to open an Assessment from. Phase B (filters and saved screens, Replay, more drawings, line alerts, Volume Profile) waits for owner acceptance of Phase A. No pixel-level or superiority claim is made.
