@@ -27,6 +27,7 @@ export const PANEL_TABS: { id: PanelTab; label: string; icon: React.ReactNode }[
   { id: 'watchlist', label: 'Watchlist', icon: icon(<path d="M4 5h12M4 10h12M4 15h8" />) },
   { id: 'details', label: 'Details', icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 9v5M10 6.5v.01" /></>) },
   { id: 'alerts', label: 'Alerts', icon: icon(<><circle cx="10" cy="11" r="6" /><path d="M10 8v3l2 1.5M4 4l2-1.5M16 4l-2-1.5" /></>) },
+  { id: 'objects', label: 'Object tree', icon: icon(<><path d="M5 4v12M5 7h4M5 12h4" /><rect x="10" y="5" width="6" height="4" rx="1" /><rect x="10" y="10" width="6" height="4" rx="1" /></>) },
 ];
 
 /**
@@ -110,6 +111,7 @@ export function SidePanel({
   onClose,
   tabs,
   alertPrice,
+  objectsRef,
 }: {
   panel: PanelTab;
   /** The route's context symbol, if it has one. */
@@ -121,6 +123,8 @@ export function SidePanel({
   tabs?: React.ReactNode;
   /** A price picked on the chart for a new alert. */
   alertPrice?: number;
+  /** Receives the Object tree's body, which the active chart fills. */
+  objectsRef?: (el: HTMLElement | null) => void;
 }) {
   const label = PANEL_TABS.find((t) => t.id === panel)?.label;
   return (
@@ -135,6 +139,7 @@ export function SidePanel({
         {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} onOpenSymbol={onOpenSymbol} />}
         {panel === 'details' && symbol && <DetailsTab symbol={symbol} strategy={strategy} />}
         {panel === 'alerts' && <AlertsTab symbol={symbol} price={alertPrice} />}
+        {panel === 'objects' && <div ref={objectsRef} className="p-2" />}
       </div>
     </aside>
   );

@@ -28,7 +28,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C16 | Panel toggle | /chart header `Panel` | right icon strip (click the open tab to collapse); `Panel` header button below 1024 px | Strip icons | y | server document | m12-shell "panel is saved", transformation "touch controls" | moved |
 | C17 | Analyse (opens Details panel) | /chart header | strip `Details` tab (the Assessment) | Strip icon | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
 | C18 | Research (symbol page) | /chart header link | Details panel "Full research →" | Strip → Details | n | — | m12-shell "details tab" | moved |
-| C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | chart toolbar Undo/Redo icons ≥1280 px; ⋯ menu below; keys | `Objects`, keys | y | server document | m13-charting "undo and redo" | moved |
+| C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | chart toolbar Undo/Redo icons ≥1280 px; ⋯ menu below; keys | toolbar icons, keys | y | server document | m13-charting "undo and redo" | moved |
 | C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | overlay legend at plot top-left: title, OHLC + change, one line per study with × and ⚙ (research pages keep the row above the plot) | Legend | y | — | transformation "study legends", "overlay legend" | moved |
 | C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | inside the overlay legend on the active chart; plot top-left elsewhere | Hover | y | — | openchart-parity D4, transformation "overlay legend" | moved |
 | C22 | Footnote "N daily bars from the stored NSE series", data version | below plot | /chart: bottom range bar, truncated, full text in `title`; research pages: below plot | Read, hover | y | — | m11b-weekly | moved |
@@ -45,7 +45,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | T1 | Select (Esc) | left rail | page rail column, serving the active chart (D25) | Rail | y | — | m12-shell "rail", transformation "rail portal gate" | moved |
 | T2 | Trendline (Alt+T), Ray, Extended line, Horizontal ray (Alt+H), Horizontal line, Vertical line (Alt+V), Cross line, Parallel channel, Price range, Text note, Rectangle (Alt+Shift+R), Fib retracement (Alt+F) | left rail, flat | grouped rail (A4.1): Lines, Fibonacci, Shapes, Annotation, Measure; each group shows its last-used tool; the corner arrow opens a flyout with name and shortcut; below 640 px one "Draw" button opens the groups as a bottom sheet | Rail, flyout, shortcuts | y | server document | m13-charting "every M13 tool", transformation "grouped rail" | moved |
 | T3 | Clear (remove all) | left rail | "Remove objects" below a separator at the rail's end | Rail | y | server document | m11-slice, m11b-weekly | moved |
-| T4 | Objects inspector: list, show/hide, lock/unlock, undo/redo | `Objects` popover | chart toolbar `Objects` (⋯ menu below 1280 px) until the Object tree (A4.2) | `Objects · N` | y | server document | transformation "inline notes and drawing lock" | moved |
+| T4 | Objects inspector: list, show/hide, lock/unlock, undo/redo | `Objects` popover | /chart: **Object tree** right-panel tab for the active chart (undo/redo in the toolbar and keys); research pages keep the `Objects` popover | Strip icon "Object tree" | y | server document; `right_panel: "objects"` (additive enum value) | transformation "inline notes and drawing lock", "Object tree tab" | moved |
 | T5 | Drawing menu: colour, width, dash, text, delete | right-click drawing | same | Right-click, Shift+F10 | y | server document | m13-charting "drawing menu", transformation "drawing menu arrows" | pass |
 | T6 | Select, drag, arrows move, Delete | plot | plot | Click a drawing | y | server document | m13-charting "supports move, edit" | pass |
 | T7 | Inline text-note editor | plot | plot | Text tool | y | server document | transformation "inline notes" | pass |
@@ -55,7 +55,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 
 | # | Capability | Prev | Now | How a user finds it | No-nav | APIs | Verified | Status |
 |---|---|---|---|---|---|---|---|---|
-| P1 | Tabs Watchlist / Details / Alerts, arrows/Home/End, Close panel, saved state | /chart right card | shell: right icon strip on every route; panel inline on /chart ≥1280 px, overlay elsewhere (D24); Details only with a context symbol | Strip icons | y | server document | m12-shell "panel is saved", "panel follows the route" | moved |
+| P1 | Tabs Watchlist / Details / Alerts (+ Object tree on /chart), arrows/Home/End, Close panel, saved state | /chart right card | shell: right icon strip on every route; panel inline on /chart ≥1280 px, overlay elsewhere (D24); Details only with a context symbol | Strip icons | y | server document | m12-shell "panel is saved", "panel follows the route" | moved |
 | P2 | Watchlist rows: symbol, rank, close, change; click opens chart; sort (BL-13); Add/Remove (Alt+W) | Watchlist tab | shell panel, every route | Strip | y | `getWatchlistDetail`, `addToWatchlist`, `removeFromWatchlist` | m12-shell "Alt+W" | moved |
 | P3 | Details: Momentum25 summary, all criteria and evidence, Full research link | Details tab | shell panel, /chart | Strip | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
 | P4 | Alerts: create (value, condition, threshold, interval), drawing-linked, edit armed (BL-07), re-arm, delete, unseen count, history (BL-09), other-symbol link | Alerts tab | shell panel, every route (list only without a symbol) | Strip, chart menu | y | `/alerts` (create, edit, rearm, evaluate, seen, delete) | m15-alerts, transformation "armed alert editing", m12-shell "panel follows the route" | moved |
@@ -110,7 +110,7 @@ Every route keeps its URL. "Prev" is the site `NavBar`. Since A2.1 the desktop e
 | BL-05 | Inline note editor | plot | transformation "inline notes" | pass |
 | BL-06 | Armed alerts as dashed lines | plot | transformation "armed alert editing" | pass |
 | BL-07 | Edit an armed alert | Alerts tab | transformation "armed alert editing" | pass |
-| BL-08 | Lock, hide, dash | Objects, drawing menu | transformation "inline notes and drawing lock" | pass |
+| BL-08 | Lock, hide, dash | Object tree tab, drawing menu | transformation "inline notes and drawing lock" | pass |
 | BL-09 | Alert history | Alerts tab | m15-alerts | pass |
 | BL-10 | Volume Profile | not built (Phase B5) | — | deferred |
 | BL-11 | Editable RSI/MACD display studies | Indicators dialog | transformation "study legends" | pass |

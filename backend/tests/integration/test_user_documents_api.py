@@ -231,6 +231,11 @@ async def test_workspace_side_panel_defaults_and_rejects_unknown_tabs(
         WORKSPACE, json={"charts": {}, "right_panel": "orders"}, headers={"If-Match": '"1"'}
     )
     assert bad.status_code == 422
+    objects = await client.put(
+        WORKSPACE, json={"charts": {}, "right_panel": "objects"}, headers={"If-Match": '"1"'}
+    )
+    assert objects.status_code == 200
+    assert objects.json()["body"]["right_panel"] == "objects"
 
 
 @pytest.mark.parametrize(

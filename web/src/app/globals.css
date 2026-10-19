@@ -74,7 +74,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 }
 .dark .text-slate-500 { color: #95a5b0; }
 .workstation-button:disabled { opacity: .45; cursor: default; }
-.study-options-content[aria-label='Drawing objects'] { left: 0; right: auto; max-height: min(460px, 60dvh); overflow-y: auto; }
+.study-options-content.objects-content { left: 0; right: auto; max-height: min(460px, 60dvh); overflow-y: auto; }
 .grid-cell .chart-controls { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
 @media (pointer: coarse) {
   .workstation-button, .chart-toolbar button, .chart-controls button, .chart-controls select { min-height: 32px; }
@@ -128,7 +128,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .chart-rangebar { flex-shrink: 0; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-top: 1px solid var(--ws-line); overflow-x: auto; scrollbar-width: none; }
 .chart-rangebar > *, .chart-rangebar .chart-slot > * { flex-shrink: 0; }
 .chart-toolbar .study-options-content { top: 32px; }
-.chart-toolbar .study-options-content[aria-label='Drawing objects'] { left: auto; right: 0; }
 /* The workstation chart's overlay legend (D23): it never blocks the plot except at its buttons. */
 .chart-overlay-legend { position: absolute; z-index: 10; top: 4px; left: 6px; max-width: calc(100% - 80px); pointer-events: none; display: flex; flex-direction: column; gap: 1px; font-size: 11px; line-height: 16px; color: var(--ws-ink); text-shadow: 0 0 3px var(--ws-surface); }
 /* /chart: the range bar replaces the shell's status edge (A3.4). */

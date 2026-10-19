@@ -206,9 +206,9 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     setSearch((s) => ({ ...s, open: false, compare: false }));
   };
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
-  const { openPanel, routeSlot } = useShell();
+  const { openPanel, routeSlot, objectsSlot } = useShell();
   // Dense layouts release the panel's width; it then opens over the charts.
-  useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9 });
+  useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9, objects: true });
   const alertAt = (price: number) => openPanel('alerts', price);
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
@@ -249,6 +249,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     history: xl ? historySlot : menuHistorySlot,
     settings: xl ? settingsSlot : menuSettingsSlot,
     rangeBar: rangeSlot,
+    objects: objectsSlot,
     resetKey: grid.layout.id,
   };
   const activate = (chartId: string) => {

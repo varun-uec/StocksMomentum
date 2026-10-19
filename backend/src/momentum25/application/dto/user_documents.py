@@ -114,7 +114,7 @@ class WorkspaceV1(_Strict):
     """The owner's workspace: which chart is active and how each chart looks."""
 
     active_chart_id: Identifier | None = None
-    right_panel: Literal["watchlist", "details", "alerts"] | None = "watchlist"
+    right_panel: Literal["watchlist", "details", "alerts", "objects"] | None = "watchlist"
     layout: Literal["1x1", "2x1", "1x2", "2x2", "3x3", "4x4"] = Field(
         default="1x1", description="Chart grid, columns x rows (M13)."
     )

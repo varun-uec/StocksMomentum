@@ -80,12 +80,12 @@ test('inline notes and drawing lock, visibility, dash and restoration are persis
   await page.keyboard.press('Escape');
   const points = (await savedDrawings(request))[0]?.points;
   await chart.focus(); await page.keyboard.press('ArrowUp');
-  await page.locator('summary').filter({ hasText: 'Objects' }).click();
+  await openPanelTab(page, 'Object tree');
   await page.getByRole('button', { name: 'Hide Text note', exact: true }).click();
   await expect.poll(async () => (await savedDrawings(request))[0]).toMatchObject({ locked: true, hidden: true, dash: 'dashed', text: 'Review the base after the close' });
   if (points) expect((await savedDrawings(request))[0].points).toEqual(points);
   await page.reload(); await ready(page);
-  await page.locator('summary').filter({ hasText: 'Objects' }).click();
+  await openPanelTab(page, 'Object tree');
   await page.getByRole('button', { name: 'Show Text note', exact: true }).click();
   await page.getByRole('button', { name: 'Unlock Text note', exact: true }).click();
   await page.keyboard.press('Escape');
@@ -423,4 +423,38 @@ test('the grouped rail: flyouts, keys, last-used tools and the phone Draw sheet'
   await rail.getByRole('button', { name: 'Fib retracement' }).click();
   await expect(rail).toBeHidden();
   await expect(page.getByRole('button', { name: 'Draw', exact: true })).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('the Object tree tab lists the active chart\'s drawings: hide, lock and undo work, and it follows the active cell', async ({ page, request }) => {
+  await page.goto('/chart/RELIANCE'); await ready(page);
+  await openPanelTab(page, 'Object tree');
+  const tree = page.getByRole('tabpanel', { name: 'Object tree' });
+  await expect(tree).toContainText('No objects on this chart');
+  await pickTool(page, 'Horizontal line');
+  const box = (await page.getByTestId('price-chart').boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4);
+  await expect(tree.getByRole('button', { name: 'Hide Horizontal line', exact: true })).toBeVisible();
+
+  await tree.getByRole('button', { name: 'Hide Horizontal line', exact: true }).click();
+  await tree.getByRole('button', { name: 'Lock Horizontal line', exact: true }).click();
+  await expect.poll(async () => (await savedDrawings(request))[0]).toMatchObject({ hidden: true, locked: true });
+  // Undo walks back the tree's edits: the lock first, then the visibility.
+  await page.getByTestId('price-chart').focus();
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await savedDrawings(request))[0]).toMatchObject({ hidden: true, locked: false });
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await savedDrawings(request))[0]).toMatchObject({ hidden: false, locked: false });
+  await expect(tree.getByRole('button', { name: 'Lock Horizontal line', exact: true })).toBeVisible();
+
+  // In a grid the tree shows the active chart's objects only.
+  await chooseLayout(page, '2x2');
+  await page.getByRole('region', { name: /^Chart c2: / }).getByTestId('price-chart').click({ position: { x: 60, y: 40 } });
+  await page.keyboard.press('Escape');
+  await page.keyboard.type('INFY');
+  await page.getByRole('dialog', { name: 'Search symbols' }).getByRole('option', { name: /INFY/ }).first().waitFor();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('region', { name: 'Chart c2: INFY' })).toBeVisible();
+  await expect(tree).toContainText('No objects on this chart');
+  await page.getByRole('region', { name: /^Chart main: / }).getByTestId('price-chart').click({ position: { x: 60, y: 40 } });
+  await expect(tree.getByRole('button', { name: 'Hide Horizontal line', exact: true })).toBeVisible();
 });

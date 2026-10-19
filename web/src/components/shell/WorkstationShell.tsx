@@ -52,7 +52,7 @@ function useRightDock(context: PanelContext) {
   const inline = desktop && wide && !!context.saved && context.inline !== false;
   const stored = context.saved ? saved.panel : localPanel;
   const setStored = context.saved ? saved.setPanel : setLocalPanel;
-  const tabs = PANEL_TABS.filter((t) => t.id !== 'details' || (context.symbol && context.assessment));
+  const tabs = PANEL_TABS.filter((t) => (t.id === 'details' ? context.symbol && context.assessment : t.id === 'objects' ? context.objects : true));
   // A tab the route cannot show falls back to the watchlist; the saved choice is kept.
   const panel: PanelTab | null = stored ? (tabs.some((t) => t.id === stored) ? stored : 'watchlist') : null;
   const visible = !!panel && (inline || overlay);
@@ -91,6 +91,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
   const { strategyName } = useStrategy();
   const onChart = pathname.startsWith('/chart');
   const [routeSlot, setRouteSlot] = useState<HTMLElement | null>(null);
+  const [objectsSlot, setObjectsSlot] = useState<HTMLElement | null>(null);
   const [panelContext, setPanelContextState] = useState<PanelContext>({});
   const [search, setSearch] = useState<{ open: boolean; initial: string }>({ open: false, initial: '' });
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -101,10 +102,11 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
   const shell = useMemo<ShellApi>(
     () => ({
       routeSlot,
+      objectsSlot,
       setPanelContext: setPanelContextState,
       openPanel: (tab: PanelTab, price?: number) => dockRef.current.openWithPrice(tab, price),
     }),
-    [routeSlot],
+    [routeSlot, objectsSlot],
   );
 
   useEffect(() => setSearch((s) => ({ ...s, open: false })), [pathname]);
@@ -137,6 +139,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
         onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
         onClose={dock.close}
         alertPrice={dock.alertPrice}
+        objectsRef={setObjectsSlot}
         tabs={dock.desktop ? undefined : <PanelTabs tabs={dock.tabs} selected={dock.panel} onSelect={dock.open} vertical={false} />}
       />
     </div>

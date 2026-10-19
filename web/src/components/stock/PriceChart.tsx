@@ -104,6 +104,8 @@ export interface ChartChrome {
   settings?: HTMLElement | null;
   /** The bottom range bar: ranges, scale and Fit. */
   rangeBar?: HTMLElement | null;
+  /** The Object tree panel tab: the drawings list with show/hide and lock. */
+  objects?: HTMLElement | null;
   /** A change (a new layout) cancels an armed tool. */
   resetKey?: string;
 }
@@ -1666,18 +1668,24 @@ export function PriceChart({
       <button type="button" className="workstation-button" disabled={!historyRef.current.future.length} onClick={() => stepHistory('after')}>Redo</button>
     </span>
   );
-  const objects = drawingsEnabled && (!compact || toolRail) && (
-<InspectorDisclosure label={<>Objects{drawings.length ? ` · ${drawings.length}` : ''}</>} name="Objects · manage drawings">
-          <div className="study-options-content" aria-label="Drawing objects">
-            {!chrome && history}
-            {!drawings.length && <p className="text-xs text-slate-500">Choose a tool on the rail to mark the chart. Removed objects can be restored with Undo.</p>}
-            {drawings.map((d) => <div key={d.id} className="flex items-center gap-2 text-xs">
-              <button type="button" className="flex-1 text-left" onClick={() => { setSelectedId(d.id); setMenu({ id: d.id, x: 40, y: 40 }); }}>{DRAWING_LABELS[d.kind]}</button>
-              <button type="button" className="workstation-button" aria-label={`${d.hidden ? 'Show' : 'Hide'} ${DRAWING_LABELS[d.kind]}`} onClick={() => commitDrawings(drawings.map((x) => x.id === d.id ? { ...x, hidden: !x.hidden } : x))}>{d.hidden ? 'Show' : 'Hide'}</button>
-              <button type="button" className="workstation-button" aria-label={`${d.locked ? 'Unlock' : 'Lock'} ${DRAWING_LABELS[d.kind]}`} onClick={() => commitDrawings(drawings.map((x) => x.id === d.id ? { ...x, locked: !x.locked } : x))}>{d.locked ? 'Unlock' : 'Lock'}</button>
-            </div>)}
-          </div>
-        </InspectorDisclosure>
+  // The drawings list: the Object tree panel tab on /chart, a disclosure elsewhere.
+  const objectList = (
+    <div className="flex flex-col gap-1.5" aria-label="Drawing objects">
+      {!drawings.length && <p className="text-xs text-slate-500">No objects on this chart. Choose a tool on the rail to mark it. Removed objects can be restored with Undo.</p>}
+      {drawings.map((d) => <div key={d.id} className="flex items-center gap-2 text-xs">
+        <button type="button" className="flex-1 text-left" onClick={() => { setSelectedId(d.id); setMenu({ id: d.id, x: 40, y: 40 }); }}>{DRAWING_LABELS[d.kind]}</button>
+        <button type="button" className="workstation-button" aria-label={`${d.hidden ? 'Show' : 'Hide'} ${DRAWING_LABELS[d.kind]}`} onClick={() => commitDrawings(drawings.map((x) => x.id === d.id ? { ...x, hidden: !x.hidden } : x))}>{d.hidden ? 'Show' : 'Hide'}</button>
+        <button type="button" className="workstation-button" aria-label={`${d.locked ? 'Unlock' : 'Lock'} ${DRAWING_LABELS[d.kind]}`} onClick={() => commitDrawings(drawings.map((x) => x.id === d.id ? { ...x, locked: !x.locked } : x))}>{d.locked ? 'Unlock' : 'Lock'}</button>
+      </div>)}
+    </div>
+  );
+  const objects = drawingsEnabled && !chrome && (!compact || toolRail) && (
+    <InspectorDisclosure label={<>Objects{drawings.length ? ` · ${drawings.length}` : ''}</>} name="Objects · manage drawings">
+      <div className="study-options-content objects-content">
+        {history}
+        {objectList}
+      </div>
+    </InspectorDisclosure>
   );
   const intervalGroup = onIntervalChange && (
     <div role="group" aria-label="Interval" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
@@ -1869,7 +1877,8 @@ export function PriceChart({
           {chartLabel && !bare && <div className="chart-controls flex items-center gap-1 mb-1">{chartLabel}</div>}
           {chrome.toolbar && createPortal(intervalGroup, chrome.toolbar)}
           {chrome.chartType && createPortal(chartTypeSelect, chrome.chartType)}
-          {chrome.history && createPortal(<>{history}{objects}</>, chrome.history)}
+          {chrome.history && createPortal(history, chrome.history)}
+          {chrome.objects && drawingsEnabled && createPortal(objectList, chrome.objects)}
           {chrome.settings && createPortal(
             <InspectorDisclosure label={SETTINGS_ICON} name="Chart settings">
               <div className="study-options-content">

@@ -4012,7 +4012,7 @@ export interface components {
              * Right Panel
              * @default watchlist
              */
-            right_panel: ("watchlist" | "details" | "alerts") | null;
+            right_panel: ("watchlist" | "details" | "alerts" | "objects") | null;
             /**
              * Layout
              * @description Chart grid, columns x rows (M13).

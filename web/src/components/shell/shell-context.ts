@@ -17,27 +17,31 @@ export interface PanelContext {
   saved?: boolean;
   /** Allow the panel inline beside the content on wide screens; else it overlays. */
   inline?: boolean;
+  /** Show the Object tree tab: the active chart fills `objectsSlot` (/chart). */
+  objects?: boolean;
 }
 
 export interface ShellApi {
   /** The header bar's route slot. Null until the shell has mounted. */
   routeSlot: HTMLElement | null;
+  /** The Object tree tab's body while it is open; the active chart portals its drawings list into it. */
+  objectsSlot: HTMLElement | null;
   setPanelContext: (context: PanelContext) => void;
   /** Open a panel tab; `alertPrice` prefills a new alert. */
   openPanel: (tab: PanelTab, alertPrice?: number) => void;
 }
 
-export const ShellContext = createContext<ShellApi>({ routeSlot: null, setPanelContext: () => {}, openPanel: () => {} });
+export const ShellContext = createContext<ShellApi>({ routeSlot: null, objectsSlot: null, setPanelContext: () => {}, openPanel: () => {} });
 
 export function useShell(): ShellApi {
   return useContext(ShellContext);
 }
 
 /** Declare the route's panel context while the route is mounted. */
-export function useShellPanel({ symbol, assessment, saved, inline }: PanelContext): void {
+export function useShellPanel({ symbol, assessment, saved, inline, objects }: PanelContext): void {
   const { setPanelContext } = useShell();
   useEffect(() => {
-    setPanelContext({ symbol, assessment, saved, inline });
+    setPanelContext({ symbol, assessment, saved, inline, objects });
     return () => setPanelContext({});
-  }, [setPanelContext, symbol, assessment, saved, inline]);
+  }, [setPanelContext, symbol, assessment, saved, inline, objects]);
 }
