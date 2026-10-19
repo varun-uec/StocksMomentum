@@ -1,6 +1,6 @@
 # E2E Audit Evidence
 
-Evidence for the 2026-10-19 Wickstreet product audit, run against code revision `e7fd455`.
+Evidence for the 2026-10-19 Wickstreet product audit. The initial audit used revision `e7fd455`; the focused release-hardening run used the current local working tree.
 
 ## Data and safety
 
@@ -8,13 +8,15 @@ Evidence for the 2026-10-19 Wickstreet product audit, run against code revision 
 - The clean Studio screenshot used a second empty target, `wickstreet_visual_e2e`, in the same disposable tmpfs container. It was independently marker-verified and migrated; it contains synthetic price fixtures but no Studio families.
 - The harness rejected unapproved database names, verified the exact `_e2e` name and safety marker before migrations/fixture writes, and used the same database for app requests and cleanup.
 - Postgres ran as `wickstreet-audit-final-db` on Docker tmpfs with no persistent volume. A restart intentionally erased that disposable database; the guard, schema, fixtures and same-database browser check were then restored.
+- The focused persistence recovery used a new loopback-only PostgreSQL 16 container, the explicitly named `wickstreet_persistent_e2e` database, and a newly created named Docker volume. Browser state was written, the container restarted, and a new API/Playwright process verified the same state. The harness removed only the container and volume it created.
+- Focused backend integration checks used a separate ephemeral database named `wickstreet_release_hardening_test`, ending in the required `_test` suffix. The suite's fixtures dropped/rebuilt schema only in that newly created container, which was removed after the run.
 - Market data is synthetic. No NSE automated download or real database mutation was performed.
 
 ## Artifacts
 
 ### Screenshots
 
-[`screenshots/`](screenshots/) contains 42 Chromium captures: every documented SPA route at desktop width, plus chart search, indicators, alerts, 4×4 grid, light/dark states, dashboard and Studio mobile views, API failure/loading states, and the post-fix mobile navigation/table states. Studio desktop/mobile empty states were captured on the separate clean synthetic database so retained strategy-family test records do not appear as product content. The browser viewport was set explicitly in the test. Captures are rendered product states that were visually inspected; they are not golden-image diffs.
+[`screenshots/`](screenshots/) contains Chromium captures: every documented SPA route at desktop width, plus chart search, indicators, alerts, 4×4 grid, light/dark states, dashboard and Studio mobile views, API failure/loading states, post-fix mobile navigation/table states, and the default authorized-import screen. Studio desktop/mobile empty states were captured on the separate clean synthetic database so retained strategy-family test records do not appear as product content. The browser viewport was set explicitly in the test. Captures are rendered product states that were visually inspected; they are not golden-image diffs.
 
 ### Traces
 
@@ -29,6 +31,10 @@ Both traces were recorded with Playwright tracing enabled on the isolated E2E ta
 - [`benchmarks/m13-bench.json`](benchmarks/m13-bench.json) — 1/4/16 chart performance, 30 samples per open case, pan FPS and heap observations.
 - [`benchmarks/api-resilience.json`](benchmarks/api-resilience.json) — injected delay and observed render time.
 - [`benchmarks/e2e-suite-summary.json`](benchmarks/e2e-suite-summary.json) — final backend, web and browser-suite totals and restart/fault summaries.
+- [`benchmarks/release-hardening.md`](benchmarks/release-hardening.md) — focused hardening outcomes, exact restart method and limits.
+- [`benchmarks/release-hardening-e2e-confirmed.log`](benchmarks/release-hardening-e2e-confirmed.log) — 29 focused Playwright cases and both database/app restart recovery phases.
+- [`benchmarks/release-hardening-ui-evidence.log`](benchmarks/release-hardening-ui-evidence.log) — isolated post-fix render check for the authorized import screen.
+- [`benchmarks/release-hardening-api-tests.log`](benchmarks/release-hardening-api-tests.log) — successful Ruff, mypy, unit and integration regression results.
 
 Warm/cold methods are recorded in each JSON. NFR-11 cold starts chart navigation after the fresh API answers its health check (boot time excluded). M13 cold means a fresh browser context against the already-running API. Performance measurements use synthetic histories and are local to the listed Mac/Chromium environment.
 

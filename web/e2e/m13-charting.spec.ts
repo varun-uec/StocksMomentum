@@ -82,6 +82,93 @@ test('every M13 tool draws and is saved', async ({ page, request }) => {
   expect(saved.find((d) => d.kind === 'text')!.text).toBe('Base breakout');
 });
 
+const DRAWING_LIFECYCLE_CASES: {
+  name: string;
+  clicks: [number, number][];
+  body: [number, number];
+}[] = [
+  { name: 'Trendline', clicks: [[0.12, 0.12], [0.25, 0.25]], body: [0.185, 0.185] },
+  { name: 'Ray', clicks: [[0.2, 0.2], [0.3, 0.25]], body: [0.25, 0.225] },
+  { name: 'Extended line', clicks: [[0.2, 0.3], [0.3, 0.35]], body: [0.25, 0.325] },
+  { name: 'Horizontal ray', clicks: [[0.4, 0.2]], body: [0.75, 0.2] },
+  { name: 'Horizontal line', clicks: [[0.5, 0.15]], body: [0.8, 0.15] },
+  { name: 'Vertical line', clicks: [[0.45, 0.5]], body: [0.45, 0.8] },
+  { name: 'Cross line', clicks: [[0.55, 0.55]], body: [0.75, 0.55] },
+  { name: 'Parallel channel', clicks: [[0.6, 0.3], [0.8, 0.2], [0.7, 0.35]], body: [0.7, 0.25] },
+  { name: 'Rectangle', clicks: [[0.2, 0.65], [0.35, 0.8]], body: [0.275, 0.725] },
+  { name: 'Fib retracement', clicks: [[0.4, 0.65], [0.55, 0.8]], body: [0.475, 0.725] },
+  { name: 'Price range', clicks: [[0.62, 0.6], [0.7, 0.45]], body: [0.66, 0.525] },
+  { name: 'Text note', clicks: [[0.3, 0.6]], body: [0.32, 0.59] },
+];
+
+for (const drawing of DRAWING_LIFECYCLE_CASES) {
+  test(`${drawing.name} supports move, edit, delete, undo, redo and restore`, async ({ page, request }) => {
+    await page.goto('/chart/INFY');
+    await ready(page);
+    page.on('dialog', (dialog) => void dialog.accept('Lifecycle note'));
+    const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
+    await rail.getByRole('button', { name: drawing.name, exact: true }).click();
+    for (const [x, y] of drawing.clicks) await clickAt(page, x, y);
+    await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
+    const original = (await drawings(request, 'INFY'))[0];
+
+    await rail.getByRole('button', { name: 'Select', exact: true }).click();
+    const box = (await page.getByTestId('price-chart').boundingBox())!;
+    const [bodyX, bodyY] = drawing.body;
+    const dragX = 0.035;
+    const dragY = -0.035;
+    await page.mouse.move(box.x + box.width * bodyX, box.y + box.height * bodyY);
+    await page.mouse.down();
+    await page.mouse.move(
+      box.x + box.width * (bodyX + dragX),
+      box.y + box.height * (bodyY + dragY),
+      { steps: 5 },
+    );
+    await page.mouse.up();
+    await expect.poll(async () => (await drawings(request, 'INFY'))[0].points).not.toEqual(original.points);
+    const moved = (await drawings(request, 'INFY'))[0];
+
+    await page.mouse.click(
+      box.x + box.width * (bodyX + dragX),
+      box.y + box.height * (bodyY + dragY),
+      { button: 'right' },
+    );
+    const menu = page.getByRole('menu', { name: 'Drawing' });
+    await menu.getByRole('menuitemradio', { name: 'Rose' }).click();
+    await expect.poll(async () => (await drawings(request, 'INFY'))[0].color).toBe('#ef4444');
+    const edited = (await drawings(request, 'INFY'))[0];
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    const chart = page.getByTestId('price-chart');
+    await expect(chart).toBeFocused();
+
+    await page.keyboard.press('Control+z'); // undo the style edit
+    await expect.poll(async () => (await drawings(request, 'INFY'))[0].color).toBe(moved.color);
+    await page.keyboard.press('Control+Shift+z'); // redo it
+    await expect.poll(async () => (await drawings(request, 'INFY'))[0].color).toBe('#ef4444');
+
+    await page.keyboard.press('Shift+F10');
+    await page.getByRole('menu', { name: 'Drawing' }).getByRole('menuitem', { name: 'Delete' }).click();
+    await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(0);
+    await page.keyboard.press('Control+z'); // restore deleted drawing
+    await expect.poll(async () => (await drawings(request, 'INFY'))[0]).toMatchObject({
+      id: edited.id,
+      color: '#ef4444',
+    });
+    await page.keyboard.press('Control+Shift+z'); // redo deletion
+    await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(0);
+    await page.keyboard.press('Control+z');
+
+    await page.reload();
+    await ready(page);
+    await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
+    await expect.poll(async () => (await drawings(request, 'INFY'))[0]).toMatchObject({
+      id: edited.id,
+      color: '#ef4444',
+    });
+  });
+}
+
 test('every visible range changes the saved chart window', async ({ page, request }) => {
   await page.goto('/chart/TCS');
   await ready(page);

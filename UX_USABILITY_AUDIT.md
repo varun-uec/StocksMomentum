@@ -1,6 +1,6 @@
 # Wickstreet UX and Visual Usability Audit
 
-**Audit date:** 2026-10-19 · **Revision:** `e7fd455`
+**Audit date:** 2026-10-19 · **Initial audit revision:** `e7fd455`; see the focused release-hardening update below.
 
 Screens were rendered by Chromium at 1440×1000, 1280×720 (benchmarks) and 390×844, then visually inspected. Screenshots are evidence, not substitutes for inspection. See the [evidence index](audit-evidence/README.md).
 
@@ -24,6 +24,7 @@ The full TradingView mental model is not reproduced: Wickstreet uses `Ctrl/⌘+K
 | Studio, desktop | Family creation and help text render cleanly, but the empty state leaves substantial whitespace. | The create-family next step is visible; a long blank area can make the page feel unfinished. | Open P2 polish. [Screenshot](audit-evidence/screenshots/studio-desktop.png) |
 | Studio, mobile | Family area is reachable after choosing a family; create form and selected details remain usable by scrolling. | Longer than desktop and not a one-screen form. | Previously adjusted to scroll to the selected family. [Viewport](audit-evidence/screenshots/studio-mobile-viewport.png) |
 | Market API unavailable | Error message is centered, legible and actionable enough to establish that data is unavailable. Large surrounding blank space remains. | Failure state is not mistaken for a blank chart. | Pass. [Screenshot](audit-evidence/screenshots/market-api-unavailable.png) |
+| Data, desktop | The default state clearly says exchange downloads are disabled, shows the authorized import commands and uses a visible code block. Visual review found the original snippet omitted loading `.env`, which could point CLI imports at the default database. | A customized Compose database might not be the target of the import commands. | Fixed: the instructions now export `../.env` before running the import commands; the updated state is captured and browser-checked. [Screenshot](audit-evidence/screenshots/data-authorized-import-desktop.png) |
 | Dark dashboard | Contrast and surface hierarchy remain coherent in dark mode. | No major theme-specific issue observed. | Pass. [Screenshot](audit-evidence/screenshots/dashboard-dark-desktop.png) |
 | Mobile More menu | Advanced Momentum25/research routes are available under a labeled More menu. | The route inventory is preserved, although a new user may not realize how many legacy screens exist. | Pass with discoverability cost. [Screenshot](audit-evidence/screenshots/mobile-more-menu.png) |
 | 4×4 chart grid | All 16 charts mount within the page; at 1280×720 each cell is necessarily compact. | Useful for scanning, not comfortable for detailed interaction on small displays. | Functional; dense layout is expected. [Screenshot](audit-evidence/screenshots/chart-grid-16-desktop.png) |
@@ -35,6 +36,10 @@ The full TradingView mental model is not reproduced: Wickstreet uses `Ctrl/⌘+K
 - Crosshair synchronization and chart focus are visually legible on desktop. Multi-chart keyboard navigation was not exhaustively assessed with screen readers or a complete keyboard-only task script.
 - Dark and light dashboard states were inspected. A page-by-page contrast-ratio audit, screen-reader audit, reduced-motion audit and touch-accessibility audit were not performed.
 - There is no login or user profile boundary. This is consistent with private loopback deployment, not appropriate for an exposed multi-user service.
+
+## Focused release-hardening update — 2026-10-19
+
+The Data page now starts with an offline authorized-data path. Its rendered desktop state was captured and inspected after adding the `.env` loading lines to the CLI snippet. Direct refresh controls appear only when the operator explicitly enables downloads; this control does not grant source permission. See [release-hardening evidence](audit-evidence/benchmarks/release-hardening.md).
 
 ## Reference usability comparison
 

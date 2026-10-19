@@ -7,6 +7,8 @@
 ``reset`` Delete every saved workspace, drawing and alert, so each test starts clean.
 ``age-alerts`` Move every alert's ``armed_after`` 30 days back, so an E2E test can
           watch one fire on bars already stored (the synthetic fixture gets no new bars).
+``holdout-provenance`` Set the isolated 2023–2025 E2E hold-out months to published or
+          reconstructed, for the Strategy Studio insufficient-provenance case.
 
 The database URL comes from ``E2E_DATABASE_URL`` only. Every command verifies the
 database name returned by PostgreSQL before it can read or mutate anything.
@@ -113,10 +115,13 @@ def database_name(url: str) -> str:
     return name
 
 
-async def main(command: str, url: str) -> None:
+async def main(command: str, url: str, *arguments: str) -> None:
     """Verify and operate on a database dedicated to synthetic E2E fixtures."""
-    if command not in {"verify", "seed", "reset", "age-alerts"}:
-        sys.exit("usage: db.py {verify|seed|reset|age-alerts}")
+    if command not in {"verify", "seed", "reset", "age-alerts", "holdout-provenance"}:
+        sys.exit("usage: db.py {verify|seed|reset|age-alerts|holdout-provenance}")
+    if command == "holdout-provenance":
+        if len(arguments) != 1 or arguments[0] not in {"published", "reconstructed"}:
+            sys.exit("usage: db.py holdout-provenance {published|reconstructed}")
     expected_database = database_name(url)
     conn = await asyncpg.connect(url.replace("postgresql+asyncpg://", "postgresql://"))
     try:
@@ -183,6 +188,18 @@ async def main(command: str, url: str) -> None:
         if command == "age-alerts":
             await conn.execute("UPDATE alerts SET armed_after = armed_after - 30")
             return
+        if command == "holdout-provenance":
+            updated = await conn.execute(
+                "UPDATE ohlcv_daily SET provenance = $1::varchar, volume = CASE "
+                "WHEN $1::varchar = 'reconstructed' AND volume % 1000 = 0 THEN volume + 1 "
+                "WHEN $1::varchar = 'published' AND volume % 1000 = 1 THEN volume - 1 "
+                "ELSE volume END "
+                "WHERE date >= DATE '2023-01-01' AND date <= DATE '2025-12-31' "
+                "AND security_id IN (SELECT id FROM securities WHERE symbol LIKE 'E2E10Y%')",
+                arguments[0],
+            )
+            print(f"updated isolated E2E hold-out provenance: {updated}")
+            return
         await conn.execute(SQL)
         count = await conn.fetchval(
             "SELECT min(c) FROM (SELECT count(*) c FROM ohlcv_daily o JOIN securities s"
@@ -196,4 +213,4 @@ async def main(command: str, url: str) -> None:
 url = os.environ.get("E2E_DATABASE_URL", "")
 if not url:
     sys.exit("set E2E_DATABASE_URL to the dedicated E2E database (make e2e-db)")
-asyncio.run(main(sys.argv[1], url))
+asyncio.run(main(sys.argv[1], url, *sys.argv[2:]))

@@ -64,6 +64,31 @@ test('an alert that fired while the list was closed shows a count until it is op
   await expect.poll(async () => (await (await request.get('/api/v1/alerts')).json()).unseen).toBe(0);
 });
 
+test('a close alert armed before a bonus keeps its threshold on the adjusted price basis', async ({ page, request }) => {
+  const created = await request.post('/api/v1/alerts', {
+    data: { symbol: 'GOLDIAM', source: 'close', condition: 'below', threshold: '90' },
+  });
+  expect(created.status()).toBe(201);
+  ageAlerts(); // this synthetic alert is now armed before the 2026-07-10 bonus
+
+  const priceResponse = await request.get('/api/v1/securities/GOLDIAM/ohlcv?interval=1D');
+  expect(priceResponse.ok()).toBe(true);
+  const prices = await priceResponse.json();
+  const bonusBasis = prices.adjustments.find((step: { until: string }) => step.until === '2026-07-09');
+  expect(Number(bonusBasis?.factor)).toBeCloseTo(0.75, 6);
+  expect(Number(prices.bars.at(-1).close)).toBeCloseTo(75, 2);
+
+  const evaluated = await request.post('/api/v1/alerts/evaluate');
+  expect(await evaluated.json()).toMatchObject({ evaluated: 1, fired: 0, failed: [] });
+  const [alert] = (await (await request.get('/api/v1/alerts')).json()).alerts;
+  expect(alert.status).toBe('active');
+
+  await page.goto('/chart/GOLDIAM');
+  await ready(page);
+  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await expect(page.getByRole('list', { name: 'Alerts' }).getByText('GOLDIAM Close is below 90 · Daily')).toBeVisible();
+});
+
 test('the chart form creates every supported value and interval combination', async ({ page, request }) => {
   await page.goto('/chart/TCS');
   await ready(page);

@@ -1,6 +1,6 @@
 # State
 
-As of 2026-10-19, branch `wickstreet/m10-m11` (local, never pushed): Wickstreet M9 to M15 are done and the M16 product audit is complete. Public release remains blocked on market-data permissions and owner decisions. Before Wickstreet, the last code commit was `f492f81` (2026-08-18).
+As of 2026-10-19, branch `wickstreet/m10-m11` (local, never pushed): Wickstreet M9 to M15 and the M16 audit are complete; the focused release-hardening pass is verified. Public distribution is independent of direct exchange downloads, which now default off. Publication remains on hold for the proposed licence and Wickstreet name/trademark decisions. Before Wickstreet, the last code commit was `f492f81` (2026-08-18).
 
 ## Verdict
 
@@ -8,7 +8,7 @@ The screener, the explainability chain, the research tooling and the walk-forwar
 
 The weak point is ranking quality, not software. Within the qualified set, ranking IC is negative: 120d mean IC −0.0384, t −2.43, over 63 monthly runs (2020-11 → 2026-01). Eleven research proposals tried to fix it. None passed hold-out. The binding constraint is data.
 
-Deploy only on a private network. There is no authentication.
+The single-user app has no authentication and must remain loopback-only. An unauthenticated network-exposed instance is not secure; add an authenticating proxy before any network exposure.
 
 ## Checks run on 2026-10-18
 
@@ -56,7 +56,7 @@ Deploy only on a private network. There is no authentication.
 | 2026-10-18 | Wickstreet M11: chart workspace vertical slice | Engineering gate closed; owner usability assessment open | [report](../history/audits/2026-10-18-m11-vertical-slice-report.md) |
 | 2026-10-18 | M11b weekly bars, M12 workspace shell, M13 professional charting, M15 daily alerts | Done; M13 and M15 accepted | [M11b](../history/audits/2026-10-18-m11b-weekly-report.md), [M12](../history/audits/2026-10-18-m12-shell-report.md), [M13](../history/audits/2026-10-18-m13-charting-report.md), [M15](../history/audits/2026-10-18-m15-alerts-report.md) |
 | 2026-10-19 | M14 Strategy Studio: history tables, point-in-time port, manifests, families, evaluations, `/studio` | Done; every ADR-014 hard-gate test passes | [M14 report](../history/audits/2026-10-19-m14-strategy-studio-report.md), [re-run](../history/audits/2026-10-19-m14-pit-rerun-report.md) |
-| 2026-10-19 | M16 release readiness | Under way | [RC report](../history/audits/2026-10-19-m16-release-candidate-report.md) |
+| 2026-10-19 | M16 release readiness | Focused hardening verified; publication on hold for owner decisions | [RC report](../history/audits/2026-10-19-m16-release-candidate-report.md), [hardening evidence](../../audit-evidence/benchmarks/release-hardening.md) |
 
 **Swing targets (Phase 3/3b).** Hold-out from 2025-01-01: 3,211 trades, hit rate 64.0%, average R −0.021. Six exit-plan variants all made average R worse in-sample (−0.105 to −0.396). Closed. The stop-loss part shipped as a risk-only figure. Log: [phase3b](../research/2026-08-phase3b-target-methodology-log.md).
 
@@ -81,7 +81,6 @@ Found while writing these docs. Not fixed.
 
 | # | Defect | Where |
 |---|---|---|
-| 3 | CLI `ingest` and `screen` are stubs. | `interface/cli/main.py` |
 | 5 | The research harness cannot apply parameter overrides: `apply_parameter_overrides` is never called. Every variant test so far was a one-off script. | `domain/research/services.py` |
 | 6 | `rs_sector_relative`, `rs_industry_relative`, `rs_line_uptrend` are still registered after v3 removed them. The v3 description names a high-tight-flag detector that does not exist. | `domain/engines/relative_strength.py`, strategy JSON |
 | 10 | Eleven dev-only npm advisories (typescript-eslint 7, tailwindcss 3 tool chain). Fixing them needs major upgrades. No runtime package is affected. | `web/package.json` |
@@ -111,6 +110,8 @@ Fixed during the 2026-10-19 E2E audit:
 - **The mobile bottom navigation could cover the last page content.** The shared shell reserves safe-area-aware trailing space; a browser check confirms the chart status can scroll clear of it.
 - **Fast chart search could lose an early key or close a newly reopened dialog.** The search input now receives focus explicitly and the redundant native-dialog close callback is removed; the interaction passed 20 repeated browser runs.
 
+Release hardening (2026-10-19): direct exchange requests default off; normalized authorized CSV imports support EOD bars, corporate actions, and benchmark closes; `screen` evaluates stored data and the retired `ingest` command exits nonzero with its replacement path. The Data screen explains the offline import workflow. Playwright coverage exercises all 12 drawing tools through draw, select, move, recolor, undo/redo, delete, and reload; Strategy Studio insufficient-data and one-shot matured hold-out cases; corporate-action alert re-evaluation; and durable browser state after a named-volume database restart. See the release-hardening addendum in [E2E audit report](../../E2E_AUDIT_REPORT.md) for final check outcomes.
+
 Architecture-level differences from the ADD are listed in [architecture.md](architecture.md#drift-from-the-add).
 
 ## Data gaps
@@ -129,13 +130,13 @@ Several thresholds are editorial, not validated: pattern-detector constants, the
 
 ## Operations
 
-Ready for private deployment. Missing for public deployment: authentication, a monitoring stack (metrics exist; no Prometheus or Grafana service), alerting, log aggregation, staging. Detail: [production readiness](../operations/production_readiness.md), [deployment](../operations/deployment.md), [backup](../operations/backup.md).
+The app is a loopback-only, unauthenticated single-user application. A network-exposed instance is not secure without an authenticating proxy. Metrics exist, but there is no bundled Prometheus/Grafana service, alerting, log aggregation or staging environment. Detail: [production readiness](../operations/production_readiness.md), [deployment](../operations/deployment.md), [backup](../operations/backup.md).
 
 ## In flight
 
-**Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) governs it.
+**Wickstreet** (started 2026-10-17). A self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. Its project licence remains proposed, so public source publication is on hold. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) governs it.
 
 - **Done:** M9 to M15 on branch `wickstreet/m10-m11`. The owner accepted M9, M10, M13, M15, ADR-013 and ADR-014. The owner's M11 usability assessment is still open.
 - **Done:** M16 independent product audit. See the four audit deliverables linked above. The owner's M11 usability assessment is still open.
-- **Release blocker:** NSE's website terms forbid automated data collection and using the data for simulation. The app does both. See the [data-use check](../history/audits/2026-10-19-m16-nse-data-use.md).
-- **Owner decisions:** NSE data use, the licence ([ADR-015](../architecture/adr/ADR-015-licence.md), Proposed; ADR-012 is accepted with it), formal trademark clearance and a domain, publication and push, and deploying the RS fix.
+- **Distribution boundary:** direct NSE/BSE adapters are disabled by default; no automated NSE download is required for the public distribution. Operators can import data they are authorized to use through the documented offline CSV workflows. The optional adapter remains off unless source and use permissions are confirmed. See the [data-use review](../history/audits/2026-10-19-m16-nse-data-use.md), [README](../../README.md), and [deployment guide](../operations/deployment.md).
+- **Publication decisions:** choose and accept a project licence ([ADR-015](../architecture/adr/ADR-015-licence.md) remains Proposed), complete Wickstreet name/trademark clearance, then authorize publication. The no-login app is for local loopback use; any network-exposed deployment needs an authenticating proxy. Deploying the RS fix remains an owner operation.
