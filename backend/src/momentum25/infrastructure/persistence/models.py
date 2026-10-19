@@ -487,6 +487,8 @@ class AlertModel(Base):
     interval: Mapped[str] = mapped_column(String, nullable=False)
     condition: Mapped[str] = mapped_column(String, nullable=False)
     threshold: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    drawing: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="1")
     armed_after: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="active", index=True)
     triggered_on: Mapped[date | None] = mapped_column(Date)

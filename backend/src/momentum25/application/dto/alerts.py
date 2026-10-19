@@ -6,15 +6,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from momentum25.application.dto.user_documents import Symbol
+from momentum25.application.dto.user_documents import Identifier, Symbol
 from momentum25.domain.entities.alert import (
     Alert,
     AlertCondition,
     AlertInterval,
     AlertSource,
     AlertStatus,
+    DrawingAlert,
 )
 
 # The column is Numeric(18, 4): at most 14 digits before the point and 4 after.
@@ -31,6 +32,56 @@ class CreateAlertRequest(BaseModel):
     interval: AlertInterval = "1D"
     condition: AlertCondition
     threshold: Threshold
+    drawing_id: Identifier | None = None
+
+    @model_validator(mode="after")
+    def validate_drawing_rule(self) -> CreateAlertRequest:
+        """Drawing rules are bounded daily price rules; zones require a drawing."""
+        if self.drawing_id is not None:
+            if self.source != "close" or self.interval != "1D":
+                raise ValueError("Drawing alerts require daily close prices")
+            if self.condition not in {
+                "crosses_above",
+                "crosses_below",
+                "enters_zone",
+                "leaves_zone",
+            }:
+                raise ValueError("Drawing alerts require a crossing, entry or exit condition")
+        elif self.condition in {"enters_zone", "leaves_zone"}:
+            raise ValueError("Zone conditions require a saved rectangle drawing")
+        return self
+
+
+class EditAlertRequest(CreateAlertRequest):
+    """Replace an armed rule only if its revision still matches."""
+
+    expected_revision: int = Field(ge=1)
+
+
+class DrawingAnchorDTO(BaseModel):
+    """One traded-price anchor in the captured drawing."""
+
+    date: date
+    price: Decimal
+
+
+class DrawingAlertDTO(BaseModel):
+    """The immutable drawing snapshot used by an armed or triggered rule."""
+
+    id: str
+    kind: str
+    points: list[DrawingAnchorDTO]
+    revision: int
+
+    @classmethod
+    def of(cls, drawing: DrawingAlert) -> DrawingAlertDTO:
+        """Convert a domain snapshot for API output."""
+        return cls(
+            id=drawing.id,
+            kind=drawing.kind,
+            revision=drawing.revision,
+            points=[DrawingAnchorDTO(date=p.date, price=p.price) for p in drawing.points],
+        )
 
 
 class AlertDTO(BaseModel):
@@ -49,6 +100,8 @@ class AlertDTO(BaseModel):
     data_version: str | None = Field(description="The data the firing value came from.")
     seen: bool
     created_at: datetime | None
+    revision: int
+    drawing: DrawingAlertDTO | None
 
     @classmethod
     def of(cls, alert: Alert) -> AlertDTO:
@@ -68,6 +121,8 @@ class AlertDTO(BaseModel):
             data_version=alert.data_version,
             seen=alert.seen,
             created_at=alert.created_at,
+            revision=alert.revision,
+            drawing=DrawingAlertDTO.of(alert.drawing) if alert.drawing else None,
         )
 
 

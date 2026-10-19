@@ -32,7 +32,7 @@ def _drawing(drawing_id: str = "d1", price: float = 101.5) -> dict[str, Any]:
 
 def _stored(drawing: dict[str, Any]) -> dict[str, Any]:
     """A drawing as the server returns it: style defaults filled."""
-    return {"width": 2, "text": None, **drawing}
+    return {"width": 2, "text": None, "hidden": False, "locked": False, "dash": "solid", **drawing}
 
 
 def _workspace(range_: str = "1Y") -> dict[str, Any]:
@@ -258,6 +258,28 @@ async def test_a_text_note_keeps_its_text_and_width(client: httpx.AsyncClient) -
     assert (saved["kind"], saved["width"], saved["text"]) == ("text", 3, "Base")
 
 
+async def test_drawing_and_study_presentation_survives_document_round_trip(
+    client: httpx.AsyncClient,
+) -> None:
+    drawing = {**_drawing(), "locked": True, "hidden": True, "dash": "dotted"}
+    created = await client.put(
+        DRAWINGS, json={"drawings": [drawing]}, headers={"If-None-Match": "*"}
+    )
+    assert created.status_code == 201
+    assert created.json()["body"]["drawings"] == [_stored(drawing)]
+    workspace = _workspace()
+    workspace["charts"]["main"]["indicators"][0].update(color="#123456", hidden=True)
+    saved = await client.put(WORKSPACE, json=workspace, headers={"If-None-Match": "*"})
+    assert saved.status_code == 201
+    indicators = saved.json()["body"]["charts"]["main"]["indicators"]
+    assert (indicators[0]["color"], indicators[0]["hidden"]) == ("#123456", True)
+    assert (indicators[1]["color"], indicators[1]["hidden"]) == (None, False)
+    bad_dash = await client.put(
+        DRAWINGS, json={"drawings": [{**drawing, "dash": "wavy"}]}, headers={"If-Match": '"1"'}
+    )
+    assert bad_dash.status_code == 422
+
+
 async def test_a_chart_keeps_its_compare_symbols_within_bounds(client: httpx.AsyncClient) -> None:
     created = await client.put(WORKSPACE, json=_workspace(), headers={"If-None-Match": "*"})
     assert created.json()["body"]["charts"]["main"]["compare"] == []
@@ -288,7 +310,5 @@ async def test_the_layout_and_its_sync_flags_default_and_validate(
     saved = await client.put(WORKSPACE, json=grid, headers={"If-Match": '"1"'})
     assert saved.json()["body"]["sync"] == {"symbol": True, "interval": False, "crosshair": True}
     for bad in ({"layout": "5x5"}, {"sync": {"drawings": True}}):
-        res = await client.put(
-            WORKSPACE, json={"charts": {}, **bad}, headers={"If-Match": '"2"'}
-        )
+        res = await client.put(WORKSPACE, json={"charts": {}, **bad}, headers={"If-Match": '"2"'})
         assert res.status_code == 422

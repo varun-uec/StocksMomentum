@@ -11,10 +11,12 @@ from momentum25.application.dto.alerts import (
     AlertEvaluationDTO,
     AlertListDTO,
     CreateAlertRequest,
+    EditAlertRequest,
 )
 from momentum25.application.use_cases.alerts import (
     CreateAlert,
     DeleteAlert,
+    EditAlert,
     EvaluateAlerts,
     ListAlerts,
     MarkAlertsSeen,
@@ -23,6 +25,7 @@ from momentum25.application.use_cases.alerts import (
 from momentum25.interface.api.dependencies import (
     get_create_alert,
     get_delete_alert,
+    get_edit_alert,
     get_evaluate_alerts,
     get_list_alerts,
     get_mark_alerts_seen,
@@ -54,6 +57,16 @@ async def delete_alert(
     """Delete an alert."""
     await use_case.execute(alert_id)
     return Response(status_code=204)
+
+
+@router.patch("/{alert_id}", response_model=AlertDTO)
+async def edit_alert(
+    alert_id: int,
+    request: EditAlertRequest,
+    use_case: Annotated[EditAlert, Depends(get_edit_alert)],
+) -> AlertDTO:
+    """Replace an armed rule at its expected revision; refresh captured drawings."""
+    return await use_case.execute(alert_id, request)
 
 
 @router.post("/{alert_id}/rearm", response_model=AlertDTO)

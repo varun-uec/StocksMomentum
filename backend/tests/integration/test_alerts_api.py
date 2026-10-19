@@ -23,8 +23,9 @@ from momentum25.application.use_cases.alerts import EvaluateAlerts
 from momentum25.domain.entities.alert import Alert, AlertSource, SeriesPoint
 from momentum25.infrastructure.config.strategy_loader import load_strategy_file
 from momentum25.infrastructure.persistence.database import get_database
-from momentum25.infrastructure.persistence.models import OHLCVDailyModel, SecurityModel
+from momentum25.infrastructure.persistence.models import AlertModel, OHLCVDailyModel, SecurityModel
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
+from momentum25.infrastructure.persistence.repositories.alerts import SqlAlertRepository
 from momentum25.interface.api.dependencies import evaluate_alerts_with
 from momentum25.main import create_app
 
@@ -202,6 +203,212 @@ async def test_an_unknown_symbol_is_404(client: httpx.AsyncClient) -> None:
     assert (await client.post("/api/v1/alerts", json=_alert(symbol="NOPE"))).status_code == 404
 
 
+async def test_edit_armed_rule_starts_new_window_and_rejects_stale_or_triggered_edits(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    initial = (await client.post("/api/v1/alerts", json=_alert(threshold="9999"))).json()
+    await _add_bars(db_session, security_id, _LATER, 300)
+    payload = _alert(threshold="0", expected_revision=initial["revision"])
+    edited = await client.patch(f"/api/v1/alerts/{initial['id']}", json=payload)
+    assert edited.status_code == 200
+    assert edited.json()["revision"] == initial["revision"] + 1
+    assert edited.json()["armed_after"] == _LATER[-1].isoformat()
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 0
+    assert (await client.patch(f"/api/v1/alerts/{initial['id']}", json=payload)).status_code == 409
+    assert (await client.patch("/api/v1/alerts/999999", json=payload)).status_code == 404
+
+    # An immutable firing cannot be retroactively redefined by the editor.
+    await db_session.execute(
+        update(AlertModel).where(AlertModel.id == initial["id"]).values(armed_after=_HISTORY[-1])
+    )
+    await db_session.commit()
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 1
+    before = (await client.get("/api/v1/alerts")).json()["alerts"][0]
+    rejected = await client.patch(
+        f"/api/v1/alerts/{initial['id']}",
+        json=_alert(threshold="900", expected_revision=before["revision"]),
+    )
+    assert rejected.status_code == 409
+    assert (await client.get("/api/v1/alerts")).json()["alerts"][0] == before
+
+
+async def test_an_inflight_old_evaluation_cannot_fire_a_newly_edited_rule(
+    client: httpx.AsyncClient,
+    db_session: AsyncSession,
+    security_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initial = (await client.post("/api/v1/alerts", json=_alert())).json()
+    await _add_bars(db_session, security_id, _LATER, 300)
+    read = asyncio.Event()
+    resume = asyncio.Event()
+    original = EvaluateAlerts.inputs
+
+    async def pause(
+        evaluator: EvaluateAlerts, alert: Alert
+    ) -> tuple[list[SeriesPoint], str, Decimal]:
+        result = await original(evaluator, alert)
+        read.set()
+        await resume.wait()
+        return result
+
+    monkeypatch.setattr(EvaluateAlerts, "inputs", pause)
+    pending = asyncio.create_task(client.post("/api/v1/alerts/evaluate"))
+    await asyncio.wait_for(read.wait(), timeout=10)
+    edited = await client.patch(
+        f"/api/v1/alerts/{initial['id']}",
+        json=_alert(threshold="9999", expected_revision=initial["revision"]),
+    )
+    resume.set()
+    assert edited.status_code == 200
+    assert (await asyncio.wait_for(pending, timeout=10)).json()["fired"] == 0
+    assert (await client.get("/api/v1/alerts")).json()["alerts"][0]["status"] == "active"
+
+
+async def _save_alert_drawing(
+    client: httpx.AsyncClient, kind: str, prices: list[Decimal], *, revision: int | None = None
+) -> httpx.Response:
+    drawing = {
+        "id": "monitor-level",
+        "kind": kind,
+        "color": "#456789",
+        "points": [{"date": _HISTORY[-1].isoformat(), "price": str(price)} for price in prices],
+        "hidden": True,
+        "locked": True,
+        "dash": "dashed",
+    }
+    headers = {"If-Match": f'"{revision}"'} if revision else {"If-None-Match": "*"}
+    return await client.put("/api/v1/drawings/ALRT", json={"drawings": [drawing]}, headers=headers)
+
+
+@pytest.mark.parametrize("kind", ["horizontal", "hline"])
+async def test_drawing_rule_captures_saved_anchors_and_survives_edits_and_deletion(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int, kind: str
+) -> None:
+    level = (_close(299) + _close(300)) / 2
+    assert _close(299) < level < _close(300)
+    assert (await _save_alert_drawing(client, kind, [level])).status_code == 201
+    created = await client.post(
+        "/api/v1/alerts",
+        json=_alert(condition="crosses_above", threshold="99999", drawing_id="monitor-level"),
+    )
+    assert created.status_code == 201
+    row = created.json()
+    assert row["drawing"]["revision"] == 1
+    assert row["drawing"]["kind"] == kind
+    assert Decimal(row["drawing"]["points"][0]["price"]) == level
+    assert (
+        await _save_alert_drawing(client, kind, [Decimal("99999")], revision=1)
+    ).status_code == 200
+    # Explicitly editing is the only way to pick up newly saved anchors.
+    refreshed = await client.patch(
+        f"/api/v1/alerts/{row['id']}",
+        json=_alert(condition="crosses_above", drawing_id="monitor-level", expected_revision=1),
+    )
+    assert refreshed.status_code == 200
+    assert refreshed.json()["drawing"]["revision"] == 2
+    assert Decimal(refreshed.json()["drawing"]["points"][0]["price"]) == Decimal("99999")
+
+    # Restore a genuine crossing snapshot, then remove the live drawing.
+    assert (await _save_alert_drawing(client, kind, [level], revision=2)).status_code == 200
+    restored = await client.patch(
+        f"/api/v1/alerts/{row['id']}",
+        json=_alert(condition="crosses_above", drawing_id="monitor-level", expected_revision=2),
+    )
+    assert restored.status_code == 200
+    removed = await client.put(
+        "/api/v1/drawings/ALRT", json={"drawings": []}, headers={"If-Match": '"3"'}
+    )
+    assert removed.status_code == 200
+    await _add_bars(db_session, security_id, _LATER, 300)
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 1
+    triggered = (await client.get("/api/v1/alerts")).json()["alerts"][0]
+    assert triggered["triggered_on"] == _LATER[0].isoformat()
+    assert triggered["drawing"]["revision"] == 3
+
+
+async def test_rectangle_entry_is_backend_authoritative_and_ignores_visual_time_extent(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    lower = (_close(299) + _close(300)) / 2
+    upper = _close(300) + Decimal("2")
+    assert (await _save_alert_drawing(client, "rectangle", [upper, lower])).status_code == 201
+    created = await client.post(
+        "/api/v1/alerts", json=_alert(condition="enters_zone", drawing_id="monitor-level")
+    )
+    assert created.status_code == 201
+    await _add_bars(db_session, security_id, _LATER, 300)
+    checked = (await client.post("/api/v1/alerts/evaluate")).json()
+    assert checked["fired"] == 1
+    [triggered] = (await client.get("/api/v1/alerts")).json()["alerts"]
+    assert triggered["triggered_on"] == _LATER[0].isoformat()
+    assert Decimal(triggered["trigger_value"]) == _close(300)
+
+
+async def test_each_drawing_anchor_uses_its_own_traded_price_adjustment(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    # One anchor precedes the bonus; the second was traded in the new basis.
+    saved = await _save_alert_drawing(client, "rectangle", [Decimal("100"), Decimal("120")])
+    assert saved.status_code == 201
+    drawing_body = saved.json()["body"]
+    drawing_body["drawings"][0]["points"][1]["date"] = _LATER[0].isoformat()
+    assert (
+        await client.put("/api/v1/drawings/ALRT", json=drawing_body, headers={"If-Match": '"1"'})
+    ).status_code == 200
+    created = await client.post(
+        "/api/v1/alerts", json=_alert(condition="leaves_zone", drawing_id="monitor-level")
+    )
+    assert created.status_code == 201
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=Decimal("0.5"))
+    )
+    await db_session.commit()
+    # Later market history may use a different factor while snapshot stays traded.
+    await _add_bars(db_session, security_id, _LATER, 300)
+    alert = await SqlAlertRepository(db_session).get(created.json()["id"])
+    assert alert is not None
+    _, version, lower, upper = await evaluate_alerts_with(db_session).drawing_inputs(alert)
+    assert (lower, upper) == (Decimal("50"), Decimal("120"))
+    assert version
+    assert [point.price for point in alert.drawing.points] == [Decimal("100"), Decimal("120")]  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"source": "rsi14"},
+        {"interval": "1W"},
+        {"condition": "above"},
+        {"condition": "enters_zone"},
+    ],
+)
+async def test_unsupported_drawing_rules_are_rejected(
+    client: httpx.AsyncClient, overrides: dict[str, Any]
+) -> None:
+    assert (await _save_alert_drawing(client, "horizontal", [Decimal("100")])).status_code == 201
+    response = await client.post(
+        "/api/v1/alerts",
+        json=_alert(**{"condition": "crosses_above", "drawing_id": "monitor-level", **overrides}),
+    )
+    assert response.status_code == 422
+
+
+async def test_a_missing_or_unsupported_drawing_cannot_be_armed(client: httpx.AsyncClient) -> None:
+    payload = _alert(condition="crosses_above", drawing_id="monitor-level")
+    assert (await client.post("/api/v1/alerts", json=payload)).status_code == 404
+    assert (await _save_alert_drawing(client, "trendline", [Decimal("100")])).status_code == 201
+    assert (await client.post("/api/v1/alerts", json=payload)).status_code == 422
+    # A rectangle with one anchor or identical prices has no defensible zone.
+    assert (
+        await _save_alert_drawing(client, "rectangle", [Decimal("100")], revision=1)
+    ).status_code == 200
+    zone = _alert(condition="enters_zone", drawing_id="monitor-level")
+    assert (await client.post("/api/v1/alerts", json=zone)).status_code == 422
+
+
 @pytest.mark.parametrize("interval", ["1D", "1W", "1M"])
 async def test_the_alert_reads_the_charts_own_values(
     client: httpx.AsyncClient, db_session: AsyncSession, interval: str
@@ -225,9 +432,7 @@ async def test_the_alert_reads_the_charts_own_values(
         )
         points, version, _ = await evaluator.inputs(alert)
         chart = prices["bars"] if source == "close" else indicators["bars"]
-        expected = [
-            (b["date"], None if b[source] is None else Decimal(b[source])) for b in chart
-        ]
+        expected = [(b["date"], None if b[source] is None else Decimal(b[source])) for b in chart]
         assert [(p.date.isoformat(), p.value) for p in points] == expected, source
         assert version == prices["data_version"] == indicators["data_version"]
         # The comparison must not pass on empty series. 300 sessions make 14

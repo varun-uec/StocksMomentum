@@ -50,6 +50,9 @@ class DrawingV1(_Strict):
     color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
     width: int = Field(default=2, ge=1, le=4)
     text: str | None = Field(default=None, max_length=200)
+    locked: bool = False
+    hidden: bool = False
+    dash: Literal["solid", "dashed", "dotted"] = "solid"
 
 
 class SymbolDrawingsV1(_Strict):
@@ -74,6 +77,8 @@ class IndicatorV1(_Strict):
     params: dict[ParamName, FiniteFloat | Annotated[str, Field(max_length=64)]] = Field(
         max_length=16
     )
+    color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    hidden: bool = False
 
 
 class ChartV1(_Strict):

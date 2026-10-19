@@ -377,11 +377,21 @@ class AlertRepository(Protocol):
         """Store a new active alert and return it with its id."""
         ...
 
+    async def get(self, alert_id: int) -> Alert | None:
+        """Read one alert, including its rule revision."""
+        ...
+
+    async def edit(self, alert_id: int, security_id: int, alert: Alert, revision: int) -> Alert:
+        """Replace an active rule at its expected revision; conflict otherwise."""
+        ...
+
     async def delete(self, alert_id: int) -> bool:
         """Delete an alert; return False if it did not exist."""
         ...
 
-    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> bool:
+    async def fire(
+        self, alert_id: int, firing: Firing, data_version: str, revision: int = 1
+    ) -> bool:
         """Record the bar if active; return whether this call won the one-shot transition."""
         ...
 

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import cast
+from decimal import Decimal
+from typing import Any, cast
 
 from sqlalchemy import Select, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +15,11 @@ from momentum25.domain.entities.alert import (
     AlertInterval,
     AlertSource,
     AlertStatus,
+    DrawingAlert,
+    DrawingAnchor,
     Firing,
 )
+from momentum25.domain.errors import ConflictError, NotFoundError
 from momentum25.infrastructure.persistence.models import AlertModel, SecurityModel
 
 
@@ -35,7 +39,32 @@ def _to_entity(row: AlertModel, symbol: str) -> Alert:
         data_version=row.data_version,
         seen=row.seen,
         created_at=row.created_at,
+        revision=row.revision,
+        drawing=(
+            DrawingAlert(
+                id=row.drawing["id"],
+                kind=row.drawing["kind"],
+                revision=row.drawing["revision"],
+                points=tuple(
+                    DrawingAnchor(date.fromisoformat(p["date"]), Decimal(p["price"]))
+                    for p in row.drawing["points"]
+                ),
+            )
+            if row.drawing
+            else None
+        ),
     )
+
+
+def _drawing_json(drawing: DrawingAlert | None) -> dict[str, Any] | None:
+    if drawing is None:
+        return None
+    return {
+        "id": drawing.id,
+        "kind": drawing.kind,
+        "revision": drawing.revision,
+        "points": [{"date": p.date.isoformat(), "price": str(p.price)} for p in drawing.points],
+    }
 
 
 def _with_symbol() -> Select[AlertModel, str]:
@@ -76,11 +105,47 @@ class SqlAlertRepository:
             condition=alert.condition,
             threshold=alert.threshold,
             armed_after=alert.armed_after,
+            drawing=_drawing_json(alert.drawing),
         )
         self._session.add(row)
         await self._session.commit()
         await self._session.refresh(row)
         return _to_entity(row, alert.symbol)
+
+    async def get(self, alert_id: int) -> Alert | None:
+        """Return an alert at its current revision."""
+        result = await self._session.execute(_with_symbol().where(AlertModel.id == alert_id))
+        found = result.first()
+        return _to_entity(found[0], found[1]) if found else None
+
+    async def edit(self, alert_id: int, security_id: int, alert: Alert, revision: int) -> Alert:
+        """Replace an active rule atomically; a firing or another edit wins safely."""
+        result = await self._session.execute(
+            update(AlertModel)
+            .where(
+                AlertModel.id == alert_id,
+                AlertModel.status == "active",
+                AlertModel.revision == revision,
+            )
+            .values(
+                security_id=security_id,
+                source=alert.source,
+                interval=alert.interval,
+                condition=alert.condition,
+                threshold=alert.threshold,
+                drawing=_drawing_json(alert.drawing),
+                armed_after=alert.armed_after,
+                revision=AlertModel.revision + 1,
+            )
+        )
+        await self._session.commit()
+        if not result.rowcount:  # type: ignore[attr-defined]
+            if await self.get(alert_id) is None:
+                raise NotFoundError(f"Alert not found: {alert_id}")
+            raise ConflictError("Alert changed or has triggered; reload before editing")
+        saved = await self.get(alert_id)
+        assert saved is not None
+        return saved
 
     async def delete(self, alert_id: int) -> bool:
         """Delete an alert; return False if it did not exist."""
@@ -88,17 +153,24 @@ class SqlAlertRepository:
         await self._session.commit()
         return bool(result.rowcount)  # type: ignore[attr-defined]
 
-    async def fire(self, alert_id: int, firing: Firing, data_version: str) -> bool:
+    async def fire(
+        self, alert_id: int, firing: Firing, data_version: str, revision: int = 1
+    ) -> bool:
         """Record the firing bar; only the call that changes status reports success."""
         result = await self._session.execute(
             update(AlertModel)
-            .where(AlertModel.id == alert_id, AlertModel.status == "active")
+            .where(
+                AlertModel.id == alert_id,
+                AlertModel.status == "active",
+                AlertModel.revision == revision,
+            )
             .values(
                 status="triggered",
                 triggered_on=firing.date,
                 trigger_value=firing.value,
                 data_version=data_version,
                 seen=False,
+                revision=AlertModel.revision + 1,
             )
         )
         await self._session.commit()
@@ -116,6 +188,7 @@ class SqlAlertRepository:
                 trigger_value=None,
                 data_version=None,
                 seen=False,
+                revision=AlertModel.revision + 1,
             )
         )
         await self._session.commit()

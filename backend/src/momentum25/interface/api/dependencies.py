@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from momentum25.application.use_cases.alerts import (
     CreateAlert,
     DeleteAlert,
+    EditAlert,
     EvaluateAlerts,
     ListAlerts,
     MarkAlertsSeen,
@@ -597,9 +598,18 @@ async def get_create_alert(
     securities: Annotated[SqlSecurityRepository, Depends(get_security_repo)],
     ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
     alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+    documents: Annotated[SqlUserDocumentRepository, Depends(get_user_document_repo)],
 ) -> AsyncIterator[CreateAlert]:
     """Provide a CreateAlert use-case instance."""
-    yield CreateAlert(securities, ohlcv, alerts)
+    yield CreateAlert(securities, ohlcv, alerts, documents)
+
+
+async def get_edit_alert(
+    creator: Annotated[CreateAlert, Depends(get_create_alert)],
+    alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+) -> AsyncIterator[EditAlert]:
+    """Provide the active-rule editor with the shared creation validator."""
+    yield EditAlert(creator, alerts)
 
 
 async def get_delete_alert(

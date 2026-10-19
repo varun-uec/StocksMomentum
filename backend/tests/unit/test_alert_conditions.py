@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from momentum25.domain.entities.alert import Firing, SeriesPoint, first_firing
+from momentum25.domain.entities.alert import Firing, SeriesPoint, first_firing, first_zone_firing
 
 D = Decimal
 
@@ -22,6 +22,57 @@ def _points(*values: str | None, partial_last: bool = False) -> list[SeriesPoint
 
 
 ARMED = date(2026, 8, 3)  # the alert was created after Monday's bar
+
+
+@pytest.mark.parametrize(
+    ("condition", "values", "expected"),
+    [
+        ("enters_zone", ("65", "70"), Firing(date(2026, 8, 4), D("70"))),
+        ("enters_zone", ("90", "80"), Firing(date(2026, 8, 4), D("80"))),
+        ("enters_zone", ("75", "76"), None),
+        ("enters_zone", ("65", "85"), None),  # gaps over the zone do not enter it
+        ("leaves_zone", ("70", "69"), Firing(date(2026, 8, 4), D("69"))),
+        ("leaves_zone", ("80", "81"), Firing(date(2026, 8, 4), D("81"))),
+        ("leaves_zone", ("70", "80"), None),  # both boundaries are inside
+        ("leaves_zone", ("65", "85"), None),
+    ],
+)
+def test_price_zone_uses_completed_close_membership(
+    condition: str, values: tuple[str, ...], expected: Firing | None
+) -> None:
+    assert (
+        first_zone_firing(
+            condition,
+            D("70"),
+            D("80"),
+            ARMED,
+            _points(*values),  # type: ignore[arg-type]
+        )
+        == expected
+    )
+
+
+def test_zone_gaps_partial_bars_and_degenerate_bounds_never_create_a_firing() -> None:
+    assert (
+        first_zone_firing("enters_zone", D("70"), D("80"), ARMED, _points("65", None, "75")) is None
+    )
+    assert (
+        first_zone_firing(
+            "enters_zone", D("70"), D("80"), ARMED, _points("65", "75", partial_last=True)
+        )
+        is None
+    )
+    assert first_zone_firing("enters_zone", D("70"), D("70"), ARMED, _points("65", "70")) is None
+
+
+def test_zone_replay_finds_same_first_cross_even_when_the_job_runs_late() -> None:
+    early = _points("65", "75")
+    late = _points("65", "75", "90", "60", "75")
+    assert (
+        first_zone_firing("enters_zone", D("70"), D("80"), ARMED, early)
+        == first_zone_firing("enters_zone", D("70"), D("80"), ARMED, late)
+        == Firing(date(2026, 8, 4), D("75"))
+    )
 
 
 @pytest.mark.parametrize(

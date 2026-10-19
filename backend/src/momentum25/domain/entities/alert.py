@@ -23,7 +23,9 @@ from typing import Literal
 AlertSource = Literal[
     "close", "rsi14", "adx14", "atr14", "macd_line", "macd_signal", "macd_histogram"
 ]
-AlertCondition = Literal["crosses_above", "crosses_below", "above", "below"]
+AlertCondition = Literal[
+    "crosses_above", "crosses_below", "above", "below", "enters_zone", "leaves_zone"
+]
 AlertInterval = Literal["1D", "1W", "1M"]
 AlertStatus = Literal["active", "triggered"]
 
@@ -31,6 +33,24 @@ AlertStatus = Literal["active", "triggered"]
 PRICE_SCALED: frozenset[str] = frozenset(
     {"close", "atr14", "macd_line", "macd_signal", "macd_histogram"}
 )
+
+
+@dataclass(frozen=True, slots=True)
+class DrawingAnchor:
+    """An immutable traded-price anchor captured from a saved drawing."""
+
+    date: date
+    price: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class DrawingAlert:
+    """A saved drawing snapshot; subsequent drawing edits cannot rewrite a rule."""
+
+    id: str
+    kind: Literal["horizontal", "hline", "rectangle"]
+    points: tuple[DrawingAnchor, ...]
+    revision: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +70,8 @@ class Alert:
     seen: bool = False
     created_at: datetime | None = None
     id: int | None = None
+    drawing: DrawingAlert | None = None
+    revision: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +102,9 @@ def _meets(
         return False
     if condition == "crosses_above":
         return previous <= threshold < value
-    return previous >= threshold > value
+    if condition == "crosses_below":
+        return previous >= threshold > value
+    return False  # zone rules require both bounds and use first_zone_firing
 
 
 def first_firing(
@@ -112,3 +136,34 @@ def first_firing(
 def chart_threshold(source: AlertSource, threshold: Decimal, factor_on_armed: Decimal) -> Decimal:
     """The threshold in the chart's current price basis (see the module note)."""
     return threshold * factor_on_armed if source in PRICE_SCALED else threshold
+
+
+def first_zone_firing(
+    condition: AlertCondition,
+    lower: Decimal,
+    upper: Decimal,
+    armed_after: date,
+    points: Sequence[SeriesPoint],
+) -> Firing | None:
+    """Find the first completed-close entry or exit of an inclusive price zone.
+
+    A close that jumps entirely over the zone does not count as an entry or an
+    exit. The rule is independent of the rectangle's visual time extent.
+    """
+    if lower >= upper or condition not in {"enters_zone", "leaves_zone"}:
+        return None
+    previous_inside: bool | None = None
+    for point in points:
+        if point.partial:
+            break
+        if point.value is None:
+            previous_inside = None
+            continue
+        inside = lower <= point.value <= upper
+        if point.date > armed_after and previous_inside is not None:
+            entered = not previous_inside and inside
+            left = previous_inside and not inside
+            if (condition == "enters_zone" and entered) or (condition == "leaves_zone" and left):
+                return Firing(point.date, point.value)
+        previous_inside = inside
+    return None
