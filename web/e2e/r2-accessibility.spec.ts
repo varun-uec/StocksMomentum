@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { expect, test } from './fixtures';
+import { expect, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/r2');
 mkdirSync(evidence, { recursive: true });
@@ -34,6 +34,7 @@ test('R2 mobile More menu opens and closes from the keyboard with focus restored
 });
 
 test('R2 200% desktop-equivalent reflow keeps core workflows in the viewport', async ({ page }) => {
+  resetDocuments(); // an earlier spec can leave the chart on weekly bars or in a grid
   await page.setViewportSize({ width: 720, height: 450 }); // 1440 × 900 desktop at 200% zoom
   for (const [path, heading] of [
     ['/', 'Live Momentum Dashboard'],

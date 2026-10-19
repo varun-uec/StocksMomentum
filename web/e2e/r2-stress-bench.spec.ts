@@ -159,8 +159,11 @@ test('R2 bounded endurance: navigate symbols, change layouts, add and delete dra
     if (i > 0) {
       const search = page.getByLabel('Look up a symbol');
       await search.fill(symbol);
+      // Until the new bars arrive, the label below can still describe the previous symbol's chart.
+      const bars = page.waitForResponse((r) => r.url().includes(`/securities/${symbol}/ohlcv`));
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL(new RegExp(`/chart/${symbol}$`));
+      await bars;
     }
     await expect(page.getByTestId('price-chart').first()).toHaveAttribute('aria-label', /2610 daily bars/);
     const chart = page.getByTestId('price-chart').first();
