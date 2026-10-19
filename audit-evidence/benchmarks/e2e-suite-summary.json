@@ -1,0 +1,18 @@
+{
+  "measured_at": "2026-10-19",
+  "tested_commit": "e7fd455",
+  "browser_suite": {
+    "full_playwright": "108 passed, 6 skipped in standard run (six long benchmark cases are opt-in)",
+    "m13_benchmarks": "6 passed separately; 30 runs each for 1, 4, and 16 chart cases",
+    "chart_symbol_search_repeat": "20 passed, 0 failed",
+    "api_restart_recovery": "synthetic tmpfs Postgres restarted; guard, migrations, synthetic seed, and same-database browser check passed",
+    "api_failure_injection": "slow 1,200 ms response, HTTP 503, and incomplete JSON cases passed"
+  },
+  "backend_suite": "815 passed, 2 deprecation warnings",
+  "frontend_suite": {
+    "lint": "passed",
+    "vitest": "101 passed across 13 files",
+    "production_build": "passed; 565.72 kB main JavaScript chunk, 182.13 kB gzip"
+  },
+  "data": "Synthetic fixtures in isolated, marked tmpfs *_e2e database; no NSE automated downloads; real application database untouched"
+}

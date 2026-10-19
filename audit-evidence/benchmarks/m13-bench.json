@@ -1,0 +1,30 @@
+{
+  "measured_at": "2026-10-19T04:55:57.030Z",
+  "git_commit": "e7fd455",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "viewport": "1280 × 720 (Playwright default)",
+  "dataset": "16 synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (marked E2E database); MAX range",
+  "extra_paint_marks_seen": 0,
+  "results": {
+    "1": {
+      "warm_open_ms": { "runs": 30, "p50": 167, "p95": 185, "max": 186 },
+      "pan_fps": { "runs": 30, "p5": 61, "p50": 62 },
+      "js_heap_mb": { "samples": 6, "p50": 11, "max": 11 },
+      "cold_open_ms": { "runs": 30, "p50": 190, "p95": 201, "max": 202 }
+    },
+    "4": {
+      "warm_open_ms": { "runs": 30, "p50": 475, "p95": 495, "max": 520 },
+      "pan_fps": { "runs": 30, "p5": 61, "p50": 63 },
+      "js_heap_mb": { "samples": 6, "p50": 25, "max": 25 },
+      "cold_open_ms": { "runs": 30, "p50": 508, "p95": 528, "max": 542 }
+    },
+    "16": {
+      "warm_open_ms": { "runs": 30, "p50": 1717, "p95": 1772, "max": 1791 },
+      "pan_fps": { "runs": 30, "p5": 61, "p50": 62 },
+      "js_heap_mb": { "samples": 6, "p50": 79, "max": 79 },
+      "cold_open_ms": { "runs": 30, "p50": 1763, "p95": 1785, "max": 1796 }
+    }
+  }
+}

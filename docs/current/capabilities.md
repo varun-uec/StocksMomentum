@@ -1,6 +1,6 @@
 # Capabilities
 
-Verified against the routers, pages and use cases on branch `wickstreet/m10-m11` (through M14) on 2026-10-19. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
+Verified against the routers, pages and use cases on branch `wickstreet/m10-m11` through the M16 E2E audit on 2026-10-19. All API paths sit under `/api/v1`. The live schema is at `http://localhost:8000/docs`.
 
 ## Summary
 
@@ -37,10 +37,10 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | Metrics | `GET /metrics` | Prometheus format. |
 | Runs | `GET /runs`, `GET /runs/latest`, `GET /runs/{run_id}` | |
 | | `POST /runs/execute` | Runs the full pipeline. Background by default; poll `GET /runs/{id}`. |
-| | `POST /runs` | Creates a `PENDING` row only. Nothing executes it. |
+| | `POST /runs` | Creates a `PENDING` row, schedules the ingest-and-screen pipeline, and returns `202`; poll `GET /runs/{id}`. |
 | Rankings | `GET /rankings/runs/{run_id}`, `GET /rankings/runs/{run_id}/stocks/{security_id}/explanation` | |
 | Stocks | `GET /stocks/{symbol}`, `/history`, `/live`, `/indicators/series?interval=1D\|1W`, `/elliott-wave`; `POST /stocks/{symbol}/chart-patterns` | `/live` evaluates any symbol on demand. |
-| Securities | `GET /securities` (search), `GET /securities/{symbol}/ohlcv?interval=1D\|1W` (adjusted daily or weekly bars, the adjustment schedule, `data_version`) | |
+| Securities | `GET /securities` (search), `GET /securities/{symbol}/ohlcv?interval=1D\|1W\|1M` (adjusted daily, weekly or monthly bars, the adjustment schedule, `data_version`) | |
 | Market | `GET /market/context`, `GET /indices/{index_code}/closes` | |
 | Market data | `POST /market-data/refresh` | Fetches the latest NSE/BSE session. No backfill, no screening. |
 | Watchlist | `GET /watchlist`, `GET /watchlist/detail`, `POST /watchlist/{symbol}`, `DELETE /watchlist/{symbol}` | |
@@ -52,7 +52,7 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | Research | `POST /research/historical/screen`, `/compare/runs`, `/verify/determinism`, `/experiment/run`, `/corporate-actions/refresh`; `GET /research/evaluate/{name}`, `/contribution/{name}`, `/compare/strategies` | Two experiment endpoints exist: `/research/experiment/run` and `/validation/experiment/run`. |
 | Backtest | `POST /backtest/walk-forward` | Every response carries `benchmark_label` and `survivorship_warning`. |
 
-The web client calls every endpoint except the health probes, `/metrics`, `POST /runs`, the ranking explanation endpoint and `POST /research/corporate-actions/refresh`.
+The web client calls every endpoint except the health probes, `/metrics`, `POST /runs`, the ranking explanation endpoint and `POST /research/corporate-actions/refresh`. `POST /runs` is covered by an API integration regression with the market provider stubbed.
 
 ## Web UI
 

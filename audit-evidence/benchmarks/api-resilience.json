@@ -1,0 +1,6 @@
+{
+  "measured_at": "2026-10-19T04:59:57.596Z",
+  "artificial_market_api_delay_ms": 1200,
+  "observed_render_ms": 1375,
+  "synthetic_delay_intercepted": true
+}

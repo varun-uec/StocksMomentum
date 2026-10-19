@@ -105,6 +105,13 @@ test('audit screenshots: 2 × 2 and 4 × 4 chart workspaces', async ({ page }) =
 });
 
 test('audit screenshot: strategy studio on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/studio');
+  await expect(page.getByRole('heading', { name: 'Families' })).toBeVisible();
+  if (await page.getByText('No families yet').isVisible()) {
+    await page.screenshot({ path: join(screenshots, 'studio-desktop.png'), fullPage: true });
+  }
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/studio');
   await expect(page.locator('h1').first()).toBeVisible();

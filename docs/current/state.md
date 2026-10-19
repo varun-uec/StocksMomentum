@@ -1,6 +1,6 @@
 # State
 
-As of 2026-10-19, branch `wickstreet/m10-m11` (local, never pushed): Wickstreet M9 to M15 are done, and M16 (release readiness) is under way. Before Wickstreet, the last code commit was `f492f81` (2026-08-18).
+As of 2026-10-19, branch `wickstreet/m10-m11` (local, never pushed): Wickstreet M9 to M15 are done and the M16 product audit is complete. Public release remains blocked on market-data permissions and owner decisions. Before Wickstreet, the last code commit was `f492f81` (2026-08-18).
 
 ## Verdict
 
@@ -22,6 +22,18 @@ Deploy only on a private network. There is no authentication.
 | Web `npm run lint` / `npm run build` | clean |
 | Web `npm run e2e` (Playwright, against a database clone) | 37 passed, stable over repeated runs |
 | NFR-11 chart open, 10 years of bars, 30 runs each | warm P95 115 ms (≤ 1 s); cold P95 156 ms (≤ 3 s) |
+
+## Independent product audit, 2026-10-19
+
+| Check | Result |
+|---|---|
+| Backend full suite | 815 passed, 2 deprecation warnings. |
+| Web lint, Vitest, build | lint clean; 101 passed; production build clean with a 565.72 kB main chunk (182.13 kB gzip). |
+| Playwright full suite | 108 passed, 6 opt-in benchmark cases skipped; all 26 documented routes hard-loaded. The six benchmark cases also passed separately. |
+| NFR-11, 30 samples each | warm P95 165 ms; first chart open after fresh API process P95 482 ms (boot excluded). Both targets met. |
+| M13 workspaces, 30 samples each | 1 chart warm/cold P95 185/201 ms; 4 charts 495/528 ms; 16 charts 1,772/1,785 ms. |
+| Test data | Marked synthetic fixtures in a disposable tmpfs `*_e2e` database; no NSE automated downloads. |
+| Evidence and limits | See [audit report](../../E2E_AUDIT_REPORT.md), [coverage](../../E2E_COVERAGE_MATRIX.md), [UX audit](../../UX_USABILITY_AUDIT.md), and [defect register](../../E2E_DEFECT_REGISTER.md). |
 
 ## Delivery record
 
@@ -69,13 +81,9 @@ Found while writing these docs. Not fixed.
 
 | # | Defect | Where |
 |---|---|---|
-| 1 | Walk-forward fills at the first session's adjusted **close**. The brief (§5) says **open**. The loop reviews checked that decision and fill dates differ, not the price field. | `walk_forward.py::_apply`, `SqlPriceHistoryProvider` |
-| 2 | `POST /runs` creates a `PENDING` run that nothing executes. | `routers/runs.py`, `use_cases/runs.py` |
 | 3 | CLI `ingest` and `screen` are stubs. | `interface/cli/main.py` |
 | 5 | The research harness cannot apply parameter overrides: `apply_parameter_overrides` is never called. Every variant test so far was a one-off script. | `domain/research/services.py` |
 | 6 | `rs_sector_relative`, `rs_industry_relative`, `rs_line_uptrend` are still registered after v3 removed them. The v3 description names a high-tight-flag detector that does not exist. | `domain/engines/relative_strength.py`, strategy JSON |
-| 8 | The older historical research tools apply today's cumulative `adj_factor` to past dates. A later split shrinks the SMAs while the trend template reads the raw close, so `close > SMA` passes trivially. The Studio uses the point-in-time path and is not affected. Re-routing the old tools is the owner's call. | `indicator_pipeline.py::_to_dataframe`; [re-run report](../history/audits/2026-10-19-m14-pit-rerun-report.md) |
-| 9 | The older historical research tools take today's universe, not the one at the date. The point-in-time universe (Studio) uses listing and delisting dates. | `indicator_pipeline.py::_fetch_bars` |
 | 10 | Eleven dev-only npm advisories (typescript-eslint 7, tailwindcss 3 tool chain). Fixing them needs major upgrades. No runtime package is affected. | `web/package.json` |
 
 Fixed in M14 and M16 (2026-10-19):
@@ -93,6 +101,15 @@ Fixed in M10 and M11 (2026-10-18):
 - **The chart's MAX range showed only the last 500 bars.** With no `from` date the OHLCV use case capped the series at 500 rows (about two years). It now returns the whole stored series. Regression test: `tests/unit/test_security_ohlcv_range.py`. *(M11)*
 - **A fast second click lost a drawing anchor.** The chart library drops a second click inside its double-click window, so a quick two-click trendline never completed. Anchors are now placed from native clicks. *(M11)*
 - **The web app's API URL setting never worked.** The client read `NEXT_PUBLIC_API_BASE`; Compose set `NEXT_PUBLIC_API_BASE_URL`. The app now calls same-origin `/api/v1`, so no setting exists.
+
+Fixed during the 2026-10-19 E2E audit:
+
+- **Walk-forward fills used the next session's adjusted close instead of its adjusted open.** The price-history port now returns adjusted opens, holdings are marked and rebalance quantities are sized at the open, and regression tests cover a corporate-action-adjusted open and a gap between open and close.
+- **Historical replay used today's cumulative factors and active universe.** New `/historical`, validation backfill and experiment replays now capture and persist one point-in-time data manifest. Previously saved runs are preserved and labelled with a legacy-basis warning; they are not rewritten.
+- **`POST /runs` left a pending row with no worker.** It now schedules the established background pipeline. An API regression stubs the provider, so no NSE request is made.
+- **Zero rank values placed filtered names among qualified names.** The screener sorts unranked rows last and displays a dash with an explanation.
+- **The mobile bottom navigation could cover the last page content.** The shared shell reserves safe-area-aware trailing space; a browser check confirms the chart status can scroll clear of it.
+- **Fast chart search could lose an early key or close a newly reopened dialog.** The search input now receives focus explicitly and the redundant native-dialog close callback is removed; the interaction passed 20 repeated browser runs.
 
 Architecture-level differences from the ADD are listed in [architecture.md](architecture.md#drift-from-the-add).
 
@@ -119,6 +136,6 @@ Ready for private deployment. Missing for public deployment: authentication, a m
 **Wickstreet** (started 2026-10-17). An open-source, self-hosted charting workspace on daily data, with Momentum25 as its engine and built-in screener. [ADD Amendment A1](../architecture/ADD-amendment-A1.md) governs it.
 
 - **Done:** M9 to M15 on branch `wickstreet/m10-m11`. The owner accepted M9, M10, M13, M15, ADR-013 and ADR-014. The owner's M11 usability assessment is still open.
-- **Under way:** M16, release readiness. See the [release-candidate report](../history/audits/2026-10-19-m16-release-candidate-report.md).
+- **Done:** M16 independent product audit. See the four audit deliverables linked above. The owner's M11 usability assessment is still open.
 - **Release blocker:** NSE's website terms forbid automated data collection and using the data for simulation. The app does both. See the [data-use check](../history/audits/2026-10-19-m16-nse-data-use.md).
-- **Owner decisions:** NSE data use, the licence ([ADR-015](../architecture/adr/ADR-015-licence.md), Proposed; ADR-012 is accepted with it), formal trademark clearance and a domain, publication and push, deploying the RS fix, and re-routing the old research tools.
+- **Owner decisions:** NSE data use, the licence ([ADR-015](../architecture/adr/ADR-015-licence.md), Proposed; ADR-012 is accepted with it), formal trademark clearance and a domain, publication and push, and deploying the RS fix.
