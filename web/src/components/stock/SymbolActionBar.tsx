@@ -12,6 +12,7 @@
 import { Link } from 'react-router';
 import { focusRing } from '@/lib/theme';
 import { WatchlistStar } from '@/components/stock/WatchlistStar';
+import { useShellPanel } from '@/components/shell/shell-context';
 
 type ActionId = 'chart' | 'analysis' | 'patterns' | 'elliott-wave' | 'workspace';
 
@@ -34,6 +35,8 @@ export function SymbolActionBar({
   strategyName?: string | null;
   current: ActionId;
 }) {
+  // The page is the symbol's assessment; the panel offers its alerts and watchlist.
+  useShellPanel({ symbol });
   // Identical link shapes on all three routes; the analysis route swaps its
   // Chart / Patterns / Elliott Wave actions for in-page mode switches.
   const onAnalysis = current === 'analysis';

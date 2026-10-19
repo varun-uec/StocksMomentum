@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page, APIRequestContext } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { expect, openPanelTab, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/transformation/after');
 async function ready(page: Page) {
@@ -146,7 +146,7 @@ test('armed alert editing and rectangular drawing snapshots form one chart workf
   const response = await request.put('/api/v1/drawings/RELIANCE', { headers: { 'If-None-Match': '*' }, data: { price_basis: 'traded', drawings: [{ id: 'zone-one', kind: 'rectangle', points: [{ date: '2026-08-03', price: 270 }, { date: '2026-08-07', price: 290 }], color: '#278c76' }] } });
   expect(response.ok()).toBe(true);
   await page.goto('/chart/RELIANCE'); await ready(page);
-  await page.getByRole('tab', { name: 'Alerts', exact: true }).click();
+  await openPanelTab(page, 'Alerts');
   await page.getByLabel('Threshold', { exact: true }).fill('300');
   await page.getByRole('button', { name: 'Add alert', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Alerts', exact: true })).toContainText('crosses above 300');

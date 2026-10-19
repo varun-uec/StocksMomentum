@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { expect, openAppMenu, resetDocuments, test } from './fixtures';
+import { expect, openAppMenu, openPanelTab, resetDocuments, test } from './fixtures';
 
 /** Browser-rendered evidence for the product audit; these tests do not mutate user data. */
 const screenshots = resolve(process.cwd(), '../audit-evidence/screenshots');
@@ -64,7 +64,7 @@ test('audit screenshots: chart search and indicator catalogue', async ({ page })
   await expect(page.getByRole('dialog', { name: 'Indicators' })).toBeVisible();
   await page.screenshot({ path: join(screenshots, 'chart-indicators-desktop.png') });
   await page.keyboard.press('Escape');
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Alerts/);
   await expect(page.getByRole('tabpanel', { name: 'Alerts' })).toBeVisible();
   await page.screenshot({ path: join(screenshots, 'chart-alerts-desktop.png') });
 });

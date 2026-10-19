@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, openPanelTab, test } from './fixtures';
 
 async function chartReady(page: Page): Promise<void> {
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length > 0);
@@ -20,7 +20,7 @@ test('phase 1 writes chart, drawing and alert state in the browser', async ({ pa
     return response.ok() ? (await response.json()).body.drawings.length : -1;
   }).toBe(1);
 
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Alerts/);
   const form = page.getByRole('form', { name: 'New alert' });
   await form.getByLabel('Value').selectOption('close');
   await form.getByLabel('Condition').selectOption('above');

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { ageAlerts, expect, resetDocuments, test } from './fixtures';
+import { ageAlerts, expect, openPanelTab, resetDocuments, test } from './fixtures';
 
 /** M15: daily alerts, set from the chart and listed in the side panel. */
 
@@ -32,8 +32,8 @@ test('an alert set at a chart price is listed, checked, fires, and is seen', asy
   await expect(form.getByRole('status', { name: 'Alert evaluation' })).toHaveText('0 of 1 fired'); // no bar after the last stored session yet
 
   ageAlerts(); // as if the alert had been set 30 days ago
-  await page.getByRole('tab', { name: /^Watchlist/ }).click();
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Watchlist/);
+  await openPanelTab(page, /^Alerts/);
   await form.getByRole('button', { name: 'Check now' }).click();
   await expect(form.getByRole('status', { name: 'Alert evaluation' })).toHaveText('1 of 1 fired');
   await expect(list.getByText(/^Fired on \d{4}-\d{2}-\d{2} at \d+\.\d{2}$/)).toBeVisible();
@@ -85,14 +85,14 @@ test('a close alert armed before a bonus keeps its threshold on the adjusted pri
 
   await page.goto('/chart/GOLDIAM');
   await ready(page);
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Alerts/);
   await expect(page.getByRole('list', { name: 'Alerts' }).getByText('GOLDIAM Close is below 90 · Daily')).toBeVisible();
 });
 
 test('the chart form creates every supported value and interval combination', async ({ page, request }) => {
   await page.goto('/chart/TCS');
   await ready(page);
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Alerts/);
   const form = page.getByRole('form', { name: 'New alert' });
   const sources = ['close', 'rsi14', 'adx14', 'atr14', 'macd_line', 'macd_signal', 'macd_histogram'];
   const intervals = ['1D', '1W', '1M'];

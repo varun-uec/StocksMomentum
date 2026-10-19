@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { expect, openPanelTab, resetDocuments, test } from './fixtures';
 
 /** M12: the workspace shell around the chart — rail, keys, side panel. */
 
@@ -71,7 +71,7 @@ test('Alt+W adds the open symbol to the watchlist panel and removes it again', a
 test('the details tab explains the symbol in Momentum25 terms', async ({ page }) => {
   await page.goto('/chart/TCS');
   await ready(page);
-  await page.getByRole('tab', { name: 'Details' }).click();
+  await openPanelTab(page, 'Details');
   const details = page.getByRole('tabpanel', { name: 'Details' });
   await expect(details.getByRole('heading', { name: 'Why it ranks' })).toBeVisible({ timeout: 15_000 });
   await expect(details.getByText('Gate failures')).toBeVisible();
@@ -93,7 +93,7 @@ test('the panel is saved with the workspace: closed stays closed after a reload'
   await page.reload();
   await ready(page);
   await expect(page.getByRole('complementary', { name: 'Side panel' })).toBeHidden();
-  await page.getByRole('button', { name: 'Panel' }).click();
+  await openPanelTab(page, 'Watchlist'); // the right icon strip
   await expect(page.getByRole('tabpanel', { name: 'Watchlist' })).toBeVisible();
 });
 
@@ -123,4 +123,23 @@ test('on a narrow screen the screener opens the research page, as before', async
   const symbol = (await firstSymbol.textContent())!.trim();
   await firstSymbol.click();
   await expect(page).toHaveURL(new RegExp(`/stock/${symbol}\\?strategy=`));
+});
+
+test('the panel follows the route: an overlay off the chart, Details only with a context symbol', async ({ page }) => {
+  await page.goto('/market');
+  const strip = page.getByRole('tablist', { name: 'Panel' });
+  await expect(strip.getByRole('tab')).toHaveText(['', '']);
+  await expect(strip.getByRole('tab', { name: 'Details' })).toHaveCount(0);
+  await strip.getByRole('tab', { name: 'Alerts' }).click();
+  const panel = page.getByRole('complementary', { name: 'Side panel' });
+  await expect(panel.getByText('Open a chart or a symbol page to create an alert.')).toBeVisible();
+  await expect(panel.getByRole('form', { name: 'New alert' })).toHaveCount(0);
+  await strip.getByRole('tab', { name: 'Alerts' }).click(); // the open tab collapses the panel
+  await expect(panel).toBeHidden();
+
+  await page.goto('/stock/TCS');
+  await expect(strip.getByRole('tab', { name: 'Details' })).toHaveCount(0); // the page is the assessment
+  await expect(panel).toBeHidden(); // off the chart the panel starts closed on each visit
+  await strip.getByRole('tab', { name: 'Alerts' }).click();
+  await expect(panel.getByRole('form', { name: 'New alert' })).toContainText('New alert on TCS');
 });

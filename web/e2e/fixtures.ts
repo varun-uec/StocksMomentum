@@ -77,3 +77,10 @@ export async function openAppMenu(page: Page): Promise<Locator> {
   await expect(menu).toBeVisible();
   return menu;
 }
+
+/** Open a right-panel tab. Clicking the open tab collapses the panel (D24), so click only when needed. */
+export async function openPanelTab(page: Page, name: string | RegExp): Promise<void> {
+  const tab = page.getByRole('tab', { name, exact: typeof name === 'string' });
+  if ((await tab.getAttribute('aria-selected')) !== 'true') await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}

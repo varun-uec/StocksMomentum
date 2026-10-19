@@ -25,9 +25,9 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C13 | Sync symbol / interval / crosshair | /chart header (multi only) | same | `Sync` group | y | server document | m13-layouts "sync" | pass |
 | C14 | Save state | /chart header | same | `Saved ✓` status | y | — | m11-slice "Restore" | pass |
 | C15 | Keyboard shortcuts dialog | /chart header `?` | shell: `?` on every route; ☰ app menu | `?` key, ☰ → Keyboard shortcuts | y | — | m12-shell "? lists" | moved |
-| C16 | Panel toggle | /chart header `Panel` | same | `Panel` | y | server document | m12-shell "panel is saved" | pass |
-| C17 | Analyse (opens Details panel) | /chart header | same | `Analyse` | y | `getLiveStockAnalysis` | m12-shell "details tab" | pass |
-| C18 | Research (symbol page) | /chart header link | same | `Research` | n | — | manual | pass |
+| C16 | Panel toggle | /chart header `Panel` | right icon strip (click the open tab to collapse); `Panel` header button below 1024 px | Strip icons | y | server document | m12-shell "panel is saved", transformation "touch controls" | moved |
+| C17 | Analyse (opens Details panel) | /chart header | strip `Details` tab (the Assessment) | Strip icon | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
+| C18 | Research (symbol page) | /chart header link | Details panel "Full research →" | Strip → Details | n | — | m12-shell "details tab" | moved |
 | C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | same | `Objects`, keys | y | server document | m13-charting "undo and redo" | pass |
 | C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | above plot | Legend row | y | — | transformation "study legends" | pass |
 | C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | plot top-left | Hover | y | — | openchart-parity D4 | pass |
@@ -54,10 +54,10 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 
 | # | Capability | Prev | Now | How a user finds it | No-nav | APIs | Verified | Status |
 |---|---|---|---|---|---|---|---|---|
-| P1 | Tabs Watchlist / Details / Alerts, arrows/Home/End, Close panel, saved state | /chart right card | /chart right card | `Panel` | y | server document | m12-shell "panel is saved" | pass |
-| P2 | Watchlist rows: symbol, rank, close, change; click opens chart; sort (BL-13); Add/Remove (Alt+W) | Watchlist tab | Watchlist tab | Panel | y | `getWatchlistDetail`, `addToWatchlist`, `removeFromWatchlist` | m12-shell "Alt+W" | pass |
-| P3 | Details: Momentum25 summary, all criteria and evidence, Full research link | Details tab | Details tab | `Analyse` or tab | y | `getLiveStockAnalysis` | m12-shell "details tab" | pass |
-| P4 | Alerts: create (value, condition, threshold, interval), drawing-linked, edit armed (BL-07), re-arm, delete, unseen count, history (BL-09), other-symbol link | Alerts tab | Alerts tab | Tab, chart menu | y | `/alerts` (create, edit, rearm, evaluate, seen, delete) | m15-alerts, transformation "armed alert editing" | pass |
+| P1 | Tabs Watchlist / Details / Alerts, arrows/Home/End, Close panel, saved state | /chart right card | shell: right icon strip on every route; panel inline on /chart ≥1280 px, overlay elsewhere (D24); Details only with a context symbol | Strip icons | y | server document | m12-shell "panel is saved", "panel follows the route" | moved |
+| P2 | Watchlist rows: symbol, rank, close, change; click opens chart; sort (BL-13); Add/Remove (Alt+W) | Watchlist tab | shell panel, every route | Strip | y | `getWatchlistDetail`, `addToWatchlist`, `removeFromWatchlist` | m12-shell "Alt+W" | moved |
+| P3 | Details: Momentum25 summary, all criteria and evidence, Full research link | Details tab | shell panel, /chart | Strip | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
+| P4 | Alerts: create (value, condition, threshold, interval), drawing-linked, edit armed (BL-07), re-arm, delete, unseen count, history (BL-09), other-symbol link | Alerts tab | shell panel, every route (list only without a symbol) | Strip, chart menu | y | `/alerts` (create, edit, rearm, evaluate, seen, delete) | m15-alerts, transformation "armed alert editing", m12-shell "panel follows the route" | moved |
 | P5 | Alert levels as dashed lines (BL-06) | plot | plot | Armed alert | y | — | transformation "armed alert editing" | pass |
 
 ## Routes and navigation

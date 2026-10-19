@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { expect, resetDocuments, test } from './fixtures';
+import { expect, openPanelTab, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/r2');
 mkdirSync(evidence, { recursive: true });
@@ -21,7 +21,7 @@ test('R2 phase 1 writes chart, drawing and alert state before the isolated datab
     return response.ok() ? (await response.json()).body.drawings.length : -1;
   }).toBe(1);
 
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Alerts/);
   const form = page.getByRole('form', { name: 'New alert' });
   await form.getByLabel('Value').selectOption('close');
   await form.getByLabel('Condition').selectOption('above');
@@ -53,7 +53,7 @@ test('R2 phase 2 restores state after PostgreSQL and API process restart', async
   const alerts = await (await request.get('/api/v1/alerts')).json();
   expect(alerts.alerts).toHaveLength(1);
   expect(alerts.alerts[0]).toMatchObject({ symbol: 'TCS', status: 'active' });
-  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  await openPanelTab(page, /^Alerts/);
   await expect(page.getByRole('list', { name: 'Alerts' }).getByText('TCS Close is above 1 · Daily')).toBeVisible();
   await page.screenshot({ path: resolve(evidence, 'database-restart-restored.png') });
 });
