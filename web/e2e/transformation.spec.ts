@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page, APIRequestContext } from '@playwright/test';
-import { chooseLayout, expect, openPanelTab, resetDocuments, test } from './fixtures';
+import { chooseLayout, expect, openChartSettings, openPanelTab, resetDocuments, test } from './fixtures';
 
 const evidence = resolve(process.cwd(), '../audit-evidence/transformation/after');
 async function ready(page: Page) {
@@ -111,7 +111,7 @@ test('unfinished annotations cannot follow a switch to a cached symbol', async (
 
 test('changing chart type preserves the price pane and drawings with only an oscillator enabled', async ({ page, request }) => {
   await page.goto('/chart/RELIANCE'); await ready(page);
-  await page.getByText('Studies', { exact: true }).click();
+  await openChartSettings(page);
   await page.getByLabel('MA50', { exact: true }).uncheck();
   await page.getByLabel('MA200', { exact: true }).uncheck();
   await page.getByLabel('RSI (14)', { exact: true }).check();
@@ -249,7 +249,8 @@ test('below 1024 px the chart toolbar folds lower-priority controls into one men
   await expect(header.getByRole('button', { name: 'Compare', exact: true })).toHaveCount(0);
   await header.getByRole('button', { name: 'More chart controls' }).click();
   const menu = page.getByRole('group', { name: 'More chart controls' });
-  await expect(menu.getByRole('button')).toHaveText(['Compare', 'Alert', '']);
+  for (const name of ['Compare', 'Alert', 'Layout', 'Undo', 'Redo']) await expect(menu.getByRole('button', { name, exact: true })).toBeVisible();
+  await expect(menu.getByLabel('Chart type')).toBeVisible();
   await chooseLayout(page, '2x1');
   await expect(page.getByRole('region', { name: /^Chart / })).toHaveCount(2);
   await chooseLayout(page, '1x1');
@@ -353,4 +354,15 @@ test.describe('chart chrome slots: the rail portal gate', () => {
     await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.3);
     await expect.poll(async () => (await savedDrawings(request)).length).toBe(1);
   });
+});
+
+test('the settings gear holds volume and the moving averages for the active chart', async ({ page }) => {
+  await page.goto('/chart/RELIANCE'); await ready(page);
+  await openChartSettings(page);
+  const volume = page.getByRole('button', { name: 'Volume', exact: true });
+  await volume.click();
+  await expect(volume).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('checkbox', { name: 'MA20', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('checkbox', { name: 'MA20', exact: true })).toBeHidden();
 });

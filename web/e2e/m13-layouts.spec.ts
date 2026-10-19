@@ -67,8 +67,9 @@ test('sync shares the symbol and the interval, and turns off again', async ({ pa
   await expect(cell(page, 'main')).toHaveAccessibleName('Chart main: TCS'); // its own symbol was kept
 
   await sync.getByLabel('Interval').check();
-  await cell(page, 'c2').getByRole('button', { name: 'Weekly bars' }).click();
-  await expect(cell(page, 'main').getByRole('button', { name: 'Weekly bars' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(cell(page, 'c2')).toHaveAttribute('aria-current', 'true');
+  await page.locator('header.ws-header').getByRole('button', { name: 'Weekly bars' }).click(); // the toolbar acts on the active chart, c2
+  await expect(cell(page, 'main').getByTestId('price-chart')).toHaveAttribute('aria-label', /weekly bars/);
   await expect.poll(async () => (await workspace(request))?.sync).toEqual({ symbol: false, interval: true, crosshair: true });
 });
 

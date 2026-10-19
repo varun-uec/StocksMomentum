@@ -1,5 +1,5 @@
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { expect, openChartSettings, resetDocuments, test } from './fixtures';
 
 /** M11 vertical slice: Find → Analyse → Draw → Restore (ADR-013 §5, M9 §3). */
 
@@ -14,8 +14,7 @@ async function chartReady(page: Page): Promise<void> {
 }
 
 async function changeStudy(page: Page, label: string, checked: boolean) {
-  const details = page.locator('details').filter({ has: page.getByText('Studies', { exact: true }) });
-  if (!(await details.getAttribute('open'))) { if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await page.getByText('Studies', { exact: true }).click(); }
+  await openChartSettings(page);
   await checkbox(page, label).setChecked(checked);
 }
 

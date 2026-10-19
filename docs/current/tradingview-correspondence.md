@@ -13,13 +13,13 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C1 | Symbol title (`h1`), opens search | /chart header | chart toolbar in the shell header bar (route slot) | Click symbol, type, `/`, Ctrl/⌘+K | y | `searchSecurities` | m11-slice "Find", transformation "folds lower-priority controls" | moved |
 | C2 | Company name, last close, change % | /chart header | chart toolbar (name ≥1536 px; price and change ≥640 px) | Next to symbol | y | `getOhlcv` | transformation "global command search" | moved |
 | C3 | Compare (+), chips with remove | /chart header | chart toolbar ≥1024 px; ⋯ menu below | "+ Compare" | y | `getOhlcv` | m13-charting "compared symbol", transformation "folds lower-priority controls" | moved |
-| C4 | Interval D / W / M | chart controls row | chart controls row | `Interval` group | y | `getOhlcv` | m11b-weekly, m13-charting "monthly" | pass |
-| C5 | Range presets 1W 1M 3M 6M 1Y MAX | chart controls row | chart controls row | Range buttons | y | — | m13-charting "every visible range", transformation "range presets" | pass |
-| C6 | Chart type (candles, bars, line, area, Heikin-Ashi) | chart controls `select` | chart controls `select` | `Chart type` | y | — | m13-charting "every chart type" | pass |
-| C7 | Log and % scale | chart controls `Price scale` group; chart menu | same | `Log scale`, `Percent scale` | y | — | m13-charting "every chart type" | pass |
-| C8 | Volume pane toggle | chart controls | chart controls | `Volume` button | y | — | manual | pass |
-| C9 | MA 10/20/50/100/200 quick toggles; RSI/MACD/ADX pane row | "Studies" popover | "Studies" popover | `Studies` | y | `getIndicatorSeries` | openchart-parity D3 | pass |
-| C10 | Fit all history | chart controls `Fit` | chart controls `Fit` | `Fit`, Alt+R | y | — | m13-charting "chart menu resets" | pass |
+| C4 | Interval D / W / M | chart controls row | chart toolbar, after Compare (active chart) | `Interval` group | y | `getOhlcv` | m11b-weekly, m13-charting "monthly" | moved |
+| C5 | Range presets 1W 1M 3M 6M 1Y MAX | chart controls row | bottom range bar, left | Range buttons | y | — | m13-charting "every visible range", transformation "range presets" | moved |
+| C6 | Chart type (candles, bars, line, area, Heikin-Ashi) | chart controls `select` | chart toolbar ≥1024 px; ⋯ menu below | `Chart type` | y | — | m13-charting "every chart type" | moved |
+| C7 | Log and % scale | chart controls `Price scale` group; chart menu | bottom range bar; chart menu | `Log scale`, `Percent scale` | y | — | m13-charting "every chart type" | moved |
+| C8 | Volume pane toggle | chart controls | settings gear ("Chart settings"); ⋯ menu below 1280 px | `Volume` button | y | — | transformation "settings gear holds volume" | moved |
+| C9 | MA 10/20/50/100/200 quick toggles; RSI/MACD/ADX pane row | "Studies" popover | settings gear ("Chart settings"); ⋯ menu below 1280 px | `Studies` | y | `getIndicatorSeries` | openchart-parity D3, m11-slice "Analyse → Draw → Restore" (`openChartSettings`) | moved |
+| C10 | Fit all history | chart controls `Fit` | bottom range bar | `Fit`, Alt+R | y | — | m13-charting "chart menu resets" | moved |
 | C11 | Indicators dialog | /chart header; chart menu | chart toolbar "fx Indicators" ≥640 px, ⋯ menu below; chart menu | `Indicators`, Alt+I | y | — | m13-charting "Alt+I", transformation "folds lower-priority controls" | moved |
 | C12 | Layout 1…4×4 | /chart header `Layout` select | chart toolbar Layout popover (radios); ⋯ menu below 1024 px | Grid icon | y | server document | m13-layouts "all documented" (`chooseLayout`) | moved |
 | C13 | Sync symbol / interval / crosshair | /chart header (multi only) | Layout popover (multi only) | Grid icon → Sync | y | server document | m13-layouts "sync" (`openLayoutMenu`) | moved |
@@ -28,7 +28,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C16 | Panel toggle | /chart header `Panel` | right icon strip (click the open tab to collapse); `Panel` header button below 1024 px | Strip icons | y | server document | m12-shell "panel is saved", transformation "touch controls" | moved |
 | C17 | Analyse (opens Details panel) | /chart header | strip `Details` tab (the Assessment) | Strip icon | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
 | C18 | Research (symbol page) | /chart header link | Details panel "Full research →" | Strip → Details | n | — | m12-shell "details tab" | moved |
-| C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | same | `Objects`, keys | y | server document | m13-charting "undo and redo" | pass |
+| C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | chart toolbar Undo/Redo icons ≥1280 px; ⋯ menu below; keys | `Objects`, keys | y | server document | m13-charting "undo and redo" | moved |
 | C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | above plot | Legend row | y | — | transformation "study legends" | pass |
 | C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | plot top-left | Hover | y | — | openchart-parity D4 | pass |
 | C22 | Footnote "N daily bars from the stored NSE series", data version | below plot | below plot | Read | y | — | m11b-weekly | pass |
@@ -45,7 +45,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | T1 | Select (Esc) | left rail | page rail column, serving the active chart (D25) | Rail | y | — | m12-shell "rail", transformation "rail portal gate" | moved |
 | T2 | Trendline (Alt+T), Ray, Extended line, Horizontal ray (Alt+H), Horizontal line, Vertical line (Alt+V), Cross line, Parallel channel, Price range, Text note, Rectangle (Alt+Shift+R), Fib retracement (Alt+F) | left rail, flat | page rail column (active chart), flat until A4.1 | Rail, shortcuts | y | server document | m13-charting "every M13 tool" | moved |
 | T3 | Clear (remove all) | left rail | page rail column | Rail | y | server document | manual | moved |
-| T4 | Objects inspector: list, show/hide, lock/unlock, undo/redo | `Objects` popover | `Objects` popover | `Objects · N` | y | server document | transformation "inline notes and drawing lock" | pass |
+| T4 | Objects inspector: list, show/hide, lock/unlock, undo/redo | `Objects` popover | chart toolbar `Objects` (⋯ menu below 1280 px) until the Object tree (A4.2) | `Objects · N` | y | server document | transformation "inline notes and drawing lock" | moved |
 | T5 | Drawing menu: colour, width, dash, text, delete | right-click drawing | same | Right-click, Shift+F10 | y | server document | m13-charting "drawing menu", transformation "drawing menu arrows" | pass |
 | T6 | Select, drag, arrows move, Delete | plot | plot | Click a drawing | y | server document | m13-charting "supports move, edit" | pass |
 | T7 | Inline text-note editor | plot | plot | Text tool | y | server document | transformation "inline notes" | pass |

@@ -94,9 +94,37 @@ export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
 export interface ChartChrome {
   /** The page's drawing-rail column. */
   rail: HTMLElement | null;
+  /** The toolbar place for the interval. */
+  toolbar?: HTMLElement | null;
+  /** The toolbar place for the chart type. */
+  chartType?: HTMLElement | null;
+  /** The toolbar place for undo, redo and the drawing objects. */
+  history?: HTMLElement | null;
+  /** The toolbar place for the settings gear: volume, moving averages, panes. */
+  settings?: HTMLElement | null;
+  /** The bottom range bar: ranges, scale and Fit. */
+  rangeBar?: HTMLElement | null;
   /** A change (a new layout) cancels an armed tool. */
   resetKey?: string;
 }
+
+const UNDO_ICON = (
+  <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 5L3 9l4 4M3 9h9a5 5 0 010 10h-2" />
+  </svg>
+);
+const UNDO_ICON_REDO = (
+  <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 5l4 4-4 4M17 9H8a5 5 0 000 10h2" />
+  </svg>
+);
+
+const SETTINGS_ICON = (
+  <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="10" cy="10" r="2.5" />
+    <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" strokeLinecap="round" />
+  </svg>
+);
 
 /** Counts chart instances, so a test can prove activation never rebuilds one. */
 let chartGeneration = 0;
@@ -1483,39 +1511,46 @@ export function PriceChart({
   );
   const activePaneSet = new Set(displayedPanes);
 
-  return (
-    <div className="price-workstation" style={{ '--plot-height': `${height}px` } as React.CSSProperties}>
-      <div className={`chart-controls flex items-center ${compact ? 'gap-1 mb-1' : 'gap-2 mb-1'}`}>
-        {chartLabel}
-        {compact ? (
-          <select
-            aria-label="Range"
-            value={timeframe}
-            onChange={(e) => onTimeframeChange(e.target.value as TimeframeId)}
-            className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1 py-0.5 text-xs ${focusRing}`}
-          >
-            {TIMEFRAMES.map((tf) => (
-              <option key={tf.id} value={tf.id}>
-                {tf.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
-            {TIMEFRAMES.map((tf) => (
-              <ToggleButton
-                key={tf.id}
-                active={timeframe === tf.id}
-                onClick={() => onTimeframeChange(tf.id)}
-              >
-                {tf.label}
-              </ToggleButton>
-            ))}
-          </div>
-        )}
-        {drawingsEnabled && (!compact || toolRail) && <InspectorDisclosure label={<>Objects{drawings.length ? ` · ${drawings.length}` : ''}</>} name="Objects · manage drawings">
+  // The chart's controls, laid out inline below, or portalled into the
+  // workspace's toolbar, settings, history and range-bar slots (`chrome`).
+  const rangeSelect = (
+    <select
+      aria-label="Range"
+      value={timeframe}
+      onChange={(e) => onTimeframeChange(e.target.value as TimeframeId)}
+      className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1 py-0.5 text-xs ${focusRing}`}
+    >
+      {TIMEFRAMES.map((tf) => (
+        <option key={tf.id} value={tf.id}>
+          {tf.label}
+        </option>
+      ))}
+    </select>
+  );
+  const rangeButtons = (
+    <div className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
+      {TIMEFRAMES.map((tf) => (
+        <ToggleButton key={tf.id} active={timeframe === tf.id} onClick={() => onTimeframeChange(tf.id)}>
+          {tf.label}
+        </ToggleButton>
+      ))}
+    </div>
+  );
+  const history = chrome ? (
+    <span className="inline-flex items-center">
+      <button type="button" aria-label="Undo" className={`ws-icon-button disabled:opacity-40 ${focusRing}`} disabled={!historyRef.current.past.length} onClick={() => stepHistory('before')} title="Undo (Ctrl/⌘+Z)">{UNDO_ICON}</button>
+      <button type="button" aria-label="Redo" className={`ws-icon-button disabled:opacity-40 ${focusRing}`} disabled={!historyRef.current.future.length} onClick={() => stepHistory('after')} title="Redo (Ctrl/⌘+Shift+Z)">{UNDO_ICON_REDO}</button>
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1">
+      <button type="button" className="workstation-button" disabled={!historyRef.current.past.length} onClick={() => stepHistory('before')}>Undo</button>
+      <button type="button" className="workstation-button" disabled={!historyRef.current.future.length} onClick={() => stepHistory('after')}>Redo</button>
+    </span>
+  );
+  const objects = drawingsEnabled && (!compact || toolRail) && (
+<InspectorDisclosure label={<>Objects{drawings.length ? ` · ${drawings.length}` : ''}</>} name="Objects · manage drawings">
           <div className="study-options-content" aria-label="Drawing objects">
-            <div className="flex items-center gap-2"><button type="button" className="workstation-button" disabled={!historyRef.current.past.length} onClick={() => stepHistory('before')}>Undo</button><button type="button" className="workstation-button" disabled={!historyRef.current.future.length} onClick={() => stepHistory('after')}>Redo</button></div>
+            {!chrome && history}
             {!drawings.length && <p className="text-xs text-slate-500">Choose a tool on the rail to mark the chart. Removed objects can be restored with Undo.</p>}
             {drawings.map((d) => <div key={d.id} className="flex items-center gap-2 text-xs">
               <button type="button" className="flex-1 text-left" onClick={() => { setSelectedId(d.id); setMenu({ id: d.id, x: 40, y: 40 }); }}>{DRAWING_LABELS[d.kind]}</button>
@@ -1523,43 +1558,48 @@ export function PriceChart({
               <button type="button" className="workstation-button" aria-label={`${d.locked ? 'Unlock' : 'Lock'} ${DRAWING_LABELS[d.kind]}`} onClick={() => commitDrawings(drawings.map((x) => x.id === d.id ? { ...x, locked: !x.locked } : x))}>{d.locked ? 'Unlock' : 'Lock'}</button>
             </div>)}
           </div>
-        </InspectorDisclosure>}
-        {onIntervalChange && (
-          <div role="group" aria-label="Interval" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
-            {INTERVALS.map((iv) => (
-              <ToggleButton key={iv.id} active={interval === iv.id} onClick={() => onIntervalChange(iv.id)} ariaLabel={iv.name}>
-                {iv.label}
-              </ToggleButton>
-            ))}
-          </div>
-        )}
-        {!compact && (
-          <>
-        <select
-          aria-label="Chart type"
-          value={chartType}
-          onChange={(e) => setChartType(e.target.value as ChartType)}
-          className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-1 text-xs ${focusRing}`}
-        >
-          {CHART_TYPES.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-        <div role="group" aria-label="Price scale" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
-          <ToggleButton active={scale === 'log'} onClick={() => setScale(scale === 'log' ? 'normal' : 'log')} ariaLabel="Log scale">
-            Log
-          </ToggleButton>
-          <ToggleButton active={scale === 'percent'} onClick={() => setScale(scale === 'percent' ? 'normal' : 'percent')} ariaLabel="Percent scale">
-            %
-          </ToggleButton>
-        </div>
-        <ToggleButton active={showVolume} onClick={() => setShowVolume((v) => !v)}>
-          Volume
+        </InspectorDisclosure>
+  );
+  const intervalGroup = onIntervalChange && (
+    <div role="group" aria-label="Interval" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
+      {INTERVALS.map((iv) => (
+        <ToggleButton key={iv.id} active={interval === iv.id} onClick={() => onIntervalChange(iv.id)} ariaLabel={iv.name}>
+          {iv.label}
         </ToggleButton>
-        <InspectorDisclosure label="Studies">
-          <div className="study-options-content">
+      ))}
+    </div>
+  );
+  const chartTypeSelect = (
+    <select
+      aria-label="Chart type"
+      value={chartType}
+      onChange={(e) => setChartType(e.target.value as ChartType)}
+      className={`rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-1 text-xs ${focusRing}`}
+    >
+      {CHART_TYPES.map((t) => (
+        <option key={t.id} value={t.id}>
+          {t.label}
+        </option>
+      ))}
+    </select>
+  );
+  const scaleGroup = (
+    <div role="group" aria-label="Price scale" className="flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 p-0.5">
+      <ToggleButton active={scale === 'log'} onClick={() => setScale(scale === 'log' ? 'normal' : 'log')} ariaLabel="Log scale">
+        Log
+      </ToggleButton>
+      <ToggleButton active={scale === 'percent'} onClick={() => setScale(scale === 'percent' ? 'normal' : 'percent')} ariaLabel="Percent scale">
+        %
+      </ToggleButton>
+    </div>
+  );
+  const volumeToggle = (
+    <ToggleButton active={showVolume} onClick={() => setShowVolume((v) => !v)}>
+      Volume
+    </ToggleButton>
+  );
+  const studies = (
+    <>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-slate-600 dark:text-slate-300">Moving averages</span>
           {MA_PERIODS.map((period) => (
@@ -1624,12 +1664,50 @@ export function PriceChart({
             )}
           </>
         )}
-          </div>
-        </InspectorDisclosure>
-        <button type="button" className="workstation-button" onClick={() => chartRef.current?.timeScale().fitContent()} title="Fit all history (Alt+R)">Fit</button>
+    </>
+  );
+  const fitButton = <button type="button" className="workstation-button" onClick={() => chartRef.current?.timeScale().fitContent()} title="Fit all history (Alt+R)">Fit</button>;
+
+  return (
+    <div className="price-workstation" style={{ '--plot-height': `${height}px` } as React.CSSProperties}>
+      {chrome ? (
+        <>
+          {chartLabel && <div className="chart-controls flex items-center gap-1 mb-1">{chartLabel}</div>}
+          {chrome.toolbar && createPortal(intervalGroup, chrome.toolbar)}
+          {chrome.chartType && createPortal(chartTypeSelect, chrome.chartType)}
+          {chrome.history && createPortal(<>{history}{objects}</>, chrome.history)}
+          {chrome.settings && createPortal(
+            <InspectorDisclosure label={SETTINGS_ICON} name="Chart settings">
+              <div className="study-options-content">
+                <div className="flex items-center gap-2">{volumeToggle}</div>
+                {studies}
+              </div>
+            </InspectorDisclosure>,
+            chrome.settings,
+          )}
+          {chrome.rangeBar && createPortal(<>{rangeButtons}{scaleGroup}{fitButton}</>, chrome.rangeBar)}
+        </>
+      ) : (
+      <div className={`chart-controls flex items-center ${compact ? 'gap-1 mb-1' : 'gap-2 mb-1'}`}>
+        {chartLabel}
+        {compact ? rangeSelect : rangeButtons}
+        {objects}
+        {intervalGroup}
+        {!compact && (
+          <>
+            {chartTypeSelect}
+            {scaleGroup}
+            {volumeToggle}
+            <InspectorDisclosure label="Studies">
+              <div className="study-options-content">
+                {studies}
+              </div>
+            </InspectorDisclosure>
+            {fitButton}
           </>
         )}
       </div>
+      )}
       {/* Legend: what is currently drawn, with each line's latest value, so
           the colours on the chart need no decoding. */}
       {!compact && (activeMas.length > 0 || studyLegend?.length || displayedPanes.length > 0) && (

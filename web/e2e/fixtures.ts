@@ -106,3 +106,10 @@ export async function chooseLayout(page: Page, layout: string): Promise<void> {
     await expect(page.locator('main.chart-page')).toHaveAttribute('data-layout', layout, { timeout: 1500 });
   }).toPass();
 }
+
+/** Open the chart's settings gear: volume, moving averages and panes (D23). */
+export async function openChartSettings(page: Page): Promise<void> {
+  const summary = page.locator('summary[aria-label="Chart settings"]');
+  const open = await summary.evaluate((el) => (el.parentElement as HTMLDetailsElement).open);
+  if (!open) await summary.click();
+}

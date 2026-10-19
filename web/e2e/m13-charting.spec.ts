@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
-import { expect, resetDocuments, test } from './fixtures';
+import { expect, openChartSettings, resetDocuments, test } from './fixtures';
 
 /** M13: professional charting. */
 
@@ -305,7 +305,7 @@ test('monthly bars draw with monthly indicators and are saved with the chart', a
   await expect(daily).toBeVisible();
   const sessions = Number((await daily.textContent())!.split(' ')[0]);
 
-  await page.getByText('Studies', { exact: true }).click();
+  await openChartSettings(page);
   await page.getByLabel('RSI (14)', { exact: true }).check();
   await page.keyboard.press('Escape');
   const monthlySeries = page.waitForResponse(

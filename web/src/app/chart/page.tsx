@@ -32,6 +32,7 @@ import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
 import { isTyping, opensSearch } from '@/lib/shortcuts';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { focusRing } from '@/lib/theme';
 import type { ChartInterval } from '@/lib/types';
 import { LAYOUTS, useLayout, useSymbolDrawings, useWorkspaceChart, type Layout } from '@/lib/workspace';
@@ -230,7 +231,26 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const symbolOf = (chartId: string) =>
     chartId === activeId || grid.sync.symbol ? symbol : (grid.charts[chartId]?.symbol ?? symbol);
   const [railSlot, setRailSlot] = useState<HTMLElement | null>(null);
-  const chrome: ChartChrome = { rail: railSlot, resetKey: grid.layout.id };
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+  const [chartTypeSlot, setChartTypeSlot] = useState<HTMLElement | null>(null);
+  const [historySlot, setHistorySlot] = useState<HTMLElement | null>(null);
+  const [settingsSlot, setSettingsSlot] = useState<HTMLElement | null>(null);
+  const [menuChartTypeSlot, setMenuChartTypeSlot] = useState<HTMLElement | null>(null);
+  const [menuHistorySlot, setMenuHistorySlot] = useState<HTMLElement | null>(null);
+  const [menuSettingsSlot, setMenuSettingsSlot] = useState<HTMLElement | null>(null);
+  const [rangeSlot, setRangeSlot] = useState<HTMLElement | null>(null);
+  const sm = useMediaQuery('(min-width: 640px)');
+  const lg = useMediaQuery('(min-width: 1024px)');
+  const xl = useMediaQuery('(min-width: 1280px)');
+  const chrome: ChartChrome = {
+    rail: railSlot,
+    toolbar: toolbarSlot,
+    chartType: lg ? chartTypeSlot : menuChartTypeSlot,
+    history: xl ? historySlot : menuHistorySlot,
+    settings: xl ? settingsSlot : menuSettingsSlot,
+    rangeBar: rangeSlot,
+    resetKey: grid.layout.id,
+  };
   const activate = (chartId: string) => {
     if (chartId === activeId) return;
     const next = symbolOf(chartId);
@@ -292,6 +312,9 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const compareFull = compareSymbols.length >= MAX_COMPARE;
   const compareTitle = `Compare with another symbol (up to ${MAX_COMPARE})`;
   const indicatorsLabel = `Indicators${overlays.indicators.length > 0 ? ` · ${overlays.indicators.length}` : ''}`;
+  // TradingView's priority order: what does not fit folds into the ⋯ menu.
+  // Chart groups render into whichever slot is current, inline or in the menu.
+  const folded = { compare: !lg, chartType: !lg, history: !xl, settings: !xl, indicators: !sm, save: !sm };
   const toolbar = (
     <div className="chart-toolbar">
       <h1 className="text-[15px] font-bold tracking-tight">
@@ -312,32 +335,49 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           {change.toFixed(2)}%
         </span>
       )}
-      <span className="chart-toolbar-sep hidden lg:block" />
-      <button type="button" onClick={() => openSearch('', true)} disabled={compareFull} title={compareTitle} className={`${btn} hidden lg:inline-flex`}>
-        <span aria-hidden="true">+ </span>Compare
-      </button>
-      {!multi && <span className="hidden lg:contents"><CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} /></span>}
-      <span className="chart-toolbar-sep hidden sm:block" />
-      <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={`${btn} hidden sm:inline-flex`}>
-        <span aria-hidden="true" className="italic font-serif">fx </span>{indicatorsLabel}
-      </button>
-      <button type="button" onClick={() => openPanel('alerts')} title="Create an alert for this symbol" className={`${btn} hidden lg:inline-flex`}>
-        Alert
-      </button>
+      <span className="chart-toolbar-sep" />
+      {!folded.compare && (
+        <button type="button" onClick={() => openSearch('', true)} disabled={compareFull} title={compareTitle} className={btn}>
+          <span aria-hidden="true">+ </span>Compare
+        </button>
+      )}
+      <span ref={setToolbarSlot} className="contents" />
+      {!folded.chartType && <span ref={setChartTypeSlot} className="contents" />}
+      {!multi && xl && <CompareChips symbol={symbol} compare={compare} onRemove={(s) => setCompare(compareSymbols.filter((x) => x !== s))} />}
+      {!folded.indicators && (
+        <>
+          <span className="chart-toolbar-sep" />
+          <button type="button" onClick={() => setIndicatorsOpen(true)} title="Indicators (Alt+I)" className={btn}>
+            <span aria-hidden="true" className="italic font-serif">fx </span>{indicatorsLabel}
+          </button>
+        </>
+      )}
+      {!folded.compare && (
+        <button type="button" onClick={() => openPanel('alerts')} title="Create an alert for this symbol" className={btn}>
+          Alert
+        </button>
+      )}
+      {!folded.history && <span ref={setHistorySlot} className="contents" />}
       <span className="flex-1" />
-      <LayoutPopover grid={grid} multi={multi} className="hidden lg:block" />
-      {/* Below 1024 px the lower-priority controls fold into one menu. */}
-      <Popover label="More chart controls" icon={<span aria-hidden="true" className="text-base leading-none">⋯</span>} className="lg:hidden" panelClassName="right-0 w-52 p-1 flex flex-col items-stretch">
-        {(close) => (
-          <>
-            <button type="button" onClick={() => { close(); openSearch('', true); }} disabled={compareFull} title={compareTitle} className={`${btn} justify-start`}>Compare</button>
-            <button type="button" onClick={() => { close(); setIndicatorsOpen(true); }} className={`${btn} justify-start sm:hidden`}>{indicatorsLabel}</button>
-            <button type="button" onClick={() => { close(); openPanel('alerts'); }} className={`${btn} justify-start`}>Alert</button>
-            <div className="flex items-center gap-2 px-2 py-1 text-xs">Layout <LayoutPopover grid={grid} multi={multi} /></div>
-          </>
-        )}
-      </Popover>
-      <SaveState documents={[workspace, drawings]} />
+      {!folded.compare && <LayoutPopover grid={grid} multi={multi} />}
+      {!xl && (
+        <Popover label="More chart controls" icon={<span aria-hidden="true" className="text-base leading-none">⋯</span>} panelClassName="right-0 w-60 p-1 flex flex-col items-stretch gap-1">
+          {(close) => (
+            <>
+              {folded.compare && <button type="button" onClick={() => { close(); openSearch('', true); }} disabled={compareFull} title={compareTitle} className={`${btn} justify-start`}>Compare</button>}
+              {folded.indicators && <button type="button" onClick={() => { close(); setIndicatorsOpen(true); }} className={`${btn} justify-start`}>{indicatorsLabel}</button>}
+              {folded.compare && <button type="button" onClick={() => { close(); openPanel('alerts'); }} className={`${btn} justify-start`}>Alert</button>}
+              {folded.compare && <div className="flex items-center gap-2 px-2 py-1 text-xs">Layout <LayoutPopover grid={grid} multi={multi} /></div>}
+              {folded.chartType && <div ref={setMenuChartTypeSlot} className="flex items-center gap-2 px-2 py-1 text-xs" />}
+              <div ref={setMenuHistorySlot} className="flex items-center gap-1 px-1 py-1" />
+              <div ref={setMenuSettingsSlot} className="flex items-center gap-1 px-1 py-1" />
+              {folded.save && <div className="px-2 py-1"><SaveState documents={[workspace, drawings]} /></div>}
+            </>
+          )}
+        </Popover>
+      )}
+      {!folded.save && <SaveState documents={[workspace, drawings]} />}
+      {!folded.settings && <span ref={setSettingsSlot} className="contents" />}
     </div>
   );
 
@@ -374,6 +414,9 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           })}
         </div>
       )}
+      </div>
+      <div className="chart-rangebar">
+        <span ref={setRangeSlot} className="chart-slot contents" />
       </div>
       <IndicatorDialog
         open={indicatorsOpen}
