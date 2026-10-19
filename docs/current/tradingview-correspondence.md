@@ -26,8 +26,8 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C14 | Save state | /chart header | chart toolbar, right end | `Saved ✓` status | y | — | m11-slice "Restore" | moved |
 | C15 | Keyboard shortcuts dialog | /chart header `?` | shell: `?` on every route; ☰ app menu | `?` key, ☰ → Keyboard shortcuts | y | — | m12-shell "? lists" | moved |
 | C16 | Panel toggle | /chart header `Panel` | right icon strip (click the open tab to collapse); `Panel` header button below 1024 px | Strip icons | y | server document | m12-shell "panel is saved", transformation "touch controls" | moved |
-| C17 | Analyse (opens Details panel) | /chart header | strip `Details` tab (the Assessment) | Strip icon | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
-| C18 | Research (symbol page) | /chart header link | Details panel "Full research →" | Strip → Details | n | — | m12-shell "details tab" | moved |
+| C17 | Analyse (opens Details panel) | /chart header | strip **Assessment** tab; the legend chip "#N · Qualified" opens it | Strip icon, legend chip | y | `getStockExplanation` (run in view), `getLiveStockAnalysis` (outside the run) | m12-shell "Assessment tab", momentum25 "legend chip" | moved |
+| C18 | Research (symbol page) | /chart header link | Assessment "Full analysis →" with `?from=`; the symbol page offers "Back to chart · SYMBOL" | Strip → Assessment | n | — | m12-shell "Assessment tab", momentum25 "Full analysis" | moved |
 | C19 | Undo / Redo drawings | Objects popover; Ctrl/⌘+Z/Y | chart toolbar Undo/Redo icons ≥1280 px; ⋯ menu below; keys | toolbar icons, keys | y | server document | m13-charting "undo and redo" | moved |
 | C20 | Study legend: MAs, panes, dialog studies with value; remove pane ×; click configures | above plot | overlay legend at plot top-left: title, OHLC + change, one line per study with × and ⚙ (research pages keep the row above the plot) | Legend | y | — | transformation "study legends", "overlay legend" | moved |
 | C21 | Crosshair readout (date, OHLC, pane values) | plot top-left | inside the overlay legend on the active chart; plot top-left elsewhere | Hover | y | — | openchart-parity D4, transformation "overlay legend" | moved |
@@ -55,10 +55,10 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 
 | # | Capability | Prev | Now | How a user finds it | No-nav | APIs | Verified | Status |
 |---|---|---|---|---|---|---|---|---|
-| P1 | Tabs Watchlist / Details / Alerts (+ Object tree on /chart), arrows/Home/End, Close panel, saved state | /chart right card | shell: right icon strip on every route; panel inline on /chart ≥1280 px, overlay elsewhere (D24); Details only with a context symbol | Strip icons | y | server document | m12-shell "panel is saved", "panel follows the route" | moved |
-| P2 | Watchlist rows: symbol, rank, close, change; click opens chart; sort (BL-13); Add/Remove (Alt+W) | Watchlist tab | shell panel, every route | Strip | y | `getWatchlistDetail`, `addToWatchlist`, `removeFromWatchlist` | m12-shell "Alt+W" | moved |
-| P3 | Details: Momentum25 summary, all criteria and evidence, Full research link | Details tab | shell panel, /chart | Strip | y | `getLiveStockAnalysis` | m12-shell "details tab" | moved |
-| P4 | Alerts: create (value, condition, threshold, interval), drawing-linked, edit armed (BL-07), re-arm, delete, unseen count, history (BL-09), other-symbol link | Alerts tab | shell panel, every route (list only without a symbol) | Strip, chart menu | y | `/alerts` (create, edit, rearm, evaluate, seen, delete) | m15-alerts, transformation "armed alert editing", m12-shell "panel follows the route" | moved |
+| P1 | Tabs Watchlist / Details / Alerts, arrows/Home/End, Close panel, saved state | /chart right card | shell icon strip, route-adaptive (A5.1): /chart Watchlist · Assessment · Alerts · Object tree; Screener Watchlist · Assessment (selected row) · Alerts; symbol pages and others Watchlist · Alerts. Panel inline on /chart ≥1280 px, overlay elsewhere (D24). The saved value of Assessment stays `details` | Strip icons | y | server document | m12-shell "panel is saved", "panel follows the route" | moved |
+| P2 | Watchlist rows: symbol, rank, close, change; click opens chart; sort (BL-13); Add/Remove (Alt+W) | Watchlist tab | shell panel, every route: dense columns Symbol, Last, Chg%, Rank, Qualified; header names the ranking run, and warns when it differs from the view's run | Strip | y | `getWatchlistDetail`, `addToWatchlist`, `removeFromWatchlist` | m12-shell "Alt+W", momentum25 "watchlist rank and qualification" | moved |
+| P3 | Details: Momentum25 summary, all criteria and evidence, Full research link | Details tab | **Assessment** panel (`momentum25/AssessmentPanel`): rank, Qualified/Gate failed, momentum score, provenance line, readiness, scores, gate failures, why it ranks, what could invalidate, every criterion expanding to value/threshold/engine/weight/contribution, "Show on chart" for SMA criteria, Open in chart (off /chart), Full analysis, Create alert. Symbols outside the run show a labelled live analysis. Limit: passing gates are not marked, because the API lists only failing gate rules | Strip | y | `getStockExplanation`, `getLiveStockAnalysis`, `getRun`, `getOhlcv` | m12-shell "Assessment tab", momentum25 "Assessment shows the rank", "never shows the previous symbol" | moved |
+| P4 | Alerts: create (value, condition, threshold, interval), drawing-linked, edit armed (BL-07), re-arm, delete, unseen count, history (BL-09), other-symbol link | Alerts tab | shell panel, every route; opens on "This symbol" with an "All" toggle; create from the toolbar Alert, the chart menu, the symbol page "Create alert" or Assessment "Create alert" | Strip, chart menu, symbol page, Assessment | y | `/alerts` (create, edit, rearm, evaluate, seen, delete) | m15-alerts, transformation "armed alert editing", momentum25 "alerts open on this symbol" | moved |
 | P5 | Alert levels as dashed lines (BL-06) | plot | plot | Armed alert | y | — | transformation "armed alert editing" | pass |
 
 ## Routes and navigation
@@ -67,19 +67,19 @@ Every route keeps its URL. "Prev" is the site `NavBar`. Since A2.1 the desktop e
 
 | # | Route | Prev nav entry | Now | Verified | Status |
 |---|---|---|---|---|---|
-| R1 | `/` Dashboard (screener) | NavBar, phone bottom nav | same | momentum-ranking-display | pass |
+| R1 | `/` Dashboard (screener) | NavBar, phone bottom nav | **Stock Screener**: title and strategy picker in the header bar, provenance line, stat strip, column-set tabs (Overview, Scores, Explanation, Technical), filter pills, dense table with sticky header and symbol column; a row opens the Assessment | momentum-ranking-display, m12-shell "screener opens the selected row", `screener.test.ts` | moved |
 | R2 | `/chart`, `/chart/:symbol` | NavBar, phone bottom nav | same | m11-slice | pass |
 | R3 | `/watchlist` | NavBar, phone bottom nav | same | m10-stack | pass |
 | R4 | `/market` | NavBar; phone More | same | m10-stack | pass |
 | R5 | `/learn` and its six guides | NavBar; phone More | same | final-accessibility | pass |
 | R6 | `/data` | NavBar; phone More | same | m16-release-hardening | pass |
-| R7 | `/strategies`, `/studio`, `/validation`, `/historical`, `/analytics`, `/experiment`, `/backtest` | Research menu; phone More | same | m14-studio, m16-historical-pit, r2-accessibility | pass |
-| R8 | `/stock/:symbol`, `/analysis`, `/elliott-wave` | symbol search; links | same | momentum-ranking-display, m11-slice | pass |
+| R7 | `/strategies`, `/studio`, `/validation`, `/historical`, `/analytics`, `/experiment`, `/backtest` | Research menu; phone More | Research workspace: one tab row over the seven routes (URLs unchanged), a left strategy list from 1024 px, `?from=` kept across tabs. Studio families stay inside Studio (no other natural place) | m14-studio, m16-historical-pit, r2-accessibility, momentum25 "Research workspace" | moved |
+| R8 | `/stock/:symbol`, `/analysis`, `/elliott-wave` | symbol search; links | one `SymbolHeader`: name, `SYMBOL · NSE`, close and change, EOD as of, badges, tabs Overview / Analysis / Elliott Wave / Open in chart ↗, Watchlist star, Patterns, Create alert, Back link. SectionNav retired; each "Why it ranks" item links to and focuses its engine's evidence section | momentum-ranking-display, m11-slice, m10-stack, momentum25 "symbol pages share one header" | moved |
 | R9 | `/about` | footer link | same | manual | pass |
 | R10 | `/lab/chart-grid` | none (diagnostic) | same | m13-bench | pass |
 | R11 | Symbol search box (desktop), search dialog (phone, Ctrl/⌘+K, `/` or typing off-chart) | NavBar | shell header bar | transformation "global command search", "unfinished annotations" | moved |
 | R12 | Theme light / dark / system | NavBar | ☰ app menu; phone More sheet | audit-visual "dark desktop" (`openAppMenu`) | moved |
-| R13 | Screener side detail (`ScreenerDetail`): 1-year close line, badge, rank, momentum and setup scores, gate failures, why it ranks, what could invalidate, Open chart, Full research | Dashboard | same | m12-shell "screener shows the selected row" | pass |
+| R13 | Screener side detail (`ScreenerDetail`): 1-year close line, badge, rank, momentum and setup scores, gate failures, why it ranks, what could invalidate, Open chart, Full research | Dashboard | **retired** (A8.2). Every field is in the Assessment panel on the Screener: 1-year close line, Qualified badge and rank, momentum and setup scores, gate failures, why it ranks, what could invalidate, "Open in chart", "Full analysis →" | m12-shell "screener opens the selected row", audit-visual "dark desktop" | moved |
 
 ## Keyboard shortcuts (`src/lib/shortcuts.ts`)
 
@@ -98,6 +98,22 @@ Every route keeps its URL. "Prev" is the site `NavBar`. Since A2.1 the desktop e
 | K11 | Alt+I | Indicators | m13-charting "Alt+I" | pass |
 | K12 | Alt+W | Watchlist toggle | m12-shell "Alt+W" | pass |
 | K13 | `?` | Shortcuts | m12-shell "? lists" | pass |
+
+## Momentum25 integration and workstation additions (A5–A8)
+
+| # | Capability | Place | How found | Verified | Status |
+|---|---|---|---|---|---|
+| M1 | Provenance line: strategy · run #N · as of · data version | Assessment, Screener, bottom-panel Screener | Read | momentum25 "Assessment shows the rank" | new |
+| M2 | Legend chip "#N · Qualified" / "Not qualified", only for a symbol in the run | /chart overlay legend | Click opens Assessment | momentum25 "legend chip" | new |
+| M3 | "Show on chart" evidence layers (SMA criteria): dashed, temporary, never saved; a saved MA is highlighted instead; legend row with remove | Assessment criterion → active chart | Expand a criterion | momentum25 "Show on chart" (zero PUTs, reload clears) | new |
+| M4 | Screener column sets and filter pills (qualified, trend, risk, volume, breakout) over existing row fields | Screener, bottom panel | Tabs, pills | `screener.test.ts` (order, determinism) | new |
+| M5 | Bottom panel: embedded Stock Screener (row loads the active chart only), Strategy Studio and Research links with `?from=`, collapse and maximise; state per viewer | /chart ≥640 px | Bottom bar | momentum25 "bottom panel" | new |
+| M6 | `?from=` return path, same-origin paths only; "Back to chart · SYMBOL" | symbol pages, research routes | Back link | `return-path.test.ts`, momentum25 "Full analysis", "Research workspace" | new |
+| M7 | Symbol search dialog: title with close, "All · Stocks" chips (NSE stocks only, so both show the same rows), symbol · name · stock · NSE rows | dialog | `/`, Ctrl/⌘+K, typing | m11-slice "Find", m13-layouts | moved |
+| M8 | Indicator dialog: left category list from the catalogue groups, right searchable list | dialog | fx Indicators, Alt+I | m13-charting "Alt+I", openchart-parity "Enter adds" | moved |
+| M9 | Data and Markets | flat sections | ☰ | m10-stack | pass |
+
+Limits: Data has one settings section today, so it has no left nav. Markets has no symbol rows (sector rows only), so no row opens an Assessment there.
 
 ## Backlog items BL-01..BL-15 and OpenChart audit fixes
 

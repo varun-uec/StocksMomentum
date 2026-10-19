@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
-import { ScreenerDetail } from '@/components/dashboard/ScreenerDetail';
-import { useMediaQuery } from '@/lib/useMediaQuery';
+import { useShell, useShellPanel } from '@/components/shell/shell-context';
+import { ProvenanceLine } from '@/components/momentum25/run';
+import { applyFilters, COLUMN_SETS, ColumnSetTabs, FilterPills, type ColumnSet, type ScreenerFilters } from '@/components/momentum25/screener';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import {
   executeScreening,
@@ -68,7 +70,6 @@ function buildSummary(data: RankingsResponse): ScreeningRunSummary {
 }
 
 export default function Home() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { strategyName } = useStrategy();
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
@@ -80,10 +81,15 @@ export default function Home() {
     refetchInterval: 60_000,
   });
 
+  // `?run=N` pins an older or historical run (Research → Historical); otherwise the latest run.
+  const [params] = useSearchParams();
+  const pinnedRun = Number(params.get('run')) || null;
+  const viewRunId = pinnedRun ?? run?.id;
+  const historical = pinnedRun !== null && pinnedRun !== run?.id;
   const { data: rankings, isLoading: rankingsLoading, error: rankingsError, isFetching: rankingsFetching } = useQuery({
-    queryKey: ['rankings', run?.id],
-    queryFn: () => getRankings(run!.id, 100, 0),
-    enabled: run !== null && run !== undefined,
+    queryKey: ['rankings', viewRunId],
+    queryFn: () => getRankings(viewRunId!, 100, 0),
+    enabled: viewRunId !== undefined,
     refetchInterval: 60_000,
     // Keep the previous run's rows on screen while the next one loads.
     placeholderData: keepPreviousData,
@@ -134,60 +140,39 @@ export default function Home() {
   const isScreening = refreshMutation.isPending || activeRunId !== null;
   const isRefreshing = runFetching || rankingsFetching || isScreening;
 
-  // Wide screens show the selected row beside the table (M12); narrow ones open its research page.
-  const wide = useMediaQuery('(min-width: 1024px)');
+  // The selected row is the route's context: the shell's Assessment panel shows it (A8.2).
   const [picked, setPicked] = useState<string | null>(null);
-  const selected = wide ? (rankings?.items.find((i) => i.symbol === picked)?.symbol ?? rankings?.items[0]?.symbol ?? null) : null;
+  const selected = rankings?.items.some((i) => i.symbol === picked) ? picked : null;
+  const { openPanel } = useShell();
+  useShellPanel({ symbol: selected ?? undefined, assessment: true, runId: rankings?.run?.id });
   const handleSymbolClick = (symbol: string) => {
-    if (wide) setPicked(symbol);
-    else navigate(`/stock/${symbol}?strategy=${strategyName}`);
+    flushSync(() => setPicked(symbol));
+    openPanel('details');
   };
+  const [columnSet, setColumnSet] = useState<ColumnSet>('Overview');
+  const [filters, setFilters] = useState<ScreenerFilters>({});
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <PageHeader
-        title="Live Momentum Dashboard"
-        subtitle="Top-ranked stocks based on deterministic momentum screening"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-          <StrategySelector />
-          {run && isScreening && activeRun && (
-            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
-              <Badge color="amber">Run #{activeRun.id} screening in progress</Badge>
-            </div>
-          )}
-          {run && !isScreening && (
-            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
-              <Badge color="indigo">Run #{run.id}</Badge>
-              <span className="tabular-nums">
-                Latest screening:{' '}
-                {new Date(run.finished_at ?? run.run_date).toLocaleString(undefined, {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            </div>
-          )}
-          <div className="flex flex-col items-start gap-1">
-            <button
-              type="button"
-              onClick={() => refreshMutation.mutate()}
-              disabled={isRefreshing}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 disabled:opacity-50 transition-colors ${focusRing}`}
-            >
-              {isScreening ? 'Screening…' : 'Run screening'}
-            </button>
-            <span className="text-[10px] text-slate-600 dark:text-slate-400">
-              Uses stored market data; it does not download exchange data.
-            </span>
-          </div>
-        </div>
+    <main className="min-h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <PageHeader title="Stock Screener" subtitle="Top-ranked stocks from deterministic momentum screening">
+        <StrategySelector />
+        {run && isScreening && activeRun && <Badge color="amber">Run #{activeRun.id} screening in progress</Badge>}
+        <button
+          type="button"
+          onClick={() => refreshMutation.mutate()}
+          disabled={isRefreshing}
+          title="Uses stored market data; it does not download exchange data."
+          className={`px-3 py-1 rounded-md text-xs font-medium border border-[var(--ws-line)] text-slate-600 dark:text-slate-300 hover:bg-[var(--ws-muted)] disabled:opacity-50 transition-colors ${focusRing}`}
+        >
+          {isScreening ? 'Screening…' : 'Run screening'}
+        </button>
       </PageHeader>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="px-4 sm:px-6 py-3 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <ProvenanceLine strategy={rankings?.run?.strategy ?? strategyName} run={rankings?.run ?? (run === null && !pinnedRun ? null : undefined)} label={historical && rankings?.run ? `Historical — as of ${rankings.run.run_date.slice(0, 10)}` : undefined} />
+          {historical && <Link to="/" className={`text-xs text-[var(--ws-accent)] hover:underline ${focusRing}`}>Show the latest run</Link>}
+        </div>
         <StalenessBanner freshness={freshness} />
 
         {isLoading && <LoadingSpinner text="Loading screening data…" />}
@@ -200,40 +185,32 @@ export default function Home() {
 
         {rankings && !isLoading && (
           <>
-            {/* Summary Cards + Last Refresh */}
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <RunSummaryCards
-                  summary={buildSummary(rankings)}
-                  rsRatings={rankings.items
-                    .map((i) => i.rs_rating)
-                    .filter((r): r is number => r !== null)}
-                />
-              </div>
-              {rankings.run?.finished_at && (
-                <div className="text-xs text-slate-500 text-left sm:text-right whitespace-nowrap bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/40 rounded-xl px-3 py-2 shadow-sm">
-                  <div className="text-slate-600 dark:text-slate-400">Last refresh</div>
-                  <div className="tabular-nums font-medium text-slate-700 dark:text-slate-300">
-                    {new Date(rankings.run.finished_at).toLocaleString()}
-                  </div>
-                </div>
-              )}
-            </div>
+            <RunSummaryCards
+              summary={buildSummary(rankings)}
+              rsRatings={rankings.items
+                .map((i) => i.rs_rating)
+                .filter((r): r is number => r !== null)}
+            />
 
             {rankings.items.length === 0 ? (
               <EmptyState
                 message={`No stocks currently satisfy the ${strategyName} methodology. This is expected behavior, not an error — Momentum25 never lowers its screening bar to populate a list. Check back after the next session, or try a different strategy.`}
               />
             ) : (
-              <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6 lg:items-start">
+              <>
+                <div className="flex flex-wrap items-center gap-3 border-t border-[var(--ws-line)] pt-2">
+                  <ColumnSetTabs value={columnSet} onChange={setColumnSet} />
+                  <FilterPills rows={rankings.items} value={filters} onChange={setFilters} />
+                </div>
                 <MomentumTable
-                  items={rankings.items}
+                  items={applyFilters(rankings.items, filters)}
                   onSymbolClick={handleSymbolClick}
                   selectedSymbol={selected}
                   title="Ranked Universe"
+                  visibleColumns={COLUMN_SETS[columnSet]}
+                  dense
                 />
-                {selected && <ScreenerDetail symbol={selected} runId={rankings.run?.id} strategy={strategyName} />}
-              </div>
+              </>
             )}
           </>
         )}

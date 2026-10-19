@@ -9,8 +9,8 @@
  */
 
 import { useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
-import { Card, Badge, LoadingSpinner, ErrorMessage, PageHeader } from '@/components/shared/Card';
+import { useParams, useSearchParams } from 'react-router';
+import { Card, Badge, LoadingSpinner, ErrorMessage } from '@/components/shared/Card';
 import { PriceChart } from '@/components/stock/PriceChart';
 import { useChartShell } from '@/components/stock/useChartShell';
 import {
@@ -21,7 +21,7 @@ import {
 import { CountSummary, WaveDetail } from '@/components/stock/elliott-wave-panels';
 import { focusRing } from '@/lib/theme';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
-import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
+import { SymbolHeader } from '@/components/stock/SymbolHeader';
 import type { ElliottWaveCount } from '@/lib/types';
 
 function RankingPanel({
@@ -151,25 +151,15 @@ export default function ElliottWavePage() {
     );
   }
 
-  const backHref = `/stock/${symbol}${strategyQuery ? `?strategy=${strategyQuery}` : ''}`;
   const selectedLabel =
     active && selectedWave !== null ? active.labels[selectedWave].label : null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <PageHeader
-        title={`${symbol} — Elliott Wave Analysis`}
-        subtitle="Labelled wave count over the stored daily price history"
-      >
+      <SymbolHeader symbol={symbol} strategyName={strategyQuery} current="elliott-wave">
         {count && <Badge color="indigo">{count.degree} degree</Badge>}
-        <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="elliott-wave" />
-        <Link
-          to={backHref}
-          className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
-        >
-          ← Back to research
-        </Link>
-      </PageHeader>
+      </SymbolHeader>
+      <p className="px-4 sm:px-6 pt-2 text-xs text-slate-500 dark:text-slate-400">Labelled wave count over the stored daily price history</p>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <p className="text-xs text-slate-500">

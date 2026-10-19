@@ -127,6 +127,8 @@ async def main(command: str, url: str, *arguments: str) -> None:
         "age-alerts",
         "holdout-provenance",
         "bump-synthetic-close",
+        "extra-bar",
+        "drop-extra-bar",
     }:
         sys.exit("usage: db.py {verify|seed|reset|age-alerts|holdout-provenance}")
     if command == "holdout-provenance":
@@ -209,6 +211,36 @@ async def main(command: str, url: str, *arguments: str) -> None:
             if result != "UPDATE 1":
                 sys.exit("refusing to correct a missing synthetic E2E10Y0 bar")
             print("corrected one synthetic E2E10Y0 bar")
+            return
+        if command in {"extra-bar", "drop-extra-bar"}:
+            # Journey 5: one TCS bar after the screening run's as-of date, then its removal.
+            symbol_id = "(SELECT id FROM securities WHERE symbol = 'TCS')"
+            others_max = (
+                "(SELECT max(o.date) FROM ohlcv_daily o JOIN securities s ON s.id = o.security_id "
+                "WHERE s.symbol <> 'TCS')"
+            )
+            if command == "drop-extra-bar":
+                result = await conn.execute(
+                    f"DELETE FROM ohlcv_daily WHERE security_id = {symbol_id} AND date > {others_max}"
+                )
+                print(f"removed the extra synthetic TCS bar: {result}")
+                return
+            columns = [
+                r["column_name"]
+                for r in await conn.fetch(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'ohlcv_daily' "
+                    "AND coalesce(column_default, '') NOT LIKE 'nextval%' ORDER BY ordinal_position"
+                )
+            ]
+            values = ["date + 1" if c == "date" else c for c in columns]
+            result = await conn.execute(
+                f"INSERT INTO ohlcv_daily ({', '.join(columns)}) SELECT {', '.join(values)} "
+                f"FROM ohlcv_daily WHERE security_id = {symbol_id} AND date = {others_max}"
+            )
+            if result != "INSERT 0 1":
+                sys.exit("refusing: the synthetic TCS bar to copy is missing")
+            print("added one synthetic TCS bar after the run date")
             return
         if command == "holdout-provenance":
             updated = await conn.execute(

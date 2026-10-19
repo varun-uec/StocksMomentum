@@ -16,10 +16,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
-import { PriceChart, type ChartChrome } from '@/components/stock/PriceChart';
+import { PriceChart, type ChartChrome, type EvidenceLayer } from '@/components/stock/PriceChart';
+import { LegendChip, type EvidenceControl } from '@/components/momentum25/evidence';
+import { useLatestRun } from '@/components/momentum25/run';
+import { ScreenerPanel } from '@/components/momentum25/ScreenerPanel';
 import { MAX_PANES } from '@/components/stock/useCatalogueIndicators';
 import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
 import { SaveState } from '@/components/workspace/SaveState';
@@ -121,6 +124,58 @@ function CompareChips({ symbol, compare, onRemove }: { symbol: string; compare: 
 
 type Slot = ReturnType<typeof useChartSlot>;
 
+type BottomState = 'closed' | 'open' | 'max';
+const BOTTOM_KEY = 'wickstreet.bottomPanel';
+
+/**
+ * The bottom panel (plan 2026-10-19, step 6): the embedded Stock Screener, and
+ * Strategy Studio and Research as shell navigation that remembers the chart.
+ * Open or closed is a per-viewer convenience, so it lives in localStorage.
+ */
+function BottomPanel({ symbol, strategy, onOpenSymbol }: { symbol: string; strategy: string; onOpenSymbol: (symbol: string) => void }) {
+  const [state, setState] = useState<BottomState>(() => {
+    try {
+      const saved = localStorage.getItem(BOTTOM_KEY);
+      return saved === 'open' || saved === 'max' ? saved : 'closed';
+    } catch {
+      return 'closed';
+    }
+  });
+  const save = (next: BottomState) => {
+    setState(next);
+    try {
+      localStorage.setItem(BOTTOM_KEY, next);
+    } catch {
+      // Private mode: the panel still works for this visit.
+    }
+  };
+  const from = encodeURIComponent(`/chart/${symbol}`);
+  const tab = `px-2 h-6 inline-flex items-center rounded text-xs font-medium hover:bg-[var(--ws-muted)] ${focusRing}`;
+  return (
+    <section aria-label="Bottom panel" className="chart-bottom" data-state={state}>
+      <div className="chart-bottom-bar">
+        <button type="button" aria-expanded={state !== 'closed'} aria-controls="chart-bottom-body" onClick={() => save(state === 'closed' ? 'open' : 'closed')} className={`${tab} ${state !== 'closed' ? 'text-[var(--ws-accent)]' : ''}`}>
+          Stock Screener
+        </button>
+        <Link to={`/studio?from=${from}`} className={tab}>Strategy Studio</Link>
+        <Link to={`/strategies?from=${from}`} className={tab}>Research</Link>
+        <span className="flex-1" />
+        <button type="button" onClick={() => save(state === 'max' ? 'open' : 'max')} aria-label={state === 'max' ? 'Restore bottom panel' : 'Maximise bottom panel'} title={state === 'max' ? 'Restore' : 'Maximise'} className={`${tab} w-6 justify-center`}>
+          <span aria-hidden="true">{state === 'max' ? '⤡' : '⤢'}</span>
+        </button>
+        <button type="button" onClick={() => save(state === 'closed' ? 'open' : 'closed')} aria-label={state === 'closed' ? 'Expand bottom panel' : 'Collapse bottom panel'} title={state === 'closed' ? 'Expand' : 'Collapse'} className={`${tab} w-6 justify-center`}>
+          <span aria-hidden="true">{state === 'closed' ? '▴' : '▾'}</span>
+        </button>
+      </div>
+      {state !== 'closed' && (
+        <div id="chart-bottom-body" className="chart-bottom-body">
+          <ScreenerPanel strategy={strategy} symbol={symbol} onOpenSymbol={onOpenSymbol} />
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** One grid cell: its symbol, compare chips and a compact chart. */
 function CellFrame({
   chartId,
@@ -133,6 +188,8 @@ function CellFrame({
   onSearch,
   onIndicators,
   onAlert,
+  evidenceLayers,
+  onRemoveEvidence,
 }: {
   chartId: string;
   symbol: string;
@@ -145,6 +202,8 @@ function CellFrame({
   onSearch: () => void;
   onIndicators: () => void;
   onAlert: (price: number) => void;
+  evidenceLayers?: EvidenceLayer[];
+  onRemoveEvidence?: (id: string) => void;
 }) {
   return (
     <section
@@ -161,7 +220,7 @@ function CellFrame({
         <PriceChart {...slot.chartProps} chartLabel={<>
           <button type="button" onClick={onSearch} className={`font-semibold text-xs ${focusRing}`} title="Change this chart's symbol">{symbol}</button>
           <CompareChips symbol={symbol} compare={slot.compare} onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))} />
-        </>} height={160} autoHeight compact bare toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
+        </>} height={160} autoHeight compact bare toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} evidenceLayers={evidenceLayers} onRemoveEvidence={onRemoveEvidence} />
       ) : (
         <div className="h-full" />
       )}
@@ -207,8 +266,8 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   };
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { openPanel, routeSlot, objectsSlot } = useShell();
-  // Dense layouts release the panel's width; it then opens over the charts.
-  useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9, objects: true });
+  const latestRun = useLatestRun(strategyName).data;
+
   const alertAt = (price: number) => openPanel('alerts', price);
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
@@ -230,6 +289,34 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   /** A cell's symbol: the route's when it is active or symbols are synced, else its own. */
   const symbolOf = (chartId: string) =>
     chartId === activeId || grid.sync.symbol ? symbol : (grid.charts[chartId]?.symbol ?? symbol);
+
+  // Assessment's "Show on chart" layers: page state per chart, never saved (plan C).
+  const [evidence, setEvidence] = useState<Record<string, { symbol: string; layers: EvidenceLayer[] }>>({});
+  const layersOf = (chartId: string) => (evidence[chartId]?.symbol === symbolOf(chartId) ? evidence[chartId].layers : []);
+  const removeEvidence = (chartId: string, id: string) =>
+    setEvidence((all) => ({ ...all, [chartId]: { symbol: all[chartId].symbol, layers: all[chartId].layers.filter((l) => l.id !== id) } }));
+  const slotKey = grid.slots.join(',');
+  useEffect(() => {
+    // A layout change that removes a chart drops its layers.
+    setEvidence((all) => Object.fromEntries(Object.entries(all).filter(([id]) => slotKey.split(',').includes(id))));
+  }, [slotKey]);
+  const activeLayers = layersOf(activeId);
+  const evidenceControl = useMemo<EvidenceControl>(
+    () => ({
+      shown: activeLayers.map((l) => l.id),
+      toggle: (layer) =>
+        setEvidence((all) => {
+          const current = all[activeId]?.symbol === symbol ? all[activeId].layers : [];
+          const layers = current.some((l) => l.id === layer.id) ? current.filter((l) => l.id !== layer.id) : [...current, layer];
+          return { ...all, [activeId]: { symbol, layers } };
+        }),
+      elsewhere: grid.slots.filter((id) => id !== activeId && layersOf(id).length > 0 && symbolOf(id) === symbol),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [evidence, activeId, symbol, slotKey, grid.sync.symbol],
+  );
+  // Dense layouts release the panel's width; it then opens over the charts.
+  useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9, objects: true, evidence: evidenceControl });
   const [railSlot, setRailSlot] = useState<HTMLElement | null>(null);
   const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
   const [chartTypeSlot, setChartTypeSlot] = useState<HTMLElement | null>(null);
@@ -390,7 +477,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       {!multi ? (
         <div className="chart-stage" data-plot-cell>
           {shell.ready ? (
-            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
+            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} legendChip={<LegendChip symbol={symbol} strategy={strategyName} runId={latestRun?.id} onOpen={() => openPanel('details')} />} evidenceLayers={activeLayers} onRemoveEvidence={(id) => removeEvidence(activeId, id)} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
           ) : (
             <LoadingSpinner />
           )}
@@ -410,6 +497,8 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               onSearch: () => openSearch(''),
               onIndicators: () => setIndicatorsOpen(true),
               onAlert: alertAt,
+              evidenceLayers: layersOf(chartId),
+              onRemoveEvidence: (id: string) => removeEvidence(chartId, id),
             };
             return <GridCell key={chartId} {...cell} chrome={chrome} strategyName={strategyName} syncedInterval={syncedInterval} />;
           })}
@@ -424,6 +513,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline">TradingView Lightweight Charts™</a>
         </span>
       </div>
+      {sm && <BottomPanel symbol={symbol} strategy={strategyName} onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)} />}
       <IndicatorDialog
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}

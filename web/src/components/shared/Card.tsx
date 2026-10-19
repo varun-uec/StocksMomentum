@@ -1,4 +1,8 @@
 import { type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { BackLink } from '@/components/shell/BackLink';
+import { useShell } from '@/components/shell/shell-context';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 import { focusRing } from '@/lib/theme';
 
@@ -10,15 +14,16 @@ interface CardProps {
   badge?: { text: string; color?: BadgeColor };
 }
 
+/** A flat section (plan 2026-10-19, D23): a bold heading over a `--ws-line` divider, no box. */
 export function Card({ title, subtitle, children, className = '', badge }: CardProps) {
   return (
-    <div
-      className={`rounded-lg border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 ${className}`}
+    <section
+      className={`border-t border-[var(--ws-line)] bg-white dark:bg-slate-900 ${className}`}
     >
       {(title || badge) && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700/40 gap-4">
+        <div className="flex items-center justify-between px-4 pt-3 pb-1 gap-4">
           <div className="min-w-0">
-            {title && <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h3>}
+            {title && <h3 className="text-[15px] font-bold text-slate-900 dark:text-slate-100">{title}</h3>}
             {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>}
           </div>
           {badge && (
@@ -28,8 +33,8 @@ export function Card({ title, subtitle, children, className = '', badge }: CardP
           )}
         </div>
       )}
-      <div className="p-4">{children}</div>
-    </div>
+      <div className="px-4 pt-2 pb-4">{children}</div>
+    </section>
   );
 }
 
@@ -71,7 +76,7 @@ export function MetricCard({
             : 'text-slate-800 dark:text-slate-200'));
 
   return (
-    <div className="rounded-md border-l-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
+    <div className="px-1 py-2">
       <div
         className={`text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 ${
           hint ? 'underline decoration-dotted decoration-slate-400 underline-offset-2 cursor-help w-fit' : ''
@@ -186,15 +191,34 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
+/**
+ * The route's title and controls (plan 2026-10-19, step 8). From 1024 px they
+ * sit in the shell's header bar, as /chart's toolbar does; the subtitle stays
+ * at the top of the page. Narrower screens keep one flat header row.
+ */
 export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
+  const { routeSlot } = useShell();
+  const wide = useMediaQuery('(min-width: 1024px)');
+  const head = (
+    <>
+      <BackLink />
+      <h1 className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-slate-100 lg:whitespace-nowrap px-1">{title}</h1>
+      {children && <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 min-w-0">{children}</div>}
+    </>
+  );
+  if (routeSlot && wide) {
+    return (
+      <>
+        {createPortal(head, routeSlot)}
+        {subtitle && <p className="px-4 sm:px-6 lg:px-8 pt-3 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>}
+      </>
+    );
+  }
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-4">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
-          {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
-        </div>
-        {children && <div className="flex flex-wrap items-center gap-3">{children}</div>}
+    <header className="border-b border-[var(--ws-line)] px-4 sm:px-6 py-3">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">{head}</div>
+        {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>}
       </div>
     </header>
   );

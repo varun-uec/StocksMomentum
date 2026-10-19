@@ -110,6 +110,14 @@ export interface ChartChrome {
   resetKey?: string;
 }
 
+/** A temporary "Show on chart" layer from the Assessment: moving averages, never saved. */
+export interface EvidenceLayer {
+  /** The criterion it shows, e.g. "tt_sma200_uptrend". */
+  id: string;
+  label: string;
+  periods: number[];
+}
+
 const UNDO_ICON = (
   <svg viewBox="0 0 20 20" className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M7 5L3 9l4 4M3 9h9a5 5 0 010 10h-2" />
@@ -127,6 +135,9 @@ const SETTINGS_ICON = (
     <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" strokeLinecap="round" />
   </svg>
 );
+
+/** Evidence layers share one colour, so they read as one temporary kind. */
+const EVIDENCE_COLOR = '#d97706';
 
 /** Counts chart instances, so a test can prove activation never rebuilds one. */
 let chartGeneration = 0;
@@ -546,6 +557,9 @@ export function PriceChart({
   onAlertAtPrice,
   chrome,
   legendTitle,
+  legendChip,
+  evidenceLayers,
+  onRemoveEvidence,
   bare = false,
   compact = false,
   chartLabel,
@@ -598,6 +612,11 @@ export function PriceChart({
   chrome?: ChartChrome;
   /** No controls of its own: the workspace toolbar acts on it when it is active (grid cells). */
   bare?: boolean;
+  /** A Momentum25 chip after the legend title, e.g. "#3 · Qualified". */
+  legendChip?: React.ReactNode;
+  /** Temporary evidence layers (never saved); a saved MA of the same period is highlighted instead. */
+  evidenceLayers?: EvidenceLayer[];
+  onRemoveEvidence?: (id: string) => void;
   /** The overlay legend's first words, e.g. "RELIANCE · 1D · NSE" (workstation only). */
   legendTitle?: string;
   /** Compact grid toolbar; optional active-cell drawing rail; no legend or footnote. */
@@ -665,6 +684,7 @@ export function PriceChart({
   const navigationRangeRef = useRef<{ from: number; to: number } | null>(null);
   const priceSeriesRef = useRef<PriceSeries | null>(null);
   const maSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
+  const evidenceSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const overlaySeriesRef = useRef<ISeriesApi<'Line'>[]>([]);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const zoneLinesRef = useRef<IPriceLine[]>([]);
@@ -787,6 +807,9 @@ export function PriceChart({
       })),
     [bars]
   );
+
+  const evidenceKey = (evidenceLayers ?? []).flatMap((l) => l.periods).sort((a, b) => a - b).join(',');
+  const evidencePeriods = useMemo(() => new Set(evidenceKey ? evidenceKey.split(',').map(Number) : []), [evidenceKey]);
 
   const maSeriesData = useMemo(() => {
     const warmup = maWarmup ?? [];
@@ -1355,10 +1378,40 @@ export function PriceChart({
         });
         maSeriesRef.current.set(period, series);
       }
-      series.applyOptions({ color: maColors[period] });
+      series.applyOptions({ color: maColors[period], lineWidth: evidencePeriods.has(period) ? 3 : 1 });
       series.setData(maSeriesData.get(period) ?? []);
     }
-  }, [activeMas, maSeriesData, scale, maColors]);
+  }, [activeMas, maSeriesData, scale, maColors, evidencePeriods]);
+
+  // Evidence layers: dashed SMAs for periods the chart does not already show.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const wanted = new Map<number, { time: UTCTimestamp; value: number }[]>();
+    if (scale !== 'percent') {
+      const warmup = maWarmup ?? [];
+      const closes = [...warmup, ...parsed.map((p) => p.close)];
+      for (const period of evidencePeriods) {
+        if (activeMas.includes(period)) continue;
+        const means = sma(closes, period).slice(warmup.length);
+        wanted.set(period, parsed.map((p, i) => ({ time: p.time, value: means[i] })).filter((p): p is { time: UTCTimestamp; value: number } => p.value !== null));
+      }
+    }
+    for (const [period, series] of Array.from(evidenceSeriesRef.current.entries())) {
+      if (!wanted.has(period)) {
+        chart.removeSeries(series);
+        evidenceSeriesRef.current.delete(period);
+      }
+    }
+    for (const [period, data] of wanted) {
+      let series = evidenceSeriesRef.current.get(period);
+      if (!series) {
+        series = chart.addSeries(LineSeries, { color: EVIDENCE_COLOR, lineWidth: 2, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false });
+        evidenceSeriesRef.current.set(period, series);
+      }
+      series.setData(data);
+    }
+  }, [evidencePeriods, activeMas, parsed, maWarmup, scale]);
 
   // Overlay polylines: a wave count connecting pivot to pivot (Phase 7), or the
   // several lines of a pattern's geometry (Phase 8).
@@ -1810,6 +1863,7 @@ export function PriceChart({
     <div className="chart-overlay-legend">
       <div className="tabular-nums">
         {legendTitle && <span className="font-semibold text-[var(--ws-ink)]">{legendTitle}</span>}
+        {legendChip}
         {!readout && shownBar && (
           <span className="ml-2 text-slate-600 dark:text-slate-300">
             {ohlc(shownBar)}
@@ -1835,6 +1889,13 @@ export function PriceChart({
         </div>
       )}
       <div aria-label="Study legend" className="flex flex-col items-start">
+        {evidenceLayers?.map((layer) => (
+          <span key={layer.id} className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="inline-block w-3 border-t-2 border-dashed" style={{ borderColor: EVIDENCE_COLOR }} />
+            <span>Evidence · temporary: {layer.label}</span>
+            {onRemoveEvidence && <button type="button" aria-label={`Remove evidence ${layer.label}`} title="Remove" onClick={() => onRemoveEvidence(layer.id)} className={legendAction}>×</button>}
+          </span>
+        ))}
         {scale !== 'percent' && activeMas.map((period) => {
           const series = maSeriesData.get(period);
           const latest = series?.[series.length - 1]?.value;

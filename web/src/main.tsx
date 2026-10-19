@@ -25,13 +25,19 @@ const routes: RouteObject[] = [
       { path: 'stock/:symbol/elliott-wave', ...page(() => import('./app/stock/[symbol]/elliott-wave/page')) },
       { path: 'watchlist', ...page(() => import('./app/watchlist/page')) },
       { path: 'market', ...page(() => import('./app/market/page')) },
-      { path: 'strategies', ...page(() => import('./app/strategies/page')) },
-      { path: 'studio', ...page(() => import('./app/studio/page')) },
-      { path: 'validation', ...page(() => import('./app/validation/page')) },
-      { path: 'backtest', ...page(() => import('./app/backtest/page')) },
-      { path: 'historical', ...page(() => import('./app/historical/page')) },
-      { path: 'experiment', ...page(() => import('./app/experiment/page')) },
-      { path: 'analytics', ...page(() => import('./app/analytics/page')) },
+      {
+        // The Research workspace: one tab row over the research routes; their URLs are unchanged.
+        ...page(() => import('./app/research/layout')),
+        children: [
+          { path: 'strategies', ...page(() => import('./app/strategies/page')) },
+          { path: 'studio', ...page(() => import('./app/studio/page')) },
+          { path: 'validation', ...page(() => import('./app/validation/page')) },
+          { path: 'backtest', ...page(() => import('./app/backtest/page')) },
+          { path: 'historical', ...page(() => import('./app/historical/page')) },
+          { path: 'experiment', ...page(() => import('./app/experiment/page')) },
+          { path: 'analytics', ...page(() => import('./app/analytics/page')) },
+        ],
+      },
       { path: 'data', ...page(() => import('./app/data/page')) },
       { path: 'about', ...page(() => import('./app/about/page')) },
       {

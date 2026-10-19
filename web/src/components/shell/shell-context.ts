@@ -6,6 +6,7 @@
 
 import { createContext, useContext, useEffect } from 'react';
 import type { PanelTab } from '@/components/workspace/SidePanel';
+import type { EvidenceControl } from '@/components/momentum25/evidence';
 
 /** What the right panel is about on the current route. */
 export interface PanelContext {
@@ -17,6 +18,10 @@ export interface PanelContext {
   saved?: boolean;
   /** Allow the panel inline beside the content on wide screens; else it overlays. */
   inline?: boolean;
+  /** The route's run in view (a historical screener); Assessment uses the latest run when absent. */
+  runId?: number;
+  /** The page's "Show on chart" layers for the active chart (/chart). */
+  evidence?: EvidenceControl;
   /** Show the Object tree tab: the active chart fills `objectsSlot` (/chart). */
   objects?: boolean;
 }
@@ -38,10 +43,10 @@ export function useShell(): ShellApi {
 }
 
 /** Declare the route's panel context while the route is mounted. */
-export function useShellPanel({ symbol, assessment, saved, inline, objects }: PanelContext): void {
+export function useShellPanel({ symbol, assessment, saved, inline, objects, runId, evidence }: PanelContext): void {
   const { setPanelContext } = useShell();
   useEffect(() => {
-    setPanelContext({ symbol, assessment, saved, inline, objects });
+    setPanelContext({ symbol, assessment, saved, inline, objects, runId, evidence });
     return () => setPanelContext({});
-  }, [setPanelContext, symbol, assessment, saved, inline, objects]);
+  }, [setPanelContext, symbol, assessment, saved, inline, objects, runId, evidence]);
 }

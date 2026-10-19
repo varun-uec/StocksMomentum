@@ -74,6 +74,7 @@ test('audit screenshots: dark desktop and mobile navigation', async ({ page }) =
   await page.goto('/');
   await page.waitForLoadState('networkidle');
   await expect(page.getByText('Ranked Universe')).toBeVisible();
+  await page.locator('tbody tr').first().getByRole('button').first().click();
   await expect(page.getByText('Gate failures')).toBeVisible();
   await (await openAppMenu(page)).getByRole('button', { name: 'Dark theme' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);

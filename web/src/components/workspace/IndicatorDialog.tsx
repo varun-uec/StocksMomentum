@@ -22,7 +22,7 @@ export function IndicatorDialog({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
-      className="w-[32rem] max-w-[calc(100vw-2rem)] p-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl backdrop:bg-slate-950/50"
+      className="w-[46rem] max-w-[calc(100vw-2rem)] p-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl backdrop:bg-slate-950/50"
     >
       <h2 id="indicators-title" className="px-4 pt-4 pb-2 text-sm font-semibold">
         Indicators

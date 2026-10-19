@@ -5,11 +5,12 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertsTab, useAlerts } from '@/components/workspace/AlertsTab';
-import { ExplanationSummary } from '@/components/workspace/ExplanationSummary';
-import { addToWatchlist, getLiveStockAnalysis, getWatchlistDetail, removeFromWatchlist } from '@/lib/api-client';
+import { AssessmentPanel } from '@/components/momentum25/AssessmentPanel';
+import type { EvidenceControl } from '@/components/momentum25/evidence';
+import { addToWatchlist, getWatchlistDetail, removeFromWatchlist } from '@/lib/api-client';
+import { StatusDot } from '@/components/shared/Card';
 import { num } from '@/lib/format';
 import { focusRing } from '@/lib/theme';
 import type { RightPanel } from '@/lib/workspace';
@@ -22,10 +23,10 @@ const icon = (path: React.ReactNode) => (
   </svg>
 );
 
-/** Tab names stay the accessible names the specs use; "Details" is the Assessment. */
+/** The panel tabs. The `details` id is the Assessment; its saved value predates the name. */
 export const PANEL_TABS: { id: PanelTab; label: string; icon: React.ReactNode }[] = [
   { id: 'watchlist', label: 'Watchlist', icon: icon(<path d="M4 5h12M4 10h12M4 15h8" />) },
-  { id: 'details', label: 'Details', icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 9v5M10 6.5v.01" /></>) },
+  { id: 'details', label: 'Assessment', icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 9v5M10 6.5v.01" /></>) },
   { id: 'alerts', label: 'Alerts', icon: icon(<><circle cx="10" cy="11" r="6" /><path d="M10 8v3l2 1.5M4 4l2-1.5M16 4l-2-1.5" /></>) },
   { id: 'objects', label: 'Object tree', icon: icon(<><path d="M5 4v12M5 7h4M5 12h4" /><rect x="10" y="5" width="6" height="4" rx="1" /><rect x="10" y="10" width="6" height="4" rx="1" /></>) },
 ];
@@ -112,6 +113,10 @@ export function SidePanel({
   tabs,
   alertPrice,
   objectsRef,
+  runId,
+  evidence,
+  onOpenChart,
+  onCreateAlert,
 }: {
   panel: PanelTab;
   /** The route's context symbol, if it has one. */
@@ -125,6 +130,13 @@ export function SidePanel({
   alertPrice?: number;
   /** Receives the Object tree's body, which the active chart fills. */
   objectsRef?: (el: HTMLElement | null) => void;
+  /** The route's run in view, for the Assessment; the latest run when absent. */
+  runId?: number;
+  /** "Show on chart" for the active chart (/chart only). */
+  evidence?: EvidenceControl;
+  /** Assessment's "Open in chart"; absent on /chart. */
+  onOpenChart?: (symbol: string) => void;
+  onCreateAlert?: () => void;
 }) {
   const label = PANEL_TABS.find((t) => t.id === panel)?.label;
   return (
@@ -136,8 +148,10 @@ export function SidePanel({
         </button>
       </div>
       <div id="workspace-panel-content" role="tabpanel" aria-labelledby={`workspace-tab-${panel}`} aria-label={label} className="flex-1 min-h-0 overflow-y-auto">
-        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} onOpenSymbol={onOpenSymbol} />}
-        {panel === 'details' && symbol && <DetailsTab symbol={symbol} strategy={strategy} />}
+        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} runId={runId} onOpenSymbol={onOpenSymbol} />}
+        {panel === 'details' && symbol && (
+          <AssessmentPanel key={`${symbol}:${strategy}:${runId}`} symbol={symbol} strategy={strategy} runId={runId} evidence={evidence} onOpenChart={onOpenChart && (() => onOpenChart(symbol))} onCreateAlert={onCreateAlert} />
+        )}
         {panel === 'alerts' && <AlertsTab symbol={symbol} price={alertPrice} />}
         {panel === 'objects' && <div ref={objectsRef} className="p-2" />}
       </div>
@@ -145,7 +159,8 @@ export function SidePanel({
   );
 }
 
-function WatchlistTab({ symbol, strategy, onOpenSymbol }: { symbol?: string; strategy: string; onOpenSymbol: (symbol: string) => void }) {
+/** Dense rows: Symbol, Last, Chg%, Rank, Qualified. Ranks come from the strategy's latest run, which the header names. */
+function WatchlistTab({ symbol, strategy, runId, onOpenSymbol }: { symbol?: string; strategy: string; runId?: number; onOpenSymbol: (symbol: string) => void }) {
   const { data, isLoading } = useWatchlistDetail(strategy);
   const toggle = useWatchlistToggle();
   const [sort, setSort] = useState('symbol');
@@ -170,6 +185,20 @@ function WatchlistTab({ symbol, strategy, onOpenSymbol }: { symbol?: string; str
       <label className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wide text-slate-500">Sort watchlist <select aria-label="Sort watchlist" className="bg-transparent text-xs" value={sort} onChange={(e) => setSort(e.target.value)}><option value="symbol">Symbol</option><option value="change">Daily change</option><option value="rank">Momentum rank</option></select></label>
       {isLoading && <p className="px-3 py-2 text-xs text-slate-500">Loading watchlist…</p>}
       {!isLoading && items.length === 0 && <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No symbols yet. Add the open symbol with Alt+W.</p>}
+      {data && (
+        <p data-testid="watchlist-run" className={`px-3 pb-1 text-[11px] ${runId !== undefined && data.run_id !== runId ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
+          {data.run_id === null ? `${strategy} · no completed run` : runId !== undefined && data.run_id !== runId ? `Watchlist ranks: run #${data.run_id} (latest), not this view's run #${runId}` : `Ranks: ${strategy} · run #${data.run_id}`}
+        </p>
+      )}
+      {items.length > 0 && (
+        <div aria-hidden="true" className="flex gap-2 px-3 py-1 text-[10px] uppercase tracking-wide text-slate-500 border-b border-[var(--ws-line)]">
+          <span className="flex-1">Symbol</span>
+          <span className="w-16 text-right">Last</span>
+          <span className="w-14 text-right">Chg%</span>
+          <span className="w-9 text-right">Rank</span>
+          <span className="w-7 text-right">Q</span>
+        </div>
+      )}
       <ul>
         {items.map((item) => {
           const change = item.change_pct === null ? null : parseFloat(item.change_pct);
@@ -184,38 +213,20 @@ function WatchlistTab({ symbol, strategy, onOpenSymbol }: { symbol?: string; str
                 }`}
               >
                 <span className="flex-1 font-semibold truncate">{item.symbol}</span>
-                {item.rank !== null && <span className="text-slate-400 tabular-nums">#{item.rank}</span>}
                 <span className="tabular-nums w-16 text-right">{item.close === null ? '—' : num(item.close)}</span>
                 <span className={`tabular-nums w-14 text-right ${change === null ? 'text-slate-600 dark:text-slate-400' : change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                   {change === null ? '—' : `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`}
+                </span>
+                <span className="tabular-nums w-9 text-right text-slate-500">{item.rank === null ? '—' : `#${item.rank}`}</span>
+                <span className="w-7 text-right">
+                  {item.in_latest_run ? <StatusDot passed={item.rank !== null} /> : <span aria-hidden="true">—</span>}
+                  <span className="sr-only">{!item.in_latest_run ? 'not in the run' : item.rank !== null ? 'qualified' : 'not qualified'}</span>
                 </span>
               </button>
             </li>
           );
         })}
       </ul>
-    </div>
-  );
-}
-
-function DetailsTab({ symbol, strategy }: { symbol: string; strategy: string }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['stock-live', symbol, strategy],
-    queryFn: () => getLiveStockAnalysis(symbol, false, strategy),
-  });
-  if (isLoading) return <p className="px-3 py-2 text-xs text-slate-500">Evaluating {symbol}…</p>;
-  const explanation = data?.explanation;
-  if (error || !explanation) {
-    return <p className="px-3 py-2 text-xs text-slate-500">No Momentum25 evaluation for {symbol}: not enough stored history.</p>;
-  }
-  return (
-    <div className="px-3 py-2 space-y-3 text-xs">
-      <div className="border-b border-slate-200 dark:border-slate-700 pb-2"><p className="text-[10px] uppercase tracking-widest text-indigo-700 dark:text-indigo-300 mb-1">Momentum25 · {symbol}</p><p className="text-slate-500">Latest stored daily evaluation. Open the evidence to inspect every passing and failing criterion.</p></div>
-      <ExplanationSummary explanation={explanation} />
-      <details><summary className="cursor-pointer font-medium">All criteria & evidence</summary><div className="mt-2 space-y-2">{explanation.rule_explanations.map((rule) => <p key={rule.rule_id} className="border-l-2 pl-2 border-slate-300 dark:border-slate-600"><strong>{rule.passed ? 'Pass' : 'Fail'}</strong> · {rule.explanation}</p>)}</div></details>
-      <Link to={`/stock/${encodeURIComponent(symbol)}`} className={`inline-block text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}>
-        Full research →
-      </Link>
     </div>
   );
 }

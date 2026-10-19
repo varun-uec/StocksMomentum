@@ -37,7 +37,7 @@ test('R2 200% desktop-equivalent reflow keeps core workflows in the viewport', a
   resetDocuments(); // an earlier spec can leave the chart on weekly bars or in a grid
   await page.setViewportSize({ width: 720, height: 450 }); // 1440 × 900 desktop at 200% zoom
   for (const [path, heading] of [
-    ['/', 'Live Momentum Dashboard'],
+    ['/', 'Stock Screener'],
     ['/chart/RELIANCE', 'RELIANCE'],
     ['/studio', 'Strategy Studio'],
   ]) {

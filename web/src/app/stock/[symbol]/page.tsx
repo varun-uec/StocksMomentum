@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { getIndexCloses, getLiveStockAnalysis, getStockExplanation, getStockHistory } from '@/lib/api-client';
-import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, EmptyState, PageHeader } from '@/components/shared/Card';
+import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, EmptyState } from '@/components/shared/Card';
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { strategyDisplayName } from '@/lib/format';
 import type { EngineExplanation, RuleExplanation, StockExplanation } from '@/lib/types';
@@ -25,7 +25,7 @@ import { WhyItRanks } from '@/components/stock/WhyItRanks';
 import { investmentReadiness, QUALIFIED_LABEL } from '@/components/stock/readiness';
 import { SuggestedStop } from '@/components/stock/SuggestedStop';
 import { RelativeStrengthVsIndex } from '@/components/stock/RelativeStrengthVsIndex';
-import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
+import { SymbolHeader } from '@/components/stock/SymbolHeader';
 import { Skeleton, SkeletonCard, SkeletonMetricGrid, SkeletonRegion } from '@/components/shared/Skeleton';
 
 
@@ -54,14 +54,6 @@ const IMPROVEMENT_HINTS: Record<string, string> = {
 
 // Reading order: what the stock is, why it ranks, how strong, the chart,
 // what supports the read, and finally what it risks.
-const SECTIONS = [
-  { id: 'why', label: 'Why it ranks' },
-  { id: 'strength', label: 'How strong' },
-  { id: 'chart', label: 'Chart' },
-  { id: 'support', label: 'What supports' },
-  { id: 'risk', label: 'Downside risk' },
-];
-
 const CHART_TABS = [
   { id: 'price', label: 'Price' },
   { id: 'scores', label: 'Score history' },
@@ -70,12 +62,24 @@ const CHART_TABS = [
 
 type ChartTab = (typeof CHART_TABS)[number]['id'];
 
+/** Engines with an evidence section on this page. */
+const EVIDENCE_ENGINES = ['trend_template', 'relative_strength', 'pattern', 'breakout', 'risk', 'volume_accumulation'];
+
 function engineRules(explanation: StockExplanation, engineId: string): RuleExplanation[] {
   return explanation.rule_explanations.filter((r) => r.engine_name === engineId);
 }
 
 function engineFor(explanation: StockExplanation, engineId: string): EngineExplanation | undefined {
   return explanation.engine_explanations.find((e) => e.engine_name === engineId);
+}
+
+/** The evidence section of one engine: a "Why it ranks" item links here (workflow 4). */
+function EvidenceSection({ engine, children }: { engine: string; children: React.ReactNode }) {
+  return (
+    <div id={`evidence-${engine}`} tabIndex={-1} className="scroll-mt-32 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ws-accent)]">
+      {children}
+    </div>
+  );
 }
 
 function AnalysisSection({
@@ -116,41 +120,12 @@ function AnalysisSection({
   );
 }
 
-function SectionNav({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
-  const go = (id: string) => {
-    onSelect(id);
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  return (
-    <div className="sticky top-14 z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-6">
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => go(s.id)}
-            aria-current={active === s.id ? 'true' : undefined}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${focusRing} ${
-              active === s.id
-                ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function StockResearchPage() {
   const symbol = useParams().symbol!;
   const [searchParams] = useSearchParams();
   const strategyName = searchParams.get('strategy') || DEFAULT_STRATEGY;
   const horizonLabel = strategyDisplayName(strategyName);
   const chartColors = useChartColors();
-  const [activeSection, setActiveSection] = useState('why');
   const [chartTab, setChartTab] = useState<ChartTab>('price');
   const [showBenchmark, setShowBenchmark] = useState(false);
   // Shared with the Elliott Wave route so panes, MAs and drawings carry across.
@@ -211,26 +186,6 @@ export default function StockResearchPage() {
       },
     ];
   }, [showBenchmark, benchmarkCloses, bars]);
-
-  // Keep the section tabs in sync with what is actually on screen.
-  const sectionsReady = prefsReady && !explLoading && !histLoading && !liveLoading;
-  useEffect(() => {
-    if (!sectionsReady) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length === 0) return;
-        visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        setActiveSection(visible[0].target.id);
-      },
-      { rootMargin: '-140px 0px -55% 0px' }
-    );
-    for (const s of SECTIONS) {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, [sectionsReady]);
 
   // A symbol that was not in the latest run (not evaluated, or evaluated but
   // not persisted) still has a full on-demand evaluation available. Fall back
@@ -301,10 +256,7 @@ export default function StockResearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <PageHeader
-        title={symbol}
-        subtitle={`${horizonLabel} horizon · ${explanation.overall_passed ? 'Passes' : 'Fails'} the Trend Template gate`}
-      >
+      <SymbolHeader symbol={symbol} strategyName={strategyName} current="overview" bars={bars} asOf={live?.data_as_of}>
         {explanation.rank && <Badge color="indigo">Rank #{explanation.rank}</Badge>}
         {explanation.percentile && <Badge color="blue">{explanation.percentile}th percentile</Badge>}
         <Badge color={explanation.overall_passed ? 'emerald' : 'rose'}>
@@ -317,8 +269,10 @@ export default function StockResearchPage() {
           </Badge>
         )}
         <Badge color={readiness.color}>{readiness.label}</Badge>
-        <SymbolActionBar symbol={symbol} strategyName={strategyName} current="chart" />
-      </PageHeader>
+      </SymbolHeader>
+      <p className="px-4 sm:px-6 pt-2 text-xs text-slate-500 dark:text-slate-400">
+        {horizonLabel} horizon · {explanation.overall_passed ? 'Passes' : 'Fails'} the Trend Template gate
+      </p>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {/* Header strip: price, change and 52-week range read with the badges
@@ -329,7 +283,6 @@ export default function StockResearchPage() {
           </div>
         )}
 
-        <SectionNav active={activeSection} onSelect={setActiveSection} />
 
         {usingLiveFallback && (
           <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-800 dark:text-amber-300">
@@ -389,7 +342,7 @@ export default function StockResearchPage() {
           {/* 1. Why it ranks — the ranking rationale comes before any number. */}
           <section id="why" className="scroll-mt-32 space-y-6">
             {(live?.explanation ?? runExplanation) && (
-              <WhyItRanks explanation={live?.explanation ?? explanation} />
+              <WhyItRanks explanation={live?.explanation ?? explanation} evidenceId={(rule) => (EVIDENCE_ENGINES.includes(rule.engine_name) ? `evidence-${rule.engine_name}` : undefined)} />
             )}
 
             <Card title="Executive Summary">
@@ -566,11 +519,13 @@ export default function StockResearchPage() {
 
           {/* 4. What supports the read. */}
           <section id="support" className="scroll-mt-32 space-y-6">
-            <TrendTemplateCard
-              rules={engineRules(explanation, 'trend_template')}
-              strategyName={strategyName}
-              hints={IMPROVEMENT_HINTS}
-            />
+            <EvidenceSection engine="trend_template">
+              <TrendTemplateCard
+                rules={engineRules(explanation, 'trend_template')}
+                strategyName={strategyName}
+                hints={IMPROVEMENT_HINTS}
+              />
+            </EvidenceSection>
 
             {live?.explanation && <MomentumView explanation={live.explanation} />}
             {live && <TechnicalWorkbench indicators={live.indicators} />}
@@ -598,15 +553,17 @@ export default function StockResearchPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AnalysisSection title="Relative Strength Analysis" engine={rsEngine} rules={engineRules(explanation, 'relative_strength')} />
-              <AnalysisSection title="Pattern Analysis" engine={patternEngine} rules={engineRules(explanation, 'pattern')} />
-              <AnalysisSection title="Breakout Readiness" engine={breakoutEngine} rules={engineRules(explanation, 'breakout')} />
-              <AnalysisSection title="Risk Assessment" engine={riskEngine} rules={engineRules(explanation, 'risk')} />
-              <AnalysisSection
-                title="Volume & Accumulation"
-                engine={engineFor(explanation, 'volume_accumulation')}
-                rules={engineRules(explanation, 'volume_accumulation')}
-              />
+              <EvidenceSection engine="relative_strength"><AnalysisSection title="Relative Strength Analysis" engine={rsEngine} rules={engineRules(explanation, 'relative_strength')} /></EvidenceSection>
+              <EvidenceSection engine="pattern"><AnalysisSection title="Pattern Analysis" engine={patternEngine} rules={engineRules(explanation, 'pattern')} /></EvidenceSection>
+              <EvidenceSection engine="breakout"><AnalysisSection title="Breakout Readiness" engine={breakoutEngine} rules={engineRules(explanation, 'breakout')} /></EvidenceSection>
+              <EvidenceSection engine="risk"><AnalysisSection title="Risk Assessment" engine={riskEngine} rules={engineRules(explanation, 'risk')} /></EvidenceSection>
+              <EvidenceSection engine="volume_accumulation">
+                <AnalysisSection
+                  title="Volume & Accumulation"
+                  engine={engineFor(explanation, 'volume_accumulation')}
+                  rules={engineRules(explanation, 'volume_accumulation')}
+                />
+              </EvidenceSection>
             </div>
 
             {/* Strengths and weaknesses read first; the full table backs them up. */}

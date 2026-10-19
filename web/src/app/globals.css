@@ -150,3 +150,9 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
   .chart-draw-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; flex-direction: row; flex-wrap: wrap; justify-content: center; padding: 8px; background: var(--ws-surface); border-top: 1px solid var(--ws-line); box-shadow: 0 -6px 20px rgb(0 0 0 / .14); }
   .chart-draw-sheet .chart-rail-sep { width: 1px; height: 24px; margin: auto 2px; }
 }
+/* /chart's bottom panel (A6): a 28px tab bar; open is 260px, maximised gives the panel three quarters. */
+.chart-bottom { flex-shrink: 0; border-top: 1px solid var(--ws-line); display: flex; flex-direction: column; min-height: 0; }
+.chart-bottom-bar { height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 2px; padding: 0 6px; }
+.chart-bottom-body { height: 260px; overflow: auto; border-top: 1px solid var(--ws-line); }
+.chart-bottom[data-state='max'] { flex: 3 1 0; }
+.chart-bottom[data-state='max'] .chart-bottom-body { flex: 1; height: auto; min-height: 0; }

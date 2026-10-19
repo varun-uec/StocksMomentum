@@ -290,16 +290,19 @@ export function NavLink({
   item,
   pathname,
   onClick,
+  from,
 }: {
   item: NavItem;
   pathname: string;
   onClick?: () => void;
+  /** The view it opens from, so the target offers "Back to chart". */
+  from?: string;
 }) {
   const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
   return (
     <Link
       key={item.href}
-      to={item.href}
+      to={from ? `${item.href}?from=${encodeURIComponent(from)}` : item.href}
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       // The visible label is hidden below `lg`, leaving an icon-only link.
@@ -409,7 +412,7 @@ export function AppMenu({ onShortcuts }: { onShortcuts: () => void }) {
           </ul>
           <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Research</p>
           <ul>
-            {RESEARCH_TOOLS.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} /></li>)}
+            {RESEARCH_TOOLS.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} from={pathname.startsWith('/chart') ? pathname : undefined} /></li>)}
           </ul>
           <ul className="mt-1 pt-1 border-t border-[var(--ws-line)]">
             {HELP_ROUTES.map((item) => <li key={item.href}><NavLink item={item} pathname={pathname} onClick={close} /></li>)}

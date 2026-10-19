@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getRuns, getRankings, historicalScreen } from '@/lib/api-client';
 import { Card, MetricCard, Badge, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
@@ -165,6 +166,11 @@ export default function HistoricalReplayPage() {
               <p role="alert" className="mb-4 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
                 Legacy replay: saved rankings used today’s cumulative corporate-action adjustments and active universe. Historical price gates may be biased. Replay this date to create a point-in-time result; this saved run remains unchanged.
               </p>
+            )}
+            {rankings.run && (
+              <Link to={`/?run=${rankings.run.id}`} className={`inline-block mb-3 text-xs font-medium text-[var(--ws-accent)] hover:underline ${focusRing}`}>
+                Open run #{rankings.run.id} in the Stock Screener →
+              </Link>
             )}
             <MomentumTable items={rankings.items} title={`${rankings.items.length} stocks`} />
           </Card>

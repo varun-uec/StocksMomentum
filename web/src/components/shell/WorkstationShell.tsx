@@ -140,6 +140,10 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
         onClose={dock.close}
         alertPrice={dock.alertPrice}
         objectsRef={setObjectsSlot}
+        runId={panelContext.runId}
+        evidence={panelContext.evidence}
+        onOpenChart={onChart ? undefined : (next) => navigate(`/chart/${encodeURIComponent(next)}`)}
+        onCreateAlert={() => dock.open('alerts')}
         tabs={dock.desktop ? undefined : <PanelTabs tabs={dock.tabs} selected={dock.panel} onSelect={dock.open} vertical={false} />}
       />
     </div>

@@ -7,7 +7,8 @@
  */
 
 import { Badge, Card, StatusDot } from '@/components/shared/Card';
-import type { StockExplanation } from '@/lib/types';
+import type { RuleExplanation, StockExplanation } from '@/lib/types';
+import { focusRing } from '@/lib/theme';
 import { num } from '@/lib/format';
 
 /** Top passing rules by contribution, and failing rules with gate failures first. */
@@ -31,7 +32,28 @@ export function rankReasons(explanation: StockExplanation, count = 5) {
   return { contributors, detractors };
 }
 
-export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
+/** A reason's text, linked to its evidence section when the page has one; the link moves focus there. */
+function Reason({ rule, evidenceId }: { rule: RuleExplanation; evidenceId?: (rule: RuleExplanation) => string | undefined }) {
+  const id = evidenceId?.(rule);
+  if (!id) return <span className="flex-1 text-slate-700 dark:text-slate-300">{rule.explanation}</span>;
+  return (
+    <a
+      href={`#${id}`}
+      onClick={(e) => {
+        const target = document.getElementById(id);
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ block: 'start' });
+        target.focus({ preventScroll: true });
+      }}
+      className={`flex-1 text-slate-700 dark:text-slate-300 underline decoration-dotted underline-offset-2 hover:text-[var(--ws-accent)] ${focusRing}`}
+    >
+      {rule.explanation}
+    </a>
+  );
+}
+
+export function WhyItRanks({ explanation, evidenceId }: { explanation: StockExplanation; evidenceId?: (rule: RuleExplanation) => string | undefined }) {
   const { contributors, detractors } = rankReasons(explanation);
 
   return (
@@ -41,7 +63,7 @@ export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
           {contributors.map((r) => (
             <div key={r.rule_id} className="flex items-start gap-2 text-xs">
               <StatusDot passed />
-              <span className="flex-1 text-slate-700 dark:text-slate-300">{r.explanation}</span>
+              <Reason rule={r} evidenceId={evidenceId} />
               <span className="shrink-0 tabular-nums text-slate-500">{num(r.contribution)}</span>
             </div>
           ))}
@@ -55,7 +77,7 @@ export function WhyItRanks({ explanation }: { explanation: StockExplanation }) {
           {detractors.map((r) => (
             <div key={r.rule_id} className="flex items-start gap-2 text-xs">
               <StatusDot passed={false} />
-              <span className="flex-1 text-slate-700 dark:text-slate-300">{r.explanation}</span>
+              <Reason rule={r} evidenceId={evidenceId} />
               {explanation.hard_filter_failures.includes(r.rule_id) && (
                 <Badge color="rose">gate</Badge>
               )}

@@ -203,8 +203,8 @@ test.describe('touch workspace', () => {
     await page.getByTestId('price-chart').tap({ position: { x: 180, y: 180 } });
     await expect.poll(async () => (await savedDrawings(request)).length).toBe(2);
     await page.getByRole('button', { name: 'Panel', exact: true }).tap();
-    await page.getByRole('tab', { name: 'Details', exact: true }).tap();
-    await expect(page.getByRole('tabpanel', { name: 'Details', exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: 'Assessment', exact: true }).tap();
+    await expect(page.getByRole('tabpanel', { name: 'Assessment', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Close panel', exact: true }).tap();
     await expect(page.getByLabel('Side panel', { exact: true })).toBeHidden();
   });

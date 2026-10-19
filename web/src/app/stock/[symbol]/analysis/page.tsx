@@ -21,7 +21,7 @@ import {
   ErrorMessage,
   LoadingSpinner,
   MetricCard,
-  PageHeader,
+  
   StatusDot,
 } from '@/components/shared/Card';
 import { ScoreGauge } from '@/components/shared/ScoreGauge';
@@ -46,7 +46,7 @@ import {
 import { CountSummary, WaveDetail } from '@/components/stock/elliott-wave-panels';
 import { OverlayPicker } from '@/components/stock/OverlayPicker';
 import { StrategyPanel } from '@/components/stock/StrategyPanel';
-import { SymbolActionBar } from '@/components/stock/SymbolActionBar';
+import { SymbolHeader } from '@/components/stock/SymbolHeader';
 import { TrendTemplateCard } from '@/components/stock/TrendTemplateCard';
 import { WhyItRanks } from '@/components/stock/WhyItRanks';
 import { EngineContributionBars } from '@/components/stock/EngineContributionBars';
@@ -379,7 +379,6 @@ export default function UnifiedAnalysisPage() {
     );
   }
 
-  const backHref = `/stock/${symbol}${strategyQuery ? `?strategy=${strategyQuery}` : ''}`;
   const waveHeadline = wave.candidates[0] ?? null;
 
   const footnote =
@@ -395,7 +394,7 @@ export default function UnifiedAnalysisPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <PageHeader title={`${symbol} — Analysis`} subtitle={`${horizonLabel} horizon · one chart, three readings`}>
+      <SymbolHeader symbol={symbol} strategyName={strategyQuery} current="analysis" bars={barDtos}>
         {explanation?.rank && <Badge color="indigo">Rank #{explanation.rank}</Badge>}
         {explanation && (
           <Badge color={explanation.overall_passed ? 'emerald' : 'rose'}>
@@ -403,14 +402,8 @@ export default function UnifiedAnalysisPage() {
           </Badge>
         )}
         {explanation && <Badge color="indigo">Momentum {num(explanation.momentum_score, 0)}</Badge>}
-        <SymbolActionBar symbol={symbol} strategyName={strategyQuery} current="analysis" />
-        <Link
-          to={backHref}
-          className={`text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}
-        >
-          ← Back to research
-        </Link>
-      </PageHeader>
+      </SymbolHeader>
+      <p className="px-4 sm:px-6 pt-2 text-xs text-slate-500 dark:text-slate-400">{horizonLabel} horizon · one chart, three readings</p>
 
       {usingLiveFallback && (
         <div className="mx-auto max-w-7xl px-4 pt-4">

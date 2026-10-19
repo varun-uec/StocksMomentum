@@ -54,7 +54,7 @@ export { expect };
 /** A symbol present in every local dataset since 2019. */
 export const SYMBOL = 'RELIANCE';
 
-function db(command: 'reset' | 'age-alerts' | 'holdout-provenance', ...args: string[]): void {
+function db(command: 'reset' | 'age-alerts' | 'holdout-provenance' | 'extra-bar' | 'drop-extra-bar', ...args: string[]): void {
   execFileSync(`${BACKEND_DIR}/.venv/bin/python`, [new URL('./db.py', import.meta.url).pathname, command, ...args], {
     env: { ...process.env, E2E_DATABASE_URL },
   });
@@ -65,6 +65,10 @@ export const resetDocuments = (): void => db('reset');
 
 /** Move every alert's armed date 30 days back, so it can fire on stored bars. */
 export const ageAlerts = (): void => db('age-alerts');
+
+/** Give TCS one stored bar after the screening run's as-of date (journey 5); `dropExtraBar` removes it. */
+export const addExtraBar = (): void => db('extra-bar');
+export const dropExtraBar = (): void => db('drop-extra-bar');
 
 /** Change only synthetic E2E10Y bars in the fixed OOS window for a rejection test. */
 export const setHoldoutProvenance = (value: 'published' | 'reconstructed'): void =>

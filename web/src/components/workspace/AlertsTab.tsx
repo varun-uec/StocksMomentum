@@ -75,6 +75,10 @@ export function AlertsTab({ symbol, price }: { symbol?: string; price?: number }
   const remove = useMutation({ mutationFn: deleteAlert, onSuccess: refresh });
   const rearm = useMutation({ mutationFn: rearmAlert, onSuccess: refresh });
   const seen = useMutation({ mutationFn: markAlertsSeen, onSuccess: refresh });
+  // The panel opens on the route's symbol; "All" lists every alert (workflow 6).
+  const [scope, setScope] = useState<'symbol' | 'all'>('symbol');
+  const scoped = symbol && scope === 'symbol';
+  const alerts = (data?.alerts ?? []).filter((a) => !scoped || a.symbol === symbol);
 
   // Opening the list is seeing it.
   const unseen = data?.unseen ?? 0;
@@ -87,10 +91,20 @@ export function AlertsTab({ symbol, price }: { symbol?: string; price?: number }
       {symbol ? <AlertForm symbol={symbol} price={price} editRequest={editRequest} /> : <p className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 text-slate-500">Open a chart or a symbol page to create an alert.</p>}
       {(remove.isError || rearm.isError) && <p role="alert" className="px-3 py-1 text-rose-600">The action failed. Try again. {String((remove.error ?? rearm.error)?.message ?? '')}</p>}
       {isLoading && <p className="px-3 py-2 text-slate-500">Loading alerts…</p>}
+      {symbol && (
+        <div role="group" aria-label="Alert scope" className="px-3 pt-2 flex gap-1">
+          {(['symbol', 'all'] as const).map((s) => (
+            <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)} className={`px-2 py-0.5 rounded-md ${focusRing} ${scope === s ? 'bg-[var(--ws-muted)] font-semibold' : 'text-slate-500 hover:bg-[var(--ws-muted)]'}`}>
+              {s === 'symbol' ? 'This symbol' : 'All'}
+            </button>
+          ))}
+        </div>
+      )}
       {data && data.alerts.length === 0 && <p className="px-3 py-2 text-slate-500">No alerts yet.</p>}
-      <div className="px-3 pt-3 pb-1 flex justify-between text-[10px] uppercase tracking-wider text-slate-500"><span>Armed · {data?.alerts.filter((a) => a.status === 'active').length ?? 0}</span><span>History · {data?.alerts.filter((a) => a.status === 'triggered').length ?? 0}</span></div>
+      {data && data.alerts.length > 0 && alerts.length === 0 && <p className="px-3 py-2 text-slate-500">No alerts for {symbol}. Choose All to see the other {data.alerts.length}.</p>}
+      <div className="px-3 pt-3 pb-1 flex justify-between text-[10px] uppercase tracking-wider text-slate-500"><span>Armed · {alerts.filter((a) => a.status === 'active').length}</span><span>History · {alerts.filter((a) => a.status === 'triggered').length}</span></div>
       <ul aria-label="Alerts">
-        {data?.alerts.map((a) => (
+        {alerts.map((a) => (
           <li key={a.id} className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
             <div className="text-[10px] uppercase tracking-wide text-slate-500">{a.status === 'active' ? 'Armed · EOD' : 'Triggered · inactive history'}</div>
             {a.drawing && <p className="text-[10px] text-slate-500">Drawing snapshot · revision {a.drawing.revision} · {a.drawing.points.map((p) => p.price).join(' – ')}</p>}

@@ -1,5 +1,4 @@
 import type { ScreeningRunSummary } from '@/lib/types';
-import { typography } from '@/lib/theme';
 
 interface RunSummaryCardsProps {
   summary: ScreeningRunSummary;
@@ -26,25 +25,12 @@ function StatCard({
     indigo: 'text-indigo-600 dark:text-indigo-400',
   };
 
-  const borderColors: Record<string, string> = {
-    emerald: 'border-emerald-200 dark:border-emerald-800/40',
-    amber: 'border-amber-200 dark:border-amber-800/40',
-    rose: 'border-rose-200 dark:border-rose-800/40',
-    slate: 'border-slate-200 dark:border-slate-700/60',
-    indigo: 'border-indigo-200 dark:border-indigo-800/40',
-  };
-
+  // One cell of the stat strip; the description is the cell's tooltip.
   return (
-    <div
-      className={`bg-white dark:bg-slate-900/80 border ${borderColors[accent]} rounded-xl px-5 py-4 flex flex-col gap-1 shadow-sm`}
-    >
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        {label}
-      </span>
-      <span className={`${typography.metricValue} ${accentColors[accent]}`}>{value}</span>
-      {description && (
-        <span className="text-xs text-slate-500 dark:text-slate-500 leading-snug">{description}</span>
-      )}
+    <div title={description} className="flex items-baseline gap-2 px-4 py-1.5 border-l border-[var(--ws-line)] first:border-l-0 first:pl-0">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
+      <span className={`text-base font-bold tabular-nums ${accentColors[accent]}`}>{value}</span>
+      {description && <span className="sr-only">{description}</span>}
     </div>
   );
 }
@@ -62,7 +48,7 @@ export default function RunSummaryCards({ summary, rsRatings = [] }: RunSummaryC
   const topRs = rsRatings.length ? Math.max(...rsRatings) : null;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="flex flex-wrap items-center" aria-label="Run summary" role="group">
       <StatCard
         label="Universe"
         value={summary.total_evaluated}

@@ -41,10 +41,14 @@ export function OverlayPicker({
 }) {
   const [query, setQuery] = useState('');
   const [removed, setRemoved] = useState<ActiveIndicator | null>(null);
+  // The catalogue's own groups are the categories, with All first (TradingView's left list).
+  const [category, setCategory] = useState('All');
+  const categories = useMemo(() => ['All', ...indicatorGroups().map((g) => g.group)], []);
 
   const groups = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return indicatorGroups()
+      .filter((g) => category === 'All' || g.group === category)
       .map((g) => ({
         ...g,
         items: g.items.filter(
@@ -52,7 +56,7 @@ export function OverlayPicker({
         ),
       }))
       .filter((g) => g.items.length > 0);
-  }, [query]);
+  }, [query, category]);
 
   const countFor = (id: string) => active.filter((a) => a.id === id).length;
   const paneFull = paneCount >= maxPanes;
@@ -76,6 +80,15 @@ export function OverlayPicker({
     <div className="space-y-4">
       <p className="text-xs text-slate-500">Display studies shape this chart. Screening and alerts always use the authoritative backend series.</p>
       {removed && <button type="button" className="workstation-button" onClick={() => { onChange([...active, removed]); setRemoved(null); }}>Restore {INDICATOR_BY_ID.get(removed.id)?.label}</button>}
+      <div className="grid gap-3 sm:grid-cols-[9rem_minmax(0,1fr)]">
+      <div role="group" aria-label="Indicator categories" className="flex flex-wrap sm:flex-col gap-0.5 sm:border-r sm:border-[var(--ws-line)] sm:pr-2">
+        {categories.map((c) => (
+          <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)} className={`text-left px-2 py-1 rounded-md text-xs ${focusRing} ${category === c ? 'bg-[var(--ws-muted)] font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-[var(--ws-muted)]'}`}>
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2 min-w-0">
       <input
         type="search"
         value={query}
@@ -131,8 +144,10 @@ export function OverlayPicker({
           </div>
         ))}
         {groups.length === 0 && (
-          <p className="text-xs text-slate-500">No indicator matches “{query}”.</p>
+          <p className="text-xs text-slate-500">No indicator matches “{query}”{category === 'All' ? '' : ` in ${category}`}.</p>
         )}
+      </div>
+      </div>
       </div>
 
       <div>

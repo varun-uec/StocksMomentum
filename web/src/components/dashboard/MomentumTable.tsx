@@ -39,6 +39,10 @@ interface MomentumTableProps {
   /** The row the detail panel shows; highlighted and marked for screen readers. */
   selectedSymbol?: string | null;
   title?: string;
+  /** A column set's columns (Momentum25 screener); the Columns menu still adjusts them. */
+  visibleColumns?: readonly string[];
+  /** The Stock Screener's dense table: sticky header and symbol column, one line per row. */
+  dense?: boolean;
 }
 
 /** Human-readable labels for each rule in the checklist. */
@@ -178,7 +182,7 @@ const COLUMN_LABELS: Record<string, string> = {
 
 const columnHelper = createColumnHelper<RankingItemDTO>();
 
-export default function MomentumTable({ items, onSymbolClick, selectedSymbol = null, title }: MomentumTableProps) {
+export default function MomentumTable({ items, onSymbolClick, selectedSymbol = null, title, visibleColumns, dense = false }: MomentumTableProps) {
   // Rank ascending is how the list already arrives. Stating it up front
   // makes the sort arrow visible from the first render.
   const [sorting, setSorting] = useState<SortingState>([{ id: 'rank', desc: false }]);
@@ -189,6 +193,12 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const showSignalScore = columnVisibility.signal_score === true;
   const [scores, setScores] = useState<Map<string, number>>(new Map());
+  const columnSetKey = visibleColumns?.join(',');
+  useEffect(() => {
+    if (!columnSetKey) return;
+    const shown = new Set(columnSetKey.split(','));
+    setColumnVisibility(Object.fromEntries(Object.keys(COLUMN_LABELS).map((id) => [id, shown.has(id)])));
+  }, [columnSetKey]);
 
   useEffect(() => {
     const viewport = tableViewport.current;
@@ -248,7 +258,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
       }),
       columnHelper.accessor('name', {
         header: 'Name',
-        cell: (info) => <span className="text-slate-600 dark:text-slate-400">{info.getValue()}</span>,
+        cell: (info) => <span className="block max-w-56 truncate whitespace-nowrap text-slate-600 dark:text-slate-400" title={info.getValue()}>{info.getValue()}</span>,
       }),
       columnHelper.accessor('sector', {
         header: 'Sector',
@@ -532,7 +542,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         aria-label="Ranked stock results"
         aria-describedby={hasHorizontalOverflow ? 'ranked-stock-scroll-hint' : undefined}
         tabIndex={0}
-        className={`overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm bg-white dark:bg-slate-900 ${focusRing}`}
+        className={`overflow-x-auto ${dense ? 'max-h-[calc(100dvh-15rem)] min-h-64 overflow-y-auto border-y border-[var(--ws-line)]' : 'rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm'} bg-white dark:bg-slate-900 ${focusRing}`}
       >
         <table className="w-full text-sm">
           <thead>
@@ -575,7 +585,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
                             }
                           : undefined
                       }
-                      className={`px-3 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap ${
+                      className={`px-3 ${dense ? `py-2 sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 ${header.id === 'symbol' ? 'left-0 z-20' : ''}` : 'py-3'} text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap ${
                         canSort
                           ? `cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200 transition-colors ${focusRing}`
                           : ''
@@ -612,7 +622,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
                 key={row.id}
                 aria-selected={selectedSymbol === null ? undefined : row.original.symbol === selectedSymbol}
                 className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
-                  row.original.symbol === selectedSymbol ? 'bg-indigo-50/70 dark:bg-indigo-600/10' : ''
+                  row.original.symbol === selectedSymbol ? 'bg-indigo-50 dark:bg-slate-800' : dense ? 'bg-white dark:bg-slate-900' : ''
                 }`}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -626,7 +636,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
                   return (
                     <td
                       key={cell.id}
-                      className={`px-3 py-3 ${
+                      className={`px-3 ${dense ? `py-1.5 whitespace-nowrap ${columnId === 'symbol' ? 'sticky left-0 z-[5] bg-inherit' : ''}` : 'py-3'} ${
                         isNumeric ? 'text-right text-slate-700 dark:text-slate-300 tabular-nums' : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
