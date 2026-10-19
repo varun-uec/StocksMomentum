@@ -20,17 +20,21 @@ ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive
 WORKDIR /build
 
-# Install uv (fast resolver) from the official image.
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Install uv (fast resolver) from the official image, pinned so builds repeat.
+COPY --from=ghcr.io/astral-sh/uv:0.10.12 /uv /usr/local/bin/uv
 
 # Install system dependencies required by numpy/pandas at build time.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies first for better layer caching.
-COPY backend/pyproject.toml backend/README.md ./
-RUN uv pip install --system --no-cache .
+# Install the locked dependency versions (uv.lock), not the newest that pyproject allows,
+# then the project itself without dependencies for the `momentum25` command. The code
+# runs from /app/src through PYTHONPATH.
+COPY backend/pyproject.toml backend/uv.lock backend/README.md ./
+RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o requirements.txt \
+    && uv pip install --system --no-cache -r requirements.txt \
+    && uv pip install --system --no-cache --no-deps .
 
 # =============================================================================
 # Stage 3: Runtime image (slim)
@@ -71,6 +75,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live')"
 
-# Use uvicorn with workers for production concurrency.
-# Override CMD in docker-compose for migration + startup.
-CMD ["uvicorn", "momentum25.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--limit-concurrency", "100"]
+# One process: the scheduler (ADR-007) and Studio evaluations run inside it, and a
+# second worker would run them twice. docker-compose adds the migration step.
+CMD ["uvicorn", "momentum25.main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "100"]
