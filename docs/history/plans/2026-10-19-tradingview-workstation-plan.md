@@ -742,3 +742,74 @@ recommendation. No UI ever shows controls for these capabilities.
   `M13_BENCH=1` 16-chart bench, recorded in the matrix.
 - Final report: commits, `git status`, results, limits; no pixel-perfect or
   superiority claims.
+
+## Phase breakdown (tracking)
+
+Each phase is one local commit with its own gate. A phase is done only when
+its gate passes and its ledger rows are verified. IDs map to the steps above.
+
+### Phase A — workstation
+
+| ID | Phase | Gate |
+|---|---|---|
+| A0 | Continuity: plan, Codex diff review, docs (done: `28d0fcc`, `ca9d838`, `1413583`) | unit, lint, typecheck, `transformation`, `m15-alerts`, `m11-slice` |
+| A1.1 | Baseline: BL-01..15 and the ten OpenChart fixes in the browser on `*_e2e`; fix regressions only | pass/fail noted per item |
+| A1.2 | TradingView structure reference at 1440×900 (chart, screener, symbol page) in the scratchpad | measurements noted, nothing committed |
+| A1.3 | Seed the capability ledger; D22 in the design record; amend `workstation-design.md` | every chart-map control, panel, alert, route, shortcut, BL item has a row |
+| A2.1 | `WorkstationShell`: header bar, ☰ menu, search pill, route slot, credit edge; `NavBar` keeps the phone nav only | every nav entry reachable; build green |
+| A2.2 | Lift `SidePanel` and `useRightPanel` into the shell; route-supplied context symbol | panel state survives reload; no stale panel |
+| A2.3 | /chart CSS grid (38 / 52 / 45+300 / 30) and toolbar order; Analyse and Research move; `autoHeight` replaces `CHROME_HEIGHT` | chart specs green; plot area ≥ baseline |
+| A2.4 | Adaptive layout at the four breakpoints; sheets and overlays | `r2-viewport-audit` at 5 viewports; touch ≥ 32px |
+| A3.1 | Portal validation gate: rail only, 2×2 | all 8 criteria as permanent specs, or fallback recorded |
+| A3.2 | Full `chrome` prop: toolbar and range-bar groups (or fallback) | criteria 1–8 still green |
+| A3.3 | Top-left overlay legend: readout plus study lines | eye/settings/remove call existing handlers |
+| A3.4 | Bottom range bar; compact cell legends; active-cell border; per-cell specs updated | `M13_BENCH` within 10% |
+| A4.1 | Grouped drawing rail with flyouts; `pickTool` helper | keyboard and `aria-pressed` specs |
+| A4.2 | Object tree right-panel tab | visibility, lock, undo list work |
+| A5.1 | Route-adaptive icon strip `tablist` | tab names and "Close panel" kept |
+| A5.2 | `momentum25/` provenance line and run-in-view keys `(symbol, strategy, runId)` | no previous-key render while loading |
+| A5.3 | Assessment panel with criterion drill-down; ledger rows for `ScreenerDetail`, Details, Analyse, Research | every source field has a verified new place |
+| A5.4 | "Show on chart" evidence layers and legend chip | zero document PUTs; reload clears layers |
+| A5.5 | Watchlist Rank and Qualified columns; run mismatch notice | parity with the screener for the same run |
+| A5.6 | Screener column sets and filter pills (components) | filter and sort determinism on fixtures |
+| A5.7 | Alerts "This symbol / All" scope and contextual create | `m15-alerts` plus scope specs |
+| A5.8 | `?from=` handling and "Back to chart" | same-origin paths only |
+| A6 | Bottom panel: embedded Screener, Studio and Research navigation, collapse and maximise | row click moves only the active chart |
+| A7.1 | `SymbolSearchDialog` structure | keyboard navigation; dialog name kept |
+| A7.2 | `IndicatorDialog` and `OverlayPicker` structure | category list from the catalogue |
+| A8.1 | Worker: `Card`, `PageHeader`, `MetricCard` flat sections; `PageHeader` fills the route slot | all routes build |
+| A8.2 | Worker: `/` Stock Screener; `ScreenerDetail` retires | workflow 1 contract |
+| A8.3 | Worker: symbol pages header and tabs | workflow 4 contract |
+| A8.4 | Worker: Research workspace tabs | workflow 5 contract; `m14-studio` green |
+| A8.5 | Worker: Markets, Data, Help, Watchlist, lab grid | workflow 7 contract |
+| A8.6 | Worker: heading assertions (`r2-accessibility`, `momentum-ranking-display`, `m10-stack`) | specs green |
+| A8b | `integrated-workflows.spec.ts` journeys 1–8 | all journeys green |
+| A9.1 | Screenshots at 1920, 1440, 768, 390 in both themes | files under `audit-evidence/tradingview-clone/` |
+| A9.2 | Finish the correspondence matrix and capability ledger | no unverified row |
+| A9.3 | Final serial run: full E2E, axe, NFR-11, `M13_BENCH`; progress docs; final report | Phase A accepted |
+
+A8.x runs in parallel with A6–A7, only after A5 lands.
+
+### Phase B — charting parity (after Phase A is accepted)
+
+| ID | Phase | Gate |
+|---|---|---|
+| B1.1 | Numeric range and category screener filters | equal to a reference filter over `getRankings` |
+| B1.2 | Saved screens as a `user_documents` kind with ETag/412 | backend tests, migration on `*_e2e`, `api-schema.ts` regenerated |
+| B2.1 | Replay series truncation | unit test: no bar after the replay date |
+| B2.2 | Replay UI; studies, Assessment and alerts rules | E2E bar-count check; viewport restored on exit |
+| B3.1 | Drawing batch 1: arrow, date range, date-and-price range, ellipse, triangle | full per-tool checklist |
+| B3.2 | Drawing batch 2: Fib extension, pitchfork, callout, price label | full per-tool checklist |
+| B4.1 | ADR amendment for trendline/ray crossing alerts | owner review |
+| B4.2 | Backend evaluator for the new source kind | golden tests, corporate-action case, snapshot freeze |
+| B4.3 | "Alert on this line…" UI | E2E create and trigger |
+| B5.0 | Owner decision on estimate-based Volume Profile | accept or drop B5 |
+| B5.1 | Volume Profile (estimated) display layer | allocation and determinism unit test; label permanent |
+
+### Phase C — evaluations (no code)
+
+| ID | Phase | Gate |
+|---|---|---|
+| C1 | Pine-style scripting section | dependencies, risks, owner decisions, go/no-go |
+| C2 | Intraday market data section | same |
+| C3 | Broker/trading integrations section | same |
