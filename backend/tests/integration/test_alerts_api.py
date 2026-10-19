@@ -488,3 +488,231 @@ async def test_a_bonus_after_arming_rescales_a_price_threshold(
     fired = [a for a in (await client.get("/api/v1/alerts")).json()["alerts"] if a["triggered_on"]]
     assert result["fired"] == 1
     assert [a["id"] for a in fired] == [rescaled.json()["id"]]
+
+
+async def test_rearming_after_a_bonus_preserves_the_effective_price_level(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    created = (await client.post("/api/v1/alerts", json=_alert(threshold="90"))).json()
+    await _add_bars(db_session, security_id, _LATER[:1], 300)
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 1
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=Decimal("0.5"))
+    )
+    await db_session.commit()
+    close = _close(301) / 2
+    db_session.add(
+        OHLCVDailyModel(
+            security_id=security_id,
+            date=_LATER[1],
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=200_000,
+            adj_factor=Decimal("1"),
+            adj_close=close,
+        )
+    )
+    await db_session.commit()
+    rearmed = (await client.post(f"/api/v1/alerts/{created['id']}/rearm")).json()
+    assert rearmed["armed_after"] == _LATER[1].isoformat()
+    assert Decimal(rearmed["threshold"]) == Decimal("45")
+    # Repeating in the same basis must not apply the split a second time.
+    again = (await client.post(f"/api/v1/alerts/{created['id']}/rearm")).json()
+    assert Decimal(again["threshold"]) == Decimal("45")
+    later_close = _close(302) / 2
+    db_session.add(
+        OHLCVDailyModel(
+            security_id=security_id,
+            date=_LATER[2],
+            open=later_close,
+            high=later_close,
+            low=later_close,
+            close=later_close,
+            volume=200_000,
+            adj_factor=Decimal("1"),
+            adj_close=later_close,
+        )
+    )
+    await db_session.commit()
+    assert Decimal("45") < later_close < Decimal("90")
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 1
+
+
+@pytest.mark.parametrize(
+    "source", ["atr14", "macd_line", "macd_signal", "macd_histogram", "rsi14", "adx14"]
+)
+async def test_rearm_rescales_only_price_scaled_studies(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int, source: str
+) -> None:
+    created = (
+        await client.post("/api/v1/alerts", json=_alert(source=source, threshold="70"))
+    ).json()
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=Decimal("0.5"))
+    )
+    await db_session.commit()
+    await _add_bars(db_session, security_id, _LATER, 300)
+    response = await client.post(f"/api/v1/alerts/{created['id']}/rearm")
+    assert response.status_code == 200
+    expected = Decimal("70") if source in {"rsi14", "adx14"} else Decimal("35")
+    assert Decimal(response.json()["threshold"]) == expected
+
+
+async def test_drawing_capture_rejects_a_stale_saved_revision(
+    client: httpx.AsyncClient,
+) -> None:
+    assert (await _save_alert_drawing(client, "horizontal", [Decimal("100")])).status_code == 201
+    payload = _alert(
+        condition="crosses_above", drawing_id="monitor-level", expected_drawing_revision=1
+    )
+    created = await client.post("/api/v1/alerts", json=payload)
+    assert created.status_code == 201
+    assert (
+        await _save_alert_drawing(client, "horizontal", [Decimal("120")], revision=1)
+    ).status_code == 200
+    assert (await client.post("/api/v1/alerts", json=payload)).status_code == 409
+    edited = await client.patch(
+        f"/api/v1/alerts/{created.json()['id']}", json={**payload, "expected_revision": 1}
+    )
+    assert edited.status_code == 409
+    current = (await client.get("/api/v1/alerts")).json()["alerts"][0]
+    assert current["drawing"]["revision"] == 1
+    assert Decimal(current["drawing"]["points"][0]["price"]) == Decimal("100")
+
+
+async def test_rule_edit_rejects_a_stale_market_price_basis(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    before = (await client.get("/api/v1/securities/ALRT/ohlcv")).json()
+    created = (await client.post("/api/v1/alerts", json=_alert(threshold="90"))).json()
+    await _add_bars(db_session, security_id, _LATER, 300)
+    payload = _alert(threshold="90", expected_data_version=before["data_version"])
+    assert (await client.post("/api/v1/alerts", json=payload)).status_code == 409
+    assert (
+        await client.patch(
+            f"/api/v1/alerts/{created['id']}", json={**payload, "expected_revision": 1}
+        )
+    ).status_code == 409
+    current = (await client.get("/api/v1/securities/ALRT/ohlcv")).json()
+    payload["expected_data_version"] = current["data_version"]
+    assert (
+        await client.patch(
+            f"/api/v1/alerts/{created['id']}", json={**payload, "expected_revision": 1}
+        )
+    ).status_code == 200
+
+
+async def test_rectangle_geometry_is_validated_after_each_anchor_is_adjusted(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=Decimal("0.5"))
+    )
+    await db_session.commit()
+    await _add_bars(db_session, security_id, _LATER, 300)
+    saved = await _save_alert_drawing(client, "rectangle", [Decimal("100"), Decimal("100")])
+    body = saved.json()["body"]
+    body["drawings"][0]["points"][1]["date"] = _LATER[-1].isoformat()
+    assert (
+        await client.put("/api/v1/drawings/ALRT", json=body, headers={"If-Match": '"1"'})
+    ).status_code == 200
+    # Traded prices equal; adjusted bounds are 50 and 100, so this is a real zone.
+    payload = _alert(condition="enters_zone", drawing_id="monitor-level")
+    assert (await client.post("/api/v1/alerts", json=payload)).status_code == 201
+    # Traded prices differ; adjusted bounds are both 50, so it is degenerate.
+    body["drawings"][0]["points"][1]["price"] = "50"
+    assert (
+        await client.put("/api/v1/drawings/ALRT", json=body, headers={"If-Match": '"2"'})
+    ).status_code == 200
+    assert (await client.post("/api/v1/alerts", json=payload)).status_code == 422
+
+
+async def test_an_edited_drawing_rule_replays_after_another_corporate_action(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    assert (await _save_alert_drawing(client, "horizontal", [Decimal("100")])).status_code == 201
+    created = (
+        await client.post(
+            "/api/v1/alerts", json=_alert(condition="crosses_above", drawing_id="monitor-level")
+        )
+    ).json()
+    # The first bonus changes the chart basis before the drawing is edited.
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=Decimal("0.5"))
+    )
+    close = _close(300) / 2
+    db_session.add(
+        OHLCVDailyModel(
+            security_id=security_id,
+            date=_LATER[0],
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=200_000,
+            adj_factor=Decimal("1"),
+            adj_close=close,
+        )
+    )
+    await db_session.commit()
+    new_level = (_close(300) + _close(301)) / 4
+    drawing = {
+        "id": "monitor-level",
+        "kind": "horizontal",
+        "color": "#456789",
+        "points": [{"date": _LATER[0].isoformat(), "price": str(new_level)}],
+    }
+    assert (
+        await client.put(
+            "/api/v1/drawings/ALRT", json={"drawings": [drawing]}, headers={"If-Match": '"1"'}
+        )
+    ).status_code == 200
+    refreshed = await client.patch(
+        f"/api/v1/alerts/{created['id']}",
+        json=_alert(
+            condition="crosses_above",
+            drawing_id="monitor-level",
+            expected_revision=1,
+            expected_drawing_revision=2,
+        ),
+    )
+    assert refreshed.status_code == 200
+    assert refreshed.json()["armed_after"] == _LATER[0].isoformat()
+    # A second bonus rescales the captured anchor without re-reading its drawing.
+    await db_session.execute(
+        update(OHLCVDailyModel)
+        .where(OHLCVDailyModel.security_id == security_id)
+        .values(adj_factor=OHLCVDailyModel.adj_factor * Decimal("0.5"))
+    )
+    for i, day in enumerate(_LATER[1:3], start=301):
+        value = _close(i) / 4
+        db_session.add(
+            OHLCVDailyModel(
+                security_id=security_id,
+                date=day,
+                open=value,
+                high=value,
+                low=value,
+                close=value,
+                volume=400_000,
+                adj_factor=Decimal("1"),
+                adj_close=value,
+            )
+        )
+    await db_session.commit()
+    # A delayed job sees both later sessions but selects the first crossing.
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 1
+    [fired] = (await client.get("/api/v1/alerts")).json()["alerts"]
+    assert fired["triggered_on"] == _LATER[1].isoformat()
+    assert Decimal(fired["trigger_value"]) == (_close(301) / 4).quantize(Decimal("0.0001"))
+    assert Decimal(fired["drawing"]["points"][0]["price"]) == new_level

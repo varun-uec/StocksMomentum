@@ -64,6 +64,19 @@ include `revision` and nullable `drawing` (ID, kind, anchors, drawing revision).
 Existing clients and scalar alert requests remain valid. A nullable JSONB
 snapshot and integer revision extend the existing table; no market data changes.
 
+Creation and editing also accept optional `expected_drawing_revision` and
+`expected_data_version`. A changed saved drawing or market input hash returns
+409 rather than capturing a rule in a basis the owner has not reviewed. A
+drawing revision without a drawing ID is invalid. Existing clients may omit
+these preconditions; the workstation supplies them when its inputs are loaded.
+
+Re-arming a scalar price-scaled rule preserves its effective level: the stored
+threshold is multiplied by `factor(old armed_after) / factor(new armed_after)`
+before the new observation window is saved. RSI and ADX are unchanged; drawing
+snapshots continue using each anchor date. The rule revision guards this write
+against concurrent edits. Rectangle validity is checked after adjusting each
+anchor, since equal traded prices at different dates can define a real zone.
+
 ## Validation
 
 Golden tests cover direction, equality, zone entry/exit, gaps, partial bars,
@@ -71,9 +84,12 @@ late deterministic replay and corporate-action factors. API tests cover
 snapshot capture, unsupported drawings, active editing, stale evaluation/edit
 races and immutable triggered rules. Tests use isolated `*_test` databases.
 
-Implementation verification (2026-10-19): full backend suite **863 passed** in
-33.92 s against the disposable `wickstreet_alerts_test` database. The focused
-alert/document suites passed 59 integration tests and 21 domain tests. Strict
+Implementation verification (2026-10-19): full backend suite **874 passed** in
+35.69 s against the disposable `wickstreet_alerts_test` database. The focused
+alert/document suites contain 70 integration tests and 21 domain tests. Split
+regressions cover re-arming, unchanged RSI/ADX thresholds, stale chart/drawing
+preconditions and a refreshed drawing snapshot replayed after a second bonus.
+Strict
 mypy checked 263 source files; Ruff and both architecture import contracts
 passed. Alembic reports one head, `0021_alert_drawing_snapshots`. Existing
 Starlette/httpx and SQLAlchemy DISTINCT ON deprecation warnings remain.

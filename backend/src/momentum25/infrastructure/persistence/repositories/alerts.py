@@ -176,14 +176,17 @@ class SqlAlertRepository:
         await self._session.commit()
         return bool(result.rowcount)  # type: ignore[attr-defined]
 
-    async def rearm(self, alert_id: int, armed_after: date) -> Alert | None:
+    async def rearm(
+        self, alert_id: int, armed_after: date, threshold: Decimal, revision: int
+    ) -> Alert:
         """Make the alert watch again from bars after ``armed_after``."""
-        await self._session.execute(
+        result = await self._session.execute(
             update(AlertModel)
-            .where(AlertModel.id == alert_id)
+            .where(AlertModel.id == alert_id, AlertModel.revision == revision)
             .values(
                 status="active",
                 armed_after=armed_after,
+                threshold=threshold,
                 triggered_on=None,
                 trigger_value=None,
                 data_version=None,
@@ -192,9 +195,13 @@ class SqlAlertRepository:
             )
         )
         await self._session.commit()
-        result = await self._session.execute(_with_symbol().where(AlertModel.id == alert_id))
-        found = result.first()
-        return _to_entity(found[0], found[1]) if found else None
+        if not result.rowcount:  # type: ignore[attr-defined]
+            if await self.get(alert_id) is None:
+                raise NotFoundError(f"Alert not found: {alert_id}")
+            raise ConflictError("Alert changed; reload before re-arming")
+        saved = await self.get(alert_id)
+        assert saved is not None
+        return saved
 
     async def mark_seen(self) -> int:
         """Mark every fired alert seen; return how many changed."""

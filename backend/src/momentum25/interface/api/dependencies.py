@@ -599,9 +599,10 @@ async def get_create_alert(
     ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
     alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
     documents: Annotated[SqlUserDocumentRepository, Depends(get_user_document_repo)],
+    prices: Annotated[GetSecurityOHLCV, Depends(get_get_security_ohlcv)],
 ) -> AsyncIterator[CreateAlert]:
     """Provide a CreateAlert use-case instance."""
-    yield CreateAlert(securities, ohlcv, alerts, documents)
+    yield CreateAlert(securities, ohlcv, alerts, documents, prices)
 
 
 async def get_edit_alert(
@@ -622,9 +623,10 @@ async def get_delete_alert(
 async def get_rearm_alert(
     ohlcv: Annotated[SqlOHLCVRepository, Depends(get_ohlcv_repo)],
     alerts: Annotated[SqlAlertRepository, Depends(get_alert_repo)],
+    prices: Annotated[GetSecurityOHLCV, Depends(get_get_security_ohlcv)],
 ) -> AsyncIterator[RearmAlert]:
     """Provide a RearmAlert use-case instance."""
-    yield RearmAlert(ohlcv, alerts)
+    yield RearmAlert(ohlcv, alerts, prices)
 
 
 async def get_mark_alerts_seen(

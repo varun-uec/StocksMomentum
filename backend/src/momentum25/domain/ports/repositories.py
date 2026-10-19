@@ -100,9 +100,7 @@ class OHLCVRepository(Protocol):
         """
         ...
 
-    async def closes_between(
-        self, start: date, end: date
-    ) -> dict[int, list[tuple[date, Decimal]]]:
+    async def closes_between(self, start: date, end: date) -> dict[int, list[tuple[date, Decimal]]]:
         """Return every close in ``[start, end]``, grouped by security, ascending by date.
 
         Bulk accessor for cross-sectional (universe-wide) analytics such as the
@@ -395,7 +393,9 @@ class AlertRepository(Protocol):
         """Record the bar if active; return whether this call won the one-shot transition."""
         ...
 
-    async def rearm(self, alert_id: int, armed_after: date) -> Alert | None:
+    async def rearm(
+        self, alert_id: int, armed_after: date, threshold: Decimal, revision: int
+    ) -> Alert:
         """Make the alert watch again from bars after ``armed_after``."""
         ...
 

@@ -6,6 +6,7 @@ calls, so the chart and the alert see one series (NFR-1a).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 from typing import Literal, cast
@@ -17,10 +18,12 @@ from momentum25.application.dto.alerts import (
     CreateAlertRequest,
     EditAlertRequest,
 )
+from momentum25.application.dto.market_data import AdjustmentStepDTO, SecurityOHLCVDTO
 from momentum25.application.dto.user_documents import SymbolDrawingsV1
 from momentum25.application.use_cases.securities import GetSecurityOHLCV
 from momentum25.application.use_cases.stocks import GetIndicatorSeries
 from momentum25.domain.entities.alert import (
+    PRICE_SCALED,
     Alert,
     AlertInterval,
     DrawingAlert,
@@ -44,6 +47,18 @@ _logger = get_logger("alerts")
 
 async def _last_session(ohlcv: OHLCVRepository) -> date:
     return await ohlcv.latest_date() or date.today()
+
+
+def _factor_at(steps: Sequence[AdjustmentStepDTO], day: date) -> Decimal:
+    step = next((s for s in steps if s.until >= day), steps[-1] if steps else None)
+    return step.factor if step else Decimal("1")
+
+
+def _drawing_bounds(
+    drawing: DrawingAlert, steps: Sequence[AdjustmentStepDTO]
+) -> tuple[Decimal, Decimal | None]:
+    bounds = [p.price * _factor_at(steps, p.date) for p in drawing.points]
+    return min(bounds), max(bounds) if drawing.kind == "rectangle" else None
 
 
 class ListAlerts:
@@ -71,12 +86,14 @@ class CreateAlert:
         ohlcv: OHLCVRepository,
         alerts: AlertRepository,
         documents: UserDocumentRepository | None = None,
+        prices: GetSecurityOHLCV | None = None,
     ) -> None:
         """Wire the use case with its collaborators."""
         self._securities = securities
         self._ohlcv = ohlcv
         self._alerts = alerts
         self._documents = documents
+        self._prices = prices
 
     async def execute(self, request: CreateAlertRequest) -> AlertDTO:
         """Raise :class:`NotFoundError` for an unknown symbol."""
@@ -88,6 +105,13 @@ class CreateAlert:
         security = await self._securities.get_by_symbol(request.symbol)
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {request.symbol}")
+        prices: SecurityOHLCVDTO | None = None
+        if request.expected_data_version is not None:
+            if self._prices is None:
+                raise ValidationError("Current chart prices are unavailable")
+            prices = await self._prices.execute(str(security.symbol), interval="1D")
+            if prices.data_version != request.expected_data_version:
+                raise ConflictError("Chart data changed; refresh prices before arming")
         drawing: DrawingAlert | None = None
         if request.drawing_id is not None:
             if self._documents is None:
@@ -101,6 +125,11 @@ class CreateAlert:
             )
             if found is None or doc is None:
                 raise NotFoundError("Save the drawing before linking an alert")
+            if (
+                request.expected_drawing_revision is not None
+                and doc.revision != request.expected_drawing_revision
+            ):
+                raise ConflictError("Drawing changed; reload its saved revision before arming")
             if found.kind not in {"horizontal", "hline", "rectangle"}:
                 raise ValidationError(
                     "Only horizontal lines and rectangular price zones are supported"
@@ -115,14 +144,20 @@ class CreateAlert:
             is_zone = request.condition in {"enters_zone", "leaves_zone"}
             if (found.kind == "rectangle") != is_zone:
                 raise ValidationError("Rectangles require entry or exit; lines require crossing")
-            if count == 2 and found.points[0].price == found.points[1].price:
-                raise ValidationError("A price zone must have distinct bounds")
             drawing = DrawingAlert(
                 id=found.id,
                 kind=cast(Literal["horizontal", "hline", "rectangle"], found.kind),
                 revision=doc.revision,
                 points=tuple(DrawingAnchor(p.date, Decimal(str(p.price))) for p in found.points),
             )
+            if drawing.kind == "rectangle":
+                if self._prices is None:
+                    raise ValidationError("Adjusted drawing prices are unavailable")
+                if prices is None:
+                    prices = await self._prices.execute(str(security.symbol), interval="1D")
+                lower, upper = _drawing_bounds(drawing, prices.adjustments)
+                if lower == upper:
+                    raise ValidationError("A price zone must have distinct adjusted bounds")
         alert = Alert(
             symbol=str(security.symbol),
             source=request.source,
@@ -176,16 +211,29 @@ class DeleteAlert:
 class RearmAlert:
     """Make a fired alert watch again, from bars after the last stored session."""
 
-    def __init__(self, ohlcv: OHLCVRepository, alerts: AlertRepository) -> None:
+    def __init__(
+        self, ohlcv: OHLCVRepository, alerts: AlertRepository, prices: GetSecurityOHLCV
+    ) -> None:
         """Wire the use case with its collaborators."""
         self._ohlcv = ohlcv
         self._alerts = alerts
+        self._prices = prices
 
     async def execute(self, alert_id: int) -> AlertDTO:
         """Raise :class:`NotFoundError` if it does not exist."""
-        alert = await self._alerts.rearm(alert_id, await _last_session(self._ohlcv))
-        if alert is None:
+        current = await self._alerts.get(alert_id)
+        if current is None:
             raise NotFoundError(f"Alert not found: {alert_id}")
+        armed_after = await _last_session(self._ohlcv)
+        threshold = current.threshold
+        if current.drawing is None and current.source in PRICE_SCALED:
+            prices = await self._prices.execute(current.symbol, interval="1D")
+            threshold = (
+                threshold
+                * _factor_at(prices.adjustments, current.armed_after)
+                / _factor_at(prices.adjustments, armed_after)
+            ).quantize(Decimal("0.0001"))
+        alert = await self._alerts.rearm(alert_id, armed_after, threshold, current.revision)
         return AlertDTO.of(alert)
 
 
@@ -224,11 +272,8 @@ class EvaluateAlerts:
         """
         interval: AlertInterval = alert.interval
         prices = await self._prices.execute(alert.symbol, interval=interval)
-        steps = prices.adjustments
-        last = steps[-1] if steps else None
-        step = next((s for s in steps if s.until >= alert.armed_after), last)
         threshold = chart_threshold(
-            alert.source, alert.threshold, step.factor if step else Decimal("1")
+            alert.source, alert.threshold, _factor_at(prices.adjustments, alert.armed_after)
         )
         if alert.source == "close":
             points = [SeriesPoint(b.date, b.close, b.partial) for b in prices.bars]
@@ -277,15 +322,11 @@ class EvaluateAlerts:
         """Read authoritative daily closes and adjust each captured traded anchor."""
         assert alert.drawing is not None
         prices = await self._prices.execute(alert.symbol, interval="1D")
-        steps = prices.adjustments
-        bounds: list[Decimal] = []
-        for anchor in alert.drawing.points:
-            step = next((s for s in steps if s.until >= anchor.date), steps[-1] if steps else None)
-            bounds.append(anchor.price * (step.factor if step else Decimal("1")))
+        lower, upper = _drawing_bounds(alert.drawing, prices.adjustments)
         points = [SeriesPoint(b.date, b.close, b.partial) for b in prices.bars]
         return (
             points,
             prices.data_version,
-            min(bounds),
-            max(bounds) if alert.drawing.kind == "rectangle" else None,
+            lower,
+            upper,
         )

@@ -33,6 +33,8 @@ class CreateAlertRequest(BaseModel):
     condition: AlertCondition
     threshold: Threshold
     drawing_id: Identifier | None = None
+    expected_drawing_revision: int | None = Field(default=None, ge=1)
+    expected_data_version: str | None = Field(default=None, pattern=r"^[a-f0-9]{12}$")
 
     @model_validator(mode="after")
     def validate_drawing_rule(self) -> CreateAlertRequest:
@@ -47,8 +49,11 @@ class CreateAlertRequest(BaseModel):
                 "leaves_zone",
             }:
                 raise ValueError("Drawing alerts require a crossing, entry or exit condition")
-        elif self.condition in {"enters_zone", "leaves_zone"}:
-            raise ValueError("Zone conditions require a saved rectangle drawing")
+        else:
+            if self.expected_drawing_revision is not None:
+                raise ValueError("A drawing revision requires a drawing ID")
+            if self.condition in {"enters_zone", "leaves_zone"}:
+                raise ValueError("Zone conditions require a saved rectangle drawing")
         return self
 
 
