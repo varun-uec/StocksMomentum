@@ -71,19 +71,24 @@ class SqlPriceHistoryProvider:
     never fall back to an unadjusted ``close``).
     """
 
-    def __init__(self, series: dict[int, tuple[list[date], list[Decimal]]]) -> None:
-        """Bind the in-memory, per-security sorted (dates, closes) series."""
+    def __init__(
+        self,
+        series: dict[int, tuple[list[date], list[Decimal], list[Decimal]]],
+    ) -> None:
+        """Bind sorted per-security (dates, adjusted opens, adjusted closes)."""
         self._series = series
 
     @classmethod
     async def load(
         cls, session: AsyncSession, start: date, end: date
     ) -> SqlPriceHistoryProvider:
-        """Load every adjusted close in ``[start, end]`` in one query."""
+        """Load adjusted closes and opens in ``[start, end]`` in one query."""
         result = await session.execute(
             select(
                 OHLCVDailyModel.security_id,
                 OHLCVDailyModel.date,
+                OHLCVDailyModel.open,
+                OHLCVDailyModel.adj_factor,
                 OHLCVDailyModel.adj_close,
             )
             .where(
@@ -93,12 +98,13 @@ class SqlPriceHistoryProvider:
             )
             .order_by(OHLCVDailyModel.security_id, OHLCVDailyModel.date)
         )
-        by_security: dict[int, tuple[list[date], list[Decimal]]] = {}
-        for security_id, session_date, adj_close in result.all():
+        by_security: dict[int, tuple[list[date], list[Decimal], list[Decimal]]] = {}
+        for security_id, session_date, raw_open, adj_factor, adj_close in result.all():
             if adj_close is None:  # excluded by the query; this narrows the type
                 continue
-            dates, closes = by_security.setdefault(security_id, ([], []))
+            dates, opens, closes = by_security.setdefault(security_id, ([], [], []))
             dates.append(session_date)
+            opens.append(raw_open * adj_factor)
             closes.append(adj_close)
         return cls(by_security)
 
@@ -113,12 +119,12 @@ class SqlPriceHistoryProvider:
         series = self._series.get(security_id)
         if not series:
             return None
-        dates, closes = series
+        dates, opens, closes = series
         horizon = min(target, as_of)
         idx = bisect_right(dates, horizon) - 1
         if idx < 0:
             return None
-        return PricePoint(security_id, dates[idx], closes[idx])
+        return PricePoint(security_id, dates[idx], closes[idx], opens[idx])
 
 
 class SqlBenchmarkProvider:

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { keepPreviousData, useQueries } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -185,8 +185,21 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ signal_score: false });
+  const tableViewport = useRef<HTMLDivElement>(null);
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const showSignalScore = columnVisibility.signal_score === true;
   const [scores, setScores] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    const viewport = tableViewport.current;
+    if (!viewport) return;
+    const updateOverflow = () => setHasHorizontalOverflow(viewport.scrollWidth > viewport.clientWidth + 1);
+    updateOverflow();
+    const observer = new ResizeObserver(updateOverflow);
+    observer.observe(viewport);
+    if (viewport.firstElementChild) observer.observe(viewport.firstElementChild);
+    return () => observer.disconnect();
+  }, [columnVisibility, items.length]);
 
   const columns = useMemo(
     () => [
@@ -205,9 +218,18 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
       }),
       columnHelper.accessor('rank', {
         header: 'Rank',
-        cell: (info) => (
-          <span className="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{info.getValue()}</span>
-        ),
+        sortingFn: (rowA, rowB, columnId) => {
+          // The API uses zero for a security that failed hard gates. Keep those
+          // rows after the qualified ranking and make that state explicit.
+          const rank = (row: typeof rowA) => row.getValue<number>(columnId) || Number.MAX_SAFE_INTEGER;
+          return rank(rowA) - rank(rowB);
+        },
+        cell: (info) =>
+          info.getValue() === 0 ? (
+            <span className="text-slate-400 dark:text-slate-600" title="Did not qualify for a rank">—</span>
+          ) : (
+            <span className="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{info.getValue()}</span>
+          ),
       }),
       columnHelper.accessor('symbol', {
         header: 'Symbol',
@@ -504,7 +526,14 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm bg-white dark:bg-slate-900">
+      <div
+        ref={tableViewport}
+        role="region"
+        aria-label="Ranked stock results"
+        aria-describedby={hasHorizontalOverflow ? 'ranked-stock-scroll-hint' : undefined}
+        tabIndex={0}
+        className={`overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm bg-white dark:bg-slate-900 ${focusRing}`}
+      >
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -610,6 +639,11 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
           </tbody>
         </table>
       </div>
+      {hasHorizontalOverflow && (
+        <p id="ranked-stock-scroll-hint" role="note" className="text-[11px] text-slate-500 dark:text-slate-400">
+          Scroll horizontally to see all columns.
+        </p>
+      )}
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">

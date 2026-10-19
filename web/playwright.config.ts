@@ -3,9 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 import { BACKEND_DIR, E2E_DATABASE_URL } from './e2e/env';
 
 /**
- * End-to-end tests run the production build, served by the real API, against a
- * CLONE of the local database, so tests that save data never touch your own
- * workspace. Create the clone once with `make e2e-db`, and name it in
+ * End-to-end tests run the production build, served by the real API, against an
+ * empty database owned by the synthetic E2E harness. Create the database with
+ * `make e2e-db`, and name it in
  * E2E_DATABASE_URL (required; see e2e/env.ts).
  */
 const PORT = 8765;
@@ -25,7 +25,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `npm run build && cd ${backend} && .venv/bin/alembic upgrade head && .venv/bin/python ../web/e2e/db.py seed && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port ${PORT} --app-dir src`,
+    command: `npm run build && cd ${backend} && .venv/bin/python ../web/e2e/db.py verify && .venv/bin/alembic upgrade head && .venv/bin/python ../web/e2e/db.py seed && .venv/bin/python ../web/e2e/seed-screening.py && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port ${PORT} --app-dir src`,
     url: `http://localhost:${PORT}/api/v1/health/live`,
     reuseExistingServer: false,
     timeout: 120_000,

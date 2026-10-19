@@ -42,11 +42,18 @@ async def list_runs(
 @router.post("", response_model=RunDTO, status_code=status.HTTP_202_ACCEPTED)
 async def trigger_refresh(
     body: TriggerRefreshRequest,
+    background_tasks: BackgroundTasks,
     create: Annotated[TriggerRefresh, Depends(get_trigger_refresh)],
     fetch: Annotated[GetRun, Depends(get_get_run)],
 ) -> RunDTO:
-    """Trigger an on-demand screening run (created as PENDING; executed in M4/M7)."""
+    """Create a run and execute its ingest-and-screen pipeline in the background."""
     run_id = await create.execute(body.strategy, body.force)
+    background_tasks.add_task(
+        run_screening_pipeline,
+        body.strategy,
+        force=body.force,
+        run_id=run_id,
+    )
     return await fetch.execute(run_id)
 
 

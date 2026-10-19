@@ -2873,16 +2873,10 @@ export interface components {
              * @default 0
              */
             ranking_stability: string;
-            /**
-             * False Positive Rate
-             * @default 0
-             */
-            false_positive_rate: string;
-            /**
-             * False Negative Rate
-             * @default 0
-             */
-            false_negative_rate: string;
+            /** False Positive Rate */
+            false_positive_rate?: string | null;
+            /** False Negative Rate */
+            false_negative_rate?: string | null;
         };
         /**
          * ResearchMeasurabilityDTO

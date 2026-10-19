@@ -80,6 +80,8 @@ class HistoricalScreeningUseCase:
         symbol_filter: list[str] | None = None,
         run_suffix: str = "",
         enforce_listing_date_filter: bool = True,
+        point_in_time_data_version: str | None = None,
+        point_in_time_revision: int | None = None,
     ) -> dict[str, Any]:
         """Execute a historical screening run.
 
@@ -89,6 +91,10 @@ class HistoricalScreeningUseCase:
             symbol_filter: Optional list of symbols to restrict the universe.
             run_suffix: Optional uniqueness suffix for ``data_version`` (e.g. to
                 re-run the same date without violating the run's unique constraint).
+            point_in_time_data_version: Captured manifest hash for the inputs used.
+                When set, ``ohlcv_repo`` and ``indicator_pipeline`` must be bound
+                to that same point-in-time revision.
+            point_in_time_revision: The manifest's versioned-input high-water mark.
             enforce_listing_date_filter: When ``True`` (default, live behaviour)
                 the universe excludes securities whose ``securities.listing_date``
                 is after ``as_of_date`` — the only point-in-time guard available
@@ -157,10 +163,15 @@ class HistoricalScreeningUseCase:
         # 3. Create the screening run
         import time
         unique_suffix = run_suffix or f":{int(time.time())}"
+        basis = (
+            f":pit:{point_in_time_data_version}"
+            if point_in_time_data_version is not None
+            else ""
+        )
         run = ScreeningRun(
             strategy_id=strategy.id or 0,
             run_date=as_of_date,
-            data_version=f"historical:{as_of_date.isoformat()}{unique_suffix}",
+            data_version=f"historical:{as_of_date.isoformat()}{basis}{unique_suffix}",
             config_hash=strategy.config_hash,
             trigger=RunTrigger.MANUAL,
             status=RunStatus.RUNNING,
@@ -186,6 +197,13 @@ class HistoricalScreeningUseCase:
                 "total_failed": sum(1 for s in scores if not s.hard_filters_passed),
                 "historical": True,
                 "as_of_date": as_of_date.isoformat(),
+                "market_data_basis": (
+                    "point_in_time"
+                    if point_in_time_data_version is not None
+                    else "cumulative_adjustment_factors"
+                ),
+                "market_data_revision": point_in_time_revision,
+                "market_data_manifest": point_in_time_data_version,
                 "excluded_not_yet_listed": excluded_unlisted,
                 "excluded_stale_data": sum(1 for m in memberships if m.reason == "stale_data"),
                 "survivorship_bias_disclosure": (

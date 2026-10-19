@@ -395,5 +395,7 @@ class ResearchDashboardResponse(BaseModel):
     engine_effectiveness: EngineEffectivenessResponse | None = None
     historical_validation: HistoricalValidationResponse | None = None
     ranking_stability: Decimal = Decimal("0")
-    false_positive_rate: Decimal = Decimal("0")
-    false_negative_rate: Decimal = Decimal("0")
+    # Unavailable until forward returns exist; a zero would claim a measured
+    # absence of errors and conflict with the explicit measurability contract.
+    false_positive_rate: Decimal | None = None
+    false_negative_rate: Decimal | None = None

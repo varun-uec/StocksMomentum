@@ -25,7 +25,7 @@ from momentum25.domain.backtest.eligibility import EligibilityFacts
 
 @dataclass(frozen=True, slots=True)
 class PricePoint:
-    """An adjusted close together with the exact session date it came from.
+    """Adjusted OHLC prices together with the exact session date they came from.
 
     ``as_of`` enforcement depends on the caller being able to see *which*
     session a price is from, not just its value. A provider that returns a
@@ -35,16 +35,17 @@ class PricePoint:
     security_id: int
     session_date: date
     adj_close: Decimal
+    adj_open: Decimal
 
 
 @runtime_checkable
 class PriceHistoryProvider(Protocol):
-    """Point-in-time adjusted-close prices, corporate-action adjusted."""
+    """Point-in-time adjusted OHLC prices, corporate-action adjusted."""
 
     def price_on_or_before(
         self, security_id: int, target: date, as_of: date
     ) -> PricePoint | None:
-        """Return the adjusted close on the latest session ``<= target``.
+        """Return adjusted open and close on the latest session ``<= target``.
 
         The returned ``session_date`` must be ``<= as_of``. A provider must
         never reach past ``as_of`` even if ``target`` is later. Returns

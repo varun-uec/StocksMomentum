@@ -54,7 +54,10 @@ function useChartHeight(): number {
 /** True when the key goes to a field or an open dialog, not to the workspace. */
 function isTyping(e: KeyboardEvent): boolean {
   const target = e.target as HTMLElement | null;
-  return !!target?.closest('input, textarea, select, [contenteditable="true"], dialog');
+  const field = target?.closest('input, textarea, select, [contenteditable="true"]');
+  const fieldDialog = field?.closest('dialog');
+  if (fieldDialog && !fieldDialog.open) return false;
+  return !!field || !!target?.closest('dialog[open]');
 }
 
 /** True when a key press should open symbol search instead of typing somewhere. */
@@ -177,6 +180,17 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     open: false,
     initial: '',
   });
+  const searchOpenRef = useRef(false);
+  const openSearch = (initial: string, compare = false) => {
+    // Key events can arrive before the native dialog takes focus. Set the ref
+    // synchronously so a fast typist's next character cannot replace the first.
+    searchOpenRef.current = true;
+    setSearch({ open: true, initial, compare });
+  };
+  const closeSearch = () => {
+    searchOpenRef.current = false;
+    setSearch((s) => ({ ...s, open: false, compare: false }));
+  };
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { panel, setPanel } = useRightPanel();
@@ -237,10 +251,22 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         setShortcutsOpen(true);
         return;
       }
+      if (searchOpenRef.current) {
+        // showModal() can briefly leave focus on the dialog or the chart before
+        // its input receives autofocus. Buffer keys in that gap; once the
+        // search input is the target, let the native input handle them.
+        const target = e.target as HTMLElement | null;
+        const inSearchInput = !!target?.closest('input[aria-label="Symbol or company"]');
+        if (!inSearchInput && !e.ctrlKey && !e.metaKey && !e.altKey && /^[a-z0-9]$/i.test(e.key)) {
+          e.preventDefault();
+          setSearch((s) => ({ ...s, initial: s.initial + e.key }));
+        }
+        return;
+      }
       const open = opensSearch(e);
       if (!open) return;
       e.preventDefault();
-      setSearch({ open: true, initial: open.initial, compare: false });
+      openSearch(open.initial);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -257,7 +283,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         <h1 className="text-lg font-bold tracking-tight">
           <button
             type="button"
-            onClick={() => setSearch({ open: true, initial: '' })}
+            onClick={() => openSearch('')}
             title="Change symbol (type, /, or Ctrl/⌘+K)"
             className="hover:text-indigo-600 dark:hover:text-indigo-400"
           >
@@ -306,7 +332,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         )}
         <button
           type="button"
-          onClick={() => setSearch({ open: true, initial: '', compare: true })}
+          onClick={() => openSearch('', true)}
           disabled={compareSymbols.length >= MAX_COMPARE}
           title={`Compare with another symbol (up to ${MAX_COMPARE})`}
           className={btn}
@@ -365,7 +391,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
                   height: cellHeight,
                   crosshair: grid.sync.crosshair ? crosshair : undefined,
                   onActivate: () => activate(chartId),
-                  onSearch: () => setSearch({ open: true, initial: '' }),
+                  onSearch: () => openSearch(''),
                 };
                 return chartId === activeId ? (
                   <CellFrame key={chartId} {...cell} slot={slot} />
@@ -409,7 +435,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           if (!search.compare) navigate(`/chart/${encodeURIComponent(next)}`);
           else if (next !== symbol && !compareSymbols.includes(next)) setCompare([...compareSymbols, next]);
         }}
-        onClose={() => setSearch((s) => ({ ...s, open: false, compare: false }))}
+        onClose={closeSearch}
       />
     </main>
   );

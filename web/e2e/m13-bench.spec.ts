@@ -159,7 +159,7 @@ test.afterAll(async ({ browser }) => {
     os: `${os.type()} ${os.release()} ${os.arch()}`,
     browser: `Chromium ${browser.version()} (headless)`,
     viewport: '1280 × 720 (Playwright default)',
-    dataset: `${SYMBOLS.length} synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (e2e/db.py seed); MAX range`,
+    dataset: `${SYMBOLS.length} synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (marked E2E database); MAX range`,
     extra_paint_marks_seen: extraMarks,
     results,
   };

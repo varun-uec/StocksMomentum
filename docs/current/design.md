@@ -102,7 +102,7 @@ Ground truth: [backtest brief](../history/backtest-loop/brief.md) (status FINAL,
 | Universe | Intended: Nifty 500 constituents at each rebalance, ≥12 months of history, no T2T/ASM stocks. |
 | Score | `(r3m + r6m + r12m) / 3` on adjusted close. No skip-month. |
 | Selection | Top 30, equal weight. Tie-break 12M, then 6M, then 3M return. |
-| Rebalance | Monthly. Decide at the close of the last session of month M-1. Brief: fill at the open of the first session of month M. **Code fills at that session's adjusted close** (`ohlcv_daily.adj_close`), because the price provider loads only `adj_close`. See [state.md](state.md#open-defects). |
+| Rebalance | Monthly. Decide at the close of the last session of month M-1 and fill at the first session of month M's adjusted open (`open × adj_factor`). Existing holdings are marked at that open for sizing. |
 | Buffer | Hold while rank ≤ 45 (1.5 × 30). Add only from the top 30. |
 | Costs | 30 bps flat on traded notional, every buy and sell. |
 | Benchmark | Brief asks for Nifty 500 TRI. Only the price index exists, so every result carries the label "Nifty 500 Price Index (not TRI)". |

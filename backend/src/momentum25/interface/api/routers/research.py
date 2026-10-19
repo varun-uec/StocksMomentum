@@ -38,9 +38,6 @@ from momentum25.application.use_cases.research.comparison import StrategyCompari
 from momentum25.application.use_cases.research.contribution import ContributionAnalysisUseCase
 from momentum25.application.use_cases.research.evaluation import EvaluateStrategyUseCase
 from momentum25.application.use_cases.research.experiment import ExperimentUseCase
-from momentum25.application.use_cases.research.historical_screening import (
-    HistoricalScreeningUseCase,
-)
 from momentum25.application.use_cases.research.refresh_corporate_actions import (
     RefreshCorporateActions,
 )
@@ -51,6 +48,9 @@ from momentum25.application.use_cases.research.validation import (
 from momentum25.domain.research.models import (
     RankingComparison,
     RuleContributionStats,
+)
+from momentum25.infrastructure.persistence.point_in_time_screening import (
+    PointInTimeHistoricalScreening,
 )
 from momentum25.interface.api.dependencies import get_refresh_corporate_actions
 from momentum25.interface.api.dependencies_research import (
@@ -88,7 +88,7 @@ def _research_measurability(has_results: bool, reason: str) -> ResearchMeasurabi
 )
 async def historical_screen(
     body: HistoricalScreeningRequest,
-    use_case: Annotated[HistoricalScreeningUseCase, Depends(get_historical_screening_use_case)],
+    use_case: Annotated[PointInTimeHistoricalScreening, Depends(get_historical_screening_use_case)],
 ) -> HistoricalScreeningResponse:
     """Execute a historical screening run and return the results."""
     result = await use_case.execute(

@@ -38,6 +38,7 @@ from momentum25.domain.ports.walk_forward import (
     BenchmarkProvider,
     EligibilityFactsProvider,
     PriceHistoryProvider,
+    PricePoint,
 )
 
 
@@ -251,6 +252,11 @@ class WalkForwardRunner:
         provider handed back a price dated on or after ``as_of``. This is the
         mechanism checklist item 7 exercises with a deliberately leaky provider.
         """
+        point = self._price_point(security_id, target, as_of)
+        return point.adj_close if point is not None else None
+
+    def _price_point(self, security_id: int, target: date, as_of: date) -> PricePoint | None:
+        """Fetch one adjusted OHLC bar and enforce the no-look-ahead contract."""
         point = self._prices.price_on_or_before(security_id, target, as_of)
         if point is None:
             return None
@@ -259,12 +265,12 @@ class WalkForwardRunner:
                 f"price for security {security_id} dated {point.session_date} "
                 f"is after decision date {as_of}"
             )
-        return point.adj_close
+        return point
 
     def _mark_to_market(
         self, positions: dict[int, Decimal], cash: Decimal, on: date
     ) -> tuple[Decimal, dict[int, Decimal]]:
-        """Value held positions at ``on``'s adjusted close.
+        """Value held positions at ``on``'s adjusted open before rebalance.
 
         A held name with no price at ``on`` (suspended/delisted) is marked to
         zero — conservative and look-ahead-free.
@@ -274,17 +280,19 @@ class WalkForwardRunner:
         mark: dict[int, Decimal] = {}
         nav = cash
         for sid, qty in positions.items():
-            price = self._price(sid, on, on)
+            point = self._price_point(sid, on, on)
+            price = point.adj_open if point is not None else None
             value = qty * price if price is not None else Decimal(0)
             mark[sid] = value
             nav += value
         return nav, mark
 
     def _apply(self, trades: tuple[Trade, ...], fill_date: date) -> list[TradeRecord]:
-        """Turn planned notional trades into priced fills at ``fill_date``."""
+        """Turn planned notional trades into adjusted-open fills at ``fill_date``."""
         records: list[TradeRecord] = []
         for t in trades:
-            price = self._price(t.security_id, fill_date, fill_date)
+            point = self._price_point(t.security_id, fill_date, fill_date)
+            price = point.adj_open if point is not None else None
             if price is None or price <= 0:
                 # Cannot fill without a real fill price. Skip rather than invent
                 # one; the position simply is not established/closed this step.
@@ -317,7 +325,8 @@ class WalkForwardRunner:
         positions: dict[int, Decimal] = {}
         invested = Decimal(0)
         for sid in sorted(target):
-            price = self._price(sid, fill_date, fill_date)
+            point = self._price_point(sid, fill_date, fill_date)
+            price = point.adj_open if point is not None else None
             if price is None or price <= 0:
                 continue
             positions[sid] = target_value / price

@@ -85,3 +85,24 @@ test('the crosshair moves on every chart of the layout', async ({ page }) => {
   const date = (await readout('main').textContent())!.slice(0, 10);
   await expect(readout('c2')).toHaveText(new RegExp(`^${date} · C `)); // c2 follows main's crosshair
 });
+
+test('all documented workspace layouts mount the expected number of charts', async ({ page }) => {
+  await page.goto('/chart/RELIANCE');
+  await painted(page, 1);
+  const layouts = [
+    ['1x1', 1],
+    ['2x1', 2],
+    ['2x2', 4],
+    ['3x3', 9],
+    ['4x4', 16],
+  ] as const;
+  for (const [layout, count] of layouts) {
+    await page.getByLabel('Layout').selectOption(layout);
+    if (count === 1) {
+      // The single-chart view renders the active chart directly, without a grid-cell region.
+      await expect(page.getByTestId('price-chart')).toHaveCount(1);
+    } else {
+      await expect(page.getByRole('region', { name: /^Chart / })).toHaveCount(count);
+    }
+  }
+});

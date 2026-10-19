@@ -26,6 +26,10 @@ export default function HistoricalReplayPage() {
 
   const runs = runsData?.items ?? [];
   const uniqueDates = Array.from(new Set(runs.map((r) => r.run_date))).sort().reverse();
+  const marketDataBasis = rankings?.run?.stats?.market_data_basis;
+  const pointInTimeRevision = rankings?.run?.stats?.market_data_revision;
+  const pointInTimeManifest = rankings?.run?.stats?.market_data_manifest;
+  const isHistoricalRun = rankings?.run?.stats?.historical === true;
 
   const handleReplay = async () => {
     if (!selectedDate) return;
@@ -152,6 +156,16 @@ export default function HistoricalReplayPage() {
             title={`Rankings`}
             subtitle={`Run #${rankings.run?.id ?? 'N/A'} — ${rankings.run?.run_date ?? ''}`}
           >
+            {isHistoricalRun && marketDataBasis === 'point_in_time' && (
+              <p role="status" className="mb-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">
+                Point-in-time inputs · revision {String(pointInTimeRevision)} · manifest {String(pointInTimeManifest)}. This replay uses the listings and corporate actions known by the selected date.
+              </p>
+            )}
+            {isHistoricalRun && marketDataBasis !== 'point_in_time' && (
+              <p role="alert" className="mb-4 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+                Legacy replay: saved rankings used today’s cumulative corporate-action adjustments and active universe. Historical price gates may be biased. Replay this date to create a point-in-time result; this saved run remains unchanged.
+              </p>
+            )}
             <MomentumTable items={rankings.items} title={`${rankings.items.length} stocks`} />
           </Card>
         )}

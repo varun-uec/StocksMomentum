@@ -56,12 +56,16 @@ test('every M13 tool draws and is saved', async ({ page, request }) => {
   const rail = page.getByRole('toolbar', { name: 'Drawing tools' });
   page.on('dialog', (d) => void d.accept('Base breakout'));
   const tools: [string, [number, number][]][] = [
+    ['Trendline', [[0.12, 0.12], [0.25, 0.25]]],
     ['Ray', [[0.2, 0.2], [0.3, 0.25]]],
     ['Extended line', [[0.2, 0.3], [0.3, 0.35]]],
+    ['Horizontal ray', [[0.4, 0.2]]],
     ['Horizontal line', [[0.5, 0.15]]],
     ['Vertical line', [[0.45, 0.5]]],
     ['Cross line', [[0.55, 0.55]]],
     ['Parallel channel', [[0.6, 0.3], [0.8, 0.2], [0.7, 0.35]]],
+    ['Rectangle', [[0.2, 0.65], [0.35, 0.8]]],
+    ['Fib retracement', [[0.4, 0.65], [0.55, 0.8]]],
     ['Price range', [[0.62, 0.6], [0.7, 0.45]]],
     ['Text note', [[0.3, 0.6]]],
   ];
@@ -71,11 +75,21 @@ test('every M13 tool draws and is saved', async ({ page, request }) => {
     await expect(rail.getByRole('button', { name: 'Select' })).toHaveAttribute('aria-pressed', 'true'); // the tool finished
   }
   await expect.poll(async () => (await drawings(request, 'INFY')).map((d) => d.kind).sort()).toEqual(
-    ['channel', 'crossline', 'extended', 'hline', 'price_range', 'ray', 'text', 'vline'],
+    ['channel', 'crossline', 'extended', 'fib', 'hline', 'horizontal', 'price_range', 'ray', 'rectangle', 'text', 'trendline', 'vline'],
   );
   const saved = await drawings(request, 'INFY');
   expect(saved.find((d) => d.kind === 'channel')!.points).toHaveLength(3);
   expect(saved.find((d) => d.kind === 'text')!.text).toBe('Base breakout');
+});
+
+test('every visible range changes the saved chart window', async ({ page, request }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  for (const range of ['1W', '1M', '3M', '6M', '1Y', 'MAX']) {
+    await page.getByRole('button', { name: range, exact: true }).click();
+    await expect(page.getByRole('button', { name: range, exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => mainChart(request)).toMatchObject({ range });
+  }
 });
 
 test('the drawing menu restyles a drawing; undo and redo step through edits; arrows move it', async ({ page, request }) => {
@@ -84,11 +98,19 @@ test('the drawing menu restyles a drawing; undo and redo step through edits; arr
   await page.getByRole('toolbar', { name: 'Drawing tools' }).getByRole('button', { name: 'Horizontal line', exact: true }).click();
   await clickAt(page, 0.5, 0.4);
   await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
+  const beforeDrag = (await drawings(request, 'INFY'))[0];
+  const box = (await page.getByTestId('price-chart').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.3);
+  await page.mouse.up();
+  await expect.poll(async () => (await drawings(request, 'INFY'))[0].points[0].price).not.toBe(
+    beforeDrag.points[0].price,
+  ); // select and drag the saved drawing
   const original = (await drawings(request, 'INFY'))[0];
 
   // Right-click the line: the menu opens on it.
-  const box = (await page.getByTestId('price-chart').boundingBox())!;
-  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.4, { button: 'right' });
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3, { button: 'right' });
   const menu = page.getByRole('menu', { name: 'Drawing' });
   await menu.getByRole('menuitemradio', { name: 'Rose' }).click();
   await menu.getByRole('menuitemradio', { name: 'Width 4' }).click();
@@ -114,6 +136,29 @@ test('the drawing menu restyles a drawing; undo and redo step through edits; arr
   await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(0);
   await page.keyboard.press('Control+z');
   await expect.poll(async () => (await drawings(request, 'INFY')).length).toBe(1);
+});
+
+test('the mouse wheel zooms the chart and a pointer drag pans it', async ({ page }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  const chart = page.getByTestId('price-chart');
+  const box = (await chart.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.5);
+  await page.waitForTimeout(100);
+  const beforeZoom = await chart.screenshot();
+  await page.mouse.wheel(0, -600);
+  await page.waitForTimeout(150);
+  const afterZoom = await chart.screenshot();
+  expect(afterZoom.equals(beforeZoom)).toBe(false);
+
+  const beforePan = afterZoom;
+  await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.5, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  const afterPan = await chart.screenshot();
+  expect(afterPan.equals(beforePan)).toBe(false);
 });
 
 test('Alt+I opens the indicator list; an overlay and a pane draw and are saved with the chart', async ({ page, request }) => {

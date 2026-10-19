@@ -27,6 +27,9 @@ from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.infrastructure.persistence.database import get_database
+from momentum25.infrastructure.persistence.point_in_time_screening import (
+    PointInTimeHistoricalScreening,
+)
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
     SqlScreeningRunRepository,
@@ -111,6 +114,7 @@ async def _get_strategy_engine() -> AsyncIterator[StrategyEngine]:
 
 
 async def get_historical_validation_use_case(
+    session: Annotated[AsyncSession, Depends(_managed_session_async)],
     screening_run_repo: Annotated[
         SqlScreeningRunRepository, Depends(_get_screening_run_repo)
     ],
@@ -130,6 +134,12 @@ async def get_historical_validation_use_case(
         security_repo=security_repo,
         indicator_pipeline=indicator_pipeline,
         strategy_engine=strategy_engine,
+        historical_screening_use_case=PointInTimeHistoricalScreening(
+            session=session,
+            screening_run_repo=screening_run_repo,
+            strategy_repo=strategy_repo,
+            strategy_engine=strategy_engine,
+        ),
     )
 
 

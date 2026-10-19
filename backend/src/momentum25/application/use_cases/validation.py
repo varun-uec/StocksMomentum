@@ -84,6 +84,7 @@ class HistoricalValidationUseCase:
         security_repo: Any,
         indicator_pipeline: Any,
         strategy_engine: Any,
+        historical_screening_use_case: Any | None = None,
     ) -> None:
         """Wire the use case with its repository collaborators."""
         self._screening_run_repo = screening_run_repo
@@ -92,6 +93,7 @@ class HistoricalValidationUseCase:
         self._security_repo = security_repo
         self._indicator_pipeline = indicator_pipeline
         self._strategy_engine = strategy_engine
+        self._historical_screening_use_case = historical_screening_use_case
 
     async def execute(
         self,
@@ -207,14 +209,16 @@ class HistoricalValidationUseCase:
                 HistoricalScreeningUseCase,
             )
 
-            historical_screening = HistoricalScreeningUseCase(
-                security_repo=self._security_repo,
-                ohlcv_repo=self._ohlcv_repo,
-                screening_run_repo=self._screening_run_repo,
-                strategy_repo=self._strategy_repo,
-                indicator_pipeline=self._indicator_pipeline,
-                strategy_engine=self._strategy_engine,
-            )
+            historical_screening = self._historical_screening_use_case
+            if historical_screening is None:
+                historical_screening = HistoricalScreeningUseCase(
+                    security_repo=self._security_repo,
+                    ohlcv_repo=self._ohlcv_repo,
+                    screening_run_repo=self._screening_run_repo,
+                    strategy_repo=self._strategy_repo,
+                    indicator_pipeline=self._indicator_pipeline,
+                    strategy_engine=self._strategy_engine,
+                )
             for trading_date in sampled_dates:
                 if trading_date in existing_dates:
                     continue

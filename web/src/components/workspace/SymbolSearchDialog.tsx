@@ -23,6 +23,7 @@ export function SymbolSearchDialog({
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(initialText);
   const [active, setActive] = useState(0);
   const { query, results, searching } = useSecuritySearch(value, 10);
@@ -37,6 +38,7 @@ export function SymbolSearchDialog({
     if (open && !dialog.open) {
       setValue(initialText);
       dialog.showModal();
+      inputRef.current?.focus({ preventScroll: true });
     } else if (!open && dialog.open) {
       dialog.close();
     }
@@ -51,7 +53,12 @@ export function SymbolSearchDialog({
     <dialog
       ref={dialogRef}
       aria-label={label}
-      onClose={onClose}
+      onCancel={(e) => {
+        // Keep React's open state and the workspace's shortcut guard in sync
+        // when Escape closes the native modal.
+        e.preventDefault();
+        onClose();
+      }}
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose(); // a click on the backdrop
       }}
@@ -68,6 +75,7 @@ export function SymbolSearchDialog({
         }}
       >
         <input
+          ref={inputRef}
           autoFocus
           aria-label="Symbol or company"
           role="combobox"

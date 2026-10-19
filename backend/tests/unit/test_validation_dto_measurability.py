@@ -8,6 +8,7 @@ engine row was present (found by the M10 end-to-end suite, 2026-10-18).
 
 from __future__ import annotations
 
+from momentum25.application.dto.validation import ResearchDashboardResponse
 from momentum25.domain.research.validation_models import (
     NO_FORWARD_RETURNS,
     EngineEffectivenessReport,
@@ -33,3 +34,15 @@ def test_engine_report_keeps_unmeasurable_flag() -> None:
         "forward_returns_available": False,
         "reason": NO_FORWARD_RETURNS,
     }
+
+
+def test_dashboard_accepts_unmeasured_screening_rates() -> None:
+    payload = ResearchDashboardResponse(
+        strategy_name="s",
+        strategy_id=1,
+        false_positive_rate=None,
+        false_negative_rate=None,
+    ).model_dump()
+
+    assert payload["false_positive_rate"] is None
+    assert payload["false_negative_rate"] is None

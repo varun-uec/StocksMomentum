@@ -137,6 +137,36 @@ async def test_price_provider_excludes_rows_with_null_adj_close(
 
 
 @pytest.mark.asyncio
+async def test_price_provider_returns_corporate_action_adjusted_open_for_fills(
+    db_session: AsyncSession,
+) -> None:
+    sid = await _seed_security(db_session, "ADJOPEN")
+    db_session.add(
+        OHLCVDailyModel(
+            security_id=sid,
+            date=date(2024, 1, 2),
+            open=Decimal("100"),
+            high=Decimal("105"),
+            low=Decimal("95"),
+            close=Decimal("100"),
+            volume=1000,
+            adj_close=Decimal("50"),
+            adj_factor=Decimal("0.5"),
+        )
+    )
+    await db_session.commit()
+
+    provider = await SqlPriceHistoryProvider.load(
+        db_session, date(2024, 1, 1), date(2024, 1, 31)
+    )
+
+    point = provider.price_on_or_before(sid, date(2024, 1, 2), date(2024, 1, 2))
+    assert point is not None
+    assert point.adj_open == Decimal("50")
+    assert point.adj_close == Decimal("50")
+
+
+@pytest.mark.asyncio
 async def test_benchmark_provider_carries_price_index_label(
     db_session: AsyncSession,
 ) -> None:

@@ -63,3 +63,34 @@ test('an alert that fired while the list was closed shows a count until it is op
   await expect(tab.getByLabel('1 new')).toHaveCount(0);
   await expect.poll(async () => (await (await request.get('/api/v1/alerts')).json()).unseen).toBe(0);
 });
+
+test('the chart form creates every supported value and interval combination', async ({ page, request }) => {
+  await page.goto('/chart/TCS');
+  await ready(page);
+  await page.getByRole('tab', { name: /^Alerts/ }).click();
+  const form = page.getByRole('form', { name: 'New alert' });
+  const sources = ['close', 'rsi14', 'adx14', 'atr14', 'macd_line', 'macd_signal', 'macd_histogram'];
+  const intervals = ['1D', '1W', '1M'];
+  let created = 0;
+
+  for (const source of sources) {
+    for (const interval of intervals) {
+      await form.getByLabel('Value').selectOption(source);
+      await form.getByLabel('Condition').selectOption('above');
+      await form.getByLabel('Threshold').fill('0');
+      await form.getByLabel('Interval').selectOption(interval);
+      await form.getByRole('button', { name: 'Add alert' }).click();
+      created += 1;
+      await expect.poll(async () => {
+        const response = await request.get('/api/v1/alerts');
+        return response.ok() ? (await response.json()).alerts.length : -1;
+      }).toBe(created);
+    }
+  }
+
+  const response = await request.get('/api/v1/alerts');
+  const alerts = (await response.json()).alerts as { source: string; interval: string; symbol: string }[];
+  expect(alerts).toHaveLength(21);
+  expect([...new Set(alerts.map(({ source, interval }) => `${source}:${interval}`))]).toHaveLength(21);
+  expect(alerts.every((alert) => alert.symbol === 'TCS')).toBe(true);
+});

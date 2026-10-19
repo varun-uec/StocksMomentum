@@ -51,8 +51,13 @@ class WeekdayCalendar:
 class FakePrices:
     """Deterministic per-security adjusted-close series with an as-of spy."""
 
-    def __init__(self, series: dict[int, dict[date, Decimal]]) -> None:
+    def __init__(
+        self,
+        series: dict[int, dict[date, Decimal]],
+        open_series: dict[int, dict[date, Decimal]] | None = None,
+    ) -> None:
         self._series = {sid: dict(sorted(s.items())) for sid, s in series.items()}
+        self._open_series = {sid: dict(sorted(s.items())) for sid, s in (open_series or {}).items()}
         self.calls: list[tuple[int, date, date]] = []  # spy for item 13
 
     def price_on_or_before(
@@ -66,7 +71,9 @@ class FakePrices:
                 best = d
         if best is None:
             return None
-        return PricePoint(security_id, best, self._series[security_id][best])
+        close = self._series[security_id][best]
+        open_price = self._open_series.get(security_id, {}).get(best, close)
+        return PricePoint(security_id, best, close, open_price)
 
 
 class LeakyPrices:
@@ -75,7 +82,7 @@ class LeakyPrices:
     def price_on_or_before(
         self, security_id: int, target: date, as_of: date
     ) -> PricePoint | None:
-        return PricePoint(security_id, as_of + timedelta(days=1), Decimal(100))
+        return PricePoint(security_id, as_of + timedelta(days=1), Decimal(100), Decimal(100))
 
 
 class FixedUniverse:
@@ -150,6 +157,35 @@ def test_fill_date_strictly_after_decision_date():
         for tr in rb.trades:
             assert tr.fill_date == rb.fill_date
             assert tr.fill_date > rb.decision_date
+
+
+def test_rebalance_fills_and_sizes_positions_at_adjusted_open():
+    """The rebalance cannot use the fill session's not-yet-known close."""
+    hist_start = date(2022, 1, 3)
+    closes = {
+        1: _rising_series(hist_start, 500, Decimal(100), Decimal("1.002")),
+        2: _rising_series(hist_start, 500, Decimal(100), Decimal("1.0005")),
+    }
+    opens = {sid: dict(series) for sid, series in closes.items()}
+    fill_date = date(2023, 3, 1)
+    for series in opens.values():
+        series[fill_date] = Decimal("200")
+    runner = WalkForwardRunner(
+        WeekdayCalendar(),
+        FakePrices(closes, opens),
+        FixedUniverse([_facts(1), _facts(2)]),
+    )
+
+    result = runner.run(fill_date, date(2023, 3, 31), Decimal(1_000_000))
+
+    first_rebalance = result.rebalances[0]
+    assert first_rebalance.fill_date == fill_date
+    assert first_rebalance.trades
+    assert all(trade.fill_price == Decimal("200") for trade in first_rebalance.trades)
+    assert all(
+        trade.quantity * trade.fill_price == trade.notional
+        for trade in first_rebalance.trades
+    )
 
 
 def test_look_ahead_provider_is_rejected():
