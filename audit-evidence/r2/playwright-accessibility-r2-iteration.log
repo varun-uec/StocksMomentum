@@ -1,0 +1,67 @@
+
+> momentum25-web@0.1.0 e2e
+> playwright test e2e/r2-accessibility.spec.ts
+
+[WebServer] (node:86309) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO:     Started server process [86436]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 3 tests using 1 worker
+
+(node:86459) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › e2e/r2-accessibility.spec.ts:8:1 › R2 reduced-motion preference disables smooth scrolling and long CSS transitions (167ms)
+  ✘  2 [chromium] › e2e/r2-accessibility.spec.ts:20:1 › R2 mobile More menu opens and closes from the keyboard with focus restored (5.4s)
+(node:86562) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [chromium] › e2e/r2-accessibility.spec.ts:34:1 › R2 200% desktop-equivalent reflow keeps core workflows in the viewport (2.3s)
+
+
+  1) [chromium] › e2e/r2-accessibility.spec.ts:20:1 › R2 mobile More menu opens and closes from the keyboard with focus restored 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByRole('link', { name: 'Market' })
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" getByRole('link', { name: 'Market' }) with timeout 5000ms
+      - waiting for getByRole('link', { name: 'Market' })
+        14 × locator resolved to <a href="/market" aria-label="Market" data-discover="true" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">…</a>
+           - unexpected value "inactive"
+
+
+      26 |   const dialog = page.getByRole('dialog', { name: 'More' });
+      27 |   await expect(dialog).toBeVisible();
+    > 28 |   await expect(page.getByRole('link', { name: 'Market' })).toBeFocused();
+         |                                                            ^
+      29 |   await page.keyboard.press('Escape');
+      30 |   await expect(dialog).toBeHidden();
+      31 |   await expect(more).toBeFocused();
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/r2-accessibility.spec.ts:28:60
+
+    Error Context: test-results/r2-accessibility-R2-mobile-33e5f-eyboard-with-focus-restored-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/r2-accessibility-R2-mobile-33e5f-eyboard-with-focus-restored-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/r2-accessibility-R2-mobile-33e5f-eyboard-with-focus-restored-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e/r2-accessibility.spec.ts:20:1 › R2 mobile More menu opens and closes from the keyboard with focus restored 
+  2 passed (17.5s)

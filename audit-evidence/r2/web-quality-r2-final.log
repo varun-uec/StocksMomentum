@@ -1,0 +1,96 @@
+
+> momentum25-web@0.1.0 lint
+> eslint --max-warnings 0 --ext .ts,.tsx src e2e
+
+
+> momentum25-web@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/varunagarwal/Downloads/Applications/StocksMomentum/web
+
+
+ Test Files  13 passed (13)
+      Tests  101 passed (101)
+   Start at  13:03:11
+   Duration  358ms (transform 765ms, setup 0ms, import 1.05s, tests 105ms, environment 1ms)
+
+
+> momentum25-web@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 775 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                              0.74 kB │ gzip:   0.44 kB
+dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2     10.25 kB
+dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2      11.23 kB
+dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2       18.75 kB
+dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2          19.00 kB
+dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2   25.96 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2          48.26 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2      85.07 kB
+dist/assets/index-BHk9g63G.css                              45.47 kB │ gzip:   8.62 kB
+dist/assets/index-DnGIBkqN.js                                0.07 kB │ gzip:   0.08 kB
+dist/assets/format-Ccr4vCCh.js                               0.24 kB │ gzip:   0.21 kB
+dist/assets/readiness-CXUWj53v.js                            0.26 kB │ gzip:   0.20 kB
+dist/assets/Dot-DTk9_Yj2.js                                  0.52 kB │ gzip:   0.36 kB
+dist/assets/not-found-BllW9C_K.js                            0.54 kB │ gzip:   0.35 kB
+dist/assets/page-Dlm9L-gk.js                                 0.95 kB │ gzip:   0.60 kB
+dist/assets/StrategySelector-Cxp90Ks1.js                     1.41 kB │ gzip:   0.73 kB
+dist/assets/Skeleton-CKNf4hHw.js                             1.83 kB │ gzip:   0.62 kB
+dist/assets/page-DcrmnHhN.js                                 1.84 kB │ gzip:   0.81 kB
+dist/assets/WhyItRanks-mxLQxspt.js                           1.85 kB │ gzip:   0.69 kB
+dist/assets/ExplanationSummary-YmzurTKv.js                   2.14 kB │ gzip:   0.73 kB
+dist/assets/useMutation-EG_J2qsC.js                          2.29 kB │ gzip:   0.94 kB
+dist/assets/SymbolActionBar-DlRGWOvH.js                      2.56 kB │ gzip:   1.19 kB
+dist/assets/MethodologyNote-J7hvLV_L.js                      2.68 kB │ gzip:   1.22 kB
+dist/assets/useChartShell-X7wAePZX.js                        2.75 kB │ gzip:   1.24 kB
+dist/assets/layout-7_coDeK2.js                               2.87 kB │ gzip:   1.10 kB
+dist/assets/useQueries-DAOuwj9Z.js                           3.49 kB │ gzip:   1.53 kB
+dist/assets/page-CdyqD8Gw.js                                 3.53 kB │ gzip:   1.67 kB
+dist/assets/page-7Y05a9dg.js                                 3.88 kB │ gzip:   1.90 kB
+dist/assets/PolarChart-tqqaJL5y.js                           3.92 kB │ gzip:   1.76 kB
+dist/assets/page-B7_wuVim.js                                 4.00 kB │ gzip:   1.87 kB
+dist/assets/getZIndexFromUnknown-BcXWTnvO.js                 4.43 kB │ gzip:   2.03 kB
+dist/assets/page-CJ_HH7nS.js                                 5.20 kB │ gzip:   2.15 kB
+dist/assets/Card-4uUmgi93.js                                 5.33 kB │ gzip:   1.71 kB
+dist/assets/page-BTSgEkWf.js                                 5.33 kB │ gzip:   2.00 kB
+dist/assets/OverlayPicker-DVNiyLYM.js                        5.97 kB │ gzip:   2.37 kB
+dist/assets/page-BGZv5f_Y.js                                 6.55 kB │ gzip:   2.39 kB
+dist/assets/elliott-wave-panels-BhJiPT-Q.js                  6.66 kB │ gzip:   2.29 kB
+dist/assets/page-CDRJTXVS.js                                 6.82 kB │ gzip:   2.43 kB
+dist/assets/page-CsecQOlh.js                                 7.80 kB │ gzip:   2.99 kB
+dist/assets/page-_cd3AD4W.js                                 7.90 kB │ gzip:   2.71 kB
+dist/assets/useQuery-2fJ8m_jt.js                             8.06 kB │ gzip:   2.97 kB
+dist/assets/page-Vn8NHDEq.js                                 8.20 kB │ gzip:   3.12 kB
+dist/assets/page-Cmd0gpLZ.js                                 8.52 kB │ gzip:   2.78 kB
+dist/assets/page-C7OXevVC.js                                 8.76 kB │ gzip:   3.50 kB
+dist/assets/page-CpUHNu_H.js                                 9.48 kB │ gzip:   3.36 kB
+dist/assets/page-B7HdS1Xk.js                                10.19 kB │ gzip:   4.12 kB
+dist/assets/XAxis-CdO1gq5c.js                               11.27 kB │ gzip:   3.63 kB
+dist/assets/page-BfTNKlLX.js                                11.91 kB │ gzip:   4.17 kB
+dist/assets/page-g4IKKl3w.js                                12.72 kB │ gzip:   3.30 kB
+dist/assets/Legend-C8Xapo6M.js                              14.91 kB │ gzip:   4.99 kB
+dist/assets/MomentumTable-Xog6Zqgf.js                       16.51 kB │ gzip:   5.04 kB
+dist/assets/BarChart-B2P4x8QU.js                            16.61 kB │ gzip:   6.09 kB
+dist/assets/LineChart-Rod5g9JS.js                           16.81 kB │ gzip:   5.51 kB
+dist/assets/page-KZUkstTn.js                                18.92 kB │ gzip:   6.10 kB
+dist/assets/page-B-n7ZVSS.js                                19.02 kB │ gzip:   4.52 kB
+dist/assets/page-BKUGVK44.js                                22.34 kB │ gzip:   7.24 kB
+dist/assets/page-COBl9Bpc.js                                24.77 kB │ gzip:   8.23 kB
+dist/assets/page-Dq5e1s0W.js                                25.56 kB │ gzip:   8.04 kB
+dist/assets/page-Dupg6_8M.js                                25.83 kB │ gzip:   8.31 kB
+dist/assets/RelativeStrengthVsIndex-CBCe7Sc6.js             40.99 kB │ gzip:  12.28 kB
+dist/assets/FloatingPanel-BB6KpN0G.js                       54.50 kB │ gzip:  14.78 kB
+dist/assets/useChartColors-C9glnU_D.js                      75.19 kB │ gzip:  19.76 kB
+dist/assets/CategoricalChart-Dtk4mSR3.js                   263.72 kB │ gzip:  82.32 kB
+dist/assets/index-Dg_ppiPL.js                              565.81 kB │ gzip: 182.14 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.71s

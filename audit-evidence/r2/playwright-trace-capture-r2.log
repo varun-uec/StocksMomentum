@@ -1,0 +1,7 @@
+
+Running 1 test using 1 worker
+
+
+  ✓  1 [chromium] › e2e/r2-adversarial.spec.ts:64:1 › R2 a drawing save interrupted by network loss stays local and can be retried (2.9s)
+
+  1 passed (13.3s)

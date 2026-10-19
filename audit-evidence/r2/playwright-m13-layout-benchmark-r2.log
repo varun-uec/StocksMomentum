@@ -1,0 +1,117 @@
+
+> momentum25-web@0.1.0 e2e
+> playwright test e2e/m13-bench.spec.ts
+
+[WebServer] (node:79155) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO:     Started server process [79311]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 6 tests using 1 worker
+
+(node:79328) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  1 [chromium] › e2e/m13-bench.spec.ts:121:5 › 1 chart › warm open, pan and memory (32.0s)
+  ✓  2 [chromium] › e2e/m13-bench.spec.ts:141:5 › 1 chart › cold open (18.0s)
+
+  ✓  3 [chromium] › e2e/m13-bench.spec.ts:121:5 › 4 charts › warm open, pan and memory (41.7s)
+  ✓  4 [chromium] › e2e/m13-bench.spec.ts:141:5 › 4 charts › cold open (28.4s)
+
+  ✓  5 [chromium] › e2e/m13-bench.spec.ts:121:5 › 16 charts › warm open, pan and memory (1.4m)
+{
+  "measured_at": "2026-10-19T07:17:39.961Z",
+  "git_commit": "2e96efd",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "viewport": "1280 × 720 (Playwright default)",
+  "dataset": "16 synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (marked E2E database); MAX range",
+  "extra_paint_marks_seen": 0,
+  "results": {
+    "1": {
+      "warm_open_ms": {
+        "runs": 30,
+        "p50": 165,
+        "p95": 177,
+        "max": 179
+      },
+      "pan_fps": {
+        "runs": 30,
+        "p5": 61,
+        "p50": 62
+      },
+      "js_heap_mb": {
+        "samples": 6,
+        "p50": 11,
+        "max": 11
+      },
+      "cold_open_ms": {
+        "runs": 30,
+        "p50": 205,
+        "p95": 211,
+        "max": 212
+      }
+    },
+    "4": {
+      "warm_open_ms": {
+        "runs": 30,
+        "p50": 486,
+        "p95": 516,
+        "max": 523
+      },
+      "pan_fps": {
+        "runs": 30,
+        "p5": 61,
+        "p50": 63
+      },
+      "js_heap_mb": {
+        "samples": 6,
+        "p50": 25,
+        "max": 25
+      },
+      "cold_open_ms": {
+        "runs": 30,
+        "p50": 525,
+        "p95": 557,
+        "max": 560
+      }
+    },
+    "16": {
+      "warm_open_ms": {
+        "runs": 30,
+        "p50": 1764,
+        "p95": 1799,
+        "max": 1825
+      },
+      "pan_fps": {
+        "runs": 30,
+        "p5": 61,
+        "p50": 62
+      },
+      "js_heap_mb": {
+        "samples": 6,
+        "p50": 79,
+        "max": 80
+      },
+      "cold_open_ms": {
+        "runs": 30,
+        "p50": 1807,
+        "p95": 1857,
+        "max": 1862
+      }
+    }
+  }
+}
+  ✓  6 [chromium] › e2e/m13-bench.spec.ts:141:5 › 16 charts › cold open (1.2m)
+
+  6 passed (4.7m)

@@ -1,0 +1,14 @@
+2026-10-19 12:59:05 [info     ] settings_loaded                database_url=postgresql+asyncpg://[REDACTED]@127.0.0.1:65439/wickstreet_r2_e2e environment=development log_level=INFO redis_url=redis://127.0.0.1:16379/0 retry_max_attempts=3 scheduler_enabled=False
+2026-10-19 12:59:05 [info     ] execute_screening_started      force=False strategy=minervini_trend_template target_symbols=None
+2026-10-19 12:59:05 [info     ] execute_screening_no_new_bars  start_date=2026-08-08
+2026-10-19 12:59:06 [info     ] execute_screening_reused_completed_snapshot config_hash=1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3 run_date=2026-08-07 run_id=1 strategy=minervini_trend_template
+2026-10-19 12:59:06 [info     ] execute_screening_completed    run_id=1
+2026-10-19 12:59:06 [info     ] screening_job_completed        run_id=1 strategy=minervini_trend_template
+Screening result run 1 for minervini_trend_template using stored data.
+2026-10-19 12:59:11 [info     ] settings_loaded                database_url=postgresql+asyncpg://[REDACTED]@127.0.0.1:65439/wickstreet_r2_e2e environment=development log_level=INFO redis_url=redis://127.0.0.1:16379/0 retry_max_attempts=3 scheduler_enabled=False
+2026-10-19 12:59:11 [info     ] execute_screening_started      force=False strategy=minervini_trend_template target_symbols=None
+2026-10-19 12:59:11 [info     ] execute_screening_no_new_bars  start_date=2026-08-08
+2026-10-19 12:59:11 [info     ] execute_screening_reused_completed_snapshot config_hash=1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3 run_date=2026-08-07 run_id=1 strategy=minervini_trend_template
+2026-10-19 12:59:11 [info     ] execute_screening_completed    run_id=1
+2026-10-19 12:59:11 [info     ] screening_job_completed        run_id=1 strategy=minervini_trend_template
+Screening result run 1 for minervini_trend_template using stored data.

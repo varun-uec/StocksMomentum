@@ -1,0 +1,563 @@
+
+> momentum25-web@0.1.0 e2e
+> playwright test e2e/r2-viewport-audit.spec.ts
+
+[WebServer] (node:69937) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO:     Started server process [70045]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 1 test using 1 worker
+
+(node:70063) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✘  1 [chromium] › e2e/r2-viewport-audit.spec.ts:46:1 › R2 all 26 routes render in both themes at four requested viewport sizes (2.1m)
+
+
+  1) [chromium] › e2e/r2-viewport-audit.spec.ts:46:1 › R2 all 26 routes render in both themes at four requested viewport sizes 
+
+    Error: routes with page-level horizontal overflow
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -   1
+    + Received  + 506
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/",
+    +     "route": "dashboard",
+    +     "scroll_height": 2633,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/",
+    +     "route": "dashboard",
+    +     "scroll_height": 2633,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/chart",
+    +     "route": "chart-entry",
+    +     "scroll_height": 1043,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/chart",
+    +     "route": "chart-entry",
+    +     "scroll_height": 1043,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/chart/RELIANCE",
+    +     "route": "chart",
+    +     "scroll_height": 1043,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/chart/RELIANCE",
+    +     "route": "chart",
+    +     "scroll_height": 1043,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/stock/RELIANCE",
+    +     "route": "stock-detail",
+    +     "scroll_height": 10117,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/stock/RELIANCE",
+    +     "route": "stock-detail",
+    +     "scroll_height": 10117,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/stock/RELIANCE/analysis",
+    +     "route": "stock-analysis",
+    +     "scroll_height": 6711,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/stock/RELIANCE/analysis",
+    +     "route": "stock-analysis",
+    +     "scroll_height": 6711,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/stock/RELIANCE/elliott-wave",
+    +     "route": "elliott-wave",
+    +     "scroll_height": 1741,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/stock/RELIANCE/elliott-wave",
+    +     "route": "elliott-wave",
+    +     "scroll_height": 1741,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/watchlist",
+    +     "route": "watchlist",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/watchlist",
+    +     "route": "watchlist",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/market",
+    +     "route": "market",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/market",
+    +     "route": "market",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/strategies",
+    +     "route": "strategies",
+    +     "scroll_height": 3037,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/strategies",
+    +     "route": "strategies",
+    +     "scroll_height": 3037,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 393,
+    +     "document_width": 393,
+    +     "path": "/strategies",
+    +     "route": "strategies",
+    +     "scroll_height": 3764,
+    +     "theme": "light",
+    +     "viewport": "390x844",
+    +   },
+    +   Object {
+    +     "body_width": 393,
+    +     "document_width": 393,
+    +     "path": "/strategies",
+    +     "route": "strategies",
+    +     "scroll_height": 3764,
+    +     "theme": "dark",
+    +     "viewport": "390x844",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/studio",
+    +     "route": "studio",
+    +     "scroll_height": 1228,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/studio",
+    +     "route": "studio",
+    +     "scroll_height": 1228,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/validation",
+    +     "route": "validation",
+    +     "scroll_height": 2693,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/validation",
+    +     "route": "validation",
+    +     "scroll_height": 2693,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/backtest",
+    +     "route": "backtest",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/backtest",
+    +     "route": "backtest",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/historical",
+    +     "route": "historical",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/historical",
+    +     "route": "historical",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/experiment",
+    +     "route": "experiment",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/experiment",
+    +     "route": "experiment",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/analytics",
+    +     "route": "analytics",
+    +     "scroll_height": 2935,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/analytics",
+    +     "route": "analytics",
+    +     "scroll_height": 2935,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/data",
+    +     "route": "data",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/data",
+    +     "route": "data",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn",
+    +     "route": "learn",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn",
+    +     "route": "learn",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/momentum-investing",
+    +     "route": "learn-momentum-investing",
+    +     "scroll_height": 1752,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/momentum-investing",
+    +     "route": "learn-momentum-investing",
+    +     "scroll_height": 1752,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/minervini-methodology",
+    +     "route": "learn-minervini-methodology",
+    +     "scroll_height": 3030,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/minervini-methodology",
+    +     "route": "learn-minervini-methodology",
+    +     "scroll_height": 3030,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/momentum25-methodology",
+    +     "route": "learn-momentum25-methodology",
+    +     "scroll_height": 1645,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/momentum25-methodology",
+    +     "route": "learn-momentum25-methodology",
+    +     "scroll_height": 1645,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/scoring-guide",
+    +     "route": "learn-scoring-guide",
+    +     "scroll_height": 2899,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/scoring-guide",
+    +     "route": "learn-scoring-guide",
+    +     "scroll_height": 2899,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/rule-guide",
+    +     "route": "learn-rule-guide",
+    +     "scroll_height": 4731,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/rule-guide",
+    +     "route": "learn-rule-guide",
+    +     "scroll_height": 4731,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/faq",
+    +     "route": "learn-faq",
+    +     "scroll_height": 1646,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/learn/faq",
+    +     "route": "learn-faq",
+    +     "scroll_height": 1646,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/about",
+    +     "route": "about",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/about",
+    +     "route": "about",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+    +     "route": "chart-grid-diagnostic",
+    +     "scroll_height": 1024,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+    +     "route": "chart-grid-diagnostic",
+    +     "scroll_height": 1024,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 419,
+    +     "document_width": 419,
+    +     "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+    +     "route": "chart-grid-diagnostic",
+    +     "scroll_height": 1220,
+    +     "theme": "light",
+    +     "viewport": "390x844",
+    +   },
+    +   Object {
+    +     "body_width": 419,
+    +     "document_width": 419,
+    +     "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+    +     "route": "chart-grid-diagnostic",
+    +     "scroll_height": 1220,
+    +     "theme": "dark",
+    +     "viewport": "390x844",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/audit-missing-route",
+    +     "route": "not-found",
+    +     "scroll_height": 1122,
+    +     "theme": "light",
+    +     "viewport": "768x1024",
+    +   },
+    +   Object {
+    +     "body_width": 1120,
+    +     "document_width": 1120,
+    +     "path": "/audit-missing-route",
+    +     "route": "not-found",
+    +     "scroll_height": 1122,
+    +     "theme": "dark",
+    +     "viewport": "768x1024",
+    +   },
+    + ]
+
+      117 |   // overflow clips controls and makes the shell hard to operate by touch.
+      118 |   const overflow = measurements.filter((m) => m.document_width > Number(m.viewport.split('x')[0]) + 2);
+    > 119 |   expect(overflow, 'routes with page-level horizontal overflow').toEqual([]);
+          |                                                                  ^
+      120 | });
+      121 |
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/r2-viewport-audit.spec.ts:119:66
+
+    Error Context: test-results/r2-viewport-audit-R2-all-2-05541-ur-requested-viewport-sizes-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/r2-viewport-audit-R2-all-2-05541-ur-requested-viewport-sizes-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/r2-viewport-audit-R2-all-2-05541-ur-requested-viewport-sizes-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e/r2-viewport-audit.spec.ts:46:1 › R2 all 26 routes render in both themes at four requested viewport sizes 

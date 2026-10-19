@@ -1,0 +1,69 @@
+{
+  "measured_at": "2026-10-19T07:12:41.153Z",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "viewport": "1280 × 720 (Playwright default)",
+  "dataset": "16 synthetic 10-year symbols, 2,610 daily bars each, 2016-08-08 through 2026-08-07",
+  "load_configuration": "7 catalogue indicators, four comparison symbols, four moving averages, 120 saved drawings per symbol",
+  "results": {
+    "1": {
+      "ready_ms": 1244,
+      "charts": 1,
+      "bars_per_chart": 2610,
+      "indicators_per_chart": 7,
+      "comparison_symbols_per_chart": 4,
+      "drawings_per_symbol": 120,
+      "pan_frame_rate": 62,
+      "js_heap_mb_after_gc": 22.910358428955078,
+      "canvas_count": 19,
+      "long_tasks": []
+    },
+    "4": {
+      "ready_ms": 1136,
+      "charts": 4,
+      "bars_per_chart": 2610,
+      "indicators_per_chart": 7,
+      "comparison_symbols_per_chart": 4,
+      "drawings_per_symbol": 120,
+      "pan_frame_rate": 62,
+      "js_heap_mb_after_gc": 67.6324462890625,
+      "canvas_count": 76,
+      "long_tasks": []
+    },
+    "16": {
+      "ready_ms": 2348,
+      "charts": 16,
+      "bars_per_chart": 2610,
+      "indicators_per_chart": 7,
+      "comparison_symbols_per_chart": 4,
+      "drawings_per_symbol": 120,
+      "pan_frame_rate": 62,
+      "js_heap_mb_after_gc": 242.85761260986328,
+      "canvas_count": 304,
+      "long_tasks": []
+    },
+    "endurance": [
+      {
+        "symbol": "E2E10Y1",
+        "heap_mb": 12.775951385498047,
+        "canvas_count": 7
+      },
+      {
+        "symbol": "E2E10Y3",
+        "heap_mb": 13.877052307128906,
+        "canvas_count": 7
+      },
+      {
+        "symbol": "E2E10Y5",
+        "heap_mb": 14.900592803955078,
+        "canvas_count": 7
+      },
+      {
+        "symbol": "E2E10Y7",
+        "heap_mb": 15.85586166381836,
+        "canvas_count": 7
+      }
+    ]
+  }
+}

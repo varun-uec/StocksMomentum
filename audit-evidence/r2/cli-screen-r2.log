@@ -1,0 +1,639 @@
+2026-10-19 12:56:28 [info     ] settings_loaded                database_url=postgresql+asyncpg://[REDACTED]@127.0.0.1:65439/wickstreet_r2_e2e environment=development log_level=INFO redis_url=redis://127.0.0.1:16379/0 retry_max_attempts=3 scheduler_enabled=False
+2026-10-19 12:56:28 [info     ] execute_screening_started      force=False strategy=minervini_trend_template target_symbols=None
+2026-10-19 12:56:28 [info     ] execute_screening_no_new_bars  start_date=2026-08-08
+2026-10-19 12:56:28 [error    ] screening_job_failed           error='(sqlalchemy.dialects.postgresql.asyncpg.UniqueViolationError) duplicate key value violates unique constraint "screening_runs_strategy_id_run_date_data_version_config_has_key"\n[SQL: INSERT INTO screening_runs (strategy_id, run_date, data_version, config_hash, status, trigger, started_at, finished_at, error, stats) VALUES ($1::BIGINT, $2::DATE, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, $7::TIMESTAMP WITH TIME ZONE, $8::TIMESTAMP WITH TIME ZONE, $9::VARCHAR, $10::JSONB) RETURNING screening_runs.id]\n[parameters: (7, datetime.date(2026, 8, 7), \'2026-08-07\', \'1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3\', \'RUNNING\', \'MANUAL\', datetime.datetime(2026, 10, 19, 7, 26, 28, 808473, tzinfo=datetime.timezone.utc), None, None, \'null\')]\n(Background on this error at: https://sqlalche.me/e/21/gkpj)' strategy=minervini_trend_template
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:605 in    │
+│ _prepare_and_execute                                                         │
+│                                                                              │
+│    602 │   │   │   │   │   self._cursor = await                              │
+│        prepared_stmt.cursor(*parameters)                                     │
+│    603 │   │   │   │   │   self._rowcount = -1                               │
+│    604 │   │   │   │   else:                                                 │
+│ ❱  605 │   │   │   │   │   self._rows = deque(await                          │
+│        prepared_stmt.fetch(*parameters))                                     │
+│    606 │   │   │   │   │   status = prepared_stmt.get_statusmsg()            │
+│    607 │   │   │   │   │                                                     │
+│    608 │   │   │   │   │   reg = re.match(                                   │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/asyncpg/prepared_stmt.py:177 in fetch               │
+│                                                                              │
+│   174 │   │                                                                  │
+│   175 │   │   :return: A list of :class:`Record` instances.                  │
+│   176 │   │   """                                                            │
+│ ❱ 177 │   │   data = await self.__bind_execute(args, 0, timeout)             │
+│   178 │   │   return data                                                    │
+│   179 │                                                                      │
+│   180 │   @connresource.guarded                                              │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/asyncpg/prepared_stmt.py:268 in __bind_execute      │
+│                                                                              │
+│   265 │   │   │   raise                                                      │
+│   266 │                                                                      │
+│   267 │   async def __bind_execute(self, args, limit, timeout):              │
+│ ❱ 268 │   │   data, status, _ = await self.__do_execute(                     │
+│   269 │   │   │   lambda protocol: protocol.bind_execute(                    │
+│   270 │   │   │   │   self._state, args, '', limit, True, timeout))          │
+│   271 │   │   self._last_status = status                                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/asyncpg/prepared_stmt.py:257 in __do_execute        │
+│                                                                              │
+│   254 │   async def __do_execute(self, executor):                            │
+│   255 │   │   protocol = self._connection._protocol                          │
+│   256 │   │   try:                                                           │
+│ ❱ 257 │   │   │   return await executor(protocol)                            │
+│   258 │   │   except exceptions.OutdatedSchemaCacheError:                    │
+│   259 │   │   │   await self._connection.reload_schema_state()               │
+│   260 │   │   │   # We can not find all manually created prepared            │
+│       statements, so just                                                    │
+│                                                                              │
+│ in bind_execute:197                                                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+UniqueViolationError: duplicate key value violates unique constraint 
+"screening_runs_strategy_id_run_date_data_version_config_has_key"
+DETAIL:  Key (strategy_id, run_date, data_version, config_hash)=(7, 2026-08-07, 
+2026-08-07, 1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3) 
+already exists.
+
+The above exception was the direct cause of the following exception:
+
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:1953 in                   │
+│ _exec_single_context                                                         │
+│                                                                              │
+│   1950 │   │   │   │   │   │   │   evt_handled = True                        │
+│   1951 │   │   │   │   │   │   │   break                                     │
+│   1952 │   │   │   │   if not evt_handled:                                   │
+│ ❱ 1953 │   │   │   │   │   self.dialect.do_execute(                          │
+│   1954 │   │   │   │   │   │   cursor, str_statement, effective_parameters,  │
+│        context                                                               │
+│   1955 │   │   │   │   │   )                                                 │
+│   1956                                                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/default.py:1192 in do_execute     │
+│                                                                              │
+│   1189 │   │   cursor.executemany(statement, parameters)                     │
+│   1190 │                                                                     │
+│   1191 │   def do_execute(self, cursor, statement, parameters,               │
+│        context=None):                                                        │
+│ ❱ 1192 │   │   cursor.execute(statement, parameters)                         │
+│   1193 │                                                                     │
+│   1194 │   def do_execute_no_params(self, cursor, statement, context=None):  │
+│   1195 │   │   cursor.execute(statement)                                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:656 in    │
+│ execute                                                                      │
+│                                                                              │
+│    653 │   │   │   │   self._handle_exception(error)                         │
+│    654 │                                                                     │
+│    655 │   def execute(self, operation, parameters=None):                    │
+│ ❱  656 │   │   await_(self._prepare_and_execute(operation, parameters))      │
+│    657 │                                                                     │
+│    658 │   def executemany(self, operation, seq_of_parameters):              │
+│    659 │   │   return await_(self._executemany(operation,                    │
+│        seq_of_parameters))                                                   │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/concurrency.py:167 in await_        │
+│                                                                              │
+│   164 │   # switches back to this greenlet with the result of awaitable that │
+│       is                                                                     │
+│   165 │   # then returned to the caller (or raised as error)                 │
+│   166 │   assert current.parent                                              │
+│ ❱ 167 │   return current.parent.switch(awaitable)  # type:                   │
+│       ignore[no-any-return]                                                  │
+│   168                                                                        │
+│   169                                                                        │
+│   170 await_only = await_  # old name. deprecated on 2.2                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/concurrency.py:205 in               │
+│ greenlet_spawn                                                               │
+│                                                                              │
+│   202 │   │   try:                                                           │
+│   203 │   │   │   # wait for a coroutine from await_ and then return its     │
+│   204 │   │   │   # result back to it.                                       │
+│ ❱ 205 │   │   │   value = await result                                       │
+│   206 │   │   except BaseException:                                          │
+│   207 │   │   │   # this allows an exception to be raised within             │
+│   208 │   │   │   # the moderated greenlet so that it can continue           │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:618 in    │
+│ _prepare_and_execute                                                         │
+│                                                                              │
+│    615 │   │   │   │   │   │   self._rowcount = -1                           │
+│    616 │   │   │                                                             │
+│    617 │   │   │   except Exception as error:                                │
+│ ❱  618 │   │   │   │   self._handle_exception(error)                         │
+│    619 │                                                                     │
+│    620 │   @property                                                         │
+│    621 │   def description(self) -> Optional[_DBAPICursorDescription]:       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:568 in    │
+│ _handle_exception                                                            │
+│                                                                              │
+│    565 │   │   self._invalidate_schema_cache_asof = 0                        │
+│    566 │                                                                     │
+│    567 │   def _handle_exception(self, error):                               │
+│ ❱  568 │   │   self._adapt_connection._handle_exception(error)               │
+│    569 │                                                                     │
+│    570 │   async def _prepare_and_execute(self, operation, parameters):      │
+│    571 │   │   adapt_connection = self._adapt_connection                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:847 in    │
+│ _handle_exception                                                            │
+│                                                                              │
+│    844 │   │   if self._connection.is_closed():                              │
+│    845 │   │   │   self._transaction = None                                  │
+│    846 │   │                                                                 │
+│ ❱  847 │   │   super()._handle_exception(error)                              │
+│    848 │                                                                     │
+│    849 │   @property                                                         │
+│    850 │   def autocommit(self):                                             │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/connectors/asyncio.py:412 in             │
+│ _handle_exception                                                            │
+│                                                                              │
+│   409 │   │   raise error.with_traceback(exc_info[2])                        │
+│   410 │                                                                      │
+│   411 │   def _handle_exception(self, error: Exception) -> NoReturn:         │
+│ ❱ 412 │   │   self._handle_exception_no_connection(self.dbapi, error)        │
+│   413 │                                                                      │
+│   414 │   def rollback(self) -> None:                                        │
+│   415 │   │   try:                                                           │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:840 in    │
+│ _handle_exception_no_connection                                              │
+│                                                                              │
+│    837 │   │   │   │   │   translated_error = exception_mapping[super_](     │
+│    838 │   │   │   │   │   │   message, error                                │
+│    839 │   │   │   │   │   )                                                 │
+│ ❱  840 │   │   │   │   │   raise translated_error from error                 │
+│    841 │   │   super()._handle_exception_no_connection(dbapi, error)         │
+│    842 │                                                                     │
+│    843 │   def _handle_exception(self, error: Exception) -> NoReturn:        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+UniqueViolationError: duplicate key value violates unique constraint 
+"screening_runs_strategy_id_run_date_data_version_config_has_key"
+
+The above exception was the direct cause of the following exception:
+
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/moment │
+│ um25/interface/cli/main.py:99 in screen                                      │
+│                                                                              │
+│    96 │   from momentum25.app.services.screening_job import                  │
+│       run_screening_pipeline                                                 │
+│    97 │                                                                      │
+│    98 │   try:                                                               │
+│ ❱  99 │   │   run_id = asyncio.run(run_screening_pipeline(strategy,          │
+│       ingest_enabled=False))                                                 │
+│   100 │   except (RuntimeError, ValueError) as exc:                          │
+│   101 │   │   typer.echo(f"Screening failed: {exc}", err=True)               │
+│   102 │   │   raise typer.Exit(1) from exc                                   │
+│                                                                              │
+│ /Users/varunagarwal/.pyenv/versions/3.12.1/lib/python3.12/asyncio/runners.py │
+│ :194 in run                                                                  │
+│                                                                              │
+│   191 │   │   │   "asyncio.run() cannot be called from a running event       │
+│       loop")                                                                 │
+│   192 │                                                                      │
+│   193 │   with Runner(debug=debug, loop_factory=loop_factory) as runner:     │
+│ ❱ 194 │   │   return runner.run(main)                                        │
+│   195                                                                        │
+│   196                                                                        │
+│   197 def _cancel_all_tasks(loop):                                           │
+│                                                                              │
+│ /Users/varunagarwal/.pyenv/versions/3.12.1/lib/python3.12/asyncio/runners.py │
+│ :118 in run                                                                  │
+│                                                                              │
+│   115 │   │                                                                  │
+│   116 │   │   self._interrupt_count = 0                                      │
+│   117 │   │   try:                                                           │
+│ ❱ 118 │   │   │   return self._loop.run_until_complete(task)                 │
+│   119 │   │   except exceptions.CancelledError:                              │
+│   120 │   │   │   if self._interrupt_count > 0:                              │
+│   121 │   │   │   │   uncancel = getattr(task, "uncancel", None)             │
+│                                                                              │
+│ /Users/varunagarwal/.pyenv/versions/3.12.1/lib/python3.12/asyncio/base_event │
+│ s.py:684 in run_until_complete                                               │
+│                                                                              │
+│    681 │   │   if not future.done():                                         │
+│    682 │   │   │   raise RuntimeError('Event loop stopped before Future      │
+│        completed.')                                                          │
+│    683 │   │                                                                 │
+│ ❱  684 │   │   return future.result()                                        │
+│    685 │                                                                     │
+│    686 │   def stop(self):                                                   │
+│    687 │   │   """Stop running the event loop.                               │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/moment │
+│ um25/app/services/screening_job.py:98 in run_screening_pipeline              │
+│                                                                              │
+│    95 │   │   )                                                              │
+│    96 │   │                                                                  │
+│    97 │   │   try:                                                           │
+│ ❱  98 │   │   │   completed_id = await execute.execute(                      │
+│    99 │   │   │   │   strategy_name=strategy_name,                           │
+│   100 │   │   │   │   target_symbols=target_symbols,                         │
+│   101 │   │   │   │   force=force,                                           │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/moment │
+│ um25/application/use_cases/screening.py:189 in execute                       │
+│                                                                              │
+│   186 │   │   if latest_bar_date is None:                                    │
+│   187 │   │   │   raise ValueError("No stored market data. Import authorized │
+│       EOD data first.")                                                      │
+│   188 │   │   screening_date = latest_bar_date or reference_date             │
+│ ❱ 189 │   │   run_id = await self._run_via_orchestrator(strategy,            │
+│       screening_date, existing_run_id)                                       │
+│   190 │   │                                                                  │
+│   191 │   │   _logger.info("execute_screening_completed", run_id=run_id)     │
+│   192 │   │   return run_id                                                  │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/moment │
+│ um25/application/use_cases/screening.py:359 in _run_via_orchestrator         │
+│                                                                              │
+│   356 │   │   │   strategy_repo=None,                                        │
+│   357 │   │   )                                                              │
+│   358 │   │                                                                  │
+│ ❱ 359 │   │   await orchestrator.run_daily_screening(trading_date,           │
+│       existing_run_id=existing_run_id)                                       │
+│   360 │   │                                                                  │
+│   361 │   │   if existing_run_id is not None:                                │
+│   362 │   │   │   return existing_run_id                                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/moment │
+│ um25/application/use_cases/screening_orchestrator.py:161 in                  │
+│ run_daily_screening                                                          │
+│                                                                              │
+│   158 │   │   │   │   status=RunStatus.RUNNING,                              │
+│   159 │   │   │   │   started_at=datetime.now(UTC),                          │
+│   160 │   │   │   )                                                          │
+│ ❱ 161 │   │   │   run_id = await self._screening_run_repo.create(run)        │
+│   162 │   │   │   run.id = run_id                                            │
+│   163 │   │                                                                  │
+│   164 │   │   try:                                                           │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/moment │
+│ um25/infrastructure/persistence/repositories/screening_run.py:72 in create   │
+│                                                                              │
+│    69 │   │   │   stats=run.stats or None,                                   │
+│    70 │   │   )                                                              │
+│    71 │   │   self._session.add(model)                                       │
+│ ❱  72 │   │   await self._session.flush()                                    │
+│    73 │   │   return int(model.id)                                           │
+│    74 │                                                                      │
+│    75 │   async def update(self, run: ScreeningRun) -> None:                 │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1030 in flush     │
+│                                                                              │
+│   1027 │   │   │   :meth:`_orm.Session.flush` - main documentation for flush │
+│   1028 │   │                                                                 │
+│   1029 │   │   """                                                           │
+│ ❱ 1030 │   │   await greenlet_spawn(self.sync_session.flush,                 │
+│        objects=objects)                                                      │
+│   1031 │                                                                     │
+│   1032 │   def get_transaction(self) -> Optional[AsyncSessionTransaction]:   │
+│   1033 │   │   """Return the current root transaction in progress, if any.   │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/concurrency.py:212 in               │
+│ greenlet_spawn                                                               │
+│                                                                              │
+│   209 │   │   │   # its expected flow.                                       │
+│   210 │   │   │   result = context.throw(*sys.exc_info())                    │
+│   211 │   │   else:                                                          │
+│ ❱ 212 │   │   │   result = context.switch(value)                             │
+│   213 │                                                                      │
+│   214 │   if _require_await and not switch_occurred:                         │
+│   215 │   │   raise exc.AwaitRequired(                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/session.py:4536 in flush             │
+│                                                                              │
+│   4533 │   │   │   return                                                    │
+│   4534 │   │   try:                                                          │
+│   4535 │   │   │   self._flushing = True                                     │
+│ ❱ 4536 │   │   │   self._flush(objects)                                      │
+│   4537 │   │   finally:                                                      │
+│   4538 │   │   │   self._flushing = False                                    │
+│   4539                                                                       │
+│ in _flush:2                                                                  │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/deprecations.py:281 in warned       │
+│                                                                              │
+│   278 │   │   │   │   │   │   version_warnings[m],                           │
+│   279 │   │   │   │   │   │   stacklevel=3,                                  │
+│   280 │   │   │   │   │   )                                                  │
+│ ❱ 281 │   │   │   return fn(*args, **kwargs)  # type: ignore[no-any-return]  │
+│   282 │   │                                                                  │
+│   283 │   │   doc = fn.__doc__ if fn.__doc__ is not None else ""             │
+│   284 │   │   if doc:                                                        │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/session.py:4679 in _flush            │
+│                                                                              │
+│   4676 │   │   │   transaction.commit()                                      │
+│   4677 │   │                                                                 │
+│   4678 │   │   except:                                                       │
+│ ❱ 4679 │   │   │   with util.safe_reraise():                                 │
+│   4680 │   │   │   │   transaction.rollback(_capture_exception=True)         │
+│   4681 │                                                                     │
+│   4682 │   def bulk_save_objects(                                            │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/langhelpers.py:166 in __exit__      │
+│                                                                              │
+│    163 │   │   │   exc_type, exc_value, exc_tb = self._exc_info              │
+│    164 │   │   │   assert exc_value is not None                              │
+│    165 │   │   │   self._exc_info = None  # remove potential circular        │
+│        references                                                            │
+│ ❱  166 │   │   │   raise exc_value.with_traceback(exc_tb)                    │
+│    167 │   │   else:                                                         │
+│    168 │   │   │   self._exc_info = None  # remove potential circular        │
+│        references                                                            │
+│    169 │   │   │   assert value is not None                                  │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/session.py:4640 in _flush            │
+│                                                                              │
+│   4637 │   │   try:                                                          │
+│   4638 │   │   │   self._warn_on_events = True                               │
+│   4639 │   │   │   try:                                                      │
+│ ❱ 4640 │   │   │   │   flush_context.execute()                               │
+│   4641 │   │   │   finally:                                                  │
+│   4642 │   │   │   │   self._warn_on_events = False                          │
+│   4643                                                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/unitofwork.py:467 in execute         │
+│                                                                              │
+│   464 │   │   │   │   │   n.execute_aggregate(self, set_)                    │
+│   465 │   │   else:                                                          │
+│   466 │   │   │   for rec in topological.sort(self.dependencies,             │
+│       postsort_actions):                                                     │
+│ ❱ 467 │   │   │   │   rec.execute(self)                                      │
+│   468 │                                                                      │
+│   469 │   def finalize_flush_changes(self) -> None:                          │
+│   470 │   │   """Mark processed objects as clean / deleted after a           │
+│       successful                                                             │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/unitofwork.py:643 in execute         │
+│                                                                              │
+│   640 │                                                                      │
+│   641 │   @util.preload_module("sqlalchemy.orm.persistence")                 │
+│   642 │   def execute(self, uow):                                            │
+│ ❱ 643 │   │   util.preloaded.orm_persistence._save_obj(                      │
+│   644 │   │   │   self.mapper,                                               │
+│   645 │   │   │   uow.states_for_mapper_hierarchy(self.mapper, False,        │
+│       False),                                                                │
+│   646 │   │   │   uow,                                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/persistence.py:92 in _save_obj       │
+│                                                                              │
+│     89 │   │   │   update,                                                   │
+│     90 │   │   )                                                             │
+│     91 │   │                                                                 │
+│ ❱   92 │   │   _emit_insert_statements(                                      │
+│     93 │   │   │   base_mapper,                                              │
+│     94 │   │   │   uowtransaction,                                           │
+│     95 │   │   │   mapper,                                                   │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/orm/persistence.py:1237 in               │
+│ _emit_insert_statements                                                      │
+│                                                                              │
+│   1234 │   │   │   │   │   │   │   execution_options=execution_options,      │
+│   1235 │   │   │   │   │   │   )                                             │
+│   1236 │   │   │   │   │   else:                                             │
+│ ❱ 1237 │   │   │   │   │   │   result = connection.execute(                  │
+│   1238 │   │   │   │   │   │   │   statement,                                │
+│   1239 │   │   │   │   │   │   │   params,                                   │
+│   1240 │   │   │   │   │   │   │   execution_options=execution_options,      │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:1458 in execute           │
+│                                                                              │
+│   1455 │   │   except AttributeError as err:                                 │
+│   1456 │   │   │   raise exc.ObjectNotExecutableError(statement) from err    │
+│   1457 │   │   else:                                                         │
+│ ❱ 1458 │   │   │   return meth(                                              │
+│   1459 │   │   │   │   self,                                                 │
+│   1460 │   │   │   │   distilled_parameters,                                 │
+│   1461 │   │   │   │   execution_options or NO_OPTIONS,                      │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/sql/elements.py:533 in                   │
+│ _execute_on_connection                                                       │
+│                                                                              │
+│    530 │   │   if self.supports_execution:                                   │
+│    531 │   │   │   if TYPE_CHECKING:                                         │
+│    532 │   │   │   │   assert isinstance(self, Executable)                   │
+│ ❱  533 │   │   │   return connection._execute_clauseelement(                 │
+│    534 │   │   │   │   self, distilled_params, execution_options             │
+│    535 │   │   │   )                                                         │
+│    536 │   │   else:                                                         │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:1678 in                   │
+│ _execute_clauseelement                                                       │
+│                                                                              │
+│   1675 │   │   │   │   linting=self.dialect.compiler_linting |               │
+│        compiler.WARN_LINTING,                                                │
+│   1676 │   │   │   )                                                         │
+│   1677 │   │   )                                                             │
+│ ❱ 1678 │   │   ret = self._execute_context(                                  │
+│   1679 │   │   │   dialect,                                                  │
+│   1680 │   │   │   dialect.execution_ctx_cls._init_compiled,                 │
+│   1681 │   │   │   compiled_sql,                                             │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:1832 in _execute_context  │
+│                                                                              │
+│   1829 │   │   if context.execute_style is ExecuteStyle.INSERTMANYVALUES:    │
+│   1830 │   │   │   return self._exec_insertmany_context(dialect, context)    │
+│   1831 │   │   else:                                                         │
+│ ❱ 1832 │   │   │   return self._exec_single_context(                         │
+│   1833 │   │   │   │   dialect, context, statement, parameters               │
+│   1834 │   │   │   )                                                         │
+│   1835                                                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:1972 in                   │
+│ _exec_single_context                                                         │
+│                                                                              │
+│   1969 │   │   │   result = context._setup_result_proxy()                    │
+│   1970 │   │                                                                 │
+│   1971 │   │   except BaseException as e:                                    │
+│ ❱ 1972 │   │   │   self._handle_dbapi_exception(                             │
+│   1973 │   │   │   │   e, str_statement, effective_parameters, cursor,       │
+│        context                                                               │
+│   1974 │   │   │   )                                                         │
+│   1975                                                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:2342 in                   │
+│ _handle_dbapi_exception                                                      │
+│                                                                              │
+│   2339 │   │   │   │   raise newraise.with_traceback(exc_info[2]) from e     │
+│   2340 │   │   │   elif should_wrap:                                         │
+│   2341 │   │   │   │   assert sqlalchemy_exception is not None               │
+│ ❱ 2342 │   │   │   │   raise                                                 │
+│        sqlalchemy_exception.with_traceback(exc_info[2]) from e               │
+│   2343 │   │   │   else:                                                     │
+│   2344 │   │   │   │   assert exc_info[1] is not None                        │
+│   2345 │   │   │   │   raise exc_info[1].with_traceback(exc_info[2])         │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/base.py:1953 in                   │
+│ _exec_single_context                                                         │
+│                                                                              │
+│   1950 │   │   │   │   │   │   │   evt_handled = True                        │
+│   1951 │   │   │   │   │   │   │   break                                     │
+│   1952 │   │   │   │   if not evt_handled:                                   │
+│ ❱ 1953 │   │   │   │   │   self.dialect.do_execute(                          │
+│   1954 │   │   │   │   │   │   cursor, str_statement, effective_parameters,  │
+│        context                                                               │
+│   1955 │   │   │   │   │   )                                                 │
+│   1956                                                                       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/engine/default.py:1192 in do_execute     │
+│                                                                              │
+│   1189 │   │   cursor.executemany(statement, parameters)                     │
+│   1190 │                                                                     │
+│   1191 │   def do_execute(self, cursor, statement, parameters,               │
+│        context=None):                                                        │
+│ ❱ 1192 │   │   cursor.execute(statement, parameters)                         │
+│   1193 │                                                                     │
+│   1194 │   def do_execute_no_params(self, cursor, statement, context=None):  │
+│   1195 │   │   cursor.execute(statement)                                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:656 in    │
+│ execute                                                                      │
+│                                                                              │
+│    653 │   │   │   │   self._handle_exception(error)                         │
+│    654 │                                                                     │
+│    655 │   def execute(self, operation, parameters=None):                    │
+│ ❱  656 │   │   await_(self._prepare_and_execute(operation, parameters))      │
+│    657 │                                                                     │
+│    658 │   def executemany(self, operation, seq_of_parameters):              │
+│    659 │   │   return await_(self._executemany(operation,                    │
+│        seq_of_parameters))                                                   │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/concurrency.py:167 in await_        │
+│                                                                              │
+│   164 │   # switches back to this greenlet with the result of awaitable that │
+│       is                                                                     │
+│   165 │   # then returned to the caller (or raised as error)                 │
+│   166 │   assert current.parent                                              │
+│ ❱ 167 │   return current.parent.switch(awaitable)  # type:                   │
+│       ignore[no-any-return]                                                  │
+│   168                                                                        │
+│   169                                                                        │
+│   170 await_only = await_  # old name. deprecated on 2.2                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/util/concurrency.py:205 in               │
+│ greenlet_spawn                                                               │
+│                                                                              │
+│   202 │   │   try:                                                           │
+│   203 │   │   │   # wait for a coroutine from await_ and then return its     │
+│   204 │   │   │   # result back to it.                                       │
+│ ❱ 205 │   │   │   value = await result                                       │
+│   206 │   │   except BaseException:                                          │
+│   207 │   │   │   # this allows an exception to be raised within             │
+│   208 │   │   │   # the moderated greenlet so that it can continue           │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:618 in    │
+│ _prepare_and_execute                                                         │
+│                                                                              │
+│    615 │   │   │   │   │   │   self._rowcount = -1                           │
+│    616 │   │   │                                                             │
+│    617 │   │   │   except Exception as error:                                │
+│ ❱  618 │   │   │   │   self._handle_exception(error)                         │
+│    619 │                                                                     │
+│    620 │   @property                                                         │
+│    621 │   def description(self) -> Optional[_DBAPICursorDescription]:       │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:568 in    │
+│ _handle_exception                                                            │
+│                                                                              │
+│    565 │   │   self._invalidate_schema_cache_asof = 0                        │
+│    566 │                                                                     │
+│    567 │   def _handle_exception(self, error):                               │
+│ ❱  568 │   │   self._adapt_connection._handle_exception(error)               │
+│    569 │                                                                     │
+│    570 │   async def _prepare_and_execute(self, operation, parameters):      │
+│    571 │   │   adapt_connection = self._adapt_connection                     │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:847 in    │
+│ _handle_exception                                                            │
+│                                                                              │
+│    844 │   │   if self._connection.is_closed():                              │
+│    845 │   │   │   self._transaction = None                                  │
+│    846 │   │                                                                 │
+│ ❱  847 │   │   super()._handle_exception(error)                              │
+│    848 │                                                                     │
+│    849 │   @property                                                         │
+│    850 │   def autocommit(self):                                             │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/connectors/asyncio.py:412 in             │
+│ _handle_exception                                                            │
+│                                                                              │
+│   409 │   │   raise error.with_traceback(exc_info[2])                        │
+│   410 │                                                                      │
+│   411 │   def _handle_exception(self, error: Exception) -> NoReturn:         │
+│ ❱ 412 │   │   self._handle_exception_no_connection(self.dbapi, error)        │
+│   413 │                                                                      │
+│   414 │   def rollback(self) -> None:                                        │
+│   415 │   │   try:                                                           │
+│                                                                              │
+│ /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/ │
+│ python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:840 in    │
+│ _handle_exception_no_connection                                              │
+│                                                                              │
+│    837 │   │   │   │   │   translated_error = exception_mapping[super_](     │
+│    838 │   │   │   │   │   │   message, error                                │
+│    839 │   │   │   │   │   )                                                 │
+│ ❱  840 │   │   │   │   │   raise translated_error from error                 │
+│    841 │   │   super()._handle_exception_no_connection(dbapi, error)         │
+│    842 │                                                                     │
+│    843 │   def _handle_exception(self, error: Exception) -> NoReturn:        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.UniqueViolationError) 
+duplicate key value violates unique constraint 
+"screening_runs_strategy_id_run_date_data_version_config_has_key"
+[SQL: INSERT INTO screening_runs (strategy_id, run_date, data_version, 
+config_hash, status, trigger, started_at, finished_at, error, stats) VALUES 
+($1::BIGINT, $2::DATE, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, 
+$7::TIMESTAMP WITH TIME ZONE, $8::TIMESTAMP WITH TIME ZONE, $9::VARCHAR, 
+$10::JSONB) RETURNING screening_runs.id]
+[parameters: (7, datetime.date(2026, 8, 7), '2026-08-07', 
+'1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3', 'RUNNING', 
+'MANUAL', datetime.datetime(2026, 10, 19, 7, 26, 28, 808473, 
+tzinfo=datetime.timezone.utc), None, None, 'null')]
+(Background on this error at: https://sqlalche.me/e/21/gkpj)

@@ -1,0 +1,32 @@
+
+> momentum25-web@0.1.0 e2e
+> playwright test e2e/r2-stress-bench.spec.ts
+
+[WebServer] (node:78390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO:     Started server process [78517]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 4 tests using 1 worker
+
+(node:78534) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  1 [chromium] › e2e/r2-stress-bench.spec.ts:110:3 › R2 stress: 1 long-history charts with indicators, comparisons and drawings (2.1s)
+
+  ✓  2 [chromium] › e2e/r2-stress-bench.spec.ts:110:3 › R2 stress: 4 long-history charts with indicators, comparisons and drawings (1.9s)
+
+  ✓  3 [chromium] › e2e/r2-stress-bench.spec.ts:110:3 › R2 stress: 16 long-history charts with indicators, comparisons and drawings (3.2s)
+
+  ✓  4 [chromium] › e2e/r2-stress-bench.spec.ts:140:1 › R2 bounded endurance: navigate symbols, change layouts, add and delete drawings (16.7s)
+
+  4 passed (34.3s)

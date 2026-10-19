@@ -1,0 +1,102 @@
+
+> momentum25-web@0.1.0 e2e
+> playwright test e2e/r2-adversarial.spec.ts
+
+[WebServer] (node:67950) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO:     Started server process [68070]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 5 tests using 1 worker
+
+(node:68087) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  1 [chromium] › e2e/r2-adversarial.spec.ts:27:1 › R2 negative API cases stay JSON, reject hostile origins and never serve .env (152ms)
+
+  ✘  2 [chromium] › e2e/r2-adversarial.spec.ts:64:1 › R2 a drawing save interrupted by network loss stays local and can be retried (2.7s)
+(node:68114) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  3 [chromium] › e2e/r2-adversarial.spec.ts:92:1 › R2 delete versus edit across two windows requires a choice and preserves the chosen copy (3.4s)
+
+  ✘  4 [chromium] › e2e/r2-adversarial.spec.ts:130:1 › R2 Studio versions reopen together with immutable screening results for comparison (453ms)
+(node:68166) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  5 [chromium] › e2e/r2-adversarial.spec.ts:189:1 › R2 legacy strategy comparison uses distinct stored synthetic runs (395ms)
+
+
+  1) [chromium] › e2e/r2-adversarial.spec.ts:64:1 › R2 a drawing save interrupted by network loss stays local and can be retried 
+
+    Error: browser errors
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+    + ]
+
+       at fixtures.ts:34
+
+      32 |     page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
+      33 |     await run(page);
+    > 34 |     expect(problems, 'browser errors').toEqual([]);
+         |                                        ^
+      35 |   },
+      36 | });
+      37 |
+        at Object.page (/Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/fixtures.ts:34:40)
+
+    Error Context: test-results/r2-adversarial-R2-a-drawin-5146f-ys-local-and-can-be-retried-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/r2-adversarial-R2-a-drawin-5146f-ys-local-and-can-be-retried-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/r2-adversarial-R2-a-drawin-5146f-ys-local-and-can-be-retried-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/r2-adversarial.spec.ts:130:1 › R2 Studio versions reopen together with immutable screening results for comparison 
+
+    Error: expect(received).not.toBe(expected) // Object.is equality
+
+    Expected: not "78ab88848b9a2b748e9b47791afa5581ed0f61c68a198089f4734f032461d73f"
+
+      161 |   );
+      162 |   const v2Hash = latest.members.find((member: { name: string }) => member.name === `r2-${stamp}`).config_hash as string;
+    > 163 |   expect(v2Hash).not.toBe(v1Hash);
+          |                      ^
+      164 |
+      165 |   for (const [version, hash] of [[v1, v1Hash], [v2, v2Hash]] as const) {
+      166 |     await version.click();
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/r2-adversarial.spec.ts:163:22
+
+    Error Context: test-results/r2-adversarial-R2-Studio-v-b6005-ning-results-for-comparison-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/r2-adversarial-R2-Studio-v-b6005-ning-results-for-comparison-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/r2-adversarial-R2-Studio-v-b6005-ning-results-for-comparison-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › e2e/r2-adversarial.spec.ts:64:1 › R2 a drawing save interrupted by network loss stays local and can be retried 
+    [chromium] › e2e/r2-adversarial.spec.ts:130:1 › R2 Studio versions reopen together with immutable screening results for comparison 
+  3 passed (17.1s)
