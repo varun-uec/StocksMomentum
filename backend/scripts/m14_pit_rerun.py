@@ -71,6 +71,7 @@ def _verdicts(score: StockScore) -> dict[str, bool]:
 
 
 async def main(series: str, strategy_id: int, sample: int) -> dict[str, Any]:
+    """Compare stored, live and point-in-time selections on ``sample`` run dates."""
     register_builtin_engines()
     engine = StrategyEngine(
         engines=engine_registry, scoring=ScoringEngineImpl(), ranking=RankingEngineImpl()
