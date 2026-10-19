@@ -4,6 +4,7 @@
  * after each daily sync; "Check now" runs the same check.
  */
 
+import { Link } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -85,7 +86,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
   }, [price]);
 
   const create = useMutation({ mutationFn: createAlert, onError: () => { queryClient.invalidateQueries({ queryKey: ['stock-ohlcv'] }); }, onSuccess: () => { refresh(); setNotice('Alert armed. It will check future completed bars.'); } });
-  const edit = useMutation({ onError: () => { refresh(); }, mutationFn: ({ alert, body }: { alert: AlertDTO; body: CreateAlertRequest }) => editAlert(alert.id, { ...body, expected_revision: alert.revision }), onSuccess: () => { refresh(); setEditing(null); setDrawingId(''); setCondition('crosses_above'); setNotice('Alert updated and re-armed from the latest stored session.'); } });
+  const edit = useMutation({ onError: () => { refresh(); queryClient.invalidateQueries({ queryKey: ['stock-ohlcv'] }); }, mutationFn: ({ alert, body }: { alert: AlertDTO; body: CreateAlertRequest }) => editAlert(alert.id, { ...body, expected_revision: alert.revision }), onSuccess: () => { refresh(); setEditing(null); setDrawingId(''); setCondition('crosses_above'); setNotice('Alert updated and re-armed from the latest stored session.'); } });
   const remove = useMutation({ mutationFn: deleteAlert, onSuccess: refresh });
   const rearm = useMutation({ mutationFn: rearmAlert, onSuccess: refresh });
   const check = useMutation({ mutationFn: evaluateAlerts, onSuccess: refresh });
@@ -203,6 +204,7 @@ export function AlertsTab({ symbol, price }: { symbol: string; price?: number })
                 <span>Watching bars after {a.armed_after}</span>
               )}
               <span className="flex-1" />
+              {a.symbol !== symbol && <Link to={`/chart/${encodeURIComponent(a.symbol)}`} className={`text-indigo-700 dark:text-indigo-300 ${focusRing}`}>Open chart</Link>}
               {a.status === 'active' && <button disabled={!prices.data || a.symbol !== symbol} title={a.symbol !== symbol ? 'Open this symbol to edit its alert in the correct price basis' : 'Edit armed condition'} type="button" className={`text-indigo-700 dark:text-indigo-300 ${focusRing}`} onClick={() => { setEditing(a); setSource(a.source); setCondition(a.condition); setBarInterval(a.interval); setThreshold((Number(a.threshold) * (['rsi14', 'adx14'].includes(a.source) ? 1 : factorAt(prices.data?.adjustments ?? [], a.armed_after))).toString()); setDrawingId(a.drawing?.id ?? ''); setNotice(''); }}>Edit</button>}
               {a.status === 'triggered' && (
                 <button type="button" onClick={() => rearm.mutate(a.id)} className={`text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`}>

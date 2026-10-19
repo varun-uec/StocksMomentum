@@ -18,19 +18,25 @@ const ITEM_CLASS = `px-2 py-1 rounded text-left text-xs hover:bg-slate-100 dark:
 
 /** Focus the menu's first item; a pointer press outside it closes it. */
 function useMenu(ref: RefObject<HTMLDivElement | null>, onClose: () => void): void {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
     const away = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      if (!ref.current?.contains(e.target as Node)) closeRef.current();
     };
     window.addEventListener('pointerdown', away, { capture: true });
     return () => window.removeEventListener('pointerdown', away, { capture: true });
-  }, [ref, onClose]);
+  }, [ref]);
 }
 
 function closeOnEscape(e: React.KeyboardEvent, onClose: () => void): void {
   e.stopPropagation();
   if (e.key === 'Escape') onClose();
+  const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role^="menuitem"]:not(:disabled)'));
+  const current = items.indexOf(document.activeElement as HTMLElement);
+  const next = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? (current + 1) % items.length : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? (current + items.length - 1) % items.length : e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : -1;
+  if (next >= 0) { e.preventDefault(); items[next]?.focus(); }
 }
 
 /**
