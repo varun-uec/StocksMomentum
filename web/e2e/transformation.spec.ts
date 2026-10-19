@@ -263,3 +263,94 @@ test('below 1024 px the chart toolbar folds lower-priority controls into one men
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+// Portal validation gate (plan 2026-10-19, step 3a): the page's one drawing rail
+// always serves the active chart, and moving it never rebuilds a chart.
+test.describe('chart chrome slots: the rail portal gate', () => {
+  const cellOf = (page: Page, id: string) => page.getByRole('region', { name: new RegExp(`^Chart ${id}: `) });
+  const rail = (page: Page) => page.getByRole('toolbar', { name: 'Drawing tools' });
+  const generations = (page: Page) =>
+    page.getByTestId('price-chart').evaluateAll((charts) => charts.map((c) => (c as HTMLElement).dataset.chartGeneration));
+  const activate = async (page: Page, id: string) => {
+    await cellOf(page, id).getByTestId('price-chart').click({ position: { x: 60, y: 40 } });
+    await expect(cellOf(page, id)).toHaveAttribute('aria-current', 'true');
+  };
+  async function twoByTwo(page: Page) {
+    await page.goto('/chart/RELIANCE'); await ready(page);
+    await chooseLayout(page, '2x2');
+    await expect(page.getByTestId('price-chart')).toHaveCount(4);
+    await page.waitForLoadState('networkidle');
+  }
+
+  test('1, 8: the rail and the tool keys act on the active chart only; leaving a chart cancels its tool', async ({ page, request }) => {
+    await twoByTwo(page);
+    await activate(page, 'c2');
+    await rail(page).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+    await expect(rail(page).getByRole('button', { name: 'Horizontal line', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await activate(page, 'main');
+    await expect(rail(page).getByRole('button', { name: 'Horizontal line', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await activate(page, 'c2'); // a click on c2 that would place a line if c2 were still armed
+    expect(await savedDrawings(request)).toEqual([]);
+
+    await page.keyboard.press('Alt+t');
+    await expect(rail(page).getByRole('button', { name: 'Trendline', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await activate(page, 'c3');
+    await expect(rail(page).getByRole('button', { name: 'Trendline', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await page.keyboard.press('Alt+h');
+    await expect(rail(page).getByRole('button', { name: 'Horizontal ray', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+    await expect(rail(page).getByRole('button', { name: 'Select', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('2: focus on a rail button stays on that button when the active chart changes', async ({ page }) => {
+    await twoByTwo(page);
+    await rail(page).getByRole('button', { name: 'Trendline', exact: true }).focus();
+    // Activate another cell without moving focus, as a programmatic switch does.
+    await cellOf(page, 'c4').dispatchEvent('pointerdown');
+    await expect(cellOf(page, 'c4')).toHaveAttribute('aria-current', 'true');
+    await expect(rail(page).getByRole('button', { name: 'Trendline', exact: true })).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+  });
+
+  test('3, 4, 5: activation writes only the active chart id, keeps every chart instance, and survives rapid switching', async ({ page }) => {
+    await twoByTwo(page);
+    const before = await generations(page);
+    expect(new Set(before).size).toBe(4);
+    const writes: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'PUT') writes.push(new URL(r.url()).pathname); });
+    const order = ['c2', 'main', 'c4', 'c3'];
+    const started = Date.now();
+    for (let i = 0; i < 20; i++) {
+      const id = order[i % 4];
+      if (i % 2) await cellOf(page, id).getByTestId('price-chart').focus(); // keyboard path
+      else await cellOf(page, id).dispatchEvent('pointerdown');
+    }
+    expect(Date.now() - started).toBeLessThan(2000);
+    await expect(cellOf(page, order[19 % 4])).toHaveAttribute('aria-current', 'true');
+    await expect(rail(page)).toHaveCount(1);
+    expect(await generations(page)).toEqual(before);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('save-state')).toContainText('Saved');
+    expect(writes.every((path) => path === '/api/v1/workspaces/default')).toBe(true);
+  });
+
+  test('6, 7: layout changes retarget the rail to the surviving active chart and cancel an armed tool', async ({ page, request }) => {
+    await page.goto('/chart/RELIANCE'); await ready(page);
+    for (const layout of ['2x2', '4x4', '2x1', '1x1']) {
+      await rail(page).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+      await chooseLayout(page, layout);
+      await expect(rail(page)).toHaveCount(1);
+      await expect(rail(page).getByRole('button', { name: 'Horizontal line', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    }
+    // Removing the active cell: c4 goes when 2 × 2 shrinks to 2 × 1.
+    await chooseLayout(page, '2x2');
+    await activate(page, 'c4');
+    await chooseLayout(page, '2x1');
+    await expect(page.locator('[aria-current="true"]')).toHaveCount(1);
+    await rail(page).getByRole('button', { name: 'Horizontal line', exact: true }).click();
+    const active = page.locator('section[aria-current="true"]').getByTestId('price-chart');
+    const box = (await active.boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.3);
+    await expect.poll(async () => (await savedDrawings(request)).length).toBe(1);
+  });
+});

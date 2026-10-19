@@ -109,7 +109,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 }
 /* /chart (D23): the toolbar lives in the header's route slot; the plot fills the rest. */
 .chart-page { height: calc(100dvh - var(--ws-header) - var(--ws-status) - var(--ws-phone-nav)); display: flex; flex-direction: column; background: var(--ws-surface); }
-.chart-stage { flex: 1; min-height: 0; padding: 4px 6px 2px; }
+.chart-stage { flex: 1; min-width: 0; min-height: 0; padding: 4px 6px 2px; }
 .chart-toolbar { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 4px; }
 .chart-toolbar > * { flex-shrink: 0; }
 .chart-toolbar h1 { letter-spacing: -.03em; }
@@ -117,3 +117,10 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .chart-toolbar-button:hover { background: var(--ws-muted); }
 .chart-toolbar-button:disabled { opacity: .4; }
 .chart-toolbar-sep { width: 1px; height: 20px; background: var(--ws-line); }
+/* The page's drawing rail column (chart chrome slots): it serves the active chart. */
+.chart-body { flex: 1; min-height: 0; display: flex; }
+.chart-rail { flex-shrink: 0; width: 52px; overflow-y: auto; scrollbar-width: thin; border-right: 1px solid var(--ws-line); }
+.chart-rail [aria-label='Drawing tools'] { align-items: center; padding: 4px 0; }
+@media (max-width: 1279px) { .chart-rail { width: 44px; } }
+@media (max-width: 1023px) { .chart-rail { width: 40px; } }
+.chart-rail:empty { display: none; }

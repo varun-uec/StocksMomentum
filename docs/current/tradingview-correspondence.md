@@ -34,7 +34,7 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 | C22 | Footnote "N daily bars from the stored NSE series", data version | below plot | below plot | Read | y | — | m11b-weekly | pass |
 | C23 | Chart context menu: reset, indicators, scale, alert at price | plot right-click | same | Right-click, Shift+F10 | y | — | m13-charting "chart menu" | pass |
 | C24 | Pan / zoom by wheel, drag, keys | plot | plot | Mouse, keys | y | — | m13-charting "mouse wheel" | pass |
-| C25 | Grid cells: per-cell symbol button, compare chips, range select, active border | each cell | each cell | Click cell | y | — | m13-layouts, transformation "grid activation" | pass |
+| C25 | Grid cells: per-cell symbol button, compare chips, range select, active border | each cell | each cell | Click cell | y | — | m13-layouts, transformation "grid activation", "rail portal gate" | pass |
 | C26 | Chart library credit | site footer | shell status edge (`footer`) on every route; ☰ app menu | Page bottom | y | — | m10-stack "credited on every page" | moved |
 | C27 | Alert button (new): opens the Alerts panel for the chart's symbol | — | chart toolbar ≥1024 px; ⋯ menu below | `Alert` | y | `/alerts` | transformation "folds lower-priority controls" | new |
 
@@ -42,9 +42,9 @@ Columns: **Prev** = location before the transformation. **Now** = current primar
 
 | # | Capability | Prev | Now | How a user finds it | No-nav | APIs | Verified | Status |
 |---|---|---|---|---|---|---|---|---|
-| T1 | Select (Esc) | left rail | left rail | Rail | y | — | m12-shell "rail" | pass |
-| T2 | Trendline (Alt+T), Ray, Extended line, Horizontal ray (Alt+H), Horizontal line, Vertical line (Alt+V), Cross line, Parallel channel, Price range, Text note, Rectangle (Alt+Shift+R), Fib retracement (Alt+F) | left rail, flat | left rail, flat | Rail, shortcuts | y | server document | m13-charting "every M13 tool" | pass |
-| T3 | Clear (remove all) | left rail | left rail | Rail | y | server document | manual | pass |
+| T1 | Select (Esc) | left rail | page rail column, serving the active chart (D25) | Rail | y | — | m12-shell "rail", transformation "rail portal gate" | moved |
+| T2 | Trendline (Alt+T), Ray, Extended line, Horizontal ray (Alt+H), Horizontal line, Vertical line (Alt+V), Cross line, Parallel channel, Price range, Text note, Rectangle (Alt+Shift+R), Fib retracement (Alt+F) | left rail, flat | page rail column (active chart), flat until A4.1 | Rail, shortcuts | y | server document | m13-charting "every M13 tool" | moved |
+| T3 | Clear (remove all) | left rail | page rail column | Rail | y | server document | manual | moved |
 | T4 | Objects inspector: list, show/hide, lock/unlock, undo/redo | `Objects` popover | `Objects` popover | `Objects · N` | y | server document | transformation "inline notes and drawing lock" | pass |
 | T5 | Drawing menu: colour, width, dash, text, delete | right-click drawing | same | Right-click, Shift+F10 | y | server document | m13-charting "drawing menu", transformation "drawing menu arrows" | pass |
 | T6 | Select, drag, arrows move, Delete | plot | plot | Click a drawing | y | server document | m13-charting "supports move, edit" | pass |

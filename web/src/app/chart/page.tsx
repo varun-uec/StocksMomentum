@@ -19,7 +19,7 @@ import { createPortal, flushSync } from 'react-dom';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
-import { PriceChart } from '@/components/stock/PriceChart';
+import { PriceChart, type ChartChrome } from '@/components/stock/PriceChart';
 import { MAX_PANES } from '@/components/stock/useCatalogueIndicators';
 import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
 import { SaveState } from '@/components/workspace/SaveState';
@@ -126,6 +126,7 @@ function CellFrame({
   symbol,
   slot,
   active,
+  chrome,
   crosshair,
   onActivate,
   onSearch,
@@ -136,6 +137,8 @@ function CellFrame({
   symbol: string;
   slot: Slot;
   active: boolean;
+  /** The page's chrome slots, for the active cell only. */
+  chrome?: ChartChrome;
   crosshair?: CrosshairSync;
   onActivate: () => void;
   onSearch: () => void;
@@ -157,7 +160,7 @@ function CellFrame({
         <PriceChart {...slot.chartProps} chartLabel={<>
           <button type="button" onClick={onSearch} className={`font-semibold text-xs ${focusRing}`} title="Change this chart's symbol">{symbol}</button>
           <CompareChips symbol={symbol} compare={slot.compare} onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))} />
-        </>} height={160} autoHeight compact toolRail={active} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
+        </>} height={160} autoHeight compact toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} />
       ) : (
         <div className="h-full" />
       )}
@@ -226,10 +229,21 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   /** A cell's symbol: the route's when it is active or symbols are synced, else its own. */
   const symbolOf = (chartId: string) =>
     chartId === activeId || grid.sync.symbol ? symbol : (grid.charts[chartId]?.symbol ?? symbol);
+  const [railSlot, setRailSlot] = useState<HTMLElement | null>(null);
+  const chrome: ChartChrome = { rail: railSlot, resetKey: grid.layout.id };
   const activate = (chartId: string) => {
     if (chartId === activeId) return;
     const next = symbolOf(chartId);
+    // The rail is the active chart's: if focus is on one of its buttons, keep
+    // it on the same button of the new active chart, never on the page body.
+    const focused = document.activeElement;
+    const railLabel = focused && railSlot?.contains(focused) ? focused.getAttribute('aria-label') : null;
     flushSync(() => grid.setActive(chartId));
+    if (railLabel) {
+      const target = railSlot?.querySelector<HTMLElement>(`[aria-label="${CSS.escape(railLabel)}"]`)
+        ?? document.querySelector<HTMLElement>(`[aria-label^="Chart ${chartId}:"] [data-testid="price-chart"]`);
+      target?.focus();
+    }
     if (next !== symbol) navigate(`/chart/${encodeURIComponent(next)}`);
   };
   const syncedInterval = grid.sync.interval
@@ -330,10 +344,12 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   return (
     <main className="chart-page" data-layout={grid.layout.id}>
       {routeSlot && createPortal(toolbar, routeSlot)}
+      <div className="chart-body">
+      <div ref={setRailSlot} className="chart-rail" />
       {!multi ? (
         <div className="chart-stage" data-plot-cell>
           {shell.ready ? (
-            <PriceChart {...slot.chartProps} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail />
+            <PriceChart {...slot.chartProps} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
           ) : (
             <LoadingSpinner />
           )}
@@ -354,10 +370,11 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               onIndicators: () => setIndicatorsOpen(true),
               onAlert: alertAt,
             };
-            return <GridCell key={chartId} {...cell} strategyName={strategyName} syncedInterval={syncedInterval} />;
+            return <GridCell key={chartId} {...cell} chrome={chrome} strategyName={strategyName} syncedInterval={syncedInterval} />;
           })}
         </div>
       )}
+      </div>
       <IndicatorDialog
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}

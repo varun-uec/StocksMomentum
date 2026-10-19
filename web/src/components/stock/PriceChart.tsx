@@ -23,6 +23,7 @@
 import { InspectorDisclosure } from '@/components/workspace/InspectorDisclosure';
 import { useTheme } from '@/app/theme-provider';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AreaSeries,
   BarSeries,
@@ -84,6 +85,21 @@ export const TIMEFRAMES = [
 ] as const;
 
 export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
+
+/**
+ * Page-level places for this chart's chrome (plan 2026-10-19, "chart chrome
+ * slots"). The workspace passes them to the active chart only, so one rail acts
+ * on the active chart. State stays in the chart; only the rendering moves.
+ */
+export interface ChartChrome {
+  /** The page's drawing-rail column. */
+  rail: HTMLElement | null;
+  /** A change (a new layout) cancels an armed tool. */
+  resetKey?: string;
+}
+
+/** Counts chart instances, so a test can prove activation never rebuilds one. */
+let chartGeneration = 0;
 
 /** Drawing-tool shortcuts, by `KeyboardEvent.code` (letters stay the same on any layout and with Alt on macOS). */
 const TOOL_KEYS: Record<string, DrawingKind> = {
@@ -386,6 +402,7 @@ export function PriceChart({
   onScaleChange,
   onOpenIndicators,
   onAlertAtPrice,
+  chrome,
   compact = false,
   chartLabel,
   crosshairSync,
@@ -433,6 +450,8 @@ export function PriceChart({
   onOpenIndicators?: () => void;
   /** Adds "Alert at this price…" to the chart's context menu (M15). */
   onAlertAtPrice?: (price: number) => void;
+  /** Render the chrome into page slots instead of inline (the active workspace chart). */
+  chrome?: ChartChrome;
   /** Compact grid toolbar; optional active-cell drawing rail; no legend or footnote. */
   compact?: boolean;
   chartLabel?: React.ReactNode;
@@ -605,6 +624,10 @@ export function PriceChart({
     setCursorPoint(null);
   };
 
+  // A chart that loses the page's rail, or whose layout changes, drops its armed tool.
+  const railSlot = chrome?.rail ?? null;
+  useEffect(() => { selectTool(null); }, [railSlot, chrome?.resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const parsed = useMemo(
     () =>
       bars.map((b) => ({
@@ -744,6 +767,7 @@ export function PriceChart({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    container.dataset.chartGeneration = String(++chartGeneration);
     const chart = createChart(container, {
       height,
       layout: {
@@ -1449,6 +1473,14 @@ export function PriceChart({
   };
 
   const showPaneControls = drawingsEnabled || indicatorSeries?.length;
+  const rail = toolRail && drawingsEnabled && (
+    <DrawingRail
+      tool={drawingTool}
+      onTool={(kind) => (kind ? toggleDrawingTool(kind) : selectTool(null))}
+      canClear={drawings.length > 0}
+      onClear={clearDrawings}
+    />
+  );
   const activePaneSet = new Set(displayedPanes);
 
   return (
@@ -1630,15 +1662,8 @@ export function PriceChart({
           </button>)}
         </div>
       )}
-      <div className={toolRail && drawingsEnabled ? 'flex gap-2' : undefined}>
-      {toolRail && drawingsEnabled && (
-        <DrawingRail
-          tool={drawingTool}
-          onTool={(kind) => (kind ? toggleDrawingTool(kind) : selectTool(null))}
-          canClear={drawings.length > 0}
-          onClear={clearDrawings}
-        />
-      )}
+      <div className={rail && !chrome ? 'flex gap-2' : undefined}>
+      {chrome ? railSlot && rail && createPortal(rail, railSlot) : rail}
       <div className="relative flex-1 min-w-0">
         {noteEditor && <form aria-label="Text annotation" className="absolute z-30 flex flex-wrap gap-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 p-2 shadow-lg" style={{ left: Math.max(0, Math.min(noteEditor.x, (containerRef.current?.clientWidth ?? 300) - 250)), top: Math.max(0, Math.min(noteEditor.y, height - 88)), width: 248 }} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') { setNoteEditor(null); containerRef.current?.focus(); } }} onSubmit={(e) => { e.preventDefault(); const text = noteEditor.drawing.text?.trim(); if (!text) return; const next = { ...noteEditor.drawing, text }; commitDrawings(drawings.some((d) => d.id === next.id) ? drawings.map((d) => d.id === next.id ? next : d) : [...drawings, next]); setSelectedId(next.id); setNoteEditor(null); containerRef.current?.focus(); }}>
           <input autoFocus aria-label="Annotation text" maxLength={200} value={noteEditor.drawing.text ?? ''} onChange={(e) => setNoteEditor({ ...noteEditor, drawing: { ...noteEditor.drawing, text: e.target.value } })} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 text-xs" placeholder="Write a note…" />
