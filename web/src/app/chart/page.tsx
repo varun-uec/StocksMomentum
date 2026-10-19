@@ -54,7 +54,10 @@ function useChartHeight(): number {
 /** True when the key goes to a field or an open dialog, not to the workspace. */
 function isTyping(e: KeyboardEvent): boolean {
   const target = e.target as HTMLElement | null;
-  const field = target?.closest('input, textarea, select, [contenteditable="true"]');
+  // A checkbox or radio takes no text, so the workspace keys still apply after a click on one.
+  const field = target?.closest(
+    'input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]',
+  );
   const fieldDialog = field?.closest('dialog');
   if (fieldDialog && !fieldDialog.open) return false;
   return !!field || !!target?.closest('dialog[open]');

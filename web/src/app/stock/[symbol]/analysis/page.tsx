@@ -188,10 +188,10 @@ export default function UnifiedAnalysisPage() {
 
   const activeIndicators = overlays.indicators;
 
-  const catalogue = useCatalogueIndicators(bars, activeIndicators, chartProps, benchmarkBars);
-
   const setIndicators = (next: ActiveIndicator[]) =>
     updateOverlays({ indicators: next, presetEdited: true });
+
+  const catalogue = useCatalogueIndicators(bars, activeIndicators, chartProps, benchmarkBars, setIndicators);
 
   // Applying a preset writes its whole configuration in one action.
   const applyPreset = useMemo(

@@ -64,6 +64,8 @@ export function useCatalogueIndicators(
   indicators: ActiveIndicator[],
   base: Pick<PaneProps, 'indicatorSeries' | 'activePanes' | 'onActivePanesChange'>,
   benchmark: CloseBar[],
+  /** Removes an indicator whose pane the chart's pane row turned off. */
+  onIndicatorsChange: (next: ActiveIndicator[]) => void,
 ): { lines: ChartOverlayLine[]; legend: LegendEntry[]; paneCount: number; paneProps: PaneProps } {
   const overlays = useMemo(() => {
     const lines: ChartOverlayLine[] = [];
@@ -141,9 +143,13 @@ export function useCatalogueIndicators(
       indicatorSeries: panes.indicatorSeries,
       extraPaneDefs: panes.defs,
       activePanes: [...base.activePanes, ...panes.ids].filter((id, i, all) => all.indexOf(id) === i),
-      // The chart's pane row owns the backend panes; catalogue panes are added
-      // and removed through the picker.
-      onActivePanesChange: (next) => base.onActivePanesChange(next.filter((id) => !panes.ids.includes(id))),
+      // The chart's pane row owns the backend panes. Turning off a pane there that
+      // an added indicator also draws (RSI, MACD, ADX) removes that indicator too.
+      onActivePanesChange: (next) => {
+        const dropped = panes.ids.filter((id) => !next.includes(id));
+        if (dropped.length) onIndicatorsChange(indicators.filter((i) => !dropped.includes(INDICATOR_BY_ID.get(i.id)?.pane?.id ?? '')));
+        base.onActivePanesChange(next.filter((id) => !panes.ids.includes(id)));
+      },
     },
   };
 }

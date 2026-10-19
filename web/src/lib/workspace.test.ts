@@ -3,7 +3,7 @@ import { INDICATORS } from '@/lib/indicators/catalogue';
 import { PRESETS } from '@/lib/strategies';
 import { DRAWING_COLOR, DRAWING_KINDS, drawingId } from '@/components/stock/chart-drawings';
 import { newUid } from '@/lib/overlay-preferences';
-import { mergeWorkspaces, DEFAULT_CHART, DEFAULT_WORKSPACE, type WorkspaceBody } from '@/lib/workspace';
+import { mergeWorkspaces, withLayout, DEFAULT_CHART, DEFAULT_WORKSPACE, type WorkspaceBody } from '@/lib/workspace';
 
 // Copies of the server's patterns in backend/.../application/dto/user_documents.py.
 // If this test fails, a value the web app saves would be rejected with 422.
@@ -87,5 +87,32 @@ describe('mergeWorkspaces', () => {
     expect(Object.keys(r.mine.charts).sort()).toEqual(['main', 'stock']);
     expect(r.mine.active_chart_id).toBe('main');
     expect(r.conflicted).toBe(false);
+  });
+});
+
+describe('withLayout', () => {
+  const ws: WorkspaceBody = {
+    ...DEFAULT_WORKSPACE,
+    active_chart_id: 'c2',
+    charts: {
+      main: { ...DEFAULT_CHART, symbol: 'TCS' },
+      c2: { ...DEFAULT_CHART, symbol: 'INFY' },
+      stock: { ...DEFAULT_CHART, symbol: 'ITC' },
+    },
+  };
+
+  test('new cells get the active chart\'s symbol, and cells with their own keep it', () => {
+    const next = withLayout(ws, '2x2');
+    expect(next.layout).toBe('2x2');
+    expect(['main', 'c2', 'c3', 'c4'].map((id) => next.charts[id].symbol)).toEqual(['TCS', 'INFY', 'INFY', 'INFY']);
+    expect(next.charts.c3).toEqual({ ...DEFAULT_CHART, symbol: 'INFY' });
+  });
+
+  test('a research screen\'s chart is never the source; the same layout changes nothing', () => {
+    expect(withLayout({ ...ws, active_chart_id: 'stock' }, '2x1').charts.c2.symbol).toBe('INFY');
+    expect(withLayout({ ...ws, active_chart_id: 'stock', charts: { main: ws.charts.main } }, '2x1').charts.c2.symbol).toBe('TCS');
+    expect(withLayout(ws, '1x1')).toEqual({ ...ws, layout: '1x1' });
+    const same = { ...ws, layout: '2x2' as const };
+    expect(withLayout(same, '2x2')).toBe(same);
   });
 });

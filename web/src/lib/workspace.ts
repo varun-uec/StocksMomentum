@@ -175,6 +175,25 @@ export const LAYOUTS: { id: Layout; label: string; cols: number; rows: number }[
 export const slotChartId = (index: number): string => (index === 0 ? 'main' : `c${index + 1}`);
 
 /**
+ * `ws` switched to layout `id`. A cell the layout opens with no symbol of its
+ * own gets the active chart's: without one it followed the active chart, so a
+ * new 4 × 4 grid changed 15 charts at once even with symbol sync off.
+ */
+export function withLayout(ws: WorkspaceBody, id: Layout): WorkspaceBody {
+  const layout = LAYOUTS.find((l) => l.id === id);
+  if (!layout || ws.layout === id) return ws;
+  // A research screen's chart (`stock`, `analysis`) can be the active one; the grid's is `main`.
+  const activeId = ws.active_chart_id && /^(main|c\d+)$/.test(ws.active_chart_id) ? ws.active_chart_id : 'main';
+  const symbol = ws.charts[activeId]?.symbol ?? ws.charts.main?.symbol ?? null;
+  const charts = { ...ws.charts };
+  for (let i = 0; i < layout.cols * layout.rows && symbol; i += 1) {
+    const chartId = slotChartId(i);
+    if (!charts[chartId]?.symbol) charts[chartId] = { ...(charts[chartId] ?? DEFAULT_CHART), symbol };
+  }
+  return { ...ws, layout: id, charts };
+}
+
+/**
  * The workspace's chart grid: its slots, which one is active, and what the
  * charts share. Any chart update marks its chart active, including the
  * research screens' charts, so an active id outside the grid means `main`.
@@ -191,7 +210,7 @@ export function useLayout() {
     sync: doc.body.sync ?? DEFAULT_WORKSPACE.sync!,
     charts: doc.body.charts,
     ready: doc.status !== 'loading',
-    setLayout: (id: Layout) => doc.update((ws) => (ws.layout === id ? ws : { ...ws, layout: id })),
+    setLayout: (id: Layout) => doc.update((ws) => withLayout(ws, id)),
     setSync: (patch: Partial<LayoutSync>) =>
       doc.update((ws) => ({ ...ws, sync: { ...(ws.sync ?? DEFAULT_WORKSPACE.sync!), ...patch } })),
     setActive: (id: string) => doc.update((ws) => (ws.active_chart_id === id ? ws : { ...ws, active_chart_id: id })),

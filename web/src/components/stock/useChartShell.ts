@@ -17,14 +17,22 @@ import { toChartPrices, toTradedPrices, type PeriodBars } from '@/lib/traded-pri
 import type { ChartInterval } from '@/lib/types';
 import { TIMEFRAMES, type TimeframeId } from '@/components/stock/PriceChart';
 
-/** ISO date `days` before today, for the chart's `from` query param. */
-export function fromDateFor(timeframe: TimeframeId): string | undefined {
+/**
+ * Index of the first bar in `timeframe`, counted back from the last stored bar.
+ * Counting from today emptied 1W and 1M whenever the stored data lagged the
+ * calendar (an import not run yet, a holiday week).
+ */
+export function rangeStartIndex(dates: string[], timeframe: TimeframeId): number {
   const days = TIMEFRAMES.find((t) => t.id === timeframe)?.days;
-  if (!days) return undefined;
-  const d = new Date();
+  if (!days || dates.length === 0) return 0;
+  const d = new Date(`${dates[dates.length - 1]}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - days);
-  return d.toISOString().slice(0, 10);
+  const from = d.toISOString().slice(0, 10);
+  return Math.max(0, dates.findIndex((date) => date >= from));
 }
+
+/** Closes before the range that the longest moving average needs. */
+const MA_WARMUP = 199;
 
 /** Trading days requested for analyses whose window must match the chart. */
 export function lookbackDaysFor(timeframe: TimeframeId, fallback: number): number {
@@ -63,9 +71,10 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
     update({ timeframe: id });
   };
 
-  const { data: ohlcv, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['stock-ohlcv', symbol, timeframe, interval],
-    queryFn: () => getOhlcv(symbol, fromDateFor(timeframe), undefined, interval),
+  // The whole history, once per symbol and interval: a range is a slice of it.
+  const { data: history, isLoading, isPlaceholderData } = useQuery({
+    queryKey: ['stock-ohlcv', symbol, interval],
+    queryFn: () => getOhlcv(symbol, undefined, undefined, interval),
     enabled: !!symbol,
     // Keep the current bars on screen while another range loads, so the chart
     // never blanks and a click during the load still lands on a bar.
@@ -78,6 +87,15 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
     queryFn: () => getIndicatorSeries(symbol, strategyName, interval),
     enabled: !!symbol,
   });
+
+  const { ohlcv, maWarmup } = useMemo(() => {
+    if (!history) return { ohlcv: undefined, maWarmup: [] };
+    const start = rangeStartIndex(history.bars.map((b) => b.date), timeframe);
+    return {
+      ohlcv: { ...history, bars: history.bars.slice(start) },
+      maWarmup: history.bars.slice(Math.max(0, start - MA_WARMUP), start).map((b) => parseFloat(b.close)),
+    };
+  }, [history, timeframe]);
 
   // Decode the backend's decimal-string bars into the chart's number-typed
   // series (values the backend did not produce are null).
@@ -115,6 +133,7 @@ export function useChartShell(symbol: string, strategyName: string, chartId: str
     /** Spread straight into `<PriceChart {...chartProps} />`. */
     chartProps: {
       bars: ohlcv?.bars ?? [],
+      maWarmup,
       timeframe,
       onTimeframeChange: setTimeframe,
       interval,

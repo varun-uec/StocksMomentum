@@ -2,7 +2,8 @@
  * Phase 6.2 — price chart bound to `GET /securities/{symbol}/ohlcv`.
  *
  * Every plotted value comes from a real bar (`open/high/low/close/volume`).
- * The MA overlays are plain rolling means over the *fetched close series* —
+ * The MA overlays are plain rolling means over the stored closes (`maWarmup`
+ * carries the closes before the range, so MA200 spans a 1Y chart) —
  * the backend exposes only a single latest value for sma50/150/200, and a
  * chart needs a full series, so the mean is computed here from backend bars
  * rather than invented. No pivots, no targets, no signal annotations.
@@ -56,6 +57,7 @@ import {
   diffDrawings,
   type DrawingChange,
   type PriceSeries,
+  HANDLE_RADIUS,
   drawingId,
   fromTime,
   hitTestAll,
@@ -67,6 +69,7 @@ import {
   type DrawingPoint,
   type ScreenPoint,
 } from '@/components/stock/chart-drawings';
+import { sma } from '@/lib/indicators/overlays';
 
 export const TIMEFRAMES = [
   { id: '1W', label: '1W', days: 7 },
@@ -295,18 +298,6 @@ const MA_COLORS: Record<number, string> = {
   200: '#475569',
 };
 
-/** Rolling simple mean of `closes`; `null` until the window is full. */
-function rollingMean(closes: number[], period: number): (number | null)[] {
-  const out: (number | null)[] = [];
-  let sum = 0;
-  for (let i = 0; i < closes.length; i += 1) {
-    sum += closes[i];
-    if (i >= period) sum -= closes[i - period];
-    out.push(i >= period - 1 ? sum / period : null);
-  }
-  return out;
-}
-
 function ToggleButton({
   active,
   onClick,
@@ -378,6 +369,7 @@ interface CrosshairReadout {
 
 export function PriceChart({
   bars,
+  maWarmup,
   timeframe,
   onTimeframeChange,
   interval = '1D',
@@ -412,6 +404,8 @@ export function PriceChart({
   onDrawingsChange,
 }: {
   bars: OHLCVBarDTO[];
+  /** Closes just before `bars`, so a moving average starts on the first bar shown. */
+  maWarmup?: number[];
   timeframe: TimeframeId;
   onTimeframeChange: (id: TimeframeId) => void;
   /** Daily, weekly or monthly bars. The switch shows only when `onIntervalChange` is given. */
@@ -592,10 +586,11 @@ export function PriceChart({
   );
 
   const maSeriesData = useMemo(() => {
-    const closes = parsed.map((p) => p.close);
+    const warmup = maWarmup ?? [];
+    const closes = [...warmup, ...parsed.map((p) => p.close)];
     const result = new Map<number, { time: UTCTimestamp; value: number }[]>();
     for (const period of MA_PERIODS) {
-      const means = rollingMean(closes, period);
+      const means = sma(closes, period).slice(warmup.length);
       result.set(
         period,
         parsed
@@ -604,10 +599,14 @@ export function PriceChart({
       );
     }
     return result;
-  }, [parsed]);
+  }, [parsed, maWarmup]);
 
+  // One definition per pane id: the indicator dialog also offers the built-in panes.
   const paneDefs = useMemo(
-    () => [...PANE_DEFS, ...(extraPaneDefs ?? []), ...(showVolume ? [VOLUME_PANE] : [])],
+    () =>
+      [...PANE_DEFS, ...(extraPaneDefs ?? []), ...(showVolume ? [VOLUME_PANE] : [])].filter(
+        (def, i, all) => all.findIndex((d) => d.id === def.id) === i
+      ),
     [extraPaneDefs, showVolume]
   );
 
@@ -807,7 +806,11 @@ export function PriceChart({
       const bar = at ? readoutMapsRef.current.barByDate.get(at) : undefined;
       const series = priceSeriesRef.current;
       if (at && bar && series) chart.setCrosshairPosition(bar.close, toTime(at), series);
-      else chart.clearCrosshairPosition();
+      else {
+        // Clearing from code fires no crosshair move, so the readout clears here.
+        chart.clearCrosshairPosition();
+        setReadout(null);
+      }
     });
   }, [crosshairSync]);
 
@@ -882,8 +885,14 @@ export function PriceChart({
     const onPlace = (e: MouseEvent) => {
       const tool = drawingToolRef.current;
       if (!drawingsEnabledRef.current || !tool || e.button !== 0) return;
-      const point = toData(localPoint(e));
+      const at = localPoint(e);
+      const point = toData(at);
       if (!point) return;
+      // The second click of a double-click lands on the previous anchor; a
+      // drawing needs distinct points, so wait for the next real one.
+      const previous = draftPointsRef.current.at(-1);
+      const previousAt = previous && toScreen(previous);
+      if (previousAt && Math.hypot(previousAt.x - at.x, previousAt.y - at.y) < HANDLE_RADIUS) return;
       const next = [...draftPointsRef.current, point];
       draftPointsRef.current = next;
       if (next.length >= DRAWING_REQUIRED_POINTS[tool]) {
@@ -1548,7 +1557,7 @@ export function PriceChart({
           className={`w-full ${drawingsEnabled ? `rounded-sm ${focusRing}` : ''}`}
         />
         {readout && (
-          <div className={`pointer-events-none absolute top-2 ${compact ? 'left-2' : 'right-2'} rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm`}>
+          <div data-testid="crosshair-readout" className="pointer-events-none absolute top-2 left-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">
             <div className="font-medium text-slate-700 dark:text-slate-300">
               {readout.date}
               {compact && readout.bar && <span className="font-normal tabular-nums"> · C {readout.bar.close.toFixed(2)}</span>}
@@ -1573,7 +1582,7 @@ export function PriceChart({
         {isLoading
           ? 'Loading price series…'
           : (footnote ??
-            `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the closes shown.${
+            `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the stored closes.${
               bars.at(-1)?.partial ? ` The last ${interval === '1M' ? 'month' : 'week'} is not complete.` : ''
             }${dataVersion ? ` Data version ${dataVersion}.` : ''}`)}
       </p>

@@ -8,8 +8,7 @@
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { getOhlcv } from '@/lib/api-client';
-import { fromDateFor } from '@/components/stock/useChartShell';
-import type { ChartOverlayLine, TimeframeId } from '@/components/stock/PriceChart';
+import type { ChartOverlayLine } from '@/components/stock/PriceChart';
 import type { ChartInterval } from '@/lib/types';
 
 export const MAX_COMPARE = 4;
@@ -41,14 +40,14 @@ export function rebase(main: Close[], other: Close[]): { points: { date: string;
 export function useCompare(
   symbols: string[],
   main: Close[],
-  timeframe: TimeframeId,
   interval: ChartInterval,
 ): CompareLine[] {
   const data = useQueries({
     queries: symbols.map((symbol) => ({
       // The chart shell's key, so a symbol opened on the chart and compared shares one fetch.
-      queryKey: ['stock-ohlcv', symbol, timeframe, interval],
-      queryFn: () => getOhlcv(symbol, fromDateFor(timeframe), undefined, interval),
+      // The whole history: `rebase` starts the line at the first bar `main` shows.
+      queryKey: ['stock-ohlcv', symbol, interval],
+      queryFn: () => getOhlcv(symbol, undefined, undefined, interval),
       retry: false,
     })),
     // `combine` keeps one array identity until a result changes.

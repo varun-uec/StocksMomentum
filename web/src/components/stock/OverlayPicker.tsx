@@ -53,6 +53,11 @@ export function OverlayPicker({
 
   const countFor = (id: string) => active.filter((a) => a.id === id).length;
   const paneFull = paneCount >= maxPanes;
+  const canAdd = (def: IndicatorDef) => {
+    const count = countFor(def.id);
+    if (def.kind === 'pane' && (paneFull || count > 0)) return false;
+    return count === 0 || !!def.repeatable;
+  };
 
   const add = (def: IndicatorDef) => {
     if (def.kind === 'pane' && paneFull) return;
@@ -70,6 +75,13 @@ export function OverlayPicker({
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          // Enter adds the first match that can still be added, as in symbol search.
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          const first = groups.flatMap((g) => g.items).find(canAdd);
+          if (first) add(first);
+        }}
         placeholder="Search indicators…"
         className={`w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm ${focusRing}`}
       />
@@ -90,13 +102,12 @@ export function OverlayPicker({
             <ul className="space-y-0.5">
               {group.items.map((def) => {
                 const count = countFor(def.id);
-                const blocked = def.kind === 'pane' && (paneFull || count > 0);
                 return (
                   <li key={def.id}>
                     <button
                       type="button"
                       onClick={() => add(def)}
-                      disabled={blocked || (count > 0 && !def.repeatable)}
+                      disabled={!canAdd(def)}
                       className={`w-full text-left px-2 py-1 rounded-md text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent ${focusRing}`}
                     >
                       <span className="text-slate-700 dark:text-slate-300">{def.label}</span>

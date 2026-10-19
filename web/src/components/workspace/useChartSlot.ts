@@ -28,9 +28,11 @@ export function useChartSlot(
   const { overlays, update: updateOverlays } = useOverlayPreferences(chartId);
   const bars = useMemo(() => toBars(shell.bars), [shell.bars]);
   const benchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
-  const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark);
+  const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark, (indicators) =>
+    updateOverlays({ indicators, presetEdited: true }),
+  );
   const compareSymbols = chart.chart.compare ?? NO_SYMBOLS;
-  const compare = useCompare(compareSymbols, bars, shell.timeframe, shell.chartProps.interval);
+  const compare = useCompare(compareSymbols, bars, shell.chartProps.interval);
   const overlayLines = useMemo(
     () => [...catalogue.lines, ...compare.flatMap((c) => (c.line ? [c.line] : []))],
     [catalogue.lines, compare],
