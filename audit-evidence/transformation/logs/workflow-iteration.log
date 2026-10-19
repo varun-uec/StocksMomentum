@@ -1,0 +1,145 @@
+[WebServer] (node:78584) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial schema — all tables from IMPLEMENTATION_SPEC §4.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_forward_returns, Forward-return feature store (Objective 4, Research Feature Store).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0002_forward_returns -> 0003_forward_returns_extended, Extend forward_returns with MFE/MAE and benchmark-relative return (Alpha Discovery Program).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0003_forward_returns_extended -> 0004_historical_data_foundation, Historical Data Foundation (RP-012 D3) — legacy bhavcopy fields, delisting
+[WebServer] metadata, and the immutable historical_universe table.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0004_historical_data_foundation -> 0005_overlap_backfill, Overlap-window backfill staging + validation-gap logs (RP-012 Phase 2).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0005_overlap_backfill -> 0006_exchange_dimension, Cross-listing support: index the ISIN reconciliation key (Phase 5.1).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0006_exchange_dimension -> 0007_watchlist, Watchlist: a single global list of tracked securities (Phase 6.9).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0007_watchlist -> 0008_security_search_trgm, Trigram indexes for security symbol/name search (Objective 4).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0008_security_search_trgm -> 0009_strategy_kind, Strategy ``kind`` field: production vs research (strategy lifecycle).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0009_strategy_kind -> 0010_bse_legacy_foundation, BSE legacy staging tables (RP-014): pre-UDiFF bars + SC_CODE identity junction.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0010_bse_legacy_foundation -> 0011_legacy_adjustment_columns, Adjustment columns on both legacy staging tables (RP-014 follow-up).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0011_legacy_adjustment_columns -> 0012_drop_legacy_ohlcv_bak, Drop the superseded ``legacy_ohlcv_daily_bak`` snapshot.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0012_drop_legacy_ohlcv_bak -> 0013_filter_column_indexes, Index the filter/join columns that composite primary keys do not lead with.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0013_filter_column_indexes -> 0014_user_documents, User documents: the saved workspace and per-symbol drawings (ADR-013 §5).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0014_user_documents -> 0015_alerts, Daily alerts (FR-22, M15): a condition on one value of a symbol's chart series.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0015_alerts -> 0016_history_tables, History tables for the evaluation inputs (ADR-014 §7, M14).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0016_history_tables -> 0017_data_manifests, Data-version manifests (ADR-014 §7, M14): the inputs and code behind an evaluation.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0017_data_manifests -> 0018_strategy_families, Strategy families and user strategies (ADR-014 §3–4, M14).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0018_strategy_families -> 0019_strategy_evaluations, Strategy evaluations (ADR-014 §5–7, M14): the research namespace for the Studio.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0019_strategy_evaluations -> 0020_committed_revision_indexes, Index committed market-data revisions for deterministic manifest capture.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0020_committed_revision_indexes -> 0021_alert_drawing_snapshots, Version armed rules and capture bounded drawing-linked EOD alerts.
+[WebServer] INFO:     Started server process [78744]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 18 tests using 1 worker
+
+(node:78764) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › e2e/final-accessibility.spec.ts:7:1 › primary dashboard, chart and studio views have no WCAG A/AA axe violations (1.5s)
+  ✓   2 [chromium] › e2e/final-accessibility.spec.ts:57:1 › keyboard-only chart controls expose focus, names, and Escape recovery (287ms)
+
+  ✓   3 [chromium] › e2e/openchart-parity.spec.ts:24:1 › D1, D2: a short range counts back from the last bar, and MA200 has a value on it (447ms)
+
+  ✓   4 [chromium] › e2e/openchart-parity.spec.ts:36:1 › D3: RSI from the indicator dialog reads once, and the pane row turns it off (444ms)
+
+  ✓   5 [chromium] › e2e/openchart-parity.spec.ts:58:1 › D4: the crosshair readout stays clear of the price axis (362ms)
+
+  ✓   6 [chromium] › e2e/openchart-parity.spec.ts:67:1 › D5, D10: workspace keys work after a checkbox click, and Enter adds the first indicator match (429ms)
+
+  ✓   7 [chromium] › e2e/openchart-parity.spec.ts:82:1 › D6: a double-click with a two-point tool saves nothing; two distinct clicks save the line (758ms)
+
+  ✓   8 [chromium] › e2e/openchart-parity.spec.ts:97:1 › D8: a cell the layout opens keeps its own symbol when another cell changes (670ms)
+
+  ✓   9 [chromium] › e2e/openchart-parity.spec.ts:114:1 › D9: a synced readout clears after a dialog opened over the hovered chart (389ms)
+  ✓  10 [chromium] › e2e/r2-accessibility.spec.ts:8:1 › R2 reduced-motion preference disables smooth scrolling and long CSS transitions (128ms)
+  ✓  11 [chromium] › e2e/r2-accessibility.spec.ts:20:1 › R2 mobile More menu opens and closes from the keyboard with focus restored (148ms)
+
+  ✓  12 [chromium] › e2e/r2-accessibility.spec.ts:36:1 › R2 200% desktop-equivalent reflow keeps core workflows in the viewport (2.3s)
+
+  ✘  13 [chromium] › e2e/transformation.spec.ts:17:1 › range presets retain historical bars and allow panning into earlier sessions without refetching (5.5s)
+(node:79070) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✘  14 [chromium] › e2e/transformation.spec.ts:33:1 › study legends, custom parameters, colour, visibility and restore survive a session (729ms)
+(node:79079) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  15 [chromium] › e2e/transformation.spec.ts:60:1 › inline notes and drawing lock, visibility, dash and restoration are persisted (1.8s)
+
+  ✓  16 [chromium] › e2e/transformation.spec.ts:85:1 › grid activation keeps charts mounted and exposes one active drawing rail (1.4s)
+
+  ✓  17 [chromium] › e2e/transformation.spec.ts:99:1 › armed alert editing and rectangular drawing snapshots form one chart workflow (875ms)
+
+  ✓  18 [chromium] › e2e/transformation.spec.ts:119:1 › responsive workspace evidence in both themes and dense layouts (2.5s)
+
+
+  1) [chromium] › e2e/transformation.spec.ts:17:1 › range presets retain historical bars and allow panning into earlier sessions without refetching 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByTestId('crosshair-readout')
+    Expected pattern: /2026-0[1-6]-/
+    Received string:  "2025-11-03O 261.75 · H 264.37 · L 259.13 · C 261.23"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByTestId('crosshair-readout') with timeout 5000ms
+      - waiting for getByTestId('crosshair-readout')
+        14 × locator resolved to <div data-testid="crosshair-readout" class="pointer-events-none absolute top-2 left-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 text-[10px] leading-4 shadow-sm">…</div>
+           - unexpected value "2025-11-03O 261.75 · H 264.37 · L 259.13 · C 261.23"
+
+
+      26 |   const box = (await chart.boundingBox())!;
+      27 |   await page.mouse.move(box.x + box.width * .5, box.y + 90);
+    > 28 |   await expect(page.getByTestId('crosshair-readout')).toContainText(/2026-0[1-6]-/);
+         |                                                       ^
+      29 |   expect(requests).toBe(initialRequests);
+      30 |   await expect(chart).toHaveAttribute('aria-label', /2610 daily bars from 2016-08-08/);
+      31 | });
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/transformation.spec.ts:28:55
+
+    Error Context: test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/error-context.md
+
+    Error Context: test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/transformation.spec.ts:33:1 › study legends, custom parameters, colour, visibility and restore survive a session 
+
+    TypeError: Cannot read properties of undefined (reading 'charts')
+
+      47 |   await page.keyboard.press('Escape');
+      48 |   await expect(page.getByLabel('Study legend')).not.toContainText('Bollinger upper');
+    > 49 |   await expect.poll(async () => (await (await request.get('/api/v1/workspaces/default')).json()).body.charts.main.indicators[0].hidden).toBe(true);
+         |                                                                                                       ^
+      50 |   await page.reload(); await ready(page);
+      51 |   await page.getByRole('button', { name: /Indicators · 2/ }).click();
+      52 |   await expect(dialog.getByLabel('Colour for Bollinger Bands')).toHaveValue('#e11d48');
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/transformation.spec.ts:49:103
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/transformation.spec.ts:49:3
+
+    Error Context: test-results/transformation-study-legen-97592-d-restore-survive-a-session-chromium/error-context.md
+
+    Error Context: test-results/transformation-study-legen-97592-d-restore-survive-a-session-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/transformation-study-legen-97592-d-restore-survive-a-session-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/transformation-study-legen-97592-d-restore-survive-a-session-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › e2e/transformation.spec.ts:17:1 › range presets retain historical bars and allow panning into earlier sessions without refetching 
+    [chromium] › e2e/transformation.spec.ts:33:1 › study legends, custom parameters, colour, visibility and restore survive a session 
+  16 passed (32.4s)

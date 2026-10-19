@@ -1,0 +1,13 @@
+
+> momentum25-web@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/varunagarwal/Downloads/Applications/StocksMomentum/web
+
+
+ Test Files  14 passed (14)
+      Tests  110 passed (110)
+   Start at  17:20:17
+   Duration  376ms (transform 926ms, setup 0ms, import 1.27s, tests 95ms, environment 1ms)
+

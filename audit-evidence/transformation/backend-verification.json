@@ -1,0 +1,22 @@
+{
+  "backend_commit": "677b41b",
+  "database": "wickstreet_alerts_test on disposable PostgreSQL port55439",
+  "result": {
+    "pytest_passed": 874,
+    "pytest_seconds": 35.69,
+    "mypy_source_files": 263,
+    "ruff": "passed",
+    "import_contracts_passed": 2
+  },
+  "evidence_kind": "Summary of successful backend agent tool executions; no standalone raw log was saved.",
+  "primary_record": "docs/architecture/adr/ADR-013-alert-amendment.md",
+  "covered_workflows": [
+    "armed edit revision/CAS",
+    "horizontal and rectangle snapshots",
+    "per-anchor corporate action adjustment",
+    "stale drawing/data preconditions",
+    "delayed deterministic first crossing",
+    "edit versus evaluation race",
+    "scalar rearm adjustment basis"
+  ]
+}

@@ -34,3 +34,10 @@ Baseline: `b8a9a1b`, clean working tree. Existing audit and accepted architectur
 - Added cached-symbol annotation, pane lifetime, touch drawing/panel and global-command-search journeys.
 - Full-suite iteration found research-drawing discovery regression (fixed by shared rails), an initial-navigation-save race in a concurrency test (now waits for a confirmed base), and an ambiguous alert-status selector (now named). Final production-build run follows these corrections.
 - Manual native Chrome200% zoom exercised; automated equivalent reflow and theme axe checks remain in regression coverage.
+
+## Final experience checks
+
+-30-run grid benchmark passed:16-chart warm P95 1,348ms, fresh-context P95 1,377ms; pan P5 61fps. Final source receives an additional focused production-build pass after responsive geometry refinement.
+- Replaced single-chart fixed height assumptions with measured header/toolbar geometry and bottom-navigation clearance; touch tests assert the plot's bottom edge too.
+- Added context-menu arrow/Home/End focus coverage, retained focus through style changes, and ensured hidden drawings cannot remain selected for keyboard moves.
+- Stale alert edits refresh both alert revisions and price schedules; other-symbol alerts link directly back to their charts.

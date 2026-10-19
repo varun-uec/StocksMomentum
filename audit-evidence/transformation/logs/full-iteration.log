@@ -1,0 +1,527 @@
+
+> momentum25-web@0.1.0 e2e
+> playwright test
+
+[WebServer] (node:81474) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial schema — all tables from IMPLEMENTATION_SPEC §4.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_forward_returns, Forward-return feature store (Objective 4, Research Feature Store).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0002_forward_returns -> 0003_forward_returns_extended, Extend forward_returns with MFE/MAE and benchmark-relative return (Alpha Discovery Program).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0003_forward_returns_extended -> 0004_historical_data_foundation, Historical Data Foundation (RP-012 D3) — legacy bhavcopy fields, delisting
+[WebServer] metadata, and the immutable historical_universe table.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0004_historical_data_foundation -> 0005_overlap_backfill, Overlap-window backfill staging + validation-gap logs (RP-012 Phase 2).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0005_overlap_backfill -> 0006_exchange_dimension, Cross-listing support: index the ISIN reconciliation key (Phase 5.1).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0006_exchange_dimension -> 0007_watchlist, Watchlist: a single global list of tracked securities (Phase 6.9).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0007_watchlist -> 0008_security_search_trgm, Trigram indexes for security symbol/name search (Objective 4).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0008_security_search_trgm -> 0009_strategy_kind, Strategy ``kind`` field: production vs research (strategy lifecycle).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0009_strategy_kind -> 0010_bse_legacy_foundation, BSE legacy staging tables (RP-014): pre-UDiFF bars + SC_CODE identity junction.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0010_bse_legacy_foundation -> 0011_legacy_adjustment_columns, Adjustment columns on both legacy staging tables (RP-014 follow-up).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0011_legacy_adjustment_columns -> 0012_drop_legacy_ohlcv_bak, Drop the superseded ``legacy_ohlcv_daily_bak`` snapshot.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0012_drop_legacy_ohlcv_bak -> 0013_filter_column_indexes, Index the filter/join columns that composite primary keys do not lead with.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0013_filter_column_indexes -> 0014_user_documents, User documents: the saved workspace and per-symbol drawings (ADR-013 §5).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0014_user_documents -> 0015_alerts, Daily alerts (FR-22, M15): a condition on one value of a symbol's chart series.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0015_alerts -> 0016_history_tables, History tables for the evaluation inputs (ADR-014 §7, M14).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0016_history_tables -> 0017_data_manifests, Data-version manifests (ADR-014 §7, M14): the inputs and code behind an evaluation.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0017_data_manifests -> 0018_strategy_families, Strategy families and user strategies (ADR-014 §3–4, M14).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0018_strategy_families -> 0019_strategy_evaluations, Strategy evaluations (ADR-014 §5–7, M14): the research namespace for the Studio.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0019_strategy_evaluations -> 0020_committed_revision_indexes, Index committed market-data revisions for deterministic manifest capture.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0020_committed_revision_indexes -> 0021_alert_drawing_snapshots, Version armed rules and capture bounded drawing-linked EOD alerts.
+[WebServer] INFO:     Started server process [81628]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 165 tests using 1 worker
+
+(node:81648) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓    1 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: dashboard (1.4s)
+
+  ✓    2 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: chart-entry (1.2s)
+
+  ✓    3 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: chart (1.2s)
+
+  ✓    4 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: stock-detail (1.2s)
+
+  ✓    5 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: stock-analysis (1.4s)
+
+  ✓    6 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: elliott-wave (900ms)
+
+  ✓    7 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: watchlist (744ms)
+
+  ✓    8 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: market (746ms)
+
+  ✓    9 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: strategies (800ms)
+
+  ✓   10 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: studio (752ms)
+
+  ✓   11 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: validation (828ms)
+
+  ✓   12 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: backtest (773ms)
+
+  ✓   13 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: historical (736ms)
+
+  ✓   14 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: experiment (758ms)
+
+  ✓   15 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: analytics (769ms)
+
+  ✓   16 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: data (741ms)
+
+  ✓   17 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn (749ms)
+
+  ✓   18 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn-momentum-investing (767ms)
+
+  ✓   19 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn-minervini-methodology (802ms)
+
+  ✓   20 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn-momentum25-methodology (759ms)
+
+  ✓   21 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn-scoring-guide (815ms)
+
+  ✓   22 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn-rule-guide (861ms)
+
+  ✓   23 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: learn-faq (755ms)
+
+  ✓   24 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: about (717ms)
+
+  ✓   25 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: chart-grid-diagnostic (746ms)
+
+  ✓   26 [chromium] › e2e/audit-visual.spec.ts:41:3 › audit screenshot: not-found (722ms)
+
+  ✓   27 [chromium] › e2e/audit-visual.spec.ts:54:1 › audit screenshots: chart search and indicator catalogue (493ms)
+
+  ✓   28 [chromium] › e2e/audit-visual.spec.ts:72:1 › audit screenshots: dark desktop and mobile navigation (1.8s)
+
+  ✓   29 [chromium] › e2e/audit-visual.spec.ts:94:1 › audit screenshots: 2 × 2 and 4 × 4 chart workspaces (521ms)
+
+  ✓   30 [chromium] › e2e/audit-visual.spec.ts:107:1 › audit screenshot: strategy studio on a narrow viewport (854ms)
+
+  ✓   31 [chromium] › e2e/audit-visual.spec.ts:124:1 › audit screenshot: chart on a narrow viewport (1.2s)
+
+  ✓   32 [chromium] › e2e/audit-visual.spec.ts:134:1 › audit screenshot: mobile chart status clears the fixed navigation (563ms)
+  ✓   33 [chromium] › e2e/final-accessibility.spec.ts:7:1 › primary dashboard, chart and studio views have no WCAG A/AA axe violations (1.3s)
+  ✓   34 [chromium] › e2e/final-accessibility.spec.ts:57:1 › keyboard-only chart controls expose focus, names, and Escape recovery (285ms)
+
+  ✓   35 [chromium] › e2e/final-performance.spec.ts:63:1 › latency distributions for search, workspace persistence, screening and alert evaluation (21.0s)
+  ✓   36 [chromium] › e2e/final-performance.spec.ts:177:1 › Strategy Studio screening and in-sample research execution latency (3.5m)
+
+  ✓   37 [chromium] › e2e/final-performance.spec.ts:235:1 › 24-cycle 1×1 ↔ 4×4 chart endurance releases mounted chart DOM and canvases (50.7s)
+  ✓   38 [chromium] › e2e/m10-stack.spec.ts:30:3 › route / renders on a hard load (NFR-13, S1) (732ms)
+  ✓   39 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /stock/RELIANCE renders on a hard load (NFR-13, S1) (793ms)
+  ✓   40 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /stock/RELIANCE/analysis renders on a hard load (NFR-13, S1) (1.1s)
+  ✓   41 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /stock/RELIANCE/elliott-wave renders on a hard load (NFR-13, S1) (722ms)
+  ✓   42 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /watchlist renders on a hard load (NFR-13, S1) (617ms)
+  ✓   43 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /market renders on a hard load (NFR-13, S1) (621ms)
+  ✓   44 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /strategies renders on a hard load (NFR-13, S1) (705ms)
+  ✓   45 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /validation renders on a hard load (NFR-13, S1) (820ms)
+  ✓   46 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /backtest renders on a hard load (NFR-13, S1) (615ms)
+  ✓   47 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /historical renders on a hard load (NFR-13, S1) (625ms)
+  ✓   48 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /experiment renders on a hard load (NFR-13, S1) (620ms)
+  ✓   49 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /analytics renders on a hard load (NFR-13, S1) (676ms)
+  ✓   50 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /data renders on a hard load (NFR-13, S1) (606ms)
+  ✓   51 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn renders on a hard load (NFR-13, S1) (617ms)
+  ✓   52 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn/momentum-investing renders on a hard load (NFR-13, S1) (600ms)
+  ✓   53 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn/minervini-methodology renders on a hard load (NFR-13, S1) (608ms)
+  ✓   54 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn/momentum25-methodology renders on a hard load (NFR-13, S1) (605ms)
+  ✓   55 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn/scoring-guide renders on a hard load (NFR-13, S1) (615ms)
+  ✓   56 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn/rule-guide renders on a hard load (NFR-13, S1) (627ms)
+  ✓   57 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /learn/faq renders on a hard load (NFR-13, S1) (600ms)
+  ✓   58 [chromium] › e2e/m10-stack.spec.ts:30:3 › route /about renders on a hard load (NFR-13, S1) (601ms)
+  ✓   59 [chromium] › e2e/m10-stack.spec.ts:37:1 › unknown routes show the not-found page (107ms)
+  ✓   60 [chromium] › e2e/m10-stack.spec.ts:42:1 › S1: a deep link survives a reload and a new tab (826ms)
+  ✓   61 [chromium] › e2e/m10-stack.spec.ts:53:1 › S3: every request goes to the page origin, under /api/v1 for data (788ms)
+  ✓   62 [chromium] › e2e/m10-stack.spec.ts:63:1 › S4: the query cache survives client-side navigation (980ms)
+  ✓   63 [chromium] › e2e/m10-stack.spec.ts:80:1 › the chart library is credited on every page and on About (ADR-012) (215ms)
+  ✓   64 [chromium] › e2e/m10-stack.spec.ts:89:1 › S7 smoke: 16 charts mount, pan and unmount without errors (615ms)
+  ✓   65 [chromium] › e2e/m10-stack.spec.ts:103:1 › ADR-012: a cross-site write is rejected, a write without Origin passes (26ms)
+
+  ✓   66 [chromium] › e2e/m11-slice.spec.ts:70:1 › the app under test and the cleanup use the same E2E database (171ms)
+
+  ✓   67 [chromium] › e2e/m11-slice.spec.ts:77:1 › Find: typing on the chart opens search and Enter opens the symbol (554ms)
+
+  ✓   68 [chromium] › e2e/m11-slice.spec.ts:103:1 › Analyse → Draw → Restore: state survives a reload and a second browser (3.0s)
+
+  ✓   69 [chromium] › e2e/m11-slice.spec.ts:149:1 › Restore: an edit made just before leaving the page is not lost (377ms)
+
+  ✓   70 [chromium] › e2e/m11-slice.spec.ts:157:1 › two windows editing different drawings merge silently (2.5s)
+
+  ✓   71 [chromium] › e2e/m11-slice.spec.ts:174:1 › two windows editing the same drawing get the conflict notice, and the choice is saved (3.6s)
+
+  ✓   72 [chromium] › e2e/m11-slice.spec.ts:204:1 › drawings saved in this browser before M11 are imported once; a server copy wins (1.4s)
+
+  ✘   73 [chromium] › e2e/m11-slice.spec.ts:246:1 › the existing research screens still save their charts (NFR-13) (30.1s)
+(node:88485) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓   74 [chromium] › e2e/m11-slice.spec.ts:259:1 › chart settings saved in this browser before M11 are imported once; a server copy wins (1.8s)
+
+  ✓   75 [chromium] › e2e/m11-slice.spec.ts:310:1 › two windows changing different chart settings merge silently (2.5s)
+
+  ✘   76 [chromium] › e2e/m11-slice.spec.ts:327:1 › two windows changing the same chart setting get the conflict notice; nothing is overwritten silently (6.6s)
+(node:88668) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✘   77 [chromium] › e2e/m11-slice.spec.ts:349:1 › a drawing conflict on a research screen shows the same notice (6.7s)
+(node:88792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓   78 [chromium] › e2e/m11-slice.spec.ts:376:1 › drawings are saved at traded prices, so they stay on their bars across a split and a bonus (2.3s)
+
+  ✓   79 [chromium] › e2e/m11b-weekly.spec.ts:16:1 › the interval switch shows weekly bars and indicators, and is saved with the chart (1.1s)
+
+  ✓   80 [chromium] › e2e/m11b-weekly.spec.ts:47:1 › a drawing made on weekly bars stays on the daily chart (1.4s)
+
+  ✓   81 [chromium] › e2e/m11b-weekly.spec.ts:68:1 › research screens keep daily bars and offer no interval switch (437ms)
+
+  ✓   82 [chromium] › e2e/m12-shell.spec.ts:16:1 › the drawing tools sit in a rail, and Alt shortcuts pick them (355ms)
+
+  ✓   83 [chromium] › e2e/m12-shell.spec.ts:38:1 › ? lists the shortcuts (335ms)
+
+  ✓   84 [chromium] › e2e/m12-shell.spec.ts:49:1 › Alt+W adds the open symbol to the watchlist panel and removes it again (371ms)
+
+  ✓   85 [chromium] › e2e/m12-shell.spec.ts:71:1 › the details tab explains the symbol in Momentum25 terms (515ms)
+
+  ✓   86 [chromium] › e2e/m12-shell.spec.ts:82:1 › the panel is saved with the workspace: closed stays closed after a reload (1.4s)
+
+  ✓   87 [chromium] › e2e/m12-shell.spec.ts:100:1 › the screener shows the selected row beside the table, with links to its chart (492ms)
+
+  ✓   88 [chromium] › e2e/m12-shell.spec.ts:118:1 › on a narrow screen the screener opens the research page, as before (353ms)
+  -   89 [chromium] › e2e/m13-bench.spec.ts:121:5 › 1 chart › warm open, pan and memory
+  -   90 [chromium] › e2e/m13-bench.spec.ts:141:5 › 1 chart › cold open
+  -   91 [chromium] › e2e/m13-bench.spec.ts:121:5 › 4 charts › warm open, pan and memory
+  -   92 [chromium] › e2e/m13-bench.spec.ts:141:5 › 4 charts › cold open
+  -   93 [chromium] › e2e/m13-bench.spec.ts:121:5 › 16 charts › warm open, pan and memory
+  -   94 [chromium] › e2e/m13-bench.spec.ts:141:5 › 16 charts › cold open
+
+  ✓   95 [chromium] › e2e/m13-charting.spec.ts:18:1 › every chart type and price scale draws, and the choice is saved with the chart (2.4s)
+
+  ✓   96 [chromium] › e2e/m13-charting.spec.ts:53:1 › every M13 tool draws and is saved (1.8s)
+
+  ✓   97 [chromium] › e2e/m13-charting.spec.ts:106:3 › Trendline supports move, edit, delete, undo, redo and restore (8.1s)
+
+  ✓   98 [chromium] › e2e/m13-charting.spec.ts:106:3 › Ray supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓   99 [chromium] › e2e/m13-charting.spec.ts:106:3 › Extended line supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓  100 [chromium] › e2e/m13-charting.spec.ts:106:3 › Horizontal ray supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓  101 [chromium] › e2e/m13-charting.spec.ts:106:3 › Horizontal line supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓  102 [chromium] › e2e/m13-charting.spec.ts:106:3 › Vertical line supports move, edit, delete, undo, redo and restore (7.9s)
+
+  ✓  103 [chromium] › e2e/m13-charting.spec.ts:106:3 › Cross line supports move, edit, delete, undo, redo and restore (8.1s)
+
+  ✓  104 [chromium] › e2e/m13-charting.spec.ts:106:3 › Parallel channel supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓  105 [chromium] › e2e/m13-charting.spec.ts:106:3 › Rectangle supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓  106 [chromium] › e2e/m13-charting.spec.ts:106:3 › Fib retracement supports move, edit, delete, undo, redo and restore (8.0s)
+
+  ✓  107 [chromium] › e2e/m13-charting.spec.ts:106:3 › Price range supports move, edit, delete, undo, redo and restore (7.9s)
+
+  ✓  108 [chromium] › e2e/m13-charting.spec.ts:106:3 › Text note supports move, edit, delete, undo, redo and restore (8.1s)
+
+  ✓  109 [chromium] › e2e/m13-charting.spec.ts:174:1 › every visible range changes the saved chart window (5.9s)
+
+  ✓  110 [chromium] › e2e/m13-charting.spec.ts:184:1 › the drawing menu restyles a drawing; undo and redo step through edits; arrows move it (7.8s)
+
+  ✓  111 [chromium] › e2e/m13-charting.spec.ts:230:1 › the mouse wheel zooms the chart and a pointer drag pans it (1.1s)
+
+  ✓  112 [chromium] › e2e/m13-charting.spec.ts:253:1 › Alt+I opens the indicator list; an overlay and a pane draw and are saved with the chart (1.5s)
+
+  ✓  113 [chromium] › e2e/m13-charting.spec.ts:277:1 › the chart menu resets the view, sets the scale and opens the indicators (1.3s)
+
+  ✓  114 [chromium] › e2e/m13-charting.spec.ts:300:1 › monthly bars draw with monthly indicators and are saved with the chart (1.2s)
+
+  ✓  115 [chromium] › e2e/m13-charting.spec.ts:330:1 › a compared symbol draws as a rebased line, is saved with the chart, and can be removed (2.2s)
+
+  ✓  116 [chromium] › e2e/m13-layouts.spec.ts:19:1 › a 2 × 2 layout keeps a symbol per chart, and the active chart follows the route (1.4s)
+
+  ✓  117 [chromium] › e2e/m13-layouts.spec.ts:52:1 › sync shares the symbol and the interval, and turns off again (1.3s)
+
+  ✓  118 [chromium] › e2e/m13-layouts.spec.ts:75:1 › the crosshair moves on every chart of the layout (407ms)
+
+  ✓  119 [chromium] › e2e/m13-layouts.spec.ts:89:1 › all documented workspace layouts mount the expected number of charts (533ms)
+  ✓  120 [chromium] › e2e/m14-studio.spec.ts:12:1 › a family is created, a bounded change is saved in its lineage, and a Screening Result runs (4.2s)
+
+  ✓  121 [chromium] › e2e/m14-studio.spec.ts:70:1 › insufficient hold-out provenance is rejected without spending the family hold-out (2.0s)
+  ✓  122 [chromium] › e2e/m14-studio.spec.ts:86:1 › a matured hold-out runs once per family and keeps the uncertainty label visible (47.2s)
+
+  ✘  123 [chromium] › e2e/m15-alerts.spec.ts:12:1 › an alert set at a chart price is listed, checked, fires, and is seen (685ms)
+(node:91408) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  124 [chromium] › e2e/m15-alerts.spec.ts:49:1 › an alert that fired while the list was closed shows a count until it is opened (635ms)
+
+  ✓  125 [chromium] › e2e/m15-alerts.spec.ts:67:1 › a close alert armed before a bonus keeps its threshold on the adjusted price basis (511ms)
+
+  ✓  126 [chromium] › e2e/m15-alerts.spec.ts:92:1 › the chart form creates every supported value and interval combination (3.8s)
+
+  ✓  127 [chromium] › e2e/m16-historical-pit.spec.ts:7:1 › historical replay records point-in-time inputs and stays out of the live latest run (1.1s)
+  ✓  128 [chromium] › e2e/m16-release-hardening.spec.ts:3:1 › the default data screen explains the authorized offline import workflow (160ms)
+  ✓  129 [chromium] › e2e/momentum-ranking-display.spec.ts:3:1 › the dashboard shows qualified ranks first and marks filtered names as unranked (191ms)
+  ✓  130 [chromium] › e2e/momentum-ranking-display.spec.ts:12:1 › the narrow dashboard explains and exposes its horizontally scrollable stock table (217ms)
+
+  ✓  131 [chromium] › e2e/nfr11-chart-open.spec.ts:116:1 › warm open, 30 runs (4.8s)
+{
+  "measured_at": "2026-10-19T11:50:01.497Z",
+  "git_commit": "350b91a",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "dataset": "10 synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (marked E2E database)",
+  "cold_method": "fresh API process on port 8766 and fresh browser context for each run; navigation starts after /health/live returns 200; API boot time is excluded",
+  "results": {
+    "warm": {
+      "runs": 30,
+      "p50": 135,
+      "p95": 149,
+      "max": 150
+    },
+    "cold": {
+      "runs": 30,
+      "p50": 454,
+      "p95": 470,
+      "max": 496
+    }
+  }
+}
+  ✓  132 [chromium] › e2e/nfr11-chart-open.spec.ts:124:1 › cold open after API restart, 30 runs (47.3s)
+
+  ✓  133 [chromium] › e2e/openchart-parity.spec.ts:24:1 › D1, D2: a short range counts back from the last bar, and MA200 has a value on it (384ms)
+
+  ✓  134 [chromium] › e2e/openchart-parity.spec.ts:36:1 › D3: RSI from the indicator dialog reads once, and the pane row turns it off (490ms)
+
+  ✓  135 [chromium] › e2e/openchart-parity.spec.ts:58:1 › D4: the crosshair readout stays clear of the price axis (361ms)
+
+  ✓  136 [chromium] › e2e/openchart-parity.spec.ts:67:1 › D5, D10: workspace keys work after a checkbox click, and Enter adds the first indicator match (438ms)
+
+  ✓  137 [chromium] › e2e/openchart-parity.spec.ts:82:1 › D6: a double-click with a two-point tool saves nothing; two distinct clicks save the line (1.2s)
+
+  ✓  138 [chromium] › e2e/openchart-parity.spec.ts:97:1 › D8: a cell the layout opens keeps its own symbol when another cell changes (665ms)
+
+  ✓  139 [chromium] › e2e/openchart-parity.spec.ts:114:1 › D9: a synced readout clears after a dialog opened over the hovered chart (387ms)
+  ✓  140 [chromium] › e2e/persistence-restart.spec.ts:8:1 › phase 1 writes chart, drawing and alert state in the browser (926ms)
+  ✓  141 [chromium] › e2e/persistence-restart.spec.ts:38:1 › phase 2 recovers chart, drawing and alert state after database and app restarts (311ms)
+  ✓  142 [chromium] › e2e/r2-accessibility.spec.ts:8:1 › R2 reduced-motion preference disables smooth scrolling and long CSS transitions (122ms)
+  ✓  143 [chromium] › e2e/r2-accessibility.spec.ts:20:1 › R2 mobile More menu opens and closes from the keyboard with focus restored (138ms)
+
+  ✓  144 [chromium] › e2e/r2-accessibility.spec.ts:36:1 › R2 200% desktop-equivalent reflow keeps core workflows in the viewport (2.3s)
+
+  ✓  145 [chromium] › e2e/r2-adversarial.spec.ts:27:1 › R2 negative API cases stay JSON, reject hostile origins and never serve .env (101ms)
+
+  ✓  146 [chromium] › e2e/r2-adversarial.spec.ts:64:1 › R2 a drawing save interrupted by network loss stays local and can be retried (2.4s)
+
+  ✓  147 [chromium] › e2e/r2-adversarial.spec.ts:93:1 › R2 delete versus edit across two windows requires a choice and preserves the chosen copy (3.4s)
+
+  ✓  148 [chromium] › e2e/r2-adversarial.spec.ts:131:1 › R2 Studio versions reopen together with immutable screening results for comparison (7.3s)
+
+  ✓  149 [chromium] › e2e/r2-adversarial.spec.ts:192:1 › R2 legacy strategy comparison uses distinct stored synthetic runs (624ms)
+
+  ✓  150 [chromium] › e2e/r2-persistence-restart.spec.ts:8:1 › R2 phase 1 writes chart, drawing and alert state before the isolated database restart (1.7s)
+  ✓  151 [chromium] › e2e/r2-persistence-restart.spec.ts:39:1 › R2 phase 2 restores state after PostgreSQL and API process restart (411ms)
+
+  ✓  152 [chromium] › e2e/r2-stress-bench.spec.ts:110:3 › R2 stress: 1 long-history charts with indicators, comparisons and drawings (1.6s)
+
+  ✓  153 [chromium] › e2e/r2-stress-bench.spec.ts:110:3 › R2 stress: 4 long-history charts with indicators, comparisons and drawings (1.7s)
+
+  ✓  154 [chromium] › e2e/r2-stress-bench.spec.ts:110:3 › R2 stress: 16 long-history charts with indicators, comparisons and drawings (2.8s)
+
+  ✓  155 [chromium] › e2e/r2-stress-bench.spec.ts:140:1 › R2 bounded endurance: navigate symbols, change layouts, add and delete drawings (16.9s)
+
+  ✓  156 [chromium] › e2e/r2-viewport-audit.spec.ts:46:1 › R2 all 26 routes render in both themes at four requested viewport sizes (2.1m)
+
+  ✓  157 [chromium] › e2e/reliability.spec.ts:12:1 › a slow market API keeps a loading state, then renders the result (1.5s)
+
+  ✓  158 [chromium] › e2e/reliability.spec.ts:36:1 › an unavailable market API shows an error state (1.5s)
+
+  ✓  159 [chromium] › e2e/reliability.spec.ts:51:1 › an incomplete market API response is reported instead of crashing the page (216ms)
+
+  ✘  160 [chromium] › e2e/transformation.spec.ts:17:1 › range presets retain historical bars and allow panning into earlier sessions without refetching (471ms)
+(node:94035) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  161 [chromium] › e2e/transformation.spec.ts:36:1 › study legends, custom parameters, colour, visibility and restore survive a session (1.8s)
+
+  ✓  162 [chromium] › e2e/transformation.spec.ts:63:1 › inline notes and drawing lock, visibility, dash and restoration are persisted (1.7s)
+
+  ✓  163 [chromium] › e2e/transformation.spec.ts:88:1 › grid activation keeps charts mounted and exposes one active drawing rail (1.4s)
+
+  ✓  164 [chromium] › e2e/transformation.spec.ts:102:1 › armed alert editing and rectangular drawing snapshots form one chart workflow (872ms)
+
+  ✓  165 [chromium] › e2e/transformation.spec.ts:122:1 › responsive workspace evidence in both themes and dense layouts (2.6s)
+
+
+  1) [chromium] › e2e/m11-slice.spec.ts:246:1 › the existing research screens still save their charts (NFR-13) 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Horizontal ray' })
+
+
+      248 |   await expect(chart(page).locator('canvas').first()).toBeVisible();
+      249 |   await chart(page).scrollIntoViewIfNeeded();
+    > 250 |   await page.getByRole('button', { name: 'Horizontal ray' }).click();
+          |                                                              ^
+      251 |   await clickAt(page, 0.5, 0.3);
+      252 |   await expect.poll(drawingCount(request, 'RELIANCE')).toBe(1);
+      253 |   // Drawings belong to the symbol: the chart workspace shows the same one.
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/m11-slice.spec.ts:250:62
+
+    Error Context: test-results/m11-slice-the-existing-res-95c8d-l-save-their-charts-NFR-13--chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m11-slice-the-existing-res-95c8d-l-save-their-charts-NFR-13--chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/m11-slice-the-existing-res-95c8d-l-save-their-charts-NFR-13--chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/m11-slice.spec.ts:327:1 › two windows changing the same chart setting get the conflict notice; nothing is overwritten silently 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('alert')
+    Expected substring: "Your chart settings changed in another window"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('alert') with timeout 5000ms
+      - waiting for getByRole('alert')
+
+
+      338 |
+      339 |   const notice = second.getByRole('alert');
+    > 340 |   await expect(notice).toContainText('Your chart settings changed in another window');
+          |                        ^
+      341 |   expect((await serverChart(request))?.mas).toEqual(expect.arrayContaining([20, 50, 200])); // window 1's change still stands
+      342 |   await notice.getByRole('button', { name: 'Keep theirs' }).click();
+      343 |   await expect(notice).toBeHidden();
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/m11-slice.spec.ts:340:24
+
+    Error Context: test-results/m11-slice-two-windows-chan-d41f6-ing-is-overwritten-silently-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m11-slice-two-windows-chan-d41f6-ing-is-overwritten-silently-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/m11-slice-two-windows-chan-d41f6-ing-is-overwritten-silently-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › e2e/m11-slice.spec.ts:349:1 › a drawing conflict on a research screen shows the same notice 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('button', { name: 'Clear' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('button', { name: 'Clear' }) with timeout 5000ms
+      - waiting for getByRole('button', { name: 'Clear' })
+
+
+      358 |   await second.goto('/stock/HDFCBANK');
+      359 |   await second.getByTestId('price-chart').scrollIntoViewIfNeeded();
+    > 360 |   await expect(second.getByRole('button', { name: 'Clear' })).toBeVisible();
+          |                                                               ^
+      361 |
+      362 |   await drag(page, [0.4, 0.25], [0.4, 0.15]); // window 1 moves it
+      363 |   await expect
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/m11-slice.spec.ts:360:63
+
+    Error Context: test-results/m11-slice-a-drawing-confli-5fa30-creen-shows-the-same-notice-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m11-slice-a-drawing-confli-5fa30-creen-shows-the-same-notice-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/m11-slice-a-drawing-confli-5fa30-creen-shows-the-same-notice-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › e2e/m15-alerts.spec.ts:12:1 › an alert set at a chart price is listed, checked, fires, and is seen 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('tabpanel', { name: 'Alerts' }).getByRole('form', { name: 'New alert' }).getByRole('status')
+    Expected: "0 of 1 fired"
+    Error: strict mode violation: getByRole('tabpanel', { name: 'Alerts' }).getByRole('form', { name: 'New alert' }).getByRole('status') resolved to 2 elements:
+        1) <span role="status" class="text-slate-500">0 of 1 fired</span> aka getByText('of 1 fired')
+        2) <p role="status" class="text-indigo-700 dark:text-indigo-300">Alert armed. It will check future completed bars.</p> aka getByText('Alert armed. It will check')
+
+    Call log:
+      - Expect "toHaveText" getByRole('tabpanel', { name: 'Alerts' }).getByRole('form', { name: 'New alert' }).getByRole('status') with timeout 5000ms
+      - waiting for getByRole('tabpanel', { name: 'Alerts' }).getByRole('form', { name: 'New alert' }).getByRole('status')
+        2 × locator resolved to <p role="status" class="text-indigo-700 dark:text-indigo-300">Alert armed. It will check future completed bars.</p>
+          - unexpected value "Alert armed. It will check future completed bars."
+
+
+      30 |
+      31 |   await form.getByRole('button', { name: 'Check now' }).click();
+    > 32 |   await expect(form.getByRole('status')).toHaveText('0 of 1 fired'); // no bar after the last stored session yet
+         |                                          ^
+      33 |
+      34 |   ageAlerts(); // as if the alert had been set 30 days ago
+      35 |   await page.getByRole('tab', { name: /^Watchlist/ }).click();
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/m15-alerts.spec.ts:32:42
+
+    Error Context: test-results/m15-alerts-an-alert-set-at-c4c66-d-checked-fires-and-is-seen-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m15-alerts-an-alert-set-at-c4c66-d-checked-fires-and-is-seen-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/m15-alerts-an-alert-set-at-c4c66-d-checked-fires-and-is-seen-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › e2e/transformation.spec.ts:17:1 › range presets retain historical bars and allow panning into earlier sessions without refetching 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      29 |   const readout = await page.getByTestId('crosshair-readout').textContent();
+      30 |   expect(readout?.slice(0, 10)).toBeTruthy();
+    > 31 |   expect(readout!.slice(0, 10) < '2026-07-08').toBe(true);
+         |                                                ^
+      32 |   expect(requests).toBe(initialRequests);
+      33 |   await expect(chart).toHaveAttribute('aria-label', /2610 daily bars from 2016-08-08/);
+      34 | });
+        at /Users/varunagarwal/Downloads/Applications/StocksMomentum/web/e2e/transformation.spec.ts:31:48
+
+    Error Context: test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/error-context.md
+
+    Error Context: test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/transformation-range-prese-3461f-sessions-without-refetching-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    [chromium] › e2e/m11-slice.spec.ts:246:1 › the existing research screens still save their charts (NFR-13) 
+    [chromium] › e2e/m11-slice.spec.ts:327:1 › two windows changing the same chart setting get the conflict notice; nothing is overwritten silently 
+    [chromium] › e2e/m11-slice.spec.ts:349:1 › a drawing conflict on a research screen shows the same notice 
+    [chromium] › e2e/m15-alerts.spec.ts:12:1 › an alert set at a chart price is listed, checked, fires, and is seen 
+    [chromium] › e2e/transformation.spec.ts:17:1 › range presets retain historical bars and allow panning into earlier sessions without refetching 
+  6 skipped
+  154 passed (13.9m)

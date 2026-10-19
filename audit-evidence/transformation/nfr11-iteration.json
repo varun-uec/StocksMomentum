@@ -1,0 +1,23 @@
+{
+  "measured_at": "2026-10-19T12:08:23.908Z",
+  "git_commit": "c275f2b",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "dataset": "10 synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (marked E2E database)",
+  "cold_method": "fresh API process on port 8766 and fresh browser context for each run; navigation starts after /health/live returns 200; API boot time is excluded",
+  "results": {
+    "warm": {
+      "runs": 30,
+      "p50": 132,
+      "p95": 150,
+      "max": 165
+    },
+    "cold": {
+      "runs": 30,
+      "p50": 452,
+      "p95": 468,
+      "max": 474
+    }
+  }
+}
