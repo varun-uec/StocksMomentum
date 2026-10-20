@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any, Protocol
 
 from momentum25.domain.entities.security import Security
+from momentum25.domain.value_objects.instrument import is_equity
 
 
 class RsRatingCache(Protocol):
@@ -48,7 +49,9 @@ async def resolve_universe_rs_ratings(
         if cached is not None:
             return cached
 
-    universe = await securities_repo.list_active()
+    # The same universe the screening run ranks: equities only. Ranking fund
+    # and ETF units too gave this read path different ratings from the run.
+    universe = [s for s in await securities_repo.list_active() if is_equity(s.isin)]
     ratings = await compute_universe_rs_ratings(
         universe, ohlcv_repo, as_of, strategy.config.indicators.get("rs_return_weights")
     )

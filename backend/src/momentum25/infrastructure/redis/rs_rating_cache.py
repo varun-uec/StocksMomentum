@@ -29,7 +29,8 @@ class RedisRsRatingCache:
         self._ns = namespace
 
     def _key(self, as_of: date, strategy_name: str) -> str:
-        return f"{self._ns}:rs_ratings:{strategy_name}:{as_of.isoformat()}"
+        # v2: equity-only universe. The version keeps pre-fix entries from being served.
+        return f"{self._ns}:rs_ratings:v2:{strategy_name}:{as_of.isoformat()}"
 
     async def get(self, as_of: date, strategy_name: str) -> dict[str, int] | None:
         """Return the cached ratings for *as_of*/*strategy_name*, or ``None`` on a miss."""

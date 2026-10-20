@@ -77,3 +77,33 @@ async def test_mcx_five_for_one_split_golden_case_keeps_its_twenty_percent_gain(
     ratings = await compute_universe_rs_ratings(universe, McxRepo(), DAYS[-1], {"63": 1.0})
     assert ratings["MCX"] == 99
     assert ratings["FLAT"] == 1
+
+
+async def test_read_path_ranks_the_same_equity_universe_as_the_screening_run() -> None:
+    # Regression R3-B: /stocks/{symbol}/live and the watchlist ranked RS across
+    # every active security, fund and ETF units included; the run ranks equities
+    # only. On 2026-10-19 data 2,679 equities got a different rating and 101
+    # crossed the RS >= 70 gate.
+    from types import SimpleNamespace
+
+    from momentum25.application.services.rs_ratings import resolve_universe_rs_ratings
+
+    repo = _Repo()
+    repo.series[3] = _bars([Decimal(100 + i) for i in range(80)], [Decimal(1)] * 80)
+    universe = [
+        Security(symbol=Symbol("SPLITTER"), name="s", id=1, isin="INE000000001"),
+        Security(symbol=Symbol("FLAT"), name="f", id=2, isin="INE000000002"),
+        Security(symbol=Symbol("GOLDETF"), name="g", id=3, isin="INF000000003"),
+    ]
+
+    class _Securities:
+        async def list_active(self) -> list[Security]:
+            return universe
+
+    indicators = {"rs_return_weights": {"63": 1.0}}
+    strategy = SimpleNamespace(name="t", config=SimpleNamespace(indicators=indicators))
+    read_path = await resolve_universe_rs_ratings(_Securities(), repo, strategy, DAYS[-1], None)
+    run_path = await compute_universe_rs_ratings(universe[:2], repo, DAYS[-1], {"63": 1.0})
+
+    assert read_path == run_path
+    assert "GOLDETF" not in read_path
