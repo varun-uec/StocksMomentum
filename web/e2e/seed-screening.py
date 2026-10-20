@@ -18,6 +18,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.persistence.database import get_database
@@ -31,7 +32,6 @@ from momentum25.infrastructure.persistence.repositories.data_manifests import (
     SqlDataManifestRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
-
 
 # The production strategy, plus one benchmark so the legacy strategy
 # comparison has two stored runs on the same date.
@@ -83,6 +83,7 @@ async def main() -> None:
                 ),
                 strategy=strategy,
                 strategy_repo=strategy_repo,
+                calendar=get_nse_trading_calendar(),
             )
             summary = await orchestrator.run_daily_screening(as_of, data_manifest=manifest)
             print(

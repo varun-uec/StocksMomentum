@@ -36,6 +36,12 @@ from momentum25.domain.value_objects.instrument import is_equity
 
 ANCHOR_TOLERANCE_SESSIONS = 5  # owner decision S-4, 2026-10-20
 MIN_RS_BARS = 253  # R(252) needs the bar 252 bars before the latest
+# Extra bars fetched beyond the session window. A bar dated on a non-session
+# (a Muhurat session, a fixture) would otherwise stop a fixed-count fetch short
+# of the earliest anchor. Older bars never change an anchor, which is the last
+# bar on or before its session.
+# ponytail: fixed slack; fetch by date range if more than 30 such bars a year appear.
+_NON_SESSION_SLACK = 30
 
 
 class RsRatingCache(Protocol):
@@ -132,7 +138,7 @@ async def compute_universe_rs_ratings(
     t_index = _session_index(sessions, as_of_date)
     if t_index - max_period - ANCHOR_TOLERANCE_SESSIONS < 0:
         raise ValueError(f"calendar holds too few sessions before {as_of_date} for RS")
-    lookback = max(MIN_RS_BARS, max_period + ANCHOR_TOLERANCE_SESSIONS + 1)
+    lookback = max(MIN_RS_BARS, max_period + ANCHOR_TOLERANCE_SESSIONS + 1) + _NON_SESSION_SLACK
 
     returns: list[tuple[float, int, str]] = []
     for security in securities:

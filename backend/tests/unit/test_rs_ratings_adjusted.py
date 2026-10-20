@@ -150,3 +150,26 @@ async def test_read_path_ranks_the_reference_equity_universe() -> None:
         _Securities(), _Repo(series), strategy, T, None, CAL
     )
     assert read_path == {"FLAT": 1, "INACTIVE": 50, "NSEONLY": 99}
+
+
+async def test_bars_on_non_sessions_do_not_cut_the_window_short() -> None:
+    """Bars on 14 exchange holidays (a fixture, a Muhurat print) must not leave
+    the anchor out of reach: the RS read fetches beyond the session count."""
+    holidays = set(DAYS[-300::20])
+
+    class _Holidays:
+        def sessions_between(self, start: date, end: date) -> list[date]:
+            return [d for d in CAL.sessions_between(start, end) if d not in holidays]
+
+    weights = {"252": 1.0}
+    series = {1: _step("100", "130", at=DAYS[-260]), 2: _flat()}
+
+    class _Lookback(_Repo):
+        async def get_series(self, security_id: int, lookback_days: int, as_of: date):
+            bars = self.series[security_id][-lookback_days:]
+            return OHLCVSeries(security_id=security_id, bars=bars)
+
+    ratings = await compute_universe_rs_ratings(
+        [_sec(1, "UP"), _sec(2, "FLAT")], _Lookback(series), T, weights, _Holidays()
+    )
+    assert ratings == {"FLAT": 1, "UP": 99}
