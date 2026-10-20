@@ -18,6 +18,7 @@ from momentum25 import __version__
 from momentum25.app.services.screening_job import run_screening_pipeline
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
+from momentum25.domain.value_objects.types import RunTrigger
 from momentum25.infrastructure.config.settings import Settings, get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.logging.setup import configure_logging, get_logger
@@ -80,7 +81,7 @@ async def _run_daily_screening_job() -> None:
         _logger.info("daily_screening_job_started", strategies=[s.name for s in strategies])
         for strategy in strategies:
             try:
-                await run_screening_pipeline(strategy.name)
+                await run_screening_pipeline(strategy.name, trigger=RunTrigger.SCHEDULED)
             except Exception as exc:  # noqa: BLE001 - one strategy failing must not stop others
                 _logger.error(
                     "daily_screening_job_strategy_failed",

@@ -39,6 +39,7 @@ class _CapturingOrchestrator:
         trading_date: date,
         existing_run_id: int | None = None,
         data_manifest: object | None = None,
+        trigger: object | None = None,
     ) -> object:
         _CapturingOrchestrator.last_trading_date = trading_date
 

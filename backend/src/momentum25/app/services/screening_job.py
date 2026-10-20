@@ -20,7 +20,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
-from momentum25.domain.value_objects.types import RunStatus
+from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
@@ -44,6 +44,7 @@ async def run_screening_pipeline(
     target_symbols: list[str] | None = None,
     market_data_provider: Any | None = None,
     ingest_enabled: bool | None = None,
+    trigger: RunTrigger = RunTrigger.MANUAL,
 ) -> int:
     """Run the full ingest-and-screen pipeline in its own session.
 
@@ -57,6 +58,7 @@ async def run_screening_pipeline(
         target_symbols: Optional symbol subset (mainly for tests).
         market_data_provider: Explicit external provider override, mainly tests.
         ingest_enabled: Override the configured exchange-download policy.
+        trigger: What started the run; the daily job passes ``SCHEDULED``.
 
     Returns:
         The id of the completed run.
@@ -110,6 +112,7 @@ async def run_screening_pipeline(
                 force=force,
                 existing_run_id=run_id,
                 strategy_id=queued_strategy_id,
+                trigger=trigger,
             )
             _logger.info("screening_job_completed", run_id=completed_id, strategy=strategy_name)
             return completed_id

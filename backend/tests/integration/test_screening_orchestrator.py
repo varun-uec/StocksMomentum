@@ -20,6 +20,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.domain.value_objects.types import RunTrigger
 from momentum25.infrastructure.persistence.models import (
     ScreeningResultModel,
     ScreeningRunModel,
@@ -189,10 +190,13 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
         strategy_repo=strategy_repo,
     )
 
-    summary = await orchestrator.run_daily_screening(target_date)
+    summary = await orchestrator.run_daily_screening(target_date, trigger=RunTrigger.SCHEDULED)
 
     assert summary.run_date == target_date
     assert summary.total_evaluated == 4
+    # Regression R3-B: the daily job's runs were all stored as MANUAL.
+    stored = await db_session.get(ScreeningRunModel, summary.run_id)
+    assert stored is not None and stored.trigger == "SCHEDULED"
     # 1 pass (PASSER), 1 fail (FAILER fails gate), 1 insufficient (IPO), 1 stale (STALER)
     assert (
         summary.total_passed

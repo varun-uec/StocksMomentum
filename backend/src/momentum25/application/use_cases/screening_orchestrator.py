@@ -95,6 +95,7 @@ class ScreeningOrchestrator:
         trading_date: date,
         existing_run_id: int | None = None,
         data_manifest: Any | None = None,
+        trigger: RunTrigger = RunTrigger.MANUAL,
     ) -> ScreeningRunSummary:
         """Execute the full daily screening lifecycle for *trading_date*.
 
@@ -105,6 +106,7 @@ class ScreeningOrchestrator:
                 one. Used by the background execution path (Phase 1.6), which
                 returns a run id to the client before the pipeline finishes.
             data_manifest: Captured market-data and code identity for this run.
+            trigger: What started the run; the daily scheduler passes ``SCHEDULED``.
 
         Returns a :class:`ScreeningRunSummary` with counts and timing.
         """
@@ -170,7 +172,7 @@ class ScreeningOrchestrator:
                 run_date=trading_date,
                 data_version=data_version,
                 config_hash=self._strategy.config_hash,
-                trigger=RunTrigger.MANUAL,
+                trigger=trigger,
                 status=RunStatus.RUNNING,
                 started_at=datetime.now(UTC),
             )

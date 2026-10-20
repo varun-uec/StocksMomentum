@@ -22,7 +22,7 @@ from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import ConflictError
-from momentum25.domain.value_objects.types import RunStatus, Symbol
+from momentum25.domain.value_objects.types import RunStatus, RunTrigger, Symbol
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 _logger = get_logger("execute_screening")
@@ -79,6 +79,7 @@ class ExecuteScreening:
         existing_run_id: int | None = None,
         strategy_id: int | None = None,
         config_hash: str | None = None,
+        trigger: RunTrigger = RunTrigger.MANUAL,
     ) -> int:
         """Execute the full end-to-end screening pipeline.
 
@@ -96,6 +97,7 @@ class ExecuteScreening:
                 execution path, Phase 1.6).
             strategy_id: Exact strategy row pinned by a queued run.
             config_hash: Optional immutable config version selected in the workstation.
+            trigger: What started the run, recorded on a new run row.
 
         Returns:
             The id of the created (or adopted) screening run.
@@ -197,7 +199,7 @@ class ExecuteScreening:
             else None
         )
         run_id = await self._run_via_orchestrator(
-            strategy, screening_date, existing_run_id, manifest
+            strategy, screening_date, existing_run_id, manifest, trigger
         )
 
         _logger.info("execute_screening_completed", run_id=run_id)
@@ -359,6 +361,7 @@ class ExecuteScreening:
         trading_date: date,
         existing_run_id: int | None = None,
         data_manifest: Any | None = None,
+        trigger: RunTrigger = RunTrigger.MANUAL,
     ) -> int:
         """Delegate the core pipeline to :class:`ScreeningOrchestrator`."""
         from momentum25.application.use_cases.screening_orchestrator import (
@@ -436,6 +439,7 @@ class ExecuteScreening:
             trading_date,
             existing_run_id=existing_run_id,
             data_manifest=data_manifest,
+            trigger=trigger,
         )
         # Return the run this execution wrote. Reading "the latest completed run"
         # instead returned another run whenever one had a later run_date.
