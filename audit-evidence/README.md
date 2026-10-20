@@ -1,5 +1,7 @@
 # E2E Audit Evidence
 
+Phase B evidence (2026-10-20) is in [`phase-b/`](phase-b/README.md).
+
 Evidence for the 2026-10-19 Wickstreet product audit. The initial audit used revision `e7fd455`; the focused release-hardening run used the current local working tree.
 
 ## Data and safety
