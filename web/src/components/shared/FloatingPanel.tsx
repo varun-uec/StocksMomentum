@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 
 interface FloatingPanelProps {
   trigger: (props: { ref: React.RefObject<HTMLButtonElement>; onClick: () => void; open: boolean }) => ReactNode;
-  children: ReactNode;
+  /** A function child gets `close`, for panels whose actions should dismiss them. */
+  children: ReactNode | ((close: () => void) => ReactNode);
   panelClassName?: string;
 }
 
@@ -89,7 +90,7 @@ export function FloatingPanel({ trigger, children, panelClassName = '' }: Floati
             style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 1000 }}
             className={`w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-2xl dark:shadow-black/40 ${panelClassName}`}
           >
-            {children}
+            {typeof children === 'function' ? children(() => setOpen(false)) : children}
           </div>,
           document.body
         )}

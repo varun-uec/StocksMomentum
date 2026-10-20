@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useSearchParams } from 'react-router';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import RunSummaryCards from '@/components/dashboard/RunSummaryCards';
 import MomentumTable from '@/components/dashboard/MomentumTable';
 import { useShell, useShellPanel } from '@/components/shell/shell-context';
-import { ProvenanceLine } from '@/components/momentum25/run';
-import { applyFilters, COLUMN_SETS, ColumnSetTabs, FilterPills, type ColumnSet, type ScreenerFilters } from '@/components/momentum25/screener';
+import { ProvenanceLine, useRunRankings } from '@/components/momentum25/run';
+import { applyFilters, COLUMN_SETS, ScreenerToolbar, useScreen } from '@/components/momentum25/screener';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import {
   executeScreening,
   getLatestRunForStrategy,
-  getRankings,
   getDataFreshness,
   getRun,
 } from '@/lib/api-client';
@@ -86,14 +85,8 @@ export default function Home() {
   const pinnedRun = Number(params.get('run')) || null;
   const viewRunId = pinnedRun ?? run?.id;
   const historical = pinnedRun !== null && pinnedRun !== run?.id;
-  const { data: rankings, isLoading: rankingsLoading, error: rankingsError, isFetching: rankingsFetching } = useQuery({
-    queryKey: ['rankings', viewRunId],
-    queryFn: () => getRankings(viewRunId!, 100, 0),
-    enabled: viewRunId !== undefined,
-    refetchInterval: 60_000,
-    // Keep the previous run's rows on screen while the next one loads.
-    placeholderData: keepPreviousData,
-  });
+  // Keep the previous run's rows on screen while the next one loads.
+  const { data: rankings, isLoading: rankingsLoading, error: rankingsError, isFetching: rankingsFetching } = useRunRankings(viewRunId, { keepPrevious: true });
 
   const { data: freshness } = useQuery({
     queryKey: ['data-freshness'],
@@ -149,8 +142,8 @@ export default function Home() {
     flushSync(() => setPicked(symbol));
     openPanel('details');
   };
-  const [columnSet, setColumnSet] = useState<ColumnSet>('Overview');
-  const [filters, setFilters] = useState<ScreenerFilters>({});
+  const screen = useScreen();
+  const matches = rankings ? applyFilters(rankings.items, screen.filters) : [];
 
   return (
     <main className="min-h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -198,16 +191,15 @@ export default function Home() {
               />
             ) : (
               <>
-                <div className="flex flex-wrap items-center gap-3 border-t border-[var(--ws-line)] pt-2">
-                  <ColumnSetTabs value={columnSet} onChange={setColumnSet} />
-                  <FilterPills rows={rankings.items} value={filters} onChange={setFilters} />
+                <div className="border-t border-[var(--ws-line)] pt-2">
+                  <ScreenerToolbar screen={screen} rows={rankings.items} matches={matches.length} />
                 </div>
                 <MomentumTable
-                  items={applyFilters(rankings.items, filters)}
+                  items={matches}
                   onSymbolClick={handleSymbolClick}
                   selectedSymbol={selected}
                   title="Ranked Universe"
-                  visibleColumns={COLUMN_SETS[columnSet]}
+                  visibleColumns={COLUMN_SETS[screen.columnSet]}
                   dense
                 />
               </>

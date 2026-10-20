@@ -128,6 +128,16 @@ Every route keeps its URL. "Prev" is the site `NavBar`. Since A2.1 the desktop e
 
 Limits: Data has one settings section today, so it has no left nav. Markets has no symbol rows (sector rows only), so no row opens an Assessment there.
 
+## Phase B charting-parity additions
+
+| # | Capability | Place | How found | Verified | Status |
+|---|---|---|---|---|---|
+| B1a | Range filters (Momentum, Buy setup, RS, Rank, Δ Rank; inclusive bounds) and a Sector filter, combined with the M4 pills; "Matches: N of M" | Screener, bottom panel | Pill ▾ opens From/To | `screener.test.ts`; b1-screener "reference filter over the whole run" | new |
+| B1b | The screeners read every row of the run (pages of 200), not the first 100. The rankings API breaks rank ties by security id, so pages never overlap | Screener, bottom panel | — | `api-client.test.ts`; `test_rankings_pages_never_overlap_on_tied_ranks` | fixed |
+| B1c | Saved screens: name, column set and filters in the `saved_screens` user document (ETag/412/428); open, save changes, save as new, delete; the open screen survives a reload and is shared with the bottom panel | Screen menu ▾ | Screen name button | `test_user_documents_api.py` (round trip, 412, validation, cap); b1-screener "saved screen" | new |
+
+Limits (B1): filters read fields a run already stores; there is no price or volume filter, because the rankings rows carry no price. A row with no value for a bounded field (no RS, or no rank because it did not qualify) never matches that bound. A screen applies to any run and does not remember a strategy. Screens have no rename; save as new and delete cover it.
+
 ## Backlog items BL-01..BL-15 and OpenChart audit fixes
 
 | # | Item | Location | Verified | Status |

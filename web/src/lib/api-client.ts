@@ -142,6 +142,15 @@ export async function getRankings(
   );
 }
 
+/** Every row of a run, in the API's order, fetched 200 at a time (the API's page cap). */
+export async function getAllRankings(runId: number): Promise<RankingsResponse> {
+  const first = await getRankings(runId, 200, 0);
+  const offsets: number[] = [];
+  for (let offset = 200; offset < first.total; offset += 200) offsets.push(offset);
+  const rest = await Promise.all(offsets.map((offset) => getRankings(runId, 200, offset)));
+  return { ...first, items: [first, ...rest].flatMap((page) => page.items), limit: first.total, offset: 0 };
+}
+
 // ── Stocks — Explainability & History ─────────────────────────────────
 
 export async function getStockExplanation(

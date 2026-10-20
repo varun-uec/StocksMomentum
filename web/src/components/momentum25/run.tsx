@@ -5,8 +5,8 @@
  * two views is always visible.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { getLatestRunForStrategy } from '@/lib/api-client';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { getAllRankings, getLatestRunForStrategy } from '@/lib/api-client';
 import type { RunDTO } from '@/lib/types';
 
 /** The latest run of a strategy: the run in view on /chart and the default screener. */
@@ -15,6 +15,17 @@ export function useLatestRun(strategy: string) {
     queryKey: ['latest-run', strategy],
     queryFn: () => getLatestRunForStrategy(strategy),
     refetchInterval: 60_000,
+  });
+}
+
+/** Every row of a run: screener filters must see the whole run, not its first page. */
+export function useRunRankings(runId: number | undefined, { keepPrevious = false } = {}) {
+  return useQuery({
+    queryKey: ['run-rankings', runId],
+    queryFn: () => getAllRankings(runId!),
+    enabled: runId !== undefined,
+    refetchInterval: 60_000,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 }
 

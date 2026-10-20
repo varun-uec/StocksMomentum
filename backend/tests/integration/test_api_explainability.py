@@ -247,3 +247,46 @@ async def test_explanation_api_returns_rule_details(db_session: AsyncSession) ->
     assert "engine_explanations" in data
     assert "overall_rationale" in data
     assert isinstance(data["rule_explanations"], list)
+
+@pytest.mark.asyncio
+async def test_rankings_pages_never_overlap_on_tied_ranks(db_session: AsyncSession) -> None:
+    """Unqualified rows all have rank NULL; paging must still visit each row once, in order."""
+    from momentum25.infrastructure.persistence.models import (
+        ScreeningResultModel,
+        ScreeningRunModel,
+        StrategyModel,
+    )
+
+    strategy = StrategyModel(name="tie_test", version=1, config={}, config_hash="h")
+    db_session.add(strategy)
+    await db_session.flush()
+    run = ScreeningRunModel(
+        strategy_id=strategy.id,
+        run_date=date(2026, 1, 2),
+        data_version="v",
+        config_hash="h",
+        status="COMPLETED",
+        trigger="manual",
+    )
+    db_session.add(run)
+    securities = [await _seed_security(db_session, f"TIE{i}", f"Tie {i}") for i in range(7)]
+    for i, sec in enumerate(reversed(securities)):
+        db_session.add(
+            ScreeningResultModel(
+                run_id=run.id,
+                security_id=sec.id,
+                momentum_score=Decimal(10),
+                buy_setup_score=Decimal(10),
+                hard_filters_passed=i < 2,
+                rank=i + 1 if i < 2 else None,
+            )
+        )
+    await db_session.commit()
+
+    repo = SqlScreeningRunRepository(db_session)
+    paged = [r for offset in range(7) for r in (await repo.get_rankings(run.id, 1, offset))[0]]
+    whole, total = await repo.get_rankings(run.id, 100, 0)
+    assert total == 7
+    assert [r.security_id for r in paged] == [r.security_id for r in whole]
+    unranked = [r.security_id for r in whole if r.rank is None]
+    assert unranked == sorted(unranked) and len(unranked) == 5

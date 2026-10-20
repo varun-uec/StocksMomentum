@@ -682,6 +682,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
             </svg>
           </PageButton>
           <select
+            aria-label="Rows per page"
             value={table.getState().pagination.pageSize}
             onChange={(e) => table.setPageSize(Number(e.target.value))}
             className={`ml-2 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs ${focusRing}`}

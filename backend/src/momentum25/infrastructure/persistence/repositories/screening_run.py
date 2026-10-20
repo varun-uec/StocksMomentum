@@ -380,7 +380,8 @@ class SqlScreeningRunRepository:
                 ScreeningResultModel.rank,
             )
             .where(ScreeningResultModel.run_id == run_id)
-            .order_by(ScreeningResultModel.rank)
+            # security_id breaks rank ties (every unqualified row is NULL), so pages never overlap.
+            .order_by(ScreeningResultModel.rank, ScreeningResultModel.security_id)
         )
         result = await self._session.execute(base.limit(limit).offset(offset))
         rows = result.all()

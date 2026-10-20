@@ -12,7 +12,7 @@ export function allowOneInjectedNetworkFailure(page: Page): void {
 /** These are normal boundary responses while a first document is being saved. */
 async function expectedResponseError(status: number, url: string, body: () => Promise<string>): Promise<boolean> {
   const path = new URL(url).pathname;
-  if ((status === 404 || status === 412) && /\/api\/v1\/(drawings|workspaces)\//.test(path)) return true;
+  if ((status === 404 || status === 412) && /\/api\/v1\/(drawings|workspaces|screens)\//.test(path)) return true;
   if (status === 404 && path === '/api/v1/indices/NIFTY500/closes') return true;
   if (status === 422 && /^\/api\/v1\/studio\/families\/\d+\/evaluations$/.test(path)) {
     return (await body()).includes('insufficient data');
