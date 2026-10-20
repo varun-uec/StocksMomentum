@@ -64,6 +64,7 @@ class GetElliottWaveAnalysis:
         threshold_pct: Decimal = DEFAULT_ZIGZAG_THRESHOLD_PCT,
         as_of: date | None = None,
         strategy_name: str = DEFAULT_STRATEGY,
+        config_hash: str | None = None,
     ) -> ElliottWaveAnalysis:
         """Return the ranked wave counts for ``symbol``."""
         security = await self._securities.get_by_symbol(symbol)
@@ -73,11 +74,11 @@ class GetElliottWaveAnalysis:
         series = await self._ohlcv.get_series(
             security.id, lookback_days=lookback_days, as_of=as_of or date.today()
         )
-        context = await self._personality_context(symbol, series, strategy_name)
+        context = await self._personality_context(symbol, series, strategy_name, config_hash)
         return analyze_elliott_wave(symbol.upper(), series.bars, threshold_pct, context)
 
     async def _personality_context(
-        self, symbol: str, series: OHLCVSeries, strategy_name: str
+        self, symbol: str, series: OHLCVSeries, strategy_name: str, config_hash: str | None
     ) -> PersonalityContext | None:
         """Align the indicator series to the loaded bars, or return ``None``.
 
@@ -86,7 +87,7 @@ class GetElliottWaveAnalysis:
         silently attribute one bar's RSI to another. Only bars present in both
         contribute; volume always comes from the bars themselves.
         """
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or not series.bars:
             return None
         try:

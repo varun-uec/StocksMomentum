@@ -100,8 +100,8 @@ export function useWatchlistToggle() {
   });
 }
 
-export function useWatchlistDetail(strategy: string) {
-  return useQuery({ queryKey: ['watchlist-detail', strategy], queryFn: () => getWatchlistDetail(strategy) });
+export function useWatchlistDetail(strategy: string, configHash?: string) {
+  return useQuery({ queryKey: ['watchlist-detail', strategy, configHash], queryFn: () => getWatchlistDetail(strategy, configHash) });
 }
 
 /** The open panel: a header with its tabs (narrow) or its title, and the tab's content. */
@@ -109,6 +109,7 @@ export function SidePanel({
   panel,
   symbol,
   strategy,
+  configHash,
   onOpenSymbol,
   onClose,
   tabs,
@@ -125,6 +126,7 @@ export function SidePanel({
   /** The route's context symbol, if it has one. */
   symbol?: string;
   strategy: string;
+  configHash?: string;
   onOpenSymbol: (symbol: string) => void;
   onClose: () => void;
   /** Tabs shown in the header when there is no icon strip (narrow screens). */
@@ -155,9 +157,9 @@ export function SidePanel({
         </button>
       </div>
       <div id="workspace-panel-content" role="tabpanel" aria-labelledby={`workspace-tab-${panel}`} aria-label={label} className="flex-1 min-h-0 overflow-y-auto">
-        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} runId={runId} replay={replay} onOpenSymbol={onOpenSymbol} />}
+        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} configHash={configHash} runId={runId} replay={replay} onOpenSymbol={onOpenSymbol} />}
         {panel === 'details' && symbol && (
-          <AssessmentPanel key={`${symbol}:${strategy}:${runId}:${replay ? `replay-${replay.runId}` : ''}`} symbol={symbol} strategy={strategy} runId={runId} replay={replay} evidence={evidence} onOpenChart={onOpenChart && (() => onOpenChart(symbol))} onCreateAlert={onCreateAlert} />
+          <AssessmentPanel key={`${symbol}:${strategy}:${configHash}:${runId}:${replay ? `replay-${replay.runId}` : ''}`} symbol={symbol} strategy={strategy} configHash={configHash} runId={runId} replay={replay} evidence={evidence} onOpenChart={onOpenChart && (() => onOpenChart(symbol))} onCreateAlert={onCreateAlert} />
         )}
         {panel === 'alerts' && (replay ? <ReplayPaused date={replay.date} /> : <AlertsTab symbol={symbol} price={alertPrice} drawing={alertDrawing} />)}
         {panel === 'objects' && <div ref={objectsRef} className="p-2" />}
@@ -179,8 +181,8 @@ function ReplayPaused({ date }: { date: string }) {
  * Dense rows: Symbol, Last, Chg%, Rank, Qualified. Ranks come from the strategy's latest run, which the header names.
  * In bar replay the rows keep only the symbols: today's prices and ranks come from after the replay date.
  */
-function WatchlistTab({ symbol, strategy, runId, replay, onOpenSymbol }: { symbol?: string; strategy: string; runId?: number; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
-  const { data, isLoading } = useWatchlistDetail(strategy);
+function WatchlistTab({ symbol, strategy, configHash, runId, replay, onOpenSymbol }: { symbol?: string; strategy: string; configHash?: string; runId?: number; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
+  const { data, isLoading } = useWatchlistDetail(strategy, configHash);
   const toggle = useWatchlistToggle();
   const [sort, setSort] = useState('symbol');
   const items = [...(data?.items ?? [])].sort((a, b) => sort === 'rank' ? (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.symbol.localeCompare(b.symbol) : sort === 'change' ? Number(b.change_pct ?? -Infinity) - Number(a.change_pct ?? -Infinity) : a.symbol.localeCompare(b.symbol));
@@ -211,7 +213,7 @@ function WatchlistTab({ symbol, strategy, runId, replay, onOpenSymbol }: { symbo
       {!isLoading && items.length === 0 && <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No symbols yet. Add the open symbol with Alt+W.</p>}
       {!replay && data && items.length > 0 && (
         <p data-testid="watchlist-run" className={`px-3 pb-1 text-[11px] ${runId !== undefined && data.run_id !== runId ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
-          {data.run_id === null ? `${strategy} · no completed run` : runId !== undefined && data.run_id !== runId ? `Watchlist ranks: run #${data.run_id} (latest), not this view's run #${runId}` : `Ranks: ${strategy} · run #${data.run_id}`}
+          {data.run_id === null ? `${strategy} · no completed run · cfg ${data.config_hash?.slice(0, 8) ?? 'unknown'}` : runId !== undefined && data.run_id !== runId ? `Watchlist ranks: run #${data.run_id} · cfg ${data.config_hash?.slice(0, 8) ?? 'unknown'} (latest), not this view's run #${runId}` : `Ranks: ${strategy} · run #${data.run_id} · cfg ${data.config_hash?.slice(0, 8) ?? 'unknown'}`}
         </p>
       )}
       {!replay && items.length > 0 && (

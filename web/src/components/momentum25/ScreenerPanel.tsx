@@ -11,9 +11,9 @@ import { applyFilters, COLUMN_SETS, ScreenerToolbar, useScreen } from '@/compone
 import { getRun } from '@/lib/api-client';
 import type { ReplayState } from '@/lib/replay';
 
-export function ScreenerPanel({ strategy, symbol, replay, onOpenSymbol }: { strategy: string; symbol: string; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
+export function ScreenerPanel({ strategy, configHash, symbol, replay, onOpenSymbol }: { strategy: string; configHash?: string; symbol: string; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
   // Bar replay screens the newest run on or before its date, never a later one.
-  const latest = useLatestRun(strategy);
+  const latest = useLatestRun(strategy, configHash);
   const pinned = useQuery({ queryKey: ['run', replay?.runId], queryFn: () => getRun(replay!.runId!), enabled: !!replay?.runId });
   const run = replay ? { data: replay.runId === null ? null : pinned.data } : latest;
   const runId = run.data?.id;

@@ -76,6 +76,8 @@ class ExecuteScreening:
         target_symbols: list[str] | None = None,
         force: bool = False,
         existing_run_id: int | None = None,
+        strategy_id: int | None = None,
+        config_hash: str | None = None,
     ) -> int:
         """Execute the full end-to-end screening pipeline.
 
@@ -91,6 +93,8 @@ class ExecuteScreening:
             existing_run_id: If provided, the screening run updates this
                 already-created row instead of creating a new one (background
                 execution path, Phase 1.6).
+            strategy_id: Exact strategy row pinned by a queued run.
+            config_hash: Optional immutable config version selected in the workstation.
 
         Returns:
             The id of the created (or adopted) screening run.
@@ -111,7 +115,7 @@ class ExecuteScreening:
             )
 
         # 1. Resolve the strategy
-        strategy = await self._resolve_strategy(strategy_name)
+        strategy = await self._resolve_strategy(strategy_name, strategy_id, config_hash)
 
         reference_date = date.today()
         if force:
@@ -224,10 +228,18 @@ class ExecuteScreening:
                 _logger.debug("eod_fetched", date=session.isoformat(), bars=len(daily_bars))
         return bars
 
-    async def _resolve_strategy(self, strategy_name: str) -> Strategy:
-        """Load a strategy from the database by name."""
+    async def _resolve_strategy(
+        self, strategy_name: str, strategy_id: int | None, config_hash: str | None
+    ) -> Strategy:
+        """Load the selected immutable config, pinning queued runs by strategy ID."""
         strategy_repo = await self._get_strategy_repo()
-        strategy = await strategy_repo.get_active(strategy_name)
+        strategy = (
+            await strategy_repo.get_by_id(strategy_id)
+            if strategy_id is not None
+            else await strategy_repo.get_for_workspace(strategy_name, config_hash)
+        )
+        if strategy is not None and strategy.name != strategy_name:
+            strategy = None
         if strategy is None:
             msg = f"Strategy not found: {strategy_name}"
             raise RuntimeError(msg)

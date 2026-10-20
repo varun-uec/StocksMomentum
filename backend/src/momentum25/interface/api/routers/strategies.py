@@ -17,14 +17,16 @@ router = APIRouter(prefix="/strategies", tags=["strategies"])
 async def list_strategies(
     use_case: Annotated[ListStrategies, Depends(get_list_strategies)],
     with_runs: Annotated[bool, Query()] = False,
+    workspace: Annotated[bool, Query()] = False,
 ) -> list[StrategySummaryDTO]:
     """List registered strategies.
 
-    ``with_runs=true`` restricts the list to strategies with at least one
-    completed live run, for building a strategy selector that can never
-    present an option with nothing to show.
+    ``workspace=true`` includes every saved user version. ``with_runs=true``
+    restricts either list to versions that have a completed live screening
+    snapshot. The workstation uses the unfiltered list so selecting a version
+    without a run can show an honest empty state.
     """
-    return await use_case.execute(with_runs=with_runs)
+    return await use_case.execute(with_runs=with_runs, workspace=workspace)
 
 
 @router.get("/{name}", response_model=StrategyDetailDTO)

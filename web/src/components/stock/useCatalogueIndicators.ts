@@ -30,10 +30,10 @@ const NEEDS_BENCHMARK = new Set(['relstrength']);
  * Loads only when `enabled`; the query keys match the stock screens, so the
  * cache serves all of them.
  */
-export function useBenchmarkCloses(symbol: string, strategy: string, enabled: boolean): CloseBar[] {
+export function useBenchmarkCloses(symbol: string, strategy: string, enabled: boolean, configHash?: string): CloseBar[] {
   const { data: live } = useQuery({
-    queryKey: ['stock-live', symbol, strategy],
-    queryFn: () => getLiveStockAnalysis(symbol, false, strategy),
+    queryKey: ['stock-live', symbol, strategy, configHash],
+    queryFn: () => getLiveStockAnalysis(symbol, false, strategy, configHash),
     enabled: enabled && !!symbol,
   });
   const benchmark = live?.benchmark_index ?? null;

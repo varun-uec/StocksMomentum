@@ -52,7 +52,7 @@ class ListRuns:
     ) -> tuple[list[RunDTO], int]:
         """Return runs and total count, resolving strategy names."""
         runs, total = await self._runs.list_runs(status, limit, offset)
-        by_id = {s.id: s.name for s in await self._strategies.list()}
+        by_id = {s.id: s.name for s in await self._strategies.list_all()}
         return [_to_dto(r, by_id.get(r.strategy_id, "unknown")) for r in runs], total
 
 
@@ -69,7 +69,7 @@ class GetRun:
         run = await self._runs.get(run_id)
         if run is None:
             raise NotFoundError(f"Run not found: {run_id}")
-        by_id = {s.id: s.name for s in await self._strategies.list()}
+        by_id = {s.id: s.name for s in await self._strategies.list_all()}
         return _to_dto(run, by_id.get(run.strategy_id, "unknown"))
 
 
@@ -81,13 +81,18 @@ class GetLatestRunForStrategy:
         self._runs = runs
         self._strategies = strategies
 
-    async def execute(self, strategy_name: str, on_or_before: date | None = None) -> RunDTO | None:
+    async def execute(
+        self,
+        strategy_name: str,
+        on_or_before: date | None = None,
+        config_hash: str | None = None,
+    ) -> RunDTO | None:
         """Return the latest completed run for ``strategy_name``, or ``None``.
 
         With ``on_or_before`` (bar replay), the newest live or historical run dated
         that day or earlier, so a replayed chart never shows a later run.
         """
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
         run = (
@@ -118,13 +123,15 @@ class TriggerRefresh:
         self._clock = clock
         self._data_manifest_repo = data_manifest_repo
 
-    async def execute(self, strategy_name: str, force: bool) -> TriggeredRun:
+    async def execute(
+        self, strategy_name: str, force: bool, config_hash: str | None = None
+    ) -> TriggeredRun:
         """Create or return the exact run identity and indicate whether to schedule it.
 
         Resolves the strategy and current data version, then records a run in the
         ``PENDING`` state. The actual ingest+screen execution is wired in M4/M7.
         """
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 

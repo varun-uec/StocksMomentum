@@ -34,6 +34,7 @@ async def read_stock(
     use_case: Annotated[GetStockExplanation, Depends(get_stock_explanation)],
     run_id: Annotated[int | None, Query()] = None,
     strategy: Annotated[str, Query()] = "minervini_trend_template",
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> StockExplanation:
     """Return a stock's full score breakdown and explanation for a run.
 
@@ -41,7 +42,7 @@ async def read_stock(
     ``strategy`` (e.g. a Momentum Horizon) rather than the latest run
     across every strategy.
     """
-    return await use_case.execute(symbol, run_id, strategy)
+    return await use_case.execute(symbol, run_id, strategy, config_hash)
 
 
 @router.get("/{symbol}/history", response_model=StockHistoryDTO)
@@ -50,9 +51,10 @@ async def read_stock_history(
     use_case: Annotated[GetStockHistory, Depends(get_stock_history)],
     strategy: Annotated[str, Query()] = "minervini_trend_template",
     limit: Annotated[int, Query(ge=1, le=500)] = 90,
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> StockHistoryDTO:
     """Return a stock's score/rank history across runs, one point per run date."""
-    return await use_case.execute(symbol, strategy, limit)
+    return await use_case.execute(symbol, strategy, limit, config_hash)
 
 
 @router.get("/{symbol}/indicators/series", response_model=SecurityIndicatorSeriesDTO)
@@ -62,6 +64,7 @@ async def read_stock_indicator_series(
     strategy: Annotated[str, Query()] = "minervini_trend_template",
     interval: Annotated[Interval, Query()] = "1D",
     as_of: Annotated[date | None, Query(description="Bar replay: the series on this date.")] = None,
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> SecurityIndicatorSeriesDTO:
     """Return a stock's per-bar indicator series for the chart sub-panes.
 
@@ -71,7 +74,7 @@ async def read_stock_indicator_series(
     exist on the snapshot. With ``interval=1W`` or ``1M`` the same functions
     run on weekly or monthly bars.
     """
-    return await use_case.execute(symbol, strategy, interval, as_of)
+    return await use_case.execute(symbol, strategy, interval, as_of, config_hash)
 
 
 @router.get("/{symbol}/live", response_model=LiveStockAnalysis)
@@ -80,6 +83,7 @@ async def read_stock_live(
     use_case: Annotated[GetLiveStockAnalysis, Depends(get_live_stock_analysis)],
     refresh: Annotated[bool, Query()] = False,
     strategy: Annotated[str, Query()] = "minervini_trend_template",
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> LiveStockAnalysis:
     """Evaluate a symbol on demand through the real strategy engine.
 
@@ -97,4 +101,4 @@ async def read_stock_live(
                 "Import authorized data or omit refresh=true."
             ),
         )
-    return await use_case.execute(symbol, strategy, refresh)
+    return await use_case.execute(symbol, strategy, refresh, config_hash=config_hash)

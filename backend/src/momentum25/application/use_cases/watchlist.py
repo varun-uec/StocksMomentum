@@ -111,15 +111,18 @@ class GetWatchlistDetail:
         self._strategy_engine = strategy_engine
         self._rs_rating_cache = rs_rating_cache
 
-    async def execute(self, strategy_name: str) -> WatchlistDetailResponseDTO:
+    async def execute(
+        self, strategy_name: str, config_hash: str | None = None
+    ) -> WatchlistDetailResponseDTO:
         """Return every watchlisted symbol's momentum snapshot for *strategy_name*."""
-        symbols = await self._watchlist.list_symbols()
-        if not symbols:
-            return WatchlistDetailResponseDTO(strategy=strategy_name, run_id=None, items=[])
-
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
+        symbols = await self._watchlist.list_symbols()
+        if not symbols:
+            return WatchlistDetailResponseDTO(
+                strategy=strategy_name, run_id=None, config_hash=strategy.config_hash, items=[]
+            )
 
         run = await self._screening_run_repo.latest_completed(strategy.id)
 
@@ -157,7 +160,10 @@ class GetWatchlistDetail:
         items.sort(key=lambda item: order.get(item.symbol, len(order)))
 
         return WatchlistDetailResponseDTO(
-            strategy=strategy_name, run_id=run.id if run else None, items=items
+            strategy=strategy_name,
+            config_hash=run.config_hash if run is not None else strategy.config_hash,
+            run_id=run.id if run else None,
+            items=items,
         )
 
     async def _build_in_run_item(

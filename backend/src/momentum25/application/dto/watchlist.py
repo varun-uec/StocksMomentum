@@ -35,4 +35,5 @@ class WatchlistDetailResponseDTO(BaseModel):
 
     strategy: str
     run_id: int | None
+    config_hash: str | None = None
     items: list[WatchlistItemDTO]

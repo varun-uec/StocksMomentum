@@ -42,6 +42,7 @@ async def read_watchlist(
 async def read_watchlist_detail(
     use_case: Annotated[GetWatchlistDetail, Depends(get_get_watchlist_detail)],
     strategy: Annotated[str, Query()] = "minervini_trend_template",
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> WatchlistDetailResponseDTO:
     """Return the watchlist enriched with momentum/rank/RS for *strategy*.
 
@@ -49,7 +50,7 @@ async def read_watchlist_detail(
     server-side, in this single request -- the client never fans out
     per-row calls.
     """
-    return await use_case.execute(strategy)
+    return await use_case.execute(strategy, config_hash)
 
 
 @router.post("/{symbol}", response_model=WatchlistResponse)

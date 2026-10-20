@@ -10,10 +10,10 @@ import { getAllRankings, getLatestRunForStrategy } from '@/lib/api-client';
 import type { RunDTO } from '@/lib/types';
 
 /** The latest run of a strategy: the run in view on /chart and the default screener. */
-export function useLatestRun(strategy: string) {
+export function useLatestRun(strategy: string, configHash?: string) {
   return useQuery({
-    queryKey: ['latest-run', strategy],
-    queryFn: () => getLatestRunForStrategy(strategy),
+    queryKey: ['latest-run', strategy, configHash],
+    queryFn: () => getLatestRunForStrategy(strategy, undefined, configHash),
     refetchInterval: 60_000,
   });
 }
@@ -30,13 +30,13 @@ export function useRunRankings(runId: number | undefined, { keepPrevious = false
 }
 
 /** "strategy · run #N · as of DATE · data VERSION". `undefined` while the run loads; `null` when none exists. */
-export function ProvenanceLine({ strategy, run, label }: { strategy: string; run: Pick<RunDTO, 'id' | 'run_date' | 'data_version'> | null | undefined; label?: string }) {
+export function ProvenanceLine({ strategy, run, label }: { strategy: string; run: Pick<RunDTO, 'id' | 'run_date' | 'data_version' | 'config_hash' | 'strategy'> | null | undefined; label?: string }) {
   const text =
     run === undefined
       ? `${strategy} · loading run…`
       : run === null
         ? `${strategy} · no completed run`
-        : `${strategy} · run #${run.id} · as of ${run.run_date.slice(0, 10)} · data ${run.data_version.slice(0, 8)}`;
+      : `${run.strategy} · run #${run.id} · cfg ${run.config_hash.slice(0, 8)} · as of ${run.run_date.slice(0, 10)} · data ${run.data_version.slice(0, 8)}`;
   return (
     <p data-testid="provenance" className="text-[11px] leading-4 text-slate-500 dark:text-slate-400 tabular-nums">
       {label && <span className="font-medium">{label} · </span>}

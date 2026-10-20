@@ -31,6 +31,7 @@ export function useFromParam(): string {
 export function AssessmentPanel({
   symbol,
   strategy,
+  configHash,
   runId: viewRunId,
   replay,
   evidence,
@@ -39,6 +40,7 @@ export function AssessmentPanel({
 }: {
   symbol: string;
   strategy: string;
+  configHash?: string;
   /** The view's run; the strategy's latest run when absent. */
   runId?: number;
   /**
@@ -53,21 +55,21 @@ export function AssessmentPanel({
   onCreateAlert?: () => void;
 }) {
   const from = useFromParam();
-  const latest = useLatestRun(strategy);
+  const latest = useLatestRun(strategy, configHash);
   const runId = replay ? (replay.runId ?? undefined) : viewRunId;
   const pinned = useQuery({ queryKey: ['run', runId], queryFn: () => getRun(runId!), enabled: runId !== undefined });
   const run = replay?.runId === null ? null : runId !== undefined ? pinned.data : replay ? undefined : latest.data;
   const runInView = run?.id;
   const ranked = useQuery({
-    queryKey: ['stock-explanation', symbol, strategy, runInView],
-    queryFn: () => getStockExplanation(symbol, runInView, strategy),
+    queryKey: ['stock-explanation', symbol, strategy, configHash, runInView],
+    queryFn: () => getStockExplanation(symbol, runInView, strategy, configHash),
     enabled: runInView !== undefined,
     retry: false,
   });
   // A symbol outside the run gets a live evaluation, labelled as such: it has no rank.
   const live = useQuery({
-    queryKey: ['stock-live', symbol, strategy],
-    queryFn: () => getLiveStockAnalysis(symbol, false, strategy),
+    queryKey: ['stock-live', symbol, strategy, configHash],
+    queryFn: () => getLiveStockAnalysis(symbol, false, strategy, configHash),
     enabled: !replay && (run === null || ranked.isError),
   });
 

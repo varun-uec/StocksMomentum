@@ -27,9 +27,7 @@ async def bind_builder_to_run(
     """
     if strategy_repo is None or run is None or getattr(run, "strategy_id", None) is None:
         return builder
-    strategy = next(
-        (s for s in await strategy_repo.list() if s.id == run.strategy_id), None
-    )
+    strategy = await strategy_repo.get_by_id(run.strategy_id)
     if strategy is None:
         return builder
     return builder.for_strategy(strategy.config)
@@ -104,10 +102,8 @@ class GetRankings:
                 )
             )
 
-        strategies = await self._strategy_repo.list()
-        strategy_name = next(
-            (s.name for s in strategies if s.id == run.strategy_id), "unknown"
-        )
+        strategy = await self._strategy_repo.get_by_id(run.strategy_id)
+        strategy_name = strategy.name if strategy is not None else "unknown"
         run_dto = RunDTO(
             id=run.id,
             status=run.status.value,

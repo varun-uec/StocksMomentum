@@ -7,10 +7,12 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createFamily,
+  executeScreening,
+  getRun,
   getEvaluations,
   getFamilies,
   getRuleRegistry,
@@ -22,6 +24,7 @@ import {
 } from '@/lib/api-client';
 import { Card, EmptyState, LoadingSpinner, PageHeader } from '@/components/shared/Card';
 import { focusRing } from '@/lib/theme';
+import { useStrategy } from '@/app/strategy-context';
 import {
   RESULT_CLASSES,
   editable,
@@ -39,6 +42,7 @@ import {
   type ResultClass,
   type RuleRegistry,
   type StudioConfig,
+  type StudioStrategy,
 } from '@/lib/studio';
 
 const field = `rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm ${focusRing}`;
@@ -59,11 +63,20 @@ function problemText(error: unknown): string {
 
 export default function StudioPage() {
   const queryClient = useQueryClient();
+  const { strategyHash } = useStrategy();
   const registry = useQuery({ queryKey: ['studio-rules'], queryFn: getRuleRegistry, staleTime: Infinity });
   const families = useQuery({ queryKey: ['studio-families'], queryFn: getFamilies });
   const [familyId, setFamilyId] = useState<number | null>(null);
+  const [searchParams] = useSearchParams();
+  const requestedReturn = searchParams.get('from');
+  const returnPath = requestedReturn?.startsWith('/') && !requestedReturn.startsWith('//') ? requestedReturn : undefined;
   const family = families.data?.find((f) => f.id === familyId) ?? null;
   const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (familyId !== null || !strategyHash || !families.data) return;
+    const selected = families.data.find((item) => item.members.some((member) => member.config_hash === strategyHash));
+    if (selected) setFamilyId(selected.id);
+  }, [families.data, familyId, strategyHash]);
   // On a narrow screen the family view sits below the list and the form; bring it into view.
   const choose = (id: number) => {
     setFamilyId(id);
@@ -119,7 +132,7 @@ export default function StudioPage() {
         </aside>
         <main ref={mainRef} className="min-w-0 space-y-6 scroll-mt-16">
           {!family && <EmptyState message="Choose a family, or state a new hypothesis." />}
-          {family && registry.data && <FamilyView key={family.id} family={family} registry={registry.data} />}
+          {family && registry.data && <FamilyView key={family.id} family={family} registry={registry.data} returnPath={returnPath} />}
         </main>
       </div>
     </div>
@@ -194,7 +207,7 @@ function NewFamily({ registry, onCreated }: { registry?: RuleRegistry; onCreated
   );
 }
 
-function FamilyView({ family, registry }: { family: Family; registry: RuleRegistry }) {
+function FamilyView({ family, registry, returnPath }: { family: Family; registry: RuleRegistry; returnPath?: string }) {
   const queryClient = useQueryClient();
   const tree = useMemo(() => lineage(family), [family]);
   const [selected, setSelected] = useState(tree[tree.length - 1]?.member.config_hash ?? '');
@@ -232,6 +245,7 @@ function FamilyView({ family, registry }: { family: Family; registry: RuleRegist
       </Card>
 
       {member && <Evaluations family={family} configHash={member.config_hash} />}
+      {member && <ScreenSavedConfig key={member.config_hash} member={member} returnPath={returnPath} />}
 
       {draft && (
         <Card title={`Change ${member?.name} v${member?.version}`} subtitle="Saving creates a new version in this family. Stored versions never change.">
@@ -250,6 +264,59 @@ function FamilyView({ family, registry }: { family: Family; registry: RuleRegist
         </Card>
       )}
     </>
+  );
+}
+
+function ScreenSavedConfig({ member, returnPath }: { member: StudioStrategy; returnPath?: string }) {
+  const queryClient = useQueryClient();
+  const { setStrategyName } = useStrategy();
+  const [runId, setRunId] = useState<number | null>(null);
+  const start = useMutation({
+    mutationFn: () => executeScreening(member.name, false, member.config_hash),
+    onSuccess: async (run) => {
+      setRunId(run.id);
+      setStrategyName(member.name, member.config_hash);
+      await queryClient.invalidateQueries({ queryKey: ['strategies', 'workspace'] });
+      await queryClient.invalidateQueries({ queryKey: ['strategies', 'workspace', 'with-runs'] });
+      await queryClient.invalidateQueries({ queryKey: ['latest-run', member.name, member.config_hash] });
+    },
+  });
+  const run = useQuery({
+    queryKey: ['studio-workstation-run', member.config_hash, runId],
+    queryFn: () => getRun(runId!),
+    enabled: runId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'PENDING' || status === 'RUNNING' ? 1500 : false;
+    },
+  });
+  const running = start.isPending || run.data?.status === 'PENDING' || run.data?.status === 'RUNNING';
+
+  useEffect(() => {
+    if (run.data?.status === 'COMPLETED') {
+      void queryClient.invalidateQueries({ queryKey: ['latest-run', member.name, member.config_hash] });
+    }
+  }, [member.config_hash, member.name, queryClient, run.data?.status]);
+
+  return (
+    <Card title="Workstation screening" subtitle={`Saved strategy ${member.name} v${member.version} · config ${member.config_hash.slice(0, 12)}`}>
+      <p className="text-xs text-slate-600 dark:text-slate-300">
+        Run this exact configuration on stored EOD data to create rankings for the screener, chart Assessment and watchlist. The Studio Screening Result remains a separate point-in-time research snapshot; saved screens contain only screener filters and columns.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" className={primary} disabled={running} onClick={() => start.mutate()}>
+          {running ? 'Screening…' : run.data?.status === 'FAILED' ? 'Retry screening' : 'Run this strategy'}
+        </button>
+        {run.data?.status === 'PENDING' && <span role="status" className="text-xs text-slate-500">Queued</span>}
+        {run.data?.status === 'RUNNING' && <span role="status" className="text-xs text-slate-500">Evaluating stored bars…</span>}
+        {run.data?.status === 'FAILED' && <span role="alert" className="text-xs text-rose-700 dark:text-rose-300">{run.data.error ?? 'Screening failed.'}</span>}
+        {start.isError && <span role="alert" className="text-xs text-rose-700 dark:text-rose-300">{problemText(start.error)}</span>}
+        {run.data?.status === 'COMPLETED' && (
+          <Link className={`${secondary} inline-flex items-center`} to={`/?run=${run.data.id}`}>View run #{run.data.id} rankings</Link>
+        )}
+        {returnPath && <Link className={`text-xs text-[var(--ws-accent)] hover:underline ${focusRing}`} to={returnPath}>Return to chart</Link>}
+      </div>
+    </Card>
   );
 }
 

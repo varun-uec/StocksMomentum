@@ -46,6 +46,13 @@ class TriggerRefreshRequest(BaseModel):
     """Request body for ``POST /runs`` and ``POST /runs/execute``."""
 
     strategy: str = Field(..., description="Strategy name to run.")
+    config_hash: str | None = Field(
+        default=None,
+        min_length=64,
+        max_length=64,
+        pattern="^[a-f0-9]{64}$",
+        description="Optional immutable config hash to pin a saved strategy version.",
+    )
     force: bool = Field(
         default=False,
         description=(

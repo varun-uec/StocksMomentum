@@ -24,6 +24,7 @@ async def read_elliott_wave(
     lookback_days: Annotated[int, Query(ge=60, le=2000)] = 500,
     threshold_pct: Annotated[Decimal, Query(gt=0, le=50)] = Decimal("5"),
     strategy: str = DEFAULT_STRATEGY,
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> ElliottWaveAnalysis:
     """Return the ranked wave counts the stored price history supports.
 
@@ -35,4 +36,6 @@ async def read_elliott_wave(
     with no count when the history satisfies no valid structure -- that absence
     is the honest answer, not an error.
     """
-    return await use_case.execute(symbol, lookback_days, threshold_pct, strategy_name=strategy)
+    return await use_case.execute(
+        symbol, lookback_days, threshold_pct, strategy_name=strategy, config_hash=config_hash
+    )

@@ -63,7 +63,7 @@ async def trigger_refresh(
 ) -> RunDTO:
     """Create a run and screen stored data, optionally using an enabled data adapter."""
     _require_downloads_if_forced(body.force)
-    triggered = await create.execute(body.strategy, body.force)
+    triggered = await create.execute(body.strategy, body.force, body.config_hash)
     if triggered.should_execute:
         background_tasks.add_task(
             run_screening_pipeline,
@@ -103,7 +103,7 @@ async def execute_screening(
     """
     if body.background:
         _require_downloads_if_forced(body.force)
-        triggered = await create.execute(body.strategy, body.force)
+        triggered = await create.execute(body.strategy, body.force, body.config_hash)
         if triggered.should_execute:
             background_tasks.add_task(
                 run_screening_pipeline,
@@ -121,6 +121,7 @@ async def execute_screening(
         strategy_name=body.strategy,
         target_symbols=None,
         force=body.force,
+        config_hash=body.config_hash,
     )
     response.status_code = status.HTTP_201_CREATED
     return await fetch.execute(run_id)
@@ -133,9 +134,10 @@ async def get_latest_run_for_strategy(
     on_or_before: Annotated[
         date | None, Query(description="Bar replay: runs to this date.")
     ] = None,
+    config_hash: Annotated[str | None, Query(description="Pin a saved strategy version.")] = None,
 ) -> RunDTO | None:
     """Return the latest completed run for a strategy (e.g. a Momentum Horizon)."""
-    return await use_case.execute(strategy, on_or_before)
+    return await use_case.execute(strategy, on_or_before, config_hash)
 
 
 @router.get("/{run_id}", response_model=RunDTO)

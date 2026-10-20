@@ -153,6 +153,31 @@ class StrategyRepository(Protocol):
         """Return the active strategy with the given name, or ``None``."""
         ...
 
+    async def get_for_workspace(
+        self, name: str, config_hash: str | None = None
+    ) -> Strategy | None:
+        """Resolve a built-in or saved strategy for explicit workstation use.
+
+        ``config_hash`` pins a saved immutable version. Without it, the newest
+        active version for ``name`` is selected. Generic historical research
+        continues to use :meth:`get_active`, which excludes saved strategies.
+        """
+        ...
+
+    async def get_by_id(self, strategy_id: int) -> Strategy | None:
+        """Return the immutable strategy definition attached to a run."""
+        ...
+
+    async def list_all(self) -> list[Strategy]:
+        """Return every persisted version, including saved strategies."""
+        ...
+
+    async def list_for_workspace(
+        self, include_users: bool = False, with_runs: bool = False
+    ) -> list[Strategy]:
+        """Return the current version of each selectable strategy, optionally run-filtered."""
+        ...
+
     async def list(self) -> list[Strategy]:
         """Return all strategies."""
         ...

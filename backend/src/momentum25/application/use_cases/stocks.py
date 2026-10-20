@@ -90,6 +90,7 @@ class GetStockExplanation:
         symbol: str,
         run_id: int | None,
         strategy_name: str = _DEFAULT_STRATEGY,
+        config_hash: str | None = None,
     ) -> StockExplanation:
         """Return a stock explanation from ``run_id``.
 
@@ -103,7 +104,7 @@ class GetStockExplanation:
         if run_id is None:
             if self._strategies is None:
                 raise NotFoundError("No strategy repository configured.")
-            strategy = await self._strategies.get_active(strategy_name)
+            strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
             if strategy is None or strategy.id is None:
                 raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
             run = await self._screening_run_repo.latest_completed(strategy.id)
@@ -158,7 +159,9 @@ class GetStockHistory:
         self._screening_run_repo = screening_run_repo
         self._strategies = strategies
 
-    async def execute(self, symbol: str, strategy_name: str, limit: int) -> StockHistoryDTO:
+    async def execute(
+        self, symbol: str, strategy_name: str, limit: int, config_hash: str | None = None
+    ) -> StockHistoryDTO:
         """Return history points for a symbol, scoped to one strategy (e.g. a Momentum Horizon).
 
         One query, not one per run: the previous implementation listed every
@@ -169,7 +172,7 @@ class GetStockHistory:
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
 
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
@@ -222,6 +225,7 @@ class GetIndicatorSeries:
         strategy_name: str = _DEFAULT_STRATEGY,
         interval: Interval = "1D",
         as_of: date | None = None,
+        config_hash: str | None = None,
     ) -> SecurityIndicatorSeriesDTO:
         """Return the indicator series for *symbol* under *strategy_name*.
 
@@ -236,7 +240,7 @@ class GetIndicatorSeries:
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
 
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 
@@ -384,13 +388,14 @@ class GetLiveStockAnalysis:
         strategy_name: str = _DEFAULT_STRATEGY,
         refresh: bool = False,
         as_of: date | None = None,
+        config_hash: str | None = None,
     ) -> LiveStockAnalysis:
         """Fetch (if requested), compute, and evaluate one symbol on demand."""
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
 
-        strategy = await self._strategies.get_active(strategy_name)
+        strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
 

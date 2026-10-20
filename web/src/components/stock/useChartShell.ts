@@ -61,7 +61,7 @@ export function useChartShell(
   symbol: string,
   strategyName: string,
   chartId: string,
-  { intervals = false, interval: intervalOverride, asOf }: { intervals?: boolean; interval?: ChartInterval; asOf?: string } = {},
+  { intervals = false, interval: intervalOverride, asOf, configHash }: { intervals?: boolean; interval?: ChartInterval; asOf?: string; configHash?: string } = {},
 ) {
   const [timeframe, setTimeframeState] = useState<TimeframeId>('1Y');
   const { preferences, ready, update } = useChartPreferences(symbol, chartId);
@@ -92,12 +92,12 @@ export function useChartShell(
   });
 
   const { data: indicatorSeries } = useQuery({
-    queryKey: ['stock-indicator-series', symbol, strategyName, interval, ...replayKey],
-    queryFn: () => getIndicatorSeries(symbol, strategyName, interval, asOf),
+    queryKey: ['stock-indicator-series', symbol, strategyName, configHash, interval, ...replayKey],
+    queryFn: () => getIndicatorSeries(symbol, strategyName, interval, asOf, configHash),
     enabled: !!symbol,
     // A replay step keeps the panes on screen until the next date's values arrive.
     placeholderData: (previous, previousQuery) =>
-      asOf && previousQuery?.queryKey[1] === symbol && previousQuery.queryKey[3] === interval ? keepPreviousData(previous) : undefined,
+      asOf && previousQuery?.queryKey[1] === symbol && previousQuery.queryKey[4] === interval ? keepPreviousData(previous) : undefined,
   });
 
   const { ohlcv, maWarmup } = useMemo(() => {

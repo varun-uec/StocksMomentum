@@ -830,6 +830,7 @@ export interface WatchlistItemDTO {
 export interface WatchlistDetailResponse {
   strategy: string;
   run_id: number | null;
+  config_hash: string | null;
   items: WatchlistItemDTO[];
 }
 

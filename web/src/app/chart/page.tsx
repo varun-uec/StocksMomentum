@@ -36,7 +36,7 @@ import { MAX_COMPARE, type CompareLine } from '@/components/workspace/useCompare
 import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
-import { getLatestRunForStrategy, getOhlcv } from '@/lib/api-client';
+import { getLatestRunForStrategy, getOhlcv, listStrategies } from '@/lib/api-client';
 import type { ReplayState } from '@/lib/replay';
 import { isTyping, opensSearch } from '@/lib/shortcuts';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -136,7 +136,13 @@ const BOTTOM_KEY = 'wickstreet.bottomPanel';
  * Strategy Studio and Research as shell navigation that remembers the chart.
  * Open or closed is a per-viewer convenience, so it lives in localStorage.
  */
-function BottomPanel({ symbol, strategy, replay, onOpenSymbol }: { symbol: string; strategy: string; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
+function BottomPanel({ symbol, strategy, configHash, replay, onOpenSymbol }: { symbol: string; strategy: string; configHash?: string; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
+  const { data: strategies } = useQuery({
+    queryKey: ['strategies', 'workspace'],
+    queryFn: () => listStrategies(false, true),
+    staleTime: 30_000,
+  });
+  const savedConfig = strategies?.find((item) => item.config_hash === configHash && item.kind === 'user');
   const [state, setState] = useState<BottomState>(() => {
     try {
       const saved = localStorage.getItem(BOTTOM_KEY);
@@ -154,6 +160,8 @@ function BottomPanel({ symbol, strategy, replay, onOpenSymbol }: { symbol: strin
     }
   };
   const from = encodeURIComponent(`/chart/${symbol}`);
+  const researchHref = savedConfig ? `/studio?from=${from}` : `/strategies?from=${from}`;
+  const researchLabel = savedConfig ? 'Research in Studio' : 'Research';
   const tab = `px-2 h-6 inline-flex items-center rounded text-xs font-medium hover:bg-[var(--ws-muted)] ${focusRing}`;
   return (
     <section aria-label="Bottom panel" className="chart-bottom" data-state={state}>
@@ -162,7 +170,7 @@ function BottomPanel({ symbol, strategy, replay, onOpenSymbol }: { symbol: strin
           Stock Screener
         </button>
         <Link to={`/studio?from=${from}`} className={tab}>Strategy Studio</Link>
-        <Link to={`/strategies?from=${from}`} className={tab}>Research</Link>
+        <Link to={researchHref} className={tab}>{researchLabel}</Link>
         <span className="flex-1" />
         <button type="button" onClick={() => save(state === 'max' ? 'open' : 'max')} aria-label={state === 'max' ? 'Restore bottom panel' : 'Maximise bottom panel'} title={state === 'max' ? 'Restore' : 'Maximise'} className={`${tab} w-6 justify-center`}>
           <span aria-hidden="true">{state === 'max' ? '⤡' : '⤢'}</span>
@@ -173,7 +181,7 @@ function BottomPanel({ symbol, strategy, replay, onOpenSymbol }: { symbol: strin
       </div>
       {state !== 'closed' && (
         <div id="chart-bottom-body" className="chart-bottom-body">
-          <ScreenerPanel strategy={strategy} symbol={symbol} replay={replay} onOpenSymbol={onOpenSymbol} />
+          <ScreenerPanel strategy={strategy} configHash={configHash} symbol={symbol} replay={replay} onOpenSymbol={onOpenSymbol} />
         </div>
       )}
     </section>
@@ -239,24 +247,25 @@ function CellFrame({
 function GridCell(
   props: Omit<Parameters<typeof CellFrame>[0], 'slot'> & {
     strategyName: string;
+    strategyHash?: string;
     syncedInterval?: { interval: ChartInterval; onChange: (next: ChartInterval) => void };
     replayDate?: string;
   },
 ) {
-  const slot = useChartSlot(props.chartId, props.symbol, props.strategyName, props.syncedInterval, props.replayDate);
+  const slot = useChartSlot(props.chartId, props.symbol, props.strategyName, props.strategyHash, props.syncedInterval, props.replayDate);
   return <CellFrame {...props} slot={slot} />;
 }
 
 function ChartWorkspace({ symbol }: { symbol: string }) {
   const navigate = useNavigate();
-  const { strategyName } = useStrategy();
+  const { strategyName, strategyHash } = useStrategy();
   const grid = useLayout();
   const activeId = grid.active;
   const multi = grid.slots.length > 1;
   // Bar replay (plan B2): page state, never saved; every chart on the page replays the same date.
   const [replay, setReplay] = useState<Replay | null>(null);
   const replayDate = replay?.date;
-  const slot = useChartSlot(activeId, symbol, strategyName, undefined, replayDate);
+  const slot = useChartSlot(activeId, symbol, strategyName, strategyHash, undefined, replayDate);
   const { shell, chart: workspace, overlays, updateOverlays, catalogue, compare, compareSymbols, setCompare } = slot;
   const drawings = useSymbolDrawings(symbol);
   const crosshair = useMemo(createCrosshairSync, []);
@@ -277,7 +286,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   };
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const { openPanel, routeSlot, objectsSlot } = useShell();
-  const latestRun = useLatestRun(strategyName).data;
+  const latestRun = useLatestRun(strategyName, strategyHash).data;
 
   const alertAt = replay ? undefined : (price: number) => openPanel('alerts', price);
   const alertOn = replay ? undefined : (drawingId: string) => openPanel('alerts', undefined, drawingId);
@@ -286,8 +295,8 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const sessions = useMemo(() => daily.data?.bars.map((b) => b.date) ?? [], [daily.data]);
   // Momentum25 context in replay: the newest run on or before the date, never a later one.
   const replayRun = useQuery({
-    queryKey: ['replay-run', strategyName, replayDate],
-    queryFn: () => getLatestRunForStrategy(strategyName, replayDate),
+    queryKey: ['replay-run', strategyName, strategyHash, replayDate],
+    queryFn: () => getLatestRunForStrategy(strategyName, replayDate, strategyHash),
     enabled: !!replayDate,
     // An earlier step's run is still on or before this date, so it may stay while the next loads.
     placeholderData: keepPreviousData,
@@ -298,7 +307,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     const dates = shell.bars.map((b) => b.date);
     if (dates.length > 1) setReplay({ date: dates[Math.max(0, dates.length - 61)], playing: false, speed: '1×' });
   };
-  const watchlist = useWatchlistDetail(strategyName);
+  const watchlist = useWatchlistDetail(strategyName, strategyHash);
   const toggleWatchlist = useWatchlistToggle();
   const listed = watchlist.data?.items.some((i) => i.symbol === symbol) ?? false;
   // The key handler is registered once; refs give it the current values.
@@ -537,7 +546,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               evidenceLayers: layersOf(chartId),
               onRemoveEvidence: (id: string) => removeEvidence(chartId, id),
             };
-            return <GridCell key={chartId} {...cell} chrome={chrome} strategyName={strategyName} syncedInterval={syncedInterval} replayDate={replayDate} />;
+            return <GridCell key={chartId} {...cell} chrome={chrome} strategyName={strategyName} strategyHash={strategyHash} syncedInterval={syncedInterval} replayDate={replayDate} />;
           })}
         </div>
       )}
@@ -551,7 +560,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline">TradingView Lightweight Charts™</a>
         </span>
       </div>
-      {sm && <BottomPanel symbol={symbol} strategy={strategyName} replay={replayState} onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)} />}
+      {sm && <BottomPanel symbol={symbol} strategy={strategyName} configHash={strategyHash} replay={replayState} onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)} />}
       <IndicatorDialog
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}

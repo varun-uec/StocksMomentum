@@ -28,18 +28,25 @@ class ListStrategies:
         """Wire the use case with the strategy repository."""
         self._strategies = strategies
 
-    async def execute(self, with_runs: bool = False) -> list[StrategySummaryDTO]:
+    async def execute(
+        self, with_runs: bool = False, workspace: bool = False
+    ) -> list[StrategySummaryDTO]:
         """Return strategy summaries.
 
-        ``with_runs=True`` restricts the list to strategies with at least one
-        completed live run -- the set that can back a strategy selector
-        without ever presenting an option that renders an empty dashboard.
+        In the workspace, ``with_runs=True`` restricts versions to those with
+        completed live runs. The unfiltered workspace list also exposes saved
+        versions without a run so the UI can show an actionable empty state.
         """
-        strategies = (
-            await self._strategies.list_with_completed_runs()
-            if with_runs
-            else await self._strategies.list()
-        )
+        if workspace:
+            strategies = await self._strategies.list_for_workspace(
+                include_users=True, with_runs=with_runs
+            )
+        else:
+            strategies = (
+                await self._strategies.list_with_completed_runs()
+                if with_runs
+                else await self._strategies.list()
+            )
         return [_summary(s) for s in strategies]
 
 

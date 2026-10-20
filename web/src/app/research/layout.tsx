@@ -25,11 +25,20 @@ const TABS = [
 export default function ResearchLayout() {
   const { pathname } = useLocation();
   const [params] = useSearchParams();
-  const { strategyName, setStrategyName } = useStrategy();
+  const { strategyName, strategyHash, setStrategyName } = useStrategy();
   const { data: strategies } = useQuery({ queryKey: ['strategies', 'with-runs'], queryFn: () => listStrategies(true), staleTime: 5 * 60_000 });
+  const workspaceStrategies = useQuery({
+    queryKey: ['strategies', 'workspace'],
+    queryFn: () => listStrategies(false, true),
+    staleTime: 30_000,
+  });
+  const selected = workspaceStrategies.data?.find((s) => s.config_hash === strategyHash)
+    ?? workspaceStrategies.data?.find((s) => s.name === strategyName);
+  const savedConfigResearch = pathname !== '/studio' && selected?.kind === 'user';
   // Only the return path travels between tabs; each tab's own parameters stay with it.
   const from = params.get('from');
   const tabHref = (path: string) => (from ? `${path}?from=${encodeURIComponent(from)}` : path);
+  const safeFrom = from?.startsWith('/') && !from.startsWith('//') ? from : undefined;
 
   return (
     <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] min-h-full">
@@ -63,7 +72,21 @@ export default function ResearchLayout() {
             </Link>
           ))}
         </nav>
-        <Outlet />
+        {pathname === '/studio' ? <Outlet /> : !workspaceStrategies.data ? (
+          <p role={workspaceStrategies.isError ? 'alert' : 'status'} className="px-6 py-5 text-sm text-slate-600 dark:text-slate-300">
+            {workspaceStrategies.isError ? 'Could not verify the selected strategy. Reload to continue.' : 'Checking the selected strategy…'}
+          </p>
+        ) : savedConfigResearch ? (
+          <section aria-label="Saved strategy research" className="max-w-3xl px-6 py-8 space-y-3">
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Research this saved strategy in Strategy Studio</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Saved configurations use Strategy Studio’s point-in-time research workflow. The generic backtest, experiment and validation tools run built-in strategy files and use distinct methods.
+            </p>
+            <Link to={`/studio${safeFrom ? `?from=${encodeURIComponent(safeFrom)}` : ''}`} className={`inline-flex rounded-md px-3 py-2 text-sm font-medium bg-[var(--ws-accent)] text-white hover:opacity-90 ${focusRing}`}>
+              Research this config in Strategy Studio
+            </Link>
+          </section>
+        ) : <Outlet />}
       </div>
     </div>
   );

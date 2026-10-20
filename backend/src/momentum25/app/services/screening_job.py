@@ -79,6 +79,12 @@ async def run_screening_pipeline(
         security_repo = SqlSecurityRepository(session)
         ohlcv_repo = SqlOHLCVRepository(session)
         screening_run_repo = SqlScreeningRunRepository(session)
+        queued_strategy_id = None
+        if run_id is not None:
+            queued_run = await screening_run_repo.get(run_id)
+            if queued_run is None:
+                raise RuntimeError(f"Queued screening run {run_id} was not found")
+            queued_strategy_id = queued_run.strategy_id
         indicator_pipeline = IndicatorPipelineImpl(session)
         strategy_engine = StrategyEngine(
             engines=engine_registry,
@@ -103,6 +109,7 @@ async def run_screening_pipeline(
                 target_symbols=target_symbols,
                 force=force,
                 existing_run_id=run_id,
+                strategy_id=queued_strategy_id,
             )
             _logger.info("screening_job_completed", run_id=completed_id, strategy=strategy_name)
             return completed_id

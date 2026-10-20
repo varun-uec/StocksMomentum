@@ -77,7 +77,8 @@ export function describe(node: DegreeNode): string {
 export function useElliottWaveChart(
   symbol: string,
   timeframe: TimeframeId,
-  strategyName: string
+  strategyName: string,
+  configHash?: string,
 ) {
   const [thresholdPct, setThresholdPct] = useState(5);
   const [candidateIndex, setCandidateIndex] = useState(0);
@@ -89,13 +90,14 @@ export function useElliottWaveChart(
     isLoading: waveLoading,
     error: waveError,
   } = useQuery({
-    queryKey: ['elliott-wave', symbol, timeframe, thresholdPct, strategyName],
+    queryKey: ['elliott-wave', symbol, timeframe, thresholdPct, strategyName, configHash],
     queryFn: () =>
       getElliottWave(
         symbol,
         lookbackDaysFor(timeframe, MAX_LOOKBACK_DAYS),
         thresholdPct,
-        strategyName
+        strategyName,
+        configHash
       ),
     enabled: !!symbol,
   });

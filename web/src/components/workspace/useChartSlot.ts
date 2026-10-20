@@ -7,7 +7,6 @@
 import { alertPriceLevels } from '@/components/workspace/alert-levels';
 import { useAlerts } from '@/components/workspace/AlertsTab';
 import { useMemo } from 'react';
-import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { useChartShell } from '@/components/stock/useChartShell';
 import { needsBenchmark, useBenchmarkCloses, useCatalogueIndicators } from '@/components/stock/useCatalogueIndicators';
 import { useCompare } from '@/components/workspace/useCompare';
@@ -23,16 +22,17 @@ export function useChartSlot(
   chartId: string,
   symbol: string,
   strategyName: string,
+  strategyHash?: string,
   /** A layout that syncs intervals shows the active chart's, and changes it there. */
   syncedInterval?: { interval: ChartInterval; onChange: (next: ChartInterval) => void },
   /** Bar replay: every series this slot draws stops at this date. */
   replayDate?: string,
 ) {
-  const shell = useChartShell(symbol, DEFAULT_STRATEGY, chartId, { intervals: true, interval: syncedInterval?.interval, asOf: replayDate });
+  const shell = useChartShell(symbol, strategyName, chartId, { intervals: true, interval: syncedInterval?.interval, asOf: replayDate, configHash: strategyHash });
   const chart = useWorkspaceChart(chartId);
   const { overlays, update: updateOverlays } = useOverlayPreferences(chartId);
   const bars = useMemo(() => toBars(shell.bars), [shell.bars]);
-  const allBenchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
+  const allBenchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators), strategyHash);
   const benchmark = useMemo(() => upTo(allBenchmark, replayDate), [allBenchmark, replayDate]);
   const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark, (indicators) =>
     updateOverlays({ indicators, presetEdited: true }),

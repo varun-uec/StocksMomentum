@@ -70,13 +70,13 @@ function buildSummary(data: RankingsResponse): ScreeningRunSummary {
 
 export default function Home() {
   const queryClient = useQueryClient();
-  const { strategyName } = useStrategy();
+  const { strategyName, strategyHash } = useStrategy();
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [screeningError, setScreeningError] = useState<string | null>(null);
 
   const { data: run, isLoading: runIdLoading, isFetching: runFetching } = useQuery({
-    queryKey: ['latest-run', strategyName],
-    queryFn: () => getLatestRunForStrategy(strategyName),
+    queryKey: ['latest-run', strategyName, strategyHash],
+    queryFn: () => getLatestRunForStrategy(strategyName, undefined, strategyHash),
     refetchInterval: 60_000,
   });
 
@@ -86,7 +86,12 @@ export default function Home() {
   const viewRunId = pinnedRun ?? run?.id;
   const historical = pinnedRun !== null && pinnedRun !== run?.id;
   // Keep the previous run's rows on screen while the next one loads.
-  const { data: rankings, isLoading: rankingsLoading, error: rankingsError, isFetching: rankingsFetching } = useRunRankings(viewRunId, { keepPrevious: true });
+  const { data: candidateRankings, isLoading: rankingsLoading, error: rankingsError, isFetching: rankingsFetching } = useRunRankings(viewRunId, { keepPrevious: true });
+  // The query keeps the previous page while a new run loads. That is useful
+  // during refreshes, but it must never make another strategy's rows look like
+  // the selected strategy's results (especially when the selected version has
+  // no run at all).
+  const rankings = viewRunId !== undefined && candidateRankings?.run?.id === viewRunId ? candidateRankings : undefined;
 
   const { data: freshness } = useQuery({
     queryKey: ['data-freshness'],
@@ -99,7 +104,7 @@ export default function Home() {
   // polls the new run's status until it finishes, then swaps the dashboard
   // to the fresh snapshot.
   const refreshMutation = useMutation({
-    mutationFn: () => executeScreening(strategyName),
+    mutationFn: () => executeScreening(strategyName, false, strategyHash),
     onSuccess: (created) => {
       setScreeningError(null);
       setActiveRunId(created.id);
@@ -120,14 +125,14 @@ export default function Home() {
   useEffect(() => {
     if (!activeRun) return;
     if (activeRun.status === 'COMPLETED') {
-      queryClient.invalidateQueries({ queryKey: ['latest-run', strategyName] });
+      queryClient.invalidateQueries({ queryKey: ['latest-run', strategyName, strategyHash] });
       queryClient.invalidateQueries({ queryKey: ['data-freshness'] });
       setActiveRunId(null);
     } else if (activeRun.status === 'FAILED') {
       setScreeningError(activeRun.error ?? 'Screening run failed.');
       setActiveRunId(null);
     }
-  }, [activeRun, strategyName, queryClient]);
+  }, [activeRun, strategyName, strategyHash, queryClient]);
 
   const isLoading = runIdLoading || rankingsLoading;
   const isScreening = refreshMutation.isPending || activeRunId !== null;
@@ -208,7 +213,19 @@ export default function Home() {
         )}
 
         {!isLoading && !rankings && !rankingsError && (
-          <EmptyState message="No completed screening run for this strategy yet. Import authorized EOD and benchmark CSV data from the CLI (see README), then choose Run screening. Wickstreet does not download exchange data by default." />
+          <div>
+            <EmptyState message="No completed screening run for this strategy version yet. Import authorized EOD and benchmark CSV data from the CLI (see README), then run screening. Wickstreet does not download exchange data by default." />
+            <div className="flex justify-center pb-4">
+              <button
+                type="button"
+                onClick={() => refreshMutation.mutate()}
+                disabled={isRefreshing}
+                className={`px-3 py-1.5 rounded-md bg-[var(--ws-accent)] text-white text-xs font-medium disabled:opacity-50 ${focusRing}`}
+              >
+                {isScreening ? 'Screening…' : 'Run screening now'}
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </main>

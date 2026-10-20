@@ -93,7 +93,7 @@ function useRightDock(context: PanelContext) {
 export function WorkstationShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { strategyName } = useStrategy();
+  const { strategyName, strategyHash } = useStrategy();
   const onChart = pathname.startsWith('/chart');
   const [routeSlot, setRouteSlot] = useState<HTMLElement | null>(null);
   const [objectsSlot, setObjectsSlot] = useState<HTMLElement | null>(null);
@@ -141,6 +141,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
         panel={dock.panel}
         symbol={panelContext.symbol}
         strategy={strategyName}
+        configHash={strategyHash}
         onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
         onClose={dock.close}
         alertPrice={dock.alertPrice}

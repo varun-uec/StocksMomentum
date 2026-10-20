@@ -68,11 +68,15 @@ export async function getLatestCompletedRun(): Promise<RunDTO | null> {
 }
 
 /** The latest completed run; with `onOrBefore` (bar replay), the newest live or historical run to that date. */
-export async function getLatestRunForStrategy(strategy: string, onOrBefore?: string): Promise<RunDTO | null> {
-  const run = await fetchJson<RunDTO | null>(
-    `${API_BASE}/runs/latest?strategy=${encodeURIComponent(strategy)}${onOrBefore ? `&on_or_before=${onOrBefore}` : ''}`,
-    { cache: 'no-store' }
-  );
+export async function getLatestRunForStrategy(
+  strategy: string,
+  onOrBefore?: string,
+  configHash?: string,
+): Promise<RunDTO | null> {
+  const params = new URLSearchParams({ strategy });
+  if (onOrBefore) params.set('on_or_before', onOrBefore);
+  if (configHash) params.set('config_hash', configHash);
+  const run = await fetchJson<RunDTO | null>(`${API_BASE}/runs/latest?${params}`, { cache: 'no-store' });
   return run ? normalizeRun(run) : null;
 }
 
@@ -106,11 +110,12 @@ export async function getRun(runId: number): Promise<RunDTO> {
 
 export async function executeScreening(
   strategy: string,
-  force = false
+  force = false,
+  configHash?: string,
 ): Promise<RunDTO> {
   return fetchJson(`${API_BASE}/runs/execute`, {
     method: 'POST',
-    body: JSON.stringify({ strategy, force, background: true }),
+    body: JSON.stringify({ strategy, force, background: true, ...(configHash ? { config_hash: configHash } : {}) }),
   });
 }
 
@@ -157,29 +162,37 @@ export async function getAllRankings(runId: number): Promise<RankingsResponse> {
 export async function getStockExplanation(
   symbol: string,
   runId?: number,
-  strategy = 'minervini_trend_template'
+  strategy = 'minervini_trend_template',
+  configHash?: string,
 ): Promise<StockExplanation> {
   const params = new URLSearchParams({ strategy });
   if (runId) params.set('run_id', String(runId));
+  if (configHash) params.set('config_hash', configHash);
   return fetchJson(`${API_BASE}/stocks/${symbol}?${params}`, { cache: 'no-store' });
 }
 
 export async function getStockHistory(
   symbol: string,
   strategy = 'minervini_trend_template',
-  limit = 90
+  limit = 90,
+  configHash?: string,
 ): Promise<StockHistoryResponse> {
+  const params = new URLSearchParams({ strategy, limit: String(limit) });
+  if (configHash) params.set('config_hash', configHash);
   return fetchJson(
-    `${API_BASE}/stocks/${symbol}/history?strategy=${strategy}&limit=${limit}`,
+    `${API_BASE}/stocks/${symbol}/history?${params}`,
     { cache: 'no-store' }
   );
 }
 
 // ── Strategies ────────────────────────────────────────────────────────
 
-export async function listStrategies(withRuns = false): Promise<StrategySummary[]> {
-  const params = withRuns ? '?with_runs=true' : '';
-  return fetchJson(`${API_BASE}/strategies${params}`, { cache: 'no-store' });
+export async function listStrategies(withRuns = false, workspace = false): Promise<StrategySummary[]> {
+  const params = new URLSearchParams();
+  if (withRuns) params.set('with_runs', 'true');
+  if (workspace) params.set('workspace', 'true');
+  const query = params.size ? `?${params}` : '';
+  return fetchJson(`${API_BASE}/strategies${query}`, { cache: 'no-store' });
 }
 
 export async function getStrategyDetail(
@@ -356,9 +369,11 @@ export async function getResearchDashboard(
 export async function getLiveStockAnalysis(
   symbol: string,
   refresh = false,
-  strategy = 'minervini_trend_template'
+  strategy = 'minervini_trend_template',
+  configHash?: string,
 ): Promise<import('./types').LiveStockAnalysis> {
   const params = new URLSearchParams({ strategy, refresh: String(refresh) });
+  if (configHash) params.set('config_hash', configHash);
   return fetchJson(`${API_BASE}/stocks/${symbol}/live?${params}`, { cache: 'no-store' });
 }
 
@@ -418,9 +433,11 @@ export async function getWatchlist(): Promise<import('./types').WatchlistRespons
  * single request (no per-row client fan-out).
  */
 export async function getWatchlistDetail(
-  strategy: string
+  strategy: string,
+  configHash?: string,
 ): Promise<import('./types').WatchlistDetailResponse> {
   const params = new URLSearchParams({ strategy });
+  if (configHash) params.set('config_hash', configHash);
   return fetchJson(`${API_BASE}/watchlist/detail?${params}`, { cache: 'no-store' });
 }
 
@@ -447,13 +464,15 @@ export async function getElliottWave(
   symbol: string,
   lookbackDays: number,
   thresholdPct: number,
-  strategy: string
+  strategy: string,
+  configHash?: string,
 ): Promise<import('./types').ElliottWaveAnalysis> {
   const params = new URLSearchParams({
     lookback_days: String(lookbackDays),
     threshold_pct: String(thresholdPct),
     strategy,
   });
+  if (configHash) params.set('config_hash', configHash);
   return fetchJson(`${API_BASE}/stocks/${symbol}/elliott-wave?${params}`, { cache: 'no-store' });
 }
 
@@ -467,11 +486,13 @@ export async function getIndicatorSeries(
   strategy = 'minervini_trend_template',
   interval: import('./types').ChartInterval = '1D',
   /** Bar replay: the series as it stood on this date. */
-  asOf?: string
+  asOf?: string,
+  configHash?: string,
 ): Promise<import('./types').SecurityIndicatorSeriesDTO> {
   const params = new URLSearchParams({ strategy });
   if (interval !== '1D') params.set('interval', interval);
   if (asOf) params.set('as_of', asOf);
+  if (configHash) params.set('config_hash', configHash);
   return fetchJson(`${API_BASE}/stocks/${symbol}/indicators/series?${params}`, {
     cache: 'no-store',
   });

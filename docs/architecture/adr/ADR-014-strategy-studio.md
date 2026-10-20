@@ -97,7 +97,7 @@ No class claims future returns.
 These fill the gaps the ADR left to M14. The constants live in `EvaluationPolicy` (`domain/research/strategy_evaluation.py`), and every result stores them.
 
 - **Studio v1 configures only what the rule registry declares:** engines, rules, gates, parameters and weights. `universe`, `indicators`, `ranking` and `benchmark_index` are copied from the parent. A request that changes them gets 422.
-- **User strategies are fenced off.** `get_active`, the strategy list and the startup prune skip `kind = "user"`, so no live or research path can run one. A strategy file cannot overwrite one either.
+- **User strategy boundary (original M14 decision; partly superseded by §9).** Generic `get_active`, strategy-file loading and startup pruning skip `kind = "user"`; a strategy file cannot overwrite one. M14 originally kept user configs out of live workstation screening. Section 9 authorizes a narrowly scoped workspace path while preserving research isolation.
 - **Families are append-only.** A trigger refuses any update or delete. Two families cannot state the same hypothesis (case and spacing ignored). A config's parent must be its family's root or a member.
 - **Hold-out windows sit on a fixed grid:** 36-month blocks from 2020-01-01. The current window is the latest block that the data covers and whose last 120-session forward window has closed. On data to 2026-08 that is 2023-01-01 → 2025-12-31. A new window opens only when the next block matures, so the window does not slide with each new session. 2020 is the first year with a broad universe (1,600+ names) and a year of history behind it.
 - **The research window** runs from the first session with 277 sessions of history (what the indicator pipeline needs) to the last decision whose forward window closes before the hold-out. Before any block has matured, it stops before the first block in the data.
@@ -118,6 +118,18 @@ These fill the gaps the ADR left to M14. The constants live in `EvaluationPolicy
 - **Regime warning:** the benchmark's return and largest fall over the window, stated plainly.
 - **Isolation.** Evaluations are stored in `strategy_evaluations`. They never write `screening_runs`.
 - **Jobs.** Evaluations run as in-process background tasks with progress. A restart fails unfinished ones, which can then be retried. One decision takes 18–28 s on the full universe, so a 36-month hold-out (about 150 decisions) takes roughly an hour.
+
+### 9. Workspace strategy integration amendment (2026-10-20)
+
+The workstation integration requirement authorizes saved Strategy Studio configs to participate in ordinary end-of-day screening and chart context. This amendment supersedes only the original M14 prohibition on running a saved config in the live workstation; it does not change the strategy engine, financial calculations, the EOD data model, or the research protocol above.
+
+- **Explicit workspace selection.** The workstation may list built-in strategies and every saved user config version, identified by `config_hash`. A saved-screen view remains a separate document containing only filters and columns.
+- **Pinned screening identity.** A workspace screening request carries the selected hash. The queued `screening_runs.strategy_id` pins the exact immutable strategy row, and the run stores that config hash. A later edit creates a new version and cannot change an existing run. The ordinary production-only `get_active`, strategy-file loader, and startup prune remain unchanged.
+- **Native reads.** Chart Assessment, indicator series, watchlist detail and other workspace reads either use the selected config hash or resolve the exact strategy attached to the requested run. They must not silently fall back to another version or another strategy's completed run.
+- **Research stays isolated.** Strategy Studio Screening Result, in-sample research and the one-per-family hold-out continue to use the point-in-time evaluation APIs and `strategy_evaluations`. They are distinct from workstation `screening_runs`; generic backtest, experiment, validation and research methods are not implicitly redirected to user configs.
+- **Honest empty state.** A saved version with no completed workstation run remains selectable and returns no run for that exact hash. The UI offers an explicit run action and does not show results belonging to another config.
+
+The compatibility tests must cover version persistence, hash-pinned background screening, differing configured results, workstation consistency and research-result provenance.
 
 ## Consequences
 - The Studio judges a strategy with the same code that screens it, on data it can reproduce exactly.

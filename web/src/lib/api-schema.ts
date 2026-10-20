@@ -572,9 +572,10 @@ export interface paths {
          * List Strategies
          * @description List registered strategies.
          *
-         *     ``with_runs=true`` restricts the list to strategies with at least one
-         *     completed live run, for building a strategy selector that can never
-         *     present an option with nothing to show.
+         *     ``workspace=true`` includes the newest saved configuration for each user
+         *     strategy. ``with_runs=true`` restricts either list to versions that have a
+         *     completed live screening snapshot. The workstation uses the unfiltered list
+         *     so selecting a strategy without a run can show an honest empty state.
          */
         get: operations["list_strategies_api_v1_strategies_get"];
         put?: never;
@@ -3896,6 +3897,11 @@ export interface components {
              */
             strategy: string;
             /**
+             * Config Hash
+             * @description Optional immutable config hash to pin a saved strategy version.
+             */
+            config_hash?: string | null;
+            /**
              * Force
              * @description Re-fetch the full historical lookback window instead of only sessions since the last ingest (Phase 1.6 incremental fetch).
              * @default false
@@ -3950,6 +3956,8 @@ export interface components {
             strategy: string;
             /** Run Id */
             run_id: number | null;
+            /** Config Hash */
+            config_hash?: string | null;
             /** Items */
             items: components["schemas"]["WatchlistItemDTO"][];
         };
@@ -4704,6 +4712,8 @@ export interface operations {
             query?: {
                 run_id?: number | null;
                 strategy?: string;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -4738,6 +4748,8 @@ export interface operations {
             query?: {
                 strategy?: string;
                 limit?: number;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -4774,6 +4786,8 @@ export interface operations {
                 interval?: "1D" | "1W" | "1M";
                 /** @description Bar replay: the series on this date. */
                 as_of?: string | null;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -4808,6 +4822,8 @@ export interface operations {
             query?: {
                 refresh?: boolean;
                 strategy?: string;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -4942,6 +4958,8 @@ export interface operations {
                 strategy?: string;
                 /** @description Bar replay: runs to this date. */
                 on_or_before?: string | null;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path?: never;
@@ -5004,6 +5022,7 @@ export interface operations {
         parameters: {
             query?: {
                 with_runs?: boolean;
+                workspace?: boolean;
             };
             header?: never;
             path?: never;
@@ -5624,6 +5643,8 @@ export interface operations {
         parameters: {
             query?: {
                 strategy?: string;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path?: never;
@@ -6154,6 +6175,8 @@ export interface operations {
                 lookback_days?: number;
                 threshold_pct?: number | string;
                 strategy?: string;
+                /** @description Pin a saved strategy version. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {

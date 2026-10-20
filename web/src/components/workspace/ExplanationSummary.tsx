@@ -31,8 +31,8 @@ export function ExplanationSummary({ explanation }: { explanation: StockExplanat
           <dd className="text-right tabular-nums">{explanation.hard_filter_failures.length}</dd>
         </dl>
       </div>
-      <section aria-label="Why it ranks">
-        <h3 className="font-semibold mb-1">Why it ranks</h3>
+      <section aria-label={explanation.rank === null ? 'Why it is not ranked' : 'Why it ranks'}>
+        <h3 className="font-semibold mb-1">{explanation.rank === null ? 'Why it is not ranked' : 'Why it ranks'}</h3>
         {contributors.length === 0 && <p className="text-slate-500">No passing rules.</p>}
         {contributors.map((r) => (
           <p key={r.rule_id} className="flex items-start gap-1.5 text-slate-700 dark:text-slate-300">

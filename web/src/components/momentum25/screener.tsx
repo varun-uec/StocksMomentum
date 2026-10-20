@@ -368,7 +368,17 @@ export function ScreenerToolbar({ screen, rows, matches }: { screen: Screen; row
           Matches: {matches} of {rows.length}
         </p>
       </div>
-      <FilterPills rows={rows} value={screen.filters} onChange={screen.setFilters} />
+      <div className="hidden sm:block">
+        <FilterPills rows={rows} value={screen.filters} onChange={screen.setFilters} />
+      </div>
+      <details className="sm:hidden rounded-md border border-[var(--ws-line)] bg-white dark:bg-slate-900">
+        <summary className={`cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 ${focusRing}`}>
+          Filters <span className="ml-1 text-slate-500">· {matches} matches</span>
+        </summary>
+        <div className="border-t border-[var(--ws-line)] px-2 py-2">
+          <FilterPills rows={rows} value={screen.filters} onChange={screen.setFilters} />
+        </div>
+      </details>
     </div>
   );
 }
