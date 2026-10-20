@@ -38,7 +38,9 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // A stored choice can name a strategy the workspace no longer offers (a research or an
-  // archived one). Settle it here, on every route, so no screen asks for a run that cannot exist.
+  // archived one). Reset it here, on every route, so no screen asks for a run that cannot exist.
+  // A valid name with no stored hash is left alone: setting the hash would change every
+  // strategy-keyed query key a moment after the page loads.
   const { data: strategies } = useQuery({
     queryKey: ['strategies', 'workspace'],
     queryFn: () => listStrategies(false, true),
@@ -46,12 +48,12 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     if (!strategies || strategies.length === 0) return;
-    const selected = strategies.find((s) => s.config_hash === strategyHash)
-      ?? strategies.find((s) => s.name === strategyName)
-      ?? strategies[0];
-    if (selected.name !== strategyName || selected.config_hash !== strategyHash) {
-      setStrategyName(selected.name, selected.config_hash);
-    }
+    const byHash = strategyHash ? strategies.find((s) => s.config_hash === strategyHash) : undefined;
+    const byName = strategies.find((s) => s.name === strategyName);
+    if (byHash && byHash.name === strategyName) return;
+    if (!strategyHash && byName) return;
+    const selected = byName ?? strategies[0];
+    setStrategyName(selected.name, selected.config_hash);
   }, [strategies, strategyName, strategyHash, setStrategyName]);
 
   return (

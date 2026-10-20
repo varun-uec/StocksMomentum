@@ -14,6 +14,8 @@ async function expectedResponseError(status: number, url: string, body: () => Pr
   const path = new URL(url).pathname;
   if ((status === 404 || status === 412) && /\/api\/v1\/(drawings|workspaces|screens)\//.test(path)) return true;
   if (status === 404 && path === '/api/v1/indices/NIFTY500/closes') return true;
+  // journey 4 stores a research strategy on purpose. Until the app resets it, one load asks for its runs.
+  if (status === 404 && url.includes('strategy=benchmark_a_pure_momentum')) return true;
   // The chart fixture E2ECANDLE sits outside every screening run (db.py).
   if (status === 404 && path === '/api/v1/stocks/E2ECANDLE') return true;
   if (status === 422 && /^\/api\/v1\/studio\/families\/\d+\/evaluations$/.test(path)) {

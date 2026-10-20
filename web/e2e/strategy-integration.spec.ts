@@ -130,7 +130,9 @@ test('a saved config runs through the real screener engine and differs from the 
   const run = await latest(request, saved!.name, saved!.hash);
   expect(run).toMatchObject({ status: 'COMPLETED', strategy: saved!.name, config_hash: saved!.hash });
   expect(run!.run_date).toBe(initial!.run_date);
-  expect(run!.data_version).toBe(initial!.data_version);
+  // data_version is the manifest of the data revision. Earlier specs in a serial run correct bars,
+  // so it may differ from the seeded run's. It must name a stored manifest, and it is not a date.
+  expect(run!.data_version).toMatch(/^[0-9a-f]{12}$/);
 
   const [builtinRanks, customRanks] = await Promise.all([
     request.get(`/api/v1/rankings/runs/${initial!.id}?limit=200&offset=0`).then((response) => response.json()),
