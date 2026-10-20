@@ -1,6 +1,6 @@
 # ADR-013 amendment — sloped drawing alerts (trendline, ray, extended line)
 
-Status: Accepted for implementation · 2026-10-20 · owner review at the Phase B sign-off.
+Status: Accepted · 2026-10-20 · the owner approved per-anchor factors on 2026-10-20.
 Extends `ADR-013-alert-amendment.md` (drawing snapshots) and plan 2026-10-19 B4. EOD only.
 
 ## Decision
@@ -43,7 +43,10 @@ The line has a domain, and outside it there is no value:
 one factor for both anchors, the rule would disagree with the drawn line
 whenever a split or bonus falls between the anchors. This amendment uses the
 per-anchor factor instead, consistent with horizontal and zone rules and with
-rendering. The owner should confirm this at sign-off.
+rendering. The owner approved it on 2026-10-20.
+
+The governing invariant: the alert evaluates the same adjusted line the chart
+draws. Closes and line levels are compared in one basis, the current one.
 
 ## Trigger
 
@@ -97,3 +100,20 @@ capture, rejection of a same-date line and of a backward ray, and the
 snapshot freeze: a moved drawing does not change the armed rule or its
 firing. An E2E creates the rule from the drawing menu ("Alert on this
 line…") and fires it on stored bars.
+
+Evaluator golden tests (`test_line_alert_evaluation.py`) run the real
+`EvaluateAlerts` against fixed adjusted series. Each case re-expresses one
+base chart, whose first cross is session 10:
+
+- a 1:2 split and a 1:3 bonus between the anchors fire on the same session;
+- the same actions after arming fire on the same session, at the scaled close;
+- an ex-date on the crossing session is a cross above, never a false cross
+  below from the raw price drop;
+- each line kind watches only its own sessions;
+- the first evaluation fires and a second fires nothing;
+- a stale revision cannot fire;
+- every stored prefix gives the same firing or none;
+- a level never depends on later sessions.
+
+Verification (2026-10-20): full backend suite **920 passed** on the
+disposable `wickstreet_tv_test` database.

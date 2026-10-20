@@ -761,6 +761,10 @@ async def test_a_sloped_ray_fires_on_its_first_close_cross_and_ignores_later_dra
     assert fired["triggered_on"] == _LATER[0].isoformat()
     assert Decimal(fired["trigger_value"]) == _close(300)
     assert fired["drawing"]["revision"] == 1
+    # Idempotent: a second evaluation finds nothing to do and changes nothing.
+    again = (await client.post("/api/v1/alerts/evaluate")).json()
+    assert (again["evaluated"], again["fired"]) == (0, 0)
+    assert (await client.get("/api/v1/alerts")).json()["alerts"] == [fired]
 
 
 async def test_a_trendline_ending_before_arming_never_fires(
