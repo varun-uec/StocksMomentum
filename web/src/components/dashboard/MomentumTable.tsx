@@ -141,18 +141,19 @@ function RankChange({ change }: { change: number | null }) {
       </span>
     );
   if (change === 0) return <span className="text-xs tabular-nums text-slate-500">0</span>;
-  const isUp = change < 0; // negative delta = rank improved
+  const isUp = change < 0; // negative delta = rank number fell = rank improved: up arrow, green
   return (
     <span
+      title={`${isUp ? 'Rank improved' : 'Rank fell'} by ${Math.abs(change)} places since the previous run`}
       className={`inline-flex items-center gap-0.5 text-xs font-medium tabular-nums ${
         isUp ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
       }`}
     >
-      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3" aria-hidden="true">
         {isUp ? (
-          <path fillRule="evenodd" clipRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.096-3.096a.75.75 0 111.06 1.061l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.061l3.096 3.096V3.75A.75.75 0 0110 3z" />
-        ) : (
           <path fillRule="evenodd" clipRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L6.154 8.708a.75.75 0 11-1.06-1.061l4.5-4.5a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.061l-3.096-3.096v10.638A.75.75 0 0110 17z" />
+        ) : (
+          <path fillRule="evenodd" clipRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.096-3.096a.75.75 0 111.06 1.061l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.061l3.096 3.096V3.75A.75.75 0 0110 3z" />
         )}
       </svg>
       {Math.abs(change)}
