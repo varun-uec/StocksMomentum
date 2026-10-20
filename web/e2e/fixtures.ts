@@ -109,7 +109,7 @@ export async function chooseLayout(page: Page, layout: string): Promise<void> {
   // A choice made while the workspace document loads can be replaced by the loaded one; choose until it holds.
   await expect(async () => {
     await (await openLayoutMenu(page)).locator(`input[name="layout"][value="${layout}"]`).click();
-    await expect(page.locator('main.chart-page')).toHaveAttribute('data-layout', layout, { timeout: 1500 });
+    await expect(page.locator('div.chart-page')).toHaveAttribute('data-layout', layout, { timeout: 1500 });
   }).toPass();
 }
 

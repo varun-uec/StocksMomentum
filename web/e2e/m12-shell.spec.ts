@@ -73,7 +73,7 @@ test('the Assessment tab explains the symbol in Momentum25 terms', async ({ page
   await ready(page);
   await openPanelTab(page, 'Assessment');
   const details = page.getByRole('tabpanel', { name: 'Assessment' });
-  await expect(details.getByRole('heading', { name: 'Why it ranks' })).toBeVisible({ timeout: 15_000 });
+  await expect(details.getByRole('heading', { name: /^Why it (ranks|is not ranked)$/ })).toBeVisible({ timeout: 15_000 });
   await expect(details.getByText('Gate failures')).toBeVisible();
   await details.getByRole('link', { name: 'Full analysis →' }).click();
   await expect(page).toHaveURL(/\/stock\/TCS\?strategy=\w+&from=%2Fchart%2FTCS$/);
@@ -108,7 +108,7 @@ test('the screener opens the selected row in the Assessment panel, with its char
   const panel = page.getByRole('tabpanel', { name: 'Assessment' });
   await expect(panel.getByRole('heading', { name: second, level: 3 })).toBeVisible();
   await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true');
-  await expect(panel.getByRole('heading', { name: 'Why it ranks' })).toBeVisible();
+  await expect(panel.getByRole('heading', { name: /^Why it (ranks|is not ranked)$/ })).toBeVisible();
   await expect(panel.getByRole('img', { name: `${second}, last year of closes` })).toBeVisible();
   await expect(panel.getByTestId('provenance')).toContainText('run #');
   await panel.getByRole('button', { name: 'Open in chart' }).click();

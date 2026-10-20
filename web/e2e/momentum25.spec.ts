@@ -91,7 +91,7 @@ test('watchlist rank and qualification match the screener for the same run', asy
   await page.goto(`/chart/${picks[0].symbol}`); await ready(page);
   await openPanelTab(page, 'Watchlist');
   const panel = page.getByRole('tabpanel', { name: 'Watchlist' });
-  await expect(panel.getByTestId('watchlist-run')).toHaveText(`Ranks: ${STRATEGY} · run #${id}`);
+  await expect(panel.getByTestId('watchlist-run')).toHaveText(new RegExp(`^Ranks: ${STRATEGY} · run #${id} · cfg [0-9a-f]{8}$`));
   for (const p of picks) {
     const row = panel.getByRole('listitem').filter({ hasText: p.symbol });
     await expect(row).toContainText(p.rank > 0 ? `#${p.rank}` : '—');

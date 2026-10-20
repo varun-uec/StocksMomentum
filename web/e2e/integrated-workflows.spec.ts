@@ -46,7 +46,7 @@ test('journey 1: screener → chart → ranking → evidence → research → ba
   test.skip(!top, 'the fixture run has no qualified symbol');
 
   await page.goto('/');
-  await expect(page.locator('#strategy-selector')).toHaveValue(STRATEGY);
+  await expect(page.locator('#strategy-selector option:checked')).toHaveText(/^Minervini Trend Template/);
   await page.getByRole('group', { name: 'Filters' }).getByRole('button', { name: 'Qualified', exact: true }).click();
   const rows = page.locator('tbody tr');
   await expect(rows.first().locator('td').first()).toHaveText('1');
@@ -88,7 +88,7 @@ test('journey 1: screener → chart → ranking → evidence → research → ba
   await page.getByRole('link', { name: `Back to chart · ${top!.symbol}` }).first().click();
   await expect(page).toHaveURL(new RegExp(`/chart/${top!.symbol}$`));
   await chartReady(page);
-  await expect(page.locator('main.chart-page')).toHaveAttribute('data-layout', '1x1');
+  await expect(page.locator('div.chart-page')).toHaveAttribute('data-layout', '1x1');
   expect(await savedDrawings(request, top!.symbol)).toHaveLength(1);
 });
 
@@ -129,7 +129,7 @@ test('journey 3: watchlist rank and qualification equal the screener for the sam
   await chooseLayout(page, '2x1');
   await openPanelTab(page, 'Watchlist');
   const panel = page.getByRole('tabpanel', { name: 'Watchlist' });
-  await expect(panel.getByTestId('watchlist-run')).toHaveText(`Ranks: ${STRATEGY} · run #${run.id}`);
+  await expect(panel.getByTestId('watchlist-run')).toHaveText(new RegExp(`^Ranks: ${STRATEGY} · run #${run.id} · cfg [0-9a-f]{8}$`));
   for (const p of picks) {
     const row = panel.getByRole('listitem').filter({ hasText: p.symbol });
     await expect(row).toContainText(p.rank > 0 ? `#${p.rank}` : '—');
@@ -141,24 +141,27 @@ test('journey 3: watchlist rank and qualification equal the screener for the sam
   expect(await cell(page, 'c2').getAttribute('aria-label')).toBe(before);
 });
 
-test('journey 4: a strategy switch updates the Assessment and watchlist, each naming the new run', async ({ page, request }) => {
-  // The Screener's picker lists production strategies only, and the fixture has one; the other views
-  // read the same selected strategy, so the switch is made where the app keeps it.
+test('journey 4: a stored research strategy cannot be selected; the workstation falls back to a production strategy and names its run', async ({ page, request }) => {
+  // Since cecb3e5 the workspace lists production and saved user strategies only. A research
+  // strategy left in storage must never supply the run the Assessment and watchlist show.
+  // Switching between saved strategies is covered in strategy-integration.spec.ts.
   const main = await latestRun(request);
-  const other = await latestRun(request, OTHER);
-  await request.post(`/api/v1/watchlist/${other.items[0].symbol}`);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/chart/TCS'); await chartReady(page);
-  await openPanelTab(page, 'Assessment');
-  await expect(page.getByTestId('assessment').getByTestId('provenance')).toContainText(`${STRATEGY} · run #${main.id}`);
+  const options = await (await request.get('/api/v1/strategies?workspace=true')).json();
+  expect(options.map((s: { name: string }) => s.name)).not.toContain(OTHER);
+  expect((await request.get(`/api/v1/runs/latest?strategy=${OTHER}`)).status()).toBe(404);
+  await request.post('/api/v1/watchlist/TCS');
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/chart/TCS');
   await page.evaluate((name) => localStorage.setItem('momentum25.selectedStrategy', name), OTHER);
   await page.reload(); await chartReady(page);
   await openPanelTab(page, 'Assessment');
-  await expect(page.getByTestId('assessment').getByTestId('provenance')).toContainText(`${OTHER} · run #${other.id}`);
+  await expect(page.getByTestId('assessment').getByTestId('provenance')).toContainText(`${STRATEGY} · run #${main.id}`);
+  await expect(page.getByTestId('assessment').getByTestId('provenance')).not.toContainText(OTHER);
   await openPanelTab(page, 'Watchlist');
-  await expect(page.getByTestId('watchlist-run')).toHaveText(`Ranks: ${OTHER} · run #${other.id}`);
+  await expect(page.getByTestId('watchlist-run')).toHaveText(new RegExp(`^Ranks: ${STRATEGY} · run #${main.id} · cfg [0-9a-f]{8}$`));
   await page.evaluate(() => localStorage.removeItem('momentum25.selectedStrategy'));
+  await request.delete('/api/v1/watchlist/TCS');
 });
 
 test('journey 5: a chart whose last bar is newer than the run says the assessment predates it', async ({ page, request }) => {
@@ -219,5 +222,5 @@ test('journeys 7 and 8: a historical run keeps its label, its Assessment run, an
   await expect(assessment.getByTestId('provenance')).toContainText(`Historical — as of ${asOf}`);
   await expect(assessment.getByTestId('provenance')).toContainText(`run #${historicalId}`);
   await openPanelTab(page, 'Watchlist');
-  await expect(page.getByTestId('watchlist-run')).toHaveText(`Watchlist ranks: run #${latest.id} (latest), not this view's run #${historicalId}`);
+  await expect(page.getByTestId('watchlist-run')).toHaveText(new RegExp(`^Watchlist ranks: run #${latest.id} · cfg [0-9a-f]{8} \\(latest\\), not this view's run #${historicalId}$`));
 });
