@@ -321,6 +321,7 @@ async def run_verification_screening(session: Any) -> dict[str, Any]:
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
     summary = await orchestrator.run_daily_screening(_last_session())
     print(

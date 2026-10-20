@@ -20,6 +20,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import (
     SecurityModel,
 )
@@ -168,6 +169,7 @@ async def test_rankings_api_returns_paginated_results(db_session: AsyncSession) 
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
 
     await orchestrator.run_daily_screening(target_date)
@@ -231,6 +233,7 @@ async def test_explanation_api_returns_rule_details(db_session: AsyncSession) ->
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
 
     await orchestrator.run_daily_screening(target_date)

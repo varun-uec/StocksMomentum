@@ -30,6 +30,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import (
     OHLCVDailyModel,
@@ -149,6 +150,7 @@ def _orchestrator(
         ),
         strategy=strategy,
         strategy_repo=SqlStrategyRepository(session),
+        calendar=get_nse_trading_calendar(),
     )
 
 

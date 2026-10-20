@@ -27,6 +27,7 @@ def _to_domain(row: SecurityModel) -> Security:
         listing_date=row.listing_date,
         is_active=row.is_active,
         tenant_id=row.tenant_id,
+        delisting_date=row.delisting_date,
     )
 
 

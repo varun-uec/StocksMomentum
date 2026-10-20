@@ -39,6 +39,7 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlStrategyRepository,
 )
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 
 DEMO_SYMBOLS = [
@@ -206,6 +207,7 @@ async def main() -> None:
             strategy_engine=strategy_engine,
             strategy=strategy,
             strategy_repo=strategy_repo,
+            calendar=get_nse_trading_calendar(),
         )
 
         summary = await orchestrator.run_daily_screening(target_date)

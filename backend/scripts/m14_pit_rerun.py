@@ -103,6 +103,7 @@ async def main(series: str, strategy_id: int, sample: int) -> dict[str, Any]:
             strategy_repo=None,
             indicator_pipeline=IndicatorPipelineImpl(session),
             strategy_engine=engine,
+            calendar=get_nse_trading_calendar(),
         )
         everyone = await SqlSecurityRepository(session).list_active()
         rows: list[dict[str, Any]] = []

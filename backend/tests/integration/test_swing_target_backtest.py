@@ -29,6 +29,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import SecurityModel
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
@@ -117,6 +118,7 @@ async def test_backtest_finds_real_signal_and_reports_correct_outcome(
         strategy_engine=_make_engine(),
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
     await orchestrator.run_daily_screening(run_date)
 

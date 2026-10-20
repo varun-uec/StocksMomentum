@@ -433,6 +433,7 @@ class ExecuteScreening:
             strategy_engine=self._strategy_engine,
             strategy=strategy,
             strategy_repo=None,
+            calendar=get_nse_trading_calendar(),
         )
 
         summary = await orchestrator.run_daily_screening(

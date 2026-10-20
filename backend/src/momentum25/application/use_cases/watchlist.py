@@ -15,6 +15,7 @@ from momentum25.application.use_cases.screening_orchestrator import build_evalua
 from momentum25.domain.entities.security import Security
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
 from momentum25.domain.ports.repositories import SecurityRepository, WatchlistRepository
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.value_objects.results import RuleResult
 
 _QUANT = Decimal("0.0001")
@@ -100,8 +101,10 @@ class GetWatchlistDetail:
         indicator_pipeline: Any,
         strategy_engine: Any,
         rs_rating_cache: RsRatingCache | None = None,
+        *,
+        calendar: TradingCalendar,
     ) -> None:
-        """Wire the use case with its collaborators."""
+        """Wire the use case with its collaborators; ``calendar`` aligns RS periods."""
         self._watchlist = watchlist
         self._securities = securities
         self._screening_run_repo = screening_run_repo
@@ -110,6 +113,7 @@ class GetWatchlistDetail:
         self._indicator_pipeline = indicator_pipeline
         self._strategy_engine = strategy_engine
         self._rs_rating_cache = rs_rating_cache
+        self._calendar = calendar
 
     async def execute(
         self, strategy_name: str, config_hash: str | None = None
@@ -229,7 +233,12 @@ class GetWatchlistDetail:
 
     async def _universe_rs_ratings(self, strategy: Any, as_of: date) -> dict[str, int]:
         return await resolve_universe_rs_ratings(
-            self._securities, self._ohlcv_repo, strategy, as_of, self._rs_rating_cache
+            self._securities,
+            self._ohlcv_repo,
+            strategy,
+            as_of,
+            self._rs_rating_cache,
+            self._calendar,
         )
 
     async def _last_close(self, security_id: int) -> tuple[Decimal | None, Decimal | None]:

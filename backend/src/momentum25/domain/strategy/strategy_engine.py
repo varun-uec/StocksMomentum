@@ -9,6 +9,8 @@ engine/scoring results. The full scoring/ranking math arrives in milestone M3.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.scoring.contracts import RankingEngine, ScoringEngine
@@ -54,7 +56,8 @@ class StrategyEngine:
             result = engine.evaluate(ctx, engine_cfg)
             engine_results.append(result)
         sec_id = ctx.security.id if ctx.security.id else 0
-        return self._scoring.score(sec_id, engine_results, strategy.config)
+        score = self._scoring.score(sec_id, engine_results, strategy.config)
+        return replace(score, symbol=str(ctx.security.symbol), isin=ctx.security.isin or "")
 
     def rank(self, scores: list[StockScore], strategy: Strategy) -> list[Ranking]:
         """Rank pre-computed scores deterministically.

@@ -23,6 +23,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import ScreeningRunModel, SecurityModel
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
@@ -95,6 +96,7 @@ async def test_execute_window_creates_real_runs_not_just_reports_zero(
         security_repo=SqlSecurityRepository(db_session),
         indicator_pipeline=IndicatorPipelineImpl(db_session),
         strategy_engine=strategy_engine,
+        calendar=get_nse_trading_calendar(),
     )
 
     # No completed runs exist yet -- confirm the baseline.
@@ -167,6 +169,7 @@ async def test_execute_window_default_never_executes_new_runs(
         security_repo=SqlSecurityRepository(db_session),
         indicator_pipeline=IndicatorPipelineImpl(db_session),
         strategy_engine=strategy_engine,
+        calendar=get_nse_trading_calendar(),
     )
 
     count_before = await db_session.scalar(select(func.count()).select_from(ScreeningRunModel))

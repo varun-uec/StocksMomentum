@@ -315,6 +315,7 @@ async def get_get_watchlist_detail() -> AsyncIterator[GetWatchlistDetail]:
             indicator_pipeline=IndicatorPipelineImpl(session),
             strategy_engine=strategy_engine,
             rs_rating_cache=RedisRsRatingCache(get_redis_provider().client),
+            calendar=get_nse_trading_calendar(),
         )
 
 
@@ -529,6 +530,7 @@ async def get_live_stock_analysis() -> AsyncIterator[GetLiveStockAnalysis]:
             refresh_gate=get_live_refresh_gate(),
             benchmark_repo=SqlBenchmarkIndexRepository(session),
             rs_rating_cache=RedisRsRatingCache(get_redis_provider().client),
+            calendar=get_nse_trading_calendar(),
         )
 
 

@@ -17,6 +17,7 @@ from momentum25.application.use_cases.research.historical_screening import (
     HistoricalScreeningUseCase,
 )
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.point_in_time import (
     PointInTimeIndicatorPipeline,
     PointInTimeOHLCVRepository,
@@ -64,6 +65,7 @@ class PointInTimeHistoricalScreening:
             strategy_repo=self._strategy_repo,
             indicator_pipeline=PointInTimeIndicatorPipeline(self._session, source),
             strategy_engine=self._strategy_engine,
+            calendar=get_nse_trading_calendar(),
         )
         return await screening.execute(
             strategy_name=strategy_name,

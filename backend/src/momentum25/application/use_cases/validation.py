@@ -17,6 +17,7 @@ from structlog import get_logger
 from momentum25.application.services.evidence_strategy import resolve_evidence_strategy
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import StrategyNotFoundError, ValidationError
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.research.validation_models import (
     NO_FORWARD_RETURNS,
     NO_RUNS,
@@ -88,8 +89,11 @@ class HistoricalValidationUseCase:
         indicator_pipeline: Any,
         strategy_engine: Any,
         historical_screening_use_case: Any | None = None,
+        *,
+        calendar: TradingCalendar,
     ) -> None:
         """Wire the use case with its repository collaborators."""
+        self._calendar = calendar
         self._screening_run_repo = screening_run_repo
         self._strategy_repo = strategy_repo
         self._ohlcv_repo = ohlcv_repo
@@ -239,6 +243,7 @@ class HistoricalValidationUseCase:
                     strategy_repo=self._strategy_repo,
                     indicator_pipeline=self._indicator_pipeline,
                     strategy_engine=self._strategy_engine,
+                    calendar=self._calendar,
                 )
             for trading_date in sampled_dates:
                 if trading_date in existing_dates:

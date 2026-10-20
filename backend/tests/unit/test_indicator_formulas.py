@@ -400,12 +400,17 @@ def test_rsi_series_is_causally_consistent_with_scalar() -> None:
 
 
 def test_macd_series_is_causally_consistent_with_scalar() -> None:
-    """MACD series elements equal the scalar computed over each prefix."""
+    """MACD series elements equal the scalar computed over each prefix.
+
+    The line starts 8 bars before the signal (indicator v3); the scalar reports
+    all three or none, so the line is compared only where the scalar has one.
+    """
     closes = _random_walk(79)
     line_series, signal_series, histogram_series = _macd_series(closes)
     for i in range(len(closes)):
         expected_line, expected_signal, expected_hist = _macd(closes.iloc[: i + 1])
-        assert _series_value_at(line_series, i) == expected_line, f"bar {i} line"
+        if expected_line is not None:
+            assert _series_value_at(line_series, i) == expected_line, f"bar {i} line"
         assert _series_value_at(signal_series, i) == expected_signal, f"bar {i} signal"
         assert _series_value_at(histogram_series, i) == expected_hist, f"bar {i} hist"
 

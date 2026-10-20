@@ -16,7 +16,7 @@ import copy
 import math
 from collections.abc import AsyncIterator
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -42,6 +42,7 @@ from momentum25.domain.research.strategy_evaluation import (
     EvaluationPolicy,
 )
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.strategy_loader import load_strategy_file, raw_from_config
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.evaluation_market import PointInTimeMarket
@@ -70,11 +71,9 @@ _BUILTIN = load_strategy_file(
     / "strategies"
     / "minervini_trend_template.json"
 )
-DAYS = [
-    date(2023, 1, 2) + timedelta(days=i)
-    for i in range(730)
-    if (date(2023, 1, 2) + timedelta(days=i)).weekday() < 5
-]
+# NSE sessions: the API wires the NSE calendar, and RS anchors are sessions
+# (engine v2), so the bars must not fall on exchange holidays.
+DAYS = get_nse_trading_calendar().sessions_between(date(2023, 1, 2), date(2024, 12, 31))
 # Three-month blocks from 2024; the latest matured one is 2024-07..09.
 POLICY = EvaluationPolicy(
     horizon=10,
@@ -86,9 +85,9 @@ POLICY = EvaluationPolicy(
 )
 
 
-class _Weekdays:
+class _Sessions:
     def is_session(self, day: date) -> bool:
-        return day.weekday() < 5
+        return day in DAYS
 
     def sessions_between(self, start: date, end: date) -> list[date]:
         return [d for d in DAYS if start <= d <= end]
@@ -158,7 +157,7 @@ class _Studio:
         self.manifests = SqlDataManifestRepository(session)
 
     def market_at(self, revision: int) -> PointInTimeMarket:
-        return PointInTimeMarket(self.session, revision, _Weekdays(), POLICY.horizon)
+        return PointInTimeMarket(self.session, revision, _Sessions(), POLICY.horizon)
 
     async def family(self, name: str, hypothesis: str) -> tuple[int, str]:
         family = await CreateFamily(self.studio, SqlStrategyRepository(self.session)).execute(

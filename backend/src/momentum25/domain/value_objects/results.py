@@ -51,6 +51,9 @@ class StockScore:
     buy_setup_score: Decimal
     engine_results: tuple[EngineResult, ...]
     hard_filters_passed: bool
+    # Ranking tie-breaks after rs_rating (IMPLEMENTATION_SPEC §10, engine v2).
+    symbol: str = ""
+    isin: str = ""
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,7 +15,8 @@ class RankingEngineImpl:
     Gate check: equities failing hard filters receive ``rank=None`` and are
     excluded from the competitive ranking tier. Passing equities are sorted by
     ``momentum_score`` desc → ``buy_setup_score`` desc → ``rs_rating`` desc →
-    ``symbol`` asc, then assigned sequential 1-based ranks.
+    ``symbol`` asc → ``isin`` asc → ``security_id`` asc, then assigned
+    sequential 1-based ranks.
     """
 
     def rank(self, scores: list[StockScore], cfg: StrategyConfig) -> list[Ranking]:
@@ -38,7 +39,9 @@ class RankingEngineImpl:
                 -s.momentum_score,
                 -s.buy_setup_score,
                 -_extract_rs_rating(s),
-                s.security_id,  # deterministic proxy for symbol ascending
+                s.symbol,
+                s.isin,
+                s.security_id,
             ),
         )
 

@@ -360,6 +360,8 @@ class GetLiveStockAnalysis:
         refresh_gate: RefreshGate | None = None,
         benchmark_repo: BenchmarkIndexRepository | None = None,
         rs_rating_cache: RsRatingCache | None = None,
+        *,
+        calendar: TradingCalendar,
     ) -> None:
         """Wire the use case with its collaborators.
 
@@ -381,6 +383,7 @@ class GetLiveStockAnalysis:
         self._refresh_gate = refresh_gate or RefreshGate()
         self._benchmark_repo = benchmark_repo
         self._rs_rating_cache = rs_rating_cache
+        self._calendar = calendar
 
     async def execute(
         self,
@@ -567,17 +570,22 @@ class GetLiveStockAnalysis:
     async def _resolve_rs_rating(
         self, symbol: str, strategy: Any, as_of: date
     ) -> tuple[int | None, dict[str, Any]]:
-        """Rank *symbol* against the persisted active universe as of *as_of*.
+        """Rank *symbol* against the RS reference population as of *as_of*.
 
         A single symbol has no universe to percentile against on its own
         (Phase 1.2), so RS is computed the same way the daily orchestrator
-        computes it: against every other active, persisted security. That walk
-        costs ~8 s over a ~2,000-security universe, and it produces the same
-        table for every symbol looked up on the same trading date, so the
-        result is shared through the same cache ``/watchlist/detail`` uses.
+        computes it: calendar-aligned, over the reference equity universe. That
+        walk produces the same table for every symbol looked up on the same
+        trading date, so the result is shared through the same cache
+        ``/watchlist/detail`` uses.
         """
         ratings = await resolve_universe_rs_ratings(
-            self._securities, self._ohlcv_repo, strategy, as_of, self._rs_rating_cache
+            self._securities,
+            self._ohlcv_repo,
+            strategy,
+            as_of,
+            self._rs_rating_cache,
+            self._calendar,
         )
         rs_basis = {
             "universe_size": len(ratings),

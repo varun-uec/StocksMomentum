@@ -24,7 +24,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
-from momentum25.domain.value_objects.instrument import is_equity
+from momentum25.domain.universe import reference_universe
 from momentum25.domain.value_objects.results import Ranking, StockScore
 from momentum25.infrastructure.persistence.history import VERSIONED
 from momentum25.infrastructure.persistence.point_in_time import (
@@ -68,11 +68,9 @@ class PointInTimeMarket:
     ) -> tuple[list[StockScore], list[Ranking], dict[int, str]]:
         """Score and rank the decision's universe with the live strategy engine."""
         source = PointInTimeSource(self._session, decision, self._revision)
-        universe = [
-            s
-            for s in await PointInTimeSecurityRepository(source).list_active()
-            if is_equity(s.isin)
-        ]
+        universe = reference_universe(
+            await PointInTimeSecurityRepository(source).list_all(), decision
+        )
         screening = HistoricalScreeningUseCase(
             security_repo=None,
             ohlcv_repo=PointInTimeOHLCVRepository(source),
@@ -80,6 +78,7 @@ class PointInTimeMarket:
             strategy_repo=None,
             indicator_pipeline=PointInTimeIndicatorPipeline(self._session, source),
             strategy_engine=self._engine,
+            calendar=self._calendar,
         )
         scores, rankings, _ = await screening.screen(strategy, decision, universe)
         return scores, rankings, {s.id: str(s.symbol) for s in universe if s.id is not None}

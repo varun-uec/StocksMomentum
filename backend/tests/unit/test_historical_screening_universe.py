@@ -25,13 +25,14 @@ from momentum25.domain.entities.strategy import Strategy, StrategyConfig
 from momentum25.domain.value_objects.indicators import IndicatorSet
 from momentum25.domain.value_objects.results import StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import Symbol
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 
 class _FakeSecurityRepo:
     def __init__(self, securities: list[Security]) -> None:
         self._securities = securities
 
-    async def list_active(self) -> list[Security]:
+    async def list_all(self) -> list[Security]:
         return self._securities
 
 
@@ -145,6 +146,7 @@ async def test_excludes_securities_not_yet_listed_as_of_historical_date() -> Non
         strategy_repo=_FakeStrategyRepo(_strategy()),
         indicator_pipeline=_FakeIndicatorPipeline(),
         strategy_engine=_FakeStrategyEngine(),
+        calendar=get_nse_trading_calendar(),
     )
 
     result = await use_case.execute("test_strategy", as_of_date)
@@ -213,6 +215,7 @@ async def test_excludes_securities_with_stale_ohlcv_data() -> None:
         strategy_repo=_FakeStrategyRepo(_strategy()),
         indicator_pipeline=_FakeIndicatorPipeline(),
         strategy_engine=_FakeStrategyEngine(),
+        calendar=get_nse_trading_calendar(),
     )
 
     await use_case.execute("test_strategy", as_of_date)

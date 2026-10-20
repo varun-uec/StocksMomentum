@@ -21,6 +21,7 @@ from momentum25.application.use_cases.research.historical_screening import (
 from momentum25.domain.entities.security import Security
 from momentum25.domain.errors import LookAheadError
 from momentum25.domain.value_objects.types import Symbol
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.persistence.models import (
@@ -244,6 +245,7 @@ async def test_historical_screening_lets_a_look_ahead_fail_the_run(
         strategy_repo=None,
         indicator_pipeline=PointInTimeIndicatorPipeline(db_session, source),
         strategy_engine=None,
+        calendar=get_nse_trading_calendar(),
     )
     strategy = load_strategies_dir(Path(get_settings().strategy_dir))[0]
     with pytest.raises(LookAheadError):  # not swallowed as a per-symbol failure

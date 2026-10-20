@@ -1,22 +1,41 @@
-"""Universe-relative Relative Strength (RS) rating computation.
+"""Relative Strength (RS) ratings, calendar-aligned (IMPLEMENTATION_SPEC §8, engine v2).
 
-Shared by :class:`ScreeningOrchestrator` (live daily runs) and
-:class:`HistoricalScreeningUseCase` (backtest replay) so both compute RS
-ratings identically -- a rating computed one way for live runs and another
-(or not at all) for historical replay would make backtests non-comparable
-to production rankings.
+Shared by :class:`ScreeningOrchestrator` (live daily runs),
+:class:`HistoricalScreeningUseCase` (historical and point-in-time replay) and
+the read paths, so every surface computes RS identically.
+
+The rule, exactly:
+
+- t is the run date; sessions come from the injected NSE trading calendar.
+- S_d is the d-th session before t (t is session 0). The anchor for R(d) is the
+  security's last bar on or before S_d, valid only if it is dated no more than
+  ``ANCHOR_TOLERANCE_SESSIONS`` sessions before S_d. Otherwise R(d) is
+  undefined and the security gets no rating. No window is ever shortened.
+- Prices are ``close × adj_factor`` (one adjusted-price rule, R3-B-30).
+- The population is the reference equity universe on t, restricted to names
+  with at least ``MIN_RS_BARS`` bars, a last bar not stale on t, and a defined
+  raw return. It does not depend on any strategy's eligibility settings.
+- Percentile: sort ascending by (raw return, security_id); the i-th of n gets
+  ``round(i / (n - 1) * 98) + 1``.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date
+from bisect import bisect_right
+from datetime import date, timedelta
 from typing import Any, Protocol
 
 from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
 from momentum25.domain.entities.security import Security
+from momentum25.domain.ports.trading_calendar import TradingCalendar
+from momentum25.domain.research.data_quality import is_stale_as_of
+from momentum25.domain.universe import REFERENCE_EXCHANGES, reference_universe
 from momentum25.domain.value_objects.instrument import is_equity
+
+ANCHOR_TOLERANCE_SESSIONS = 5  # owner decision S-4, 2026-10-20
+MIN_RS_BARS = 253  # R(252) needs the bar 252 bars before the latest
 
 
 class RsRatingCache(Protocol):
@@ -50,15 +69,14 @@ async def resolve_universe_rs_ratings(
     strategy: Any,
     as_of: date,
     cache: RsRatingCache | None,
+    calendar: TradingCalendar,
 ) -> dict[str, int]:
-    """Return the universe RS ratings for *as_of*, computing them only on a miss.
+    """Return the RS ratings for *as_of*, computing them only on a miss.
 
-    Every read path that needs a single symbol's RS rating -- ``/stocks/{symbol}
-    /live`` and ``/watchlist/detail`` -- must rank that symbol against the whole
-    active universe, which costs one price-history walk over ~2,000 securities.
-    Ratings for a trading date do not change intraday, so they are shared here
-    rather than recomputed per request. A missing cache is not an error: the
-    ratings are simply computed, which is what the daily orchestrator does.
+    Every read path that needs a single symbol's RS rating (``/stocks/{symbol}
+    /live`` and ``/watchlist/detail``) ranks it against the same population the
+    run uses, which costs one price-history walk over the universe. Ratings for
+    a trading date do not change intraday, so they are shared through the cache.
     """
     weights = strategy.config.indicators.get("rs_return_weights")
     basis = rs_cache_basis(weights)
@@ -67,19 +85,22 @@ async def resolve_universe_rs_ratings(
         if cached is not None:
             return cached
 
-    # The same universe the screening run ranks: equities only. Ranking fund
-    # and ETF units too gave this read path different ratings from the run.
-    universe = [s for s in await securities_repo.list_active() if is_equity(s.isin)]
-    ratings = await compute_universe_rs_ratings(universe, ohlcv_repo, as_of, weights)
+    population = reference_universe(await securities_repo.list_all(), as_of)
+    ratings = await compute_universe_rs_ratings(population, ohlcv_repo, as_of, weights, calendar)
 
     if cache is not None:
         await cache.set(as_of, basis, ratings)
     return ratings
 
 
-def _adjusted(bar: Any) -> float:
-    """The split- and bonus-adjusted close. A raw close across a 1:5 split reads as -80%."""
-    return float(bar.adj_close if bar.adj_close is not None else bar.close)
+def _adjusted_close(bar: Any) -> float:
+    """``close × adj_factor``: a raw close across a 1:5 split would read as -80%."""
+    return float(bar.close * bar.adj_factor)
+
+
+def _session_index(sessions: list[date], day: date) -> int:
+    """Index of the last session on or before ``day`` (-1 if none)."""
+    return bisect_right(sessions, day) - 1
 
 
 async def compute_universe_rs_ratings(
@@ -87,69 +108,70 @@ async def compute_universe_rs_ratings(
     ohlcv_repo: Any,
     as_of_date: date,
     rs_return_weights: dict[str, Any] | None,
+    calendar: TradingCalendar,
 ) -> dict[str, int]:
-    """Compute universe-relative RS ratings as percentiles of a blended return.
+    """Compute calendar-aligned RS ratings for the reference population.
 
-    Uses the strategy's configured ``indicators.rs_return_weights``
-    (``{period_days: weight}``) to blend multiple lookback returns per
-    security -- this is what lets each Momentum Horizon strategy compute a
-    genuinely horizon-appropriate RS ranking. Falls back to a single 63-day
-    return if the strategy declares no weights.
+    ``securities`` is the caller's reference equity universe on the date (live:
+    ``reference_universe``; point in time: the decision's universe). Fund units
+    and non-NSE rows are dropped here as an invariant; the data-validity rules
+    (bars, staleness, anchors) are applied here. Uses the strategy's
+    ``indicators.rs_return_weights`` (``{period_sessions: weight}``); a single
+    63-session return when none.
 
-    Args:
-        securities: The universe to rank.
-        ohlcv_repo: An :class:`OHLCVRepository` for price history.
-        as_of_date: Only data up to and including this date is used (no lookahead).
-        rs_return_weights: The strategy's ``indicators.rs_return_weights`` config.
-
-    Returns:
-        A mapping of symbol -> RS rating (1-99). A higher rating means
-        stronger blended relative performance versus the universe.
+    Returns ``{symbol: rating}`` (1-99). A security outside the population has
+    no entry.
     """
     weights_cfg = rs_return_weights or {"63": 1.0}
     periods = {int(period): float(weight) for period, weight in weights_cfg.items()}
     max_period = max(periods)
+    sessions = calendar.sessions_between(
+        as_of_date - timedelta(days=2 * (max_period + ANCHOR_TOLERANCE_SESSIONS) + 30),
+        as_of_date,
+    )
+    t_index = _session_index(sessions, as_of_date)
+    if t_index - max_period - ANCHOR_TOLERANCE_SESSIONS < 0:
+        raise ValueError(f"calendar holds too few sessions before {as_of_date} for RS")
+    lookback = max(MIN_RS_BARS, max_period + ANCHOR_TOLERANCE_SESSIONS + 1)
 
-    returns: list[tuple[str, float]] = []
+    returns: list[tuple[float, int, str]] = []
     for security in securities:
+        if str(security.exchange) not in REFERENCE_EXCHANGES or not is_equity(security.isin):
+            continue
         if security.id is None:
             continue
         series = await ohlcv_repo.get_series(
-            security.id, lookback_days=max_period + 5, as_of=as_of_date
+            security.id, lookback_days=lookback, as_of=as_of_date
         )
         bars: tuple[Any, ...] = series.bars if series else ()
-        if len(bars) < 2:
+        if len(bars) < MIN_RS_BARS or is_stale_as_of(as_of_date, bars[-1].date):
             continue
-        latest = _adjusted(bars[-1])
+        dates = [b.date for b in bars]
+        latest = _adjusted_close(bars[-1])
         weighted_sum = 0.0
-        total_weight = 0.0
         for period, weight in periods.items():
-            window = min(period, len(bars) - 1)
-            if window <= 0:
-                continue
-            prior = _adjusted(bars[-(window + 1)])
-            if prior <= 0:
-                continue
-            weighted_sum += weight * ((latest / prior) - 1.0)
-            total_weight += weight
-        if total_weight <= 0:
-            continue
-        returns.append((str(security.symbol), weighted_sum / total_weight))
+            reference_index = t_index - period
+            i = bisect_right(dates, sessions[reference_index]) - 1
+            earliest = reference_index - ANCHOR_TOLERANCE_SESSIONS
+            if i < 0 or _session_index(sessions, dates[i]) < earliest:
+                break  # no valid anchor: R(period) is undefined
+            anchor = _adjusted_close(bars[i])
+            if anchor <= 0:
+                break
+            weighted_sum += weight * (latest / anchor - 1.0)
+        else:
+            raw_return = weighted_sum / sum(periods.values())
+            returns.append((raw_return, security.id, str(security.symbol)))
 
-    # A percentile needs at least two comparable returns; with 0 or 1, there is
-    # no universe to rank against. Returning a fabricated midpoint (50) here
-    # previously made a single-symbol lookup silently pass or fail
-    # ``tt_rs_rating_min`` on a made-up number instead of surfacing that RS
-    # could not be measured (Phase 1.2).
+    # A percentile needs at least two comparable returns. Returning a made-up
+    # midpoint for a lone name would pass or fail ``tt_rs_rating_min`` on a
+    # number nobody measured (Phase 1.2).
     if len(returns) < 2:
         return {}
 
-    sorted_returns = sorted(returns, key=lambda x: x[1])
-    n = len(sorted_returns)
-    rs_ratings: dict[str, int] = {}
-    for idx, (symbol, _) in enumerate(sorted_returns):
-        # Percentile rank 1-99
-        percentile = int(round((idx / (n - 1)) * 98)) + 1
-        rs_ratings[symbol] = max(1, min(99, percentile))
-
-    return rs_ratings
+    ordered = sorted(returns, key=lambda r: (r[0], r[1]))
+    n = len(ordered)
+    return {
+        symbol: max(1, min(99, int(round(idx / (n - 1) * 98)) + 1))
+        for idx, (_, _, symbol) in enumerate(ordered)
+    }

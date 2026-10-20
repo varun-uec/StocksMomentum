@@ -25,6 +25,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import SecurityModel
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
@@ -175,6 +176,7 @@ async def test_live_lookup_matches_batch_orchestrator_verdict(
         strategy_engine=_make_engine(),
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
     await orchestrator.run_daily_screening(target_date)
 
@@ -193,6 +195,7 @@ async def test_live_lookup_matches_batch_orchestrator_verdict(
         explainability_builder=ExplainabilityBuilderImpl(),
         nse_client=_FakeNSEClient([]),
         refresh_gate=_AlwaysRefresh(),
+        calendar=get_nse_trading_calendar(),
     )
     live = await use_case.execute("LIVEA", strategy.name, refresh=False, as_of=target_date)
 
@@ -257,6 +260,7 @@ async def test_live_refresh_persists_new_bars_and_no_refresh_calls_provider_zero
         explainability_builder=ExplainabilityBuilderImpl(),
         nse_client=nse_client,
         refresh_gate=_AlwaysRefresh(),
+        calendar=get_nse_trading_calendar(),
     )
 
     live = await use_case.execute("LIVEC", strategy.name, refresh=True, as_of=new_day)
@@ -297,6 +301,7 @@ async def test_single_symbol_universe_reports_rs_indeterminate_not_failed(
         explainability_builder=ExplainabilityBuilderImpl(),
         nse_client=_FakeNSEClient([]),
         refresh_gate=_AlwaysRefresh(),
+        calendar=get_nse_trading_calendar(),
     )
 
     live = await use_case.execute("SOLO", strategy.name, refresh=False, as_of=target_date)

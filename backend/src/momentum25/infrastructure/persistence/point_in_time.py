@@ -121,6 +121,7 @@ class PointInTimeSource:
                 listing_date=row.listing_date,
                 is_active=True,  # listed at the decision; today's flag is never read
                 tenant_id=row.tenant_id,
+                delisting_date=row.delisting_date,
             )
             for row in rows
         ]
@@ -207,6 +208,10 @@ class PointInTimeSecurityRepository:
 
     async def list_active(self) -> list[Security]:
         """The universe at the decision (listed, not delisted), not today's active list."""
+        return await self._source.universe()
+
+    async def list_all(self) -> list[Security]:
+        """The same set: as of a decision, "all" can only mean listed and not delisted."""
         return await self._source.universe()
 
 

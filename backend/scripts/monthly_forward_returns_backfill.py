@@ -48,6 +48,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import OHLCVDailyModel, ScreeningRunModel
 from momentum25.infrastructure.persistence.repositories import (
@@ -230,6 +231,7 @@ async def main() -> None:
                         scoring=ScoringEngineImpl(),
                         ranking=RankingEngineImpl(),
                     ),
+                    calendar=get_nse_trading_calendar(),
                 )
                 forward_backfill = ForwardReturnsBackfill(
                     screening_run_repo=screening_run_repo,

@@ -24,6 +24,7 @@ from momentum25.domain.scoring.ranking_engine import RankingEngineImpl
 from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import SecurityModel
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
@@ -181,6 +182,7 @@ async def test_vertical_slice_full_pipeline(db_session: AsyncSession) -> None:
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
 
     # ── 4. Execute the full screening pipeline ─────────────────────────────
@@ -312,6 +314,7 @@ async def test_vertical_slice_single_symbol(db_session: AsyncSession) -> None:
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
 
     # Execute pipeline

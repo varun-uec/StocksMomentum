@@ -22,6 +22,7 @@ from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.research.data_quality import is_stale_as_of
 from momentum25.domain.research.liquidity_floor import (
     MIN_AVG_TURNOVER,
@@ -30,7 +31,7 @@ from momentum25.domain.research.liquidity_floor import (
     LiquidityDecision,
     evaluate_liquidity_eligibility,
 )
-from momentum25.domain.value_objects.instrument import is_equity
+from momentum25.domain.universe import reference_universe
 from momentum25.domain.value_objects.results import SectorStats, StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.observability.research_metadata import build_identity
@@ -79,8 +80,10 @@ class ScreeningOrchestrator:
         strategy_engine: Any,
         strategy: Strategy,
         strategy_repo: Any | None = None,
+        *,
+        calendar: TradingCalendar,
     ) -> None:
-        """Wire the orchestrator with its collaborators."""
+        """Wire the orchestrator with its collaborators; ``calendar`` aligns RS periods."""
         self._security_repo = security_repo
         self._ohlcv_repo = ohlcv_repo
         self._screening_run_repo = screening_run_repo
@@ -88,6 +91,7 @@ class ScreeningOrchestrator:
         self._strategy_engine = strategy_engine
         self._strategy = strategy
         self._strategy_repo = strategy_repo
+        self._calendar = calendar
         self._semaphore = asyncio.Semaphore(10)
 
     async def run_daily_screening(
@@ -113,12 +117,11 @@ class ScreeningOrchestrator:
         start = time.perf_counter()
         summary = ScreeningRunSummary(run_date=trading_date)
 
-        # 1. Universe resolution
-        #
-        # Equities only. NSE trades ETF and mutual-fund units in the same EQ
-        # series as company shares, so ingestion cannot separate them and gold
-        # ETFs were being scored by a trend template written for equities.
-        securities = [s for s in await self._security_repo.list_active() if is_equity(s.isin)]
+        # 1. Universe resolution: the reference equity universe on the run date
+        # (IMPLEMENTATION_SPEC §8). NSE and dual-listed equities, no fund or ETF
+        # units (NSE trades them in the same EQ series), listed and not delisted
+        # on the date. Today's active flag is not an input.
+        securities = reference_universe(await self._security_repo.list_all(), trading_date)
         symbols = [s.symbol for s in securities]
         summary.total_evaluated = len(symbols)
 
@@ -313,13 +316,14 @@ class ScreeningOrchestrator:
         scores: list[StockScore] = []
         memberships: list[UniverseMembership] = []
 
-        # Pre-compute universe-relative RS ratings (1-99 percentile) since the
-        # indicator pipeline leaves rs_rating as None (real RS pipeline deferred).
+        # Calendar-aligned RS ratings over the RS reference population
+        # (IMPLEMENTATION_SPEC §8); the indicator pipeline leaves rs_rating None.
         rs_ratings = await compute_universe_rs_ratings(
             securities,
             self._ohlcv_repo,
             trading_date,
             self._strategy.config.indicators.get("rs_return_weights"),
+            self._calendar,
         )
 
         async def _process(symbol: str) -> None:

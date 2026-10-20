@@ -18,7 +18,9 @@ from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import LookAheadError
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.research.data_quality import is_stale_as_of
+from momentum25.domain.universe import REFERENCE_EXCHANGES, reference_universe
 from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.results import (
     Ranking,
@@ -55,6 +57,8 @@ class HistoricalScreeningUseCase:
         strategy_repo: Any,
         indicator_pipeline: Any,
         strategy_engine: Any,
+        *,
+        calendar: TradingCalendar,
     ) -> None:
         """Wire the use case with its collaborators.
 
@@ -65,6 +69,7 @@ class HistoricalScreeningUseCase:
             strategy_repo: Repository for strategy definitions.
             indicator_pipeline: The indicator computation pipeline.
             strategy_engine: The strategy orchestrator (engines → scoring → ranking).
+            calendar: The NSE trading calendar; it aligns RS periods.
         """
         self._security_repo = security_repo
         self._ohlcv_repo = ohlcv_repo
@@ -72,6 +77,7 @@ class HistoricalScreeningUseCase:
         self._strategy_repo = strategy_repo
         self._indicator_pipeline = indicator_pipeline
         self._strategy_engine = strategy_engine
+        self._calendar = calendar
 
     async def execute(
         self,
@@ -125,35 +131,42 @@ class HistoricalScreeningUseCase:
             msg = f"Strategy not found: {strategy_name}"
             raise ValueError(msg)
 
-        # 2. Resolve the universe
-        # Excludes securities not yet listed as of the historical date --
-        # using today's full active list regardless of ``as_of_date`` would
-        # let a stock listed in 2025 appear in a 2020 backtest (look-ahead /
-        # survivorship bias). This is a partial mitigation only: it cannot
-        # exclude securities that were later delisted or dropped from the
-        # index, since no historical index-constituent history exists (see
-        # docs/research -- nsemine has no historical-constituents endpoint).
-        # The residual bias is recorded in ``run.stats`` below.
-        # Equities only, on the same grounds as the live path: NSE trades fund
-        # units in the EQ series, and the strategy scores equities.
-        all_securities = [
-            s for s in await self._security_repo.list_active() if is_equity(s.isin)
+        # 2. Resolve the universe: the reference equity universe on as_of_date
+        # (IMPLEMENTATION_SPEC §8): NSE and dual-listed equities, no fund or ETF
+        # units, listed and not delisted on the date. A point-in-time repository
+        # answers ``list_all`` as of the decision; the live one with every row,
+        # never filtered by today's active flag. Listing dates are a partial guard
+        # only: no historical index-constituent history exists (residual bias
+        # recorded in ``run.stats``).
+        candidates = [
+            s
+            for s in await self._security_repo.list_all()
+            if str(s.exchange) in REFERENCE_EXCHANGES and is_equity(s.isin)
         ]
         if enforce_listing_date_filter:
-            securities = [
-                s
-                for s in all_securities
-                if s.listing_date is None or s.listing_date <= as_of_date
-            ]
+            securities = reference_universe(candidates, as_of_date)
         else:
-            securities = list(all_securities)
-        excluded_unlisted = len(all_securities) - len(securities)
+            # The caller established membership by a stronger rule (real bars on
+            # the date); a coverage-start listing date must not drop those names.
+            securities = list(candidates)
+        excluded_unlisted = sum(
+            1 for s in candidates if s.listing_date is not None and s.listing_date > as_of_date
+        ) if enforce_listing_date_filter else 0
         listed_ids = {s.id for s in securities}
         not_yet_listed_memberships = [
-            UniverseMembership(security_id=s.id, eligible=False, reason="not_yet_listed")
-            for s in all_securities
+            UniverseMembership(
+                security_id=s.id,
+                eligible=False,
+                reason=(
+                    "not_yet_listed"
+                    if s.listing_date is not None and s.listing_date > as_of_date
+                    else "delisted"
+                ),
+            )
+            for s in candidates
             if s.id is not None and s.id not in listed_ids
         ]
+        rs_population = list(securities)
         if symbol_filter:
             securities = [s for s in securities if str(s.symbol) in symbol_filter]
 
@@ -181,7 +194,9 @@ class HistoricalScreeningUseCase:
 
         try:
             # 4–5. Evaluate each security, then rank
-            scores, rankings, memberships = await self.screen(strategy, as_of_date, securities)
+            scores, rankings, memberships = await self.screen(
+                strategy, as_of_date, securities, rs_population=rs_population
+            )
 
             # 6. Persist
             await self._screening_run_repo.save_results(run_id, scores, rankings)
@@ -242,15 +257,22 @@ class HistoricalScreeningUseCase:
             raise
 
     async def screen(
-        self, strategy: Strategy, as_of_date: date, securities: list[Security]
+        self,
+        strategy: Strategy,
+        as_of_date: date,
+        securities: list[Security],
+        rs_population: list[Security] | None = None,
     ) -> tuple[list[StockScore], list[Ranking], list[UniverseMembership]]:
         """Score and rank ``securities`` as of a date, and store nothing.
 
         Strategy evaluation (ADR-014 §7) calls this with point-in-time
         repositories. It uses only the OHLCV repository, the indicator pipeline
-        and the strategy engine.
+        and the strategy engine. RS ratings rank against ``rs_population``
+        (default: ``securities``), never against a symbol-filtered subset.
         """
-        scores, memberships = await self._evaluate_universe(securities, strategy, as_of_date)
+        scores, memberships = await self._evaluate_universe(
+            securities, strategy, as_of_date, rs_population or securities
+        )
         return scores, self._strategy_engine.rank(scores, strategy), memberships
 
     async def _evaluate_universe(
@@ -258,20 +280,20 @@ class HistoricalScreeningUseCase:
         securities: list[Security],
         strategy: Strategy,
         as_of_date: date,
+        rs_population: list[Security],
     ) -> tuple[list[Any], list[UniverseMembership]]:
         """Evaluate every security in the universe as of the historical date."""
         scores: list[Any] = []
         memberships: list[UniverseMembership] = []
         security_by_symbol = {str(s.symbol): s for s in securities}
 
-        # Same universe-relative RS computation the live daily orchestrator uses --
-        # without this, rs_rating stays None for every stock and tt_rs_rating_min
-        # (part of the mandatory Trend Template gate) fails for the entire universe.
+        # The same calendar-aligned RS computation the live orchestrator uses.
         rs_ratings = await compute_universe_rs_ratings(
-            securities,
+            rs_population,
             self._ohlcv_repo,
             as_of_date,
             strategy.config.indicators.get("rs_return_weights"),
+            self._calendar,
         )
 
         for symbol, security in security_by_symbol.items():

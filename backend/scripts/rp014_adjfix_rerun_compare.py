@@ -47,6 +47,7 @@ from momentum25.infrastructure.persistence.repositories.benchmark_index import (
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 import sys
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -121,6 +122,7 @@ async def main(limit: int | None) -> None:
                             scoring=ScoringEngineImpl(),
                             ranking=RankingEngineImpl(),
                         ),
+                        calendar=get_nse_trading_calendar(),
                     ),
                     forward_backfill=ForwardReturnsBackfill(
                         screening_run_repo=screening_run_repo,

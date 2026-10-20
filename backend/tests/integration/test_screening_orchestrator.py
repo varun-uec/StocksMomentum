@@ -21,6 +21,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.domain.value_objects.types import RunTrigger
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import (
     ScreeningResultModel,
     ScreeningRunModel,
@@ -188,6 +189,7 @@ async def test_orchestrator_full_lifecycle(db_session: AsyncSession) -> None:
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
 
     summary = await orchestrator.run_daily_screening(target_date, trigger=RunTrigger.SCHEDULED)
@@ -288,6 +290,7 @@ async def test_orchestrator_screening_date_with_no_bar_fails_run(
         strategy_engine=strategy_engine,
         strategy=strategy,
         strategy_repo=strategy_repo,
+        calendar=get_nse_trading_calendar(),
     )
 
     # The orchestrator marks the run FAILED and re-raises; the specific type is

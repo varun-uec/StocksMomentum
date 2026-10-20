@@ -26,6 +26,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.point_in_time_screening import (
     PointInTimeHistoricalScreening,
@@ -140,6 +141,7 @@ async def get_historical_validation_use_case(
             strategy_repo=strategy_repo,
             strategy_engine=strategy_engine,
         ),
+        calendar=get_nse_trading_calendar(),
     )
 
 

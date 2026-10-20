@@ -68,12 +68,17 @@ def _reference_adx(
     return adx, plus_di, minus_di
 
 
-def _reference_ema_seq(values: list[float], span: int) -> list[float]:
-    """EMA sequence matching pandas ``ewm(span=..., adjust=False)``: seeded with values[0]."""
+def _reference_ema_seq(values: list[float | None], span: int) -> list[float | None]:
+    """SMA-seeded EMA (indicator v3): the mean of the first ``span`` values from
+    the first present one sits on the span-th of them; nothing before it."""
+    start = next(i for i, v in enumerate(values) if v is not None)
+    out: list[float | None] = [None] * len(values)
     k = 2.0 / (span + 1)
-    out = [values[0]]
-    for v in values[1:]:
-        out.append(v * k + out[-1] * (1 - k))
+    prev = sum(values[start : start + span]) / span  # type: ignore[arg-type]
+    out[start + span - 1] = prev
+    for i in range(start + span, len(values)):
+        prev = values[i] * k + prev * (1 - k)  # type: ignore[operator]
+        out[i] = prev
     return out
 
 
@@ -81,11 +86,15 @@ def _reference_macd(
     closes: list[float], fast: int = 12, slow: int = 26, signal: int = 9
 ) -> tuple[float, float, float]:
     """MACD from first principles using the loop-based EMA reference."""
-    ema_fast = _reference_ema_seq(closes, fast)
-    ema_slow = _reference_ema_seq(closes, slow)
-    macd_line = [f - s for f, s in zip(ema_fast, ema_slow, strict=True)]
+    ema_fast = _reference_ema_seq(list(closes), fast)
+    ema_slow = _reference_ema_seq(list(closes), slow)
+    macd_line = [
+        None if f is None or s is None else f - s for f, s in zip(ema_fast, ema_slow, strict=True)
+    ]
     signal_line = _reference_ema_seq(macd_line, signal)
-    return macd_line[-1], signal_line[-1], macd_line[-1] - signal_line[-1]
+    line, sig = macd_line[-1], signal_line[-1]
+    assert line is not None and sig is not None
+    return line, sig, line - sig
 
 
 # ── ADX / +DI / -DI ────────────────────────────────────────────────────────
@@ -222,8 +231,9 @@ def test_macd_matches_independent_loop_reference() -> None:
 
 
 def test_macd_insufficient_history_returns_none() -> None:
-    """Fewer than slow+signal closes cannot form a fully-defined signal line."""
-    assert _macd(pd.Series([100.0] * 30)) == (None, None, None)
+    """The signal line needs slow + signal - 1 closes (34): 33 give nothing."""
+    assert _macd(pd.Series([100.0] * 33)) == (None, None, None)
+    assert _macd(pd.Series([100.0] * 34)) == (0.0, 0.0, 0.0)
 
 
 def test_macd_histogram_equals_line_minus_signal() -> None:

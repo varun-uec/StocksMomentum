@@ -133,3 +133,21 @@ class TestStrategyEngine:
             assert isinstance(score.momentum_score, Decimal)
         for rank in rankings:
             assert isinstance(rank.momentum_score, Decimal)
+
+def test_ranking_ties_break_by_symbol_then_isin_then_security_id() -> None:
+    """IMPLEMENTATION_SPEC §10 (owner decision S-7): equal scores and RS order by
+    symbol, then ISIN, then security_id; never by security_id alone."""
+    from momentum25.domain.value_objects.results import StockScore
+
+    def tied(sid: int, symbol: str, isin: str) -> StockScore:
+        return StockScore(sid, Decimal("0.5"), Decimal("0.5"), (), True, symbol, isin)
+
+    scores = [
+        tied(1, "ZETA", "INE000000001"),
+        tied(2, "ALPHA", "INE000000009"),
+        tied(3, "ALPHA", "INE000000002"),
+        tied(5, "BETA", "INE000000003"),
+        tied(4, "BETA", "INE000000003"),
+    ]
+    ranks = {r.security_id: r.rank for r in RankingEngineImpl().rank(scores, None)}  # type: ignore[arg-type]
+    assert ranks == {3: 1, 2: 2, 4: 3, 5: 4, 1: 5}

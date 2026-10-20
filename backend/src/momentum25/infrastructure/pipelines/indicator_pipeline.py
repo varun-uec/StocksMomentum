@@ -64,7 +64,15 @@ _QUANT = Decimal("0.0001")
 # ``_adx_series``/``_macd_series`` re-express the exact same formulas element-wise
 # (the scalar functions are now reductions of the series), so every scalar value is
 # bit-for-bit unchanged and runs stamped 2 before and after remain comparable.
-INDICATOR_VERSION = 2
+#
+#   3 — engine v2 (IMPLEMENTATION_SPEC §8): EMAs seeded with the SMA of their
+#       first n values, no value before bar n (was pandas ``ewm(adjust=False)``
+#       seeded with the first value); the MACD signal line seeded the same way
+#       from the first 9 MACD values; ``rel_volume`` divides by the mean of the
+#       same 50 bars as ``avg_volume50``, today included (was the 49 before
+#       today). Matches the browser golden fixture to 1e-9. Runs stamped 2 are
+#       NOT comparable to runs stamped 3.
+INDICATOR_VERSION = 3
 
 
 def _quantize(value: float | None) -> Decimal | None:
@@ -100,16 +108,26 @@ def _sma(series: pd.Series, window: int) -> float | None:
 
 
 def _ema(series: pd.Series, span: int) -> pd.Series:
-    """Exponential Moving Average using pandas ewm (span semantics).
+    """Exponential Moving Average, SMA-seeded (IMPLEMENTATION_SPEC §8, indicator v3).
 
-    EMA_t = price_t * k + EMA_{t-1} * (1 - k), k = 2 / (span + 1). Seeded with the
-    series' first value (``ewm(adjust=False)``'s actual behaviour -- not an
-    SMA-of-first-``span``-values seed, a common but different convention some other
-    EMA implementations use). Values before the span-th are therefore not a "true"
-    EMA yet; callers requiring the fully warmed-up value should have at least
-    ``span`` bars of buffer beyond their minimum, as the SMA-window callers already do.
+    EMA_t = price_t * k + EMA_{t-1} * (1 - k), k = 2 / (span + 1). The seed is the
+    mean of the first ``span`` values from the first non-missing one, placed on
+    the span-th of them; there is no value before it. Leading missing values are
+    skipped, so the MACD signal line seeds from the first ``signal`` MACD values.
+    Matches the browser indicators (``web/src/lib/indicators/golden-fixture.json``).
     """
-    return series.ewm(span=span, adjust=False).mean()
+    values = series.to_numpy(dtype="float64")
+    out = np.full(len(values), np.nan)
+    present = np.flatnonzero(~np.isnan(values))
+    if len(present) and len(values) - present[0] >= span:
+        start = int(present[0])
+        k = 2.0 / (span + 1)
+        prev = sum(values[start : start + span].tolist()) / span
+        out[start + span - 1] = prev
+        for i in range(start + span, len(values)):
+            prev = values[i] * k + prev * (1 - k)
+            out[i] = prev
+    return pd.Series(out, index=series.index)
 
 
 def _wilder_smooth(values: pd.Series, window: int) -> pd.Series:
@@ -327,22 +345,13 @@ def _macd_series(
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
     """MACD(12,26,9) line/signal/histogram, each aligned to ``close``'s index.
 
-    The EMA recursion is causal and defined from the first bar under pandas'
-    ``ewm`` seeding, but a fully absorbed reading needs ``slow + signal`` bars
-    (the signal line's own seeded transient); before that the whole set is ``NaN``
-    and, once the history is long enough, the first ``slow + signal - 1`` bars are
-    withheld as ``NaN`` too -- the series never leaks an un-converged value that
-    the scalar :func:`_macd` would refuse to report. Every emitted element uses
-    the identical formula of the scalar path (Phase 9).
+    The line starts on bar ``slow`` (both EMAs seeded); the signal line is the
+    SMA-seeded EMA of the line, so it and the histogram start ``signal - 1``
+    bars later. Every emitted element uses the formula of the scalar path.
     """
-    if len(close) < slow + signal:
-        nan_series = pd.Series([float("nan")] * len(close), index=close.index, dtype="float64")
-        return nan_series, nan_series, nan_series
     macd_line_series = _ema(close, fast) - _ema(close, slow)
     signal_series = _ema(macd_line_series, signal)
     histogram_series = macd_line_series - signal_series
-    for series in (macd_line_series, signal_series, histogram_series):
-        series.iloc[: slow + signal - 1] = float("nan")
     return macd_line_series, signal_series, histogram_series
 
 
@@ -355,10 +364,9 @@ def _macd(
       signal_line = EMA(signal) of macd_line
       histogram = macd_line - signal_line
 
-    Uses the same :func:`_ema` (pandas ``ewm(span=...)``) as the existing
-    ema10/ema21 fields, so all EMA-based indicators in this pipeline share one
-    definition. Requires ``slow + signal`` bars for the signal line to have fully
-    absorbed its own seed transient.
+    Uses the same SMA-seeded :func:`_ema` as the ema10/ema21 fields, so all
+    EMA-based indicators in this pipeline share one definition. Requires
+    ``slow + signal - 1`` bars.
 
     Returns:
         ``(macd_line, signal_line, histogram)``, each ``None`` if insufficient
@@ -846,14 +854,16 @@ class IndicatorPipelineImpl:
 
     @staticmethod
     def _rel_volume(df: pd.DataFrame, window: int = 50) -> float | None:
-        """Relative volume: latest volume / average volume over ``window`` (excluding latest)."""
-        if len(df) < window + 1:
+        """Relative volume: latest volume / the mean of the last ``window`` volumes.
+
+        The same bars as ``avg_volume50``, today's included (IMPLEMENTATION_SPEC §8).
+        """
+        if len(df) < window:
             return None
-        avg_vol = float(df["volume"].iloc[-window:-1].mean())
+        avg_vol = float(df["volume"].iloc[-window:].mean())
         if avg_vol == 0:
             return None
-        latest_vol = float(df["volume"].iloc[-1])
-        return latest_vol / avg_vol
+        return float(df["volume"].iloc[-1]) / avg_vol
 
 
 class LegacyIndicatorPipelineImpl(IndicatorPipelineImpl):

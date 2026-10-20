@@ -26,3 +26,4 @@ class Security:
     listing_date: date | None = None
     is_active: bool = True
     tenant_id: int | None = None
+    delisting_date: date | None = None

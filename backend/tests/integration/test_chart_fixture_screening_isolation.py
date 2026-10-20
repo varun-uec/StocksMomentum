@@ -22,6 +22,7 @@ from momentum25.domain.scoring.scoring_engine import ScoringEngineImpl
 from momentum25.domain.strategy.engine_registry import EngineRegistry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.domain.value_objects.instrument import is_equity
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.persistence.models import (
     BenchmarkIndexDailyModel,
     OHLCVDailyModel,
@@ -137,6 +138,7 @@ async def _breadth_and_rs(
         strategy,
         _AS_OF,
         cache=None,
+        calendar=get_nse_trading_calendar(),
     )
     return context.breadth, ratings
 
@@ -156,6 +158,7 @@ async def _live_screening_run(
         strategy_engine=_strategy_engine(),
         strategy=strategy,
         strategy_repo=SqlStrategyRepository(session),
+        calendar=get_nse_trading_calendar(),
     ).run_daily_screening(_AS_OF, data_manifest=manifest)
     run = await session.scalar(
         select(ScreeningRunModel).where(ScreeningRunModel.data_version == manifest.data_version)
