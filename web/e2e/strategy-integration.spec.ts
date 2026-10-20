@@ -220,7 +220,8 @@ test('a saved config runs through the real screener engine and differs from the 
   await expect(page.getByRole('region', { name: 'Why it ranks' })).toHaveCount(0);
   await page.getByRole('table').getByRole('button', { name: top.symbol, exact: true }).click();
   await expect(page.getByRole('region', { name: 'Why it ranks' })).toBeVisible();
-  await page.screenshot({ path: `${EVIDENCE}/02-screening-rankings-assessment.png`, fullPage: true });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${EVIDENCE}/02-screening-rankings-assessment.png`, fullPage: false });
   completed = { run: run!, symbol: top.symbol, rank: top.rank };
 });
 
