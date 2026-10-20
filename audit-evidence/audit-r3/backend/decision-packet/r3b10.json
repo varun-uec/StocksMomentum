@@ -1,0 +1,177 @@
+{
+ "rs": {
+  "rs_universe_current": 3073,
+  "rs_universe_eligible": 1338,
+  "current_reproduces_stored_ratings": true,
+  "mismatches": 0,
+  "ratings_changed": 1253,
+  "cross_70": 39,
+  "cross_up": 39,
+  "cross_down": 0,
+  "mean_abs_change": 2.131539611360239,
+  "current_universe_mix": {
+   "insufficient_history": 691,
+   "stale_data": 453,
+   "close_below_floor": 203,
+   "eligible": 1338,
+   "below_liquidity_floor": 355,
+   "no_bar_on_trading_date": 33
+  },
+  "gate_rules": [
+   "tt_above_52w_low",
+   "tt_close_above_sma150_200",
+   "tt_close_above_sma50",
+   "tt_near_52w_high",
+   "tt_rs_rating_min",
+   "tt_sma150_above_sma200",
+   "tt_sma200_uptrend",
+   "tt_sma_stack"
+  ],
+  "gate_reproduced": "1338/1338",
+  "ranks_reproduced": "155/155",
+  "max_momentum_diff_vs_stored": "0.0018",
+  "passing_current": 155,
+  "passing_eligible_rs": 158,
+  "top25_overlap": 25,
+  "top25_entered": [],
+  "top25_left": [],
+  "top1_current": "SBC",
+  "top1_eligible": "SBC"
+ },
+ "rel_volume": {
+  "names": 1337,
+  "stored_equals_49_prior": 1337,
+  "pass_flips_spec": 1,
+  "pass_flips_prior50": 6,
+  "max_rel_diff_spec": 0.7254311461236427,
+  "max_rel_diff_prior50": 0.37251044683970924,
+  "top25_overlap_spec": 25,
+  "top25_overlap_prior50": 25,
+  "rank_changes_spec": 7,
+  "rank_changes_prior50": 26
+ },
+ "ema": {
+  "names": 1337,
+  "last_bar_differences_at_4dp": {
+   "macd_last_bar": 7,
+   "ema21": 4
+  },
+  "macd_series_rows": 323981,
+  "macd_series_rows_differ_4dp": 181565,
+  "macd_series_max_diff_as_pct_of_price": 5.736824081325586
+ },
+ "tie_break": {
+  "runs": 138,
+  "passing_rows": 31239,
+  "tied_groups": 59,
+  "tied_groups_where_order_differs": 9,
+  "examples": [
+   [
+    "2",
+    [
+     "100.0000",
+     "100.0000",
+     "71.000000"
+    ],
+    [
+     "GROWWDEFNC",
+     "MODEFENCE",
+     "IGPL",
+     "MANGLMCEM",
+     "SENCO"
+    ],
+    true
+   ],
+   [
+    "2",
+    [
+     "100.0000",
+     "100.0000",
+     "75.000000"
+    ],
+    [
+     "MAFANG",
+     "CARBORUNIV",
+     "DENORA",
+     "HINDALCO",
+     "IPCALAB",
+     "VOLTAMP"
+    ],
+    true
+   ],
+   [
+    "2",
+    [
+     "100.0000",
+     "100.0000",
+     "82.000000"
+    ],
+    [
+     "MON100",
+     "AMBIKCO",
+     "BEPL",
+     "GAEL",
+     "IMFA",
+     "JAMNAAUTO",
+     "MANINDS",
+     "MUFIN",
+     "SANDHAR",
+     "SANGAMIND",
+     "TVSMOTOR"
+    ],
+    true
+   ],
+   [
+    "2",
+    [
+     "100.0000",
+     "100.0000",
+     "86.000000"
+    ],
+    [
+     "MONQ50",
+     "ACMESOLAR",
+     "ADOR",
+     "AKUMS",
+     "ASIANENE",
+     "AZAD",
+     "BHEL",
+     "CRAFTSMAN",
+     "ESAFSFB",
+     "FEDERALBNK",
+     "KINGFA",
+     "MANCREDIT",
+     "SEAMECLTD"
+    ],
+    true
+   ],
+   [
+    "2",
+    [
+     "100.0000",
+     "100.0000",
+     "90.000000"
+    ],
+    [
+     "GNA",
+     "ATALREAL",
+     "BHARATFORG",
+     "ICIL",
+     "INOXINDIA",
+     "KTKBANK",
+     "NETWEB",
+     "RAIN",
+     "RICOAUTO",
+     "ROSSTECH",
+     "SHRIPISTON",
+     "TMB",
+     "UNIMECH"
+    ],
+    false
+   ]
+  ],
+  "adjacent_id_pairs_out_of_symbol_order": 97,
+  "securities": 3463,
+  "run149_rank_changes_with_symbol_tiebreak": 0
+ }
+}

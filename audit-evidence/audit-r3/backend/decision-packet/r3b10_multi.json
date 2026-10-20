@@ -1,0 +1,164 @@
+[
+ {
+  "run": 14,
+  "date": "2020-11-27",
+  "rs_universe_code": 1699,
+  "rs_universe_spec": 1113,
+  "scored": 1113,
+  "stored_rs_reproduced": "402/1113",
+  "ratings_changed": 1005,
+  "cross_70_up": 32,
+  "cross_70_down": 0,
+  "qualified_code": 210,
+  "qualified_spec": 229,
+  "top25_overlap": 23,
+  "top25_entered": [
+   "FSL",
+   "DIVISLAB"
+  ],
+  "top25_left": [
+   "BEPL",
+   "OAL"
+  ]
+ },
+ {
+  "run": 88,
+  "date": "2021-08-31",
+  "rs_universe_code": 1822,
+  "rs_universe_spec": 1274,
+  "scored": 1274,
+  "stored_rs_reproduced": "159/1274",
+  "ratings_changed": 1195,
+  "cross_70_up": 99,
+  "cross_70_down": 0,
+  "qualified_code": 200,
+  "qualified_spec": 260,
+  "top25_overlap": 23,
+  "top25_entered": [
+   "SAKSOFT",
+   "DYNAMATECH"
+  ],
+  "top25_left": [
+   "DATAMATICS",
+   "ONELIFECAP"
+  ]
+ },
+ {
+  "run": 98,
+  "date": "2022-06-30",
+  "rs_universe_code": 2001,
+  "rs_universe_spec": 1513,
+  "scored": 1513,
+  "stored_rs_reproduced": "69/1513",
+  "ratings_changed": 1314,
+  "cross_70_up": 64,
+  "cross_70_down": 0,
+  "qualified_code": 112,
+  "qualified_spec": 115,
+  "top25_overlap": 22,
+  "top25_entered": [
+   "INOXLEISUR",
+   "MAHSEAMLES",
+   "SHIVAMAUTO"
+  ],
+  "top25_left": [
+   "GSS",
+   "TIPSINDLTD",
+   "MIRZAINT"
+  ]
+ },
+ {
+  "run": 43,
+  "date": "2023-04-28",
+  "rs_universe_code": 2123,
+  "rs_universe_spec": 1630,
+  "scored": 1630,
+  "stored_rs_reproduced": "397/1630",
+  "ratings_changed": 1475,
+  "cross_70_up": 65,
+  "cross_70_down": 0,
+  "qualified_code": 244,
+  "qualified_spec": 256,
+  "top25_overlap": 22,
+  "top25_entered": [
+   "ITC",
+   "MAHABANK",
+   "BANKBARODA"
+  ],
+  "top25_left": [
+   "FACT",
+   "APARINDS",
+   "KAMATHOTEL"
+  ]
+ },
+ {
+  "run": 117,
+  "date": "2024-01-31",
+  "rs_universe_code": 2274,
+  "rs_universe_spec": 1565,
+  "scored": 1565,
+  "stored_rs_reproduced": "41/1565",
+  "ratings_changed": 1409,
+  "cross_70_up": 0,
+  "cross_70_down": 3,
+  "qualified_code": 435,
+  "qualified_spec": 434,
+  "top25_overlap": 24,
+  "top25_entered": [
+   "APARINDS"
+  ],
+  "top25_left": [
+   "QUICKHEAL"
+  ]
+ },
+ {
+  "run": 62,
+  "date": "2024-11-29",
+  "rs_universe_code": 2431,
+  "rs_universe_spec": 1581,
+  "scored": 1581,
+  "stored_rs_reproduced": "22/1581",
+  "ratings_changed": 1487,
+  "cross_70_up": 102,
+  "cross_70_down": 0,
+  "qualified_code": 236,
+  "qualified_spec": 277,
+  "top25_overlap": 19,
+  "top25_entered": [
+   "PITTIENG",
+   "PIXTRANS",
+   "MARKSANS",
+   "DEEPINDS",
+   "ZENTEC",
+   "GENESYS"
+  ],
+  "top25_left": [
+   "KAUSHALYA",
+   "GRWRHITECH",
+   "INDRAMEDCO",
+   "BBOX",
+   "MARINE",
+   "NEULANDLAB"
+  ]
+ },
+ {
+  "run": 72,
+  "date": "2025-09-30",
+  "rs_universe_code": 2591,
+  "rs_universe_spec": 1782,
+  "scored": 1782,
+  "stored_rs_reproduced": "341/1782",
+  "ratings_changed": 1678,
+  "cross_70_up": 157,
+  "cross_70_down": 0,
+  "qualified_code": 143,
+  "qualified_spec": 164,
+  "top25_overlap": 24,
+  "top25_entered": [
+   "NLCINDIA"
+  ],
+  "top25_left": [
+   "TVSELECT"
+  ]
+ }
+]

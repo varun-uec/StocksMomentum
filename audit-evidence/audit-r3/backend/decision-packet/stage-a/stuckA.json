@@ -1,0 +1,146 @@
+[
+ {
+  "symbol": "VENUSREM",
+  "last_bar_in_window": "2026-06-12",
+  "sessions_since": 34,
+  "trades_again_later": true,
+  "delisting_date": null,
+  "weight": 0.0417
+ },
+ {
+  "symbol": "STLTECH",
+  "last_bar_in_window": "2026-05-13",
+  "sessions_since": 55,
+  "trades_again_later": false,
+  "delisting_date": "2026-05-13",
+  "weight": 0.0339
+ },
+ {
+  "symbol": "MTARTECH",
+  "last_bar_in_window": "2026-06-24",
+  "sessions_since": 26,
+  "trades_again_later": true,
+  "delisting_date": null,
+  "weight": 0.033
+ },
+ {
+  "symbol": "SABTNL",
+  "last_bar_in_window": "2025-12-11",
+  "sessions_since": 155,
+  "trades_again_later": false,
+  "delisting_date": "2025-12-11",
+  "weight": 0.0293
+ },
+ {
+  "symbol": "MANGCHEFER",
+  "last_bar_in_window": "2025-10-30",
+  "sessions_since": 184,
+  "trades_again_later": false,
+  "delisting_date": "2025-10-30",
+  "weight": 0.0288
+ },
+ {
+  "symbol": "BLISSGVS",
+  "last_bar_in_window": "2026-07-02",
+  "sessions_since": 21,
+  "trades_again_later": false,
+  "delisting_date": null,
+  "weight": 0.0216
+ },
+ {
+  "symbol": "TWL",
+  "last_bar_in_window": "2023-06-16",
+  "sessions_since": 768,
+  "trades_again_later": false,
+  "delisting_date": "2023-06-16",
+  "weight": 0.0196
+ },
+ {
+  "symbol": "KESORAMIND",
+  "last_bar_in_window": "2026-05-15",
+  "sessions_since": 53,
+  "trades_again_later": true,
+  "delisting_date": null,
+  "weight": 0.0177
+ },
+ {
+  "symbol": "BGRENERGY",
+  "last_bar_in_window": "2026-02-23",
+  "sessions_since": 106,
+  "trades_again_later": false,
+  "delisting_date": "2026-02-23",
+  "weight": 0.0172
+ },
+ {
+  "symbol": "PAEL",
+  "last_bar_in_window": "2022-04-08",
+  "sessions_since": 1061,
+  "trades_again_later": false,
+  "delisting_date": "2022-04-08",
+  "weight": 0.0142
+ },
+ {
+  "symbol": "VERTOZ",
+  "last_bar_in_window": "2026-05-27",
+  "sessions_since": 45,
+  "trades_again_later": true,
+  "delisting_date": null,
+  "weight": 0.0142
+ },
+ {
+  "symbol": "PRESSMN",
+  "last_bar_in_window": "2023-06-06",
+  "sessions_since": 776,
+  "trades_again_later": false,
+  "delisting_date": "2023-06-06",
+  "weight": 0.0132
+ },
+ {
+  "symbol": "ROHITFERRO",
+  "last_bar_in_window": "2022-04-07",
+  "sessions_since": 1062,
+  "trades_again_later": false,
+  "delisting_date": "2022-04-07",
+  "weight": 0.013
+ },
+ {
+  "symbol": "MAGMA",
+  "last_bar_in_window": "2021-06-08",
+  "sessions_since": 1269,
+  "trades_again_later": false,
+  "delisting_date": "2021-06-08",
+  "weight": 0.0121
+ },
+ {
+  "symbol": "MEGASOFT",
+  "last_bar_in_window": "2025-11-06",
+  "sessions_since": 180,
+  "trades_again_later": false,
+  "delisting_date": "2025-11-06",
+  "weight": 0.0116
+ },
+ {
+  "symbol": "QPOWER",
+  "last_bar_in_window": "2026-05-18",
+  "sessions_since": 52,
+  "trades_again_later": true,
+  "delisting_date": null,
+  "weight": 0.0112
+ },
+ {
+  "symbol": "GISOLUTION",
+  "last_bar_in_window": "2023-04-06",
+  "sessions_since": 816,
+  "trades_again_later": false,
+  "delisting_date": "2023-04-06",
+  "weight": 0.0109
+ },
+ {
+  "symbol": "GET&D",
+  "last_bar_in_window": "2023-09-29",
+  "sessions_since": 696,
+  "trades_again_later": false,
+  "delisting_date": "2023-09-29",
+  "weight": 0.0059
+ }
+]

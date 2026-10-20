@@ -1,0 +1,32 @@
+universe NSE
+policy                                          P0               A              C5               B               D
+orders                                         649             653             654             683             652
+orders_no_bar_on_fill_date                     176             196             196             202             196
+orders_no_bar_pct                           0.2712          0.3002          0.2997          0.2958          0.3006
+planned_notional                      6243574.6924    10414223.757   10317305.4259   10821178.0209   10369028.9882
+no_bar_planned_notional_pct                  0.274          0.4973          0.4997          0.4634          0.4989
+fills                                          649             457             466             524             461
+filled_notional                       6243574.6924    4718051.1125    4814520.3868    5954446.9599    4720844.4249
+stale_fills                                    176               0               0               0               0
+stale_filled_notional_pct                    0.274             0.0             0.0             0.0             0.0
+deferred_fills                                   0               0               8              43               5
+deferred_sessions_max                            0               0               4              19              19
+expired_orders                                   0             196             188             146             142
+costs                                   18730.7241      14154.1533      14443.5612      17863.3409      14162.5333
+one_way_turnover_annual                     2.2571          1.3889          1.4142          1.7582          1.3913
+final_nav                              909839.2922    1255134.8312    1255012.5374    1233104.4012    1251147.5978
+replay_nav                             909839.2922    1255134.8312    1255012.5374    1233104.4012    1251147.5978
+total_return                               -0.0902          0.2551           0.255          0.2331          0.2511
+cagr                                       -0.0582           0.155          0.1549          0.1421          0.1527
+max_drawdown                               -0.2393         -0.1377          -0.144         -0.1426         -0.1379
+mean_cash_weight_at_rebalance              -0.0011          0.1717          0.1696           0.147          0.1717
+max_cash_weight_at_rebalance               -0.0004          0.4664          0.4664          0.4659          0.4664
+mean_holdings                                 30.0         25.9474         25.9474         27.1053         25.9474
+max_single_weight                           0.0374          0.0437          0.0441          0.0441          0.0437
+mean_stale_mark_weight                      0.2843          0.1437          0.1449          0.1729          0.1437
+max_stale_mark_weight                       0.5343          0.2914          0.2912          0.3065          0.2917
+buy_scale_min                                  1.0           0.599          0.5957          0.5042           0.599
+mean_target_jaccard_vs_P0                      1.0          0.8935          0.8935          0.9212          0.8935
+P0 final_nav == production: False 909839.2921827340369675112967 909839.2921827340369675112948
+P0 targets == production: True
+P0 trade count == production: True
