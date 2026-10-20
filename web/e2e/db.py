@@ -353,6 +353,7 @@ async def main(command: str, url: str, *arguments: str) -> None:
 
 
 url = os.environ.get("E2E_DATABASE_URL", "")
-if not url:
-    sys.exit("set E2E_DATABASE_URL to the dedicated E2E database (make e2e-db)")
-asyncio.run(main(sys.argv[1], url, *sys.argv[2:]))
+if __name__ == "__main__":
+    if not url:
+        sys.exit("set E2E_DATABASE_URL to the dedicated E2E database (make e2e-db)")
+    asyncio.run(main(sys.argv[1], url, *sys.argv[2:]))
