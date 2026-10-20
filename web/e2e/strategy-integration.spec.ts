@@ -330,7 +330,7 @@ test('the exact custom run follows the selected chart cell and watchlist, and re
   await card.getByRole('link', { name: 'Return to chart' }).click();
   await expect(page).toHaveURL(/\/chart\/INFY$/);
   await chartReady(page);
-  await expect(page.locator('main.chart-page')).toHaveAttribute('data-layout', '2x2');
+  await expect(page.locator('div.chart-page')).toHaveAttribute('data-layout', '2x2');
   await expect(page.getByRole('region', { name: /^Chart main: RELIANCE/ })).toBeVisible();
   await expect(page.getByRole('region', { name: /^Chart c2: TCS/ })).toBeVisible();
   await expect(page.getByRole('region', { name: /^Chart c3: INFY/ })).toBeVisible();
@@ -338,7 +338,7 @@ test('the exact custom run follows the selected chart cell and watchlist, and re
   await expect(page.getByTestId('save-state')).toBeVisible({ timeout: 15_000 });
   await page.reload();
   await chartReady(page);
-  await expect(page.locator('main.chart-page')).toHaveAttribute('data-layout', '2x2');
+  await expect(page.locator('div.chart-page')).toHaveAttribute('data-layout', '2x2');
   await expect(page.getByRole('region', { name: /^Chart main: RELIANCE/ })).toBeVisible();
   await expect(page.getByRole('region', { name: /^Chart c2: TCS/ })).toBeVisible();
   await expect(page.getByRole('region', { name: /^Chart c3: INFY/ })).toBeVisible();
