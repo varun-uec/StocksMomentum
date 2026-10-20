@@ -1,0 +1,129 @@
+63c63
+< COL corporate_actions.security_id bigint null=NO
+---
+> COL corporate_actions.security_id bigint null=YES
+73c73
+< COL corporate_actions_history.security_id bigint null=NO
+---
+> COL corporate_actions_history.security_id bigint null=YES
+77,82d76
+< COL corporate_actions_snapshot_20260810.ex_date date null=YES
+< COL corporate_actions_snapshot_20260810.id bigint null=YES
+< COL corporate_actions_snapshot_20260810.ratio numeric null=YES
+< COL corporate_actions_snapshot_20260810.raw jsonb null=YES
+< COL corporate_actions_snapshot_20260810.security_id bigint null=YES
+< COL corporate_actions_snapshot_20260810.type character varying null=YES
+125,128d118
+< COL ohlcv_adj_snapshot_20260810.adj_close numeric null=YES
+< COL ohlcv_adj_snapshot_20260810.adj_factor numeric null=YES
+< COL ohlcv_adj_snapshot_20260810.date date null=YES
+< COL ohlcv_adj_snapshot_20260810.security_id bigint null=YES
+177,188d166
+< COL screening_results_snapshot_20260810.buy_setup_score numeric null=YES
+< COL screening_results_snapshot_20260810.hard_filters_passed boolean null=YES
+< COL screening_results_snapshot_20260810.momentum_score numeric null=YES
+< COL screening_results_snapshot_20260810.rank integer null=YES
+< COL screening_results_snapshot_20260810.run_id bigint null=YES
+< COL screening_results_snapshot_20260810.security_id bigint null=YES
+< COL screening_results_snapshot_run12_20260810.buy_setup_score numeric null=YES
+< COL screening_results_snapshot_run12_20260810.hard_filters_passed boolean null=YES
+< COL screening_results_snapshot_run12_20260810.momentum_score numeric null=YES
+< COL screening_results_snapshot_run12_20260810.rank integer null=YES
+< COL screening_results_snapshot_run12_20260810.run_id bigint null=YES
+< COL screening_results_snapshot_run12_20260810.security_id bigint null=YES
+198c176
+< COL screening_runs.strategy_id bigint null=NO
+---
+> COL screening_runs.strategy_id bigint null=YES
+200,211c178
+< COL screening_runs_snapshot_run12_20260810.config_hash character varying null=YES
+< COL screening_runs_snapshot_run12_20260810.data_version character varying null=YES
+< COL screening_runs_snapshot_run12_20260810.error text null=YES
+< COL screening_runs_snapshot_run12_20260810.finished_at timestamp with time zone null=YES
+< COL screening_runs_snapshot_run12_20260810.id bigint null=YES
+< COL screening_runs_snapshot_run12_20260810.run_date date null=YES
+< COL screening_runs_snapshot_run12_20260810.started_at timestamp with time zone null=YES
+< COL screening_runs_snapshot_run12_20260810.stats jsonb null=YES
+< COL screening_runs_snapshot_run12_20260810.status character varying null=YES
+< COL screening_runs_snapshot_run12_20260810.strategy_id bigint null=YES
+< COL screening_runs_snapshot_run12_20260810.trigger character varying null=YES
+< COL securities.created_at timestamp with time zone null=NO
+---
+> COL securities.created_at timestamp with time zone null=YES
+228,229c195,196
+< COL securities.updated_at timestamp with time zone null=NO
+< COL securities_history.created_at timestamp with time zone null=NO
+---
+> COL securities.updated_at timestamp with time zone null=YES
+> COL securities_history.created_at timestamp with time zone null=YES
+249c216
+< COL securities_history.updated_at timestamp with time zone null=NO
+---
+> COL securities_history.updated_at timestamp with time zone null=YES
+252c219
+< COL strategies.created_at timestamp with time zone null=NO
+---
+> COL strategies.created_at timestamp with time zone null=YES
+298,315d264
+< COL v_adjfix_diff.new_pass boolean null=YES
+< COL v_adjfix_diff.new_rank integer null=YES
+< COL v_adjfix_diff.new_score numeric null=YES
+< COL v_adjfix_diff.old_pass boolean null=YES
+< COL v_adjfix_diff.old_rank integer null=YES
+< COL v_adjfix_diff.old_score numeric null=YES
+< COL v_adjfix_diff.run_date date null=YES
+< COL v_adjfix_diff.security_id bigint null=YES
+< COL v_adjfix_pairs.new_run bigint null=YES
+< COL v_adjfix_pairs.old_run bigint null=YES
+< COL v_adjfix_pairs.run_date date null=YES
+< COL v_live_diff.new_pass boolean null=YES
+< COL v_live_diff.new_rank integer null=YES
+< COL v_live_diff.new_score numeric null=YES
+< COL v_live_diff.old_pass boolean null=YES
+< COL v_live_diff.old_rank integer null=YES
+< COL v_live_diff.old_score numeric null=YES
+< COL v_live_diff.security_id bigint null=YES
+321c270
+< CON alerts c CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('triggered'::character varying)::text])))
+---
+> CON alerts c CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'triggered'::character varying])::text[])))
+324c273
+< CON benchmark_index_daily c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+---
+> CON benchmark_index_daily c CHECK (((provenance)::text = ANY ((ARRAY['recorded'::character varying, 'published'::character varying, 'reconstructed'::character varying])::text[])))
+332c281
+< CON corporate_actions c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+---
+> CON corporate_actions c CHECK (((provenance)::text = ANY ((ARRAY['recorded'::character varying, 'published'::character varying, 'reconstructed'::character varying])::text[])))
+340c289
+< CON historical_universe c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+---
+> CON historical_universe c CHECK (((provenance)::text = ANY ((ARRAY['recorded'::character varying, 'published'::character varying, 'reconstructed'::character varying])::text[])))
+344c293
+< CON ohlcv_daily c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+---
+> CON ohlcv_daily c CHECK (((provenance)::text = ANY ((ARRAY['recorded'::character varying, 'published'::character varying, 'reconstructed'::character varying])::text[])))
+353c302
+< CON screening_runs c CHECK (((status)::text = ANY (ARRAY[('PENDING'::character varying)::text, ('RUNNING'::character varying)::text, ('COMPLETED'::character varying)::text, ('FAILED'::character varying)::text])))
+---
+> CON screening_runs c CHECK (((status)::text = ANY ((ARRAY['PENDING'::character varying, 'RUNNING'::character varying, 'COMPLETED'::character varying, 'FAILED'::character varying])::text[])))
+357c306
+< CON securities c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+---
+> CON securities c CHECK (((provenance)::text = ANY ((ARRAY['recorded'::character varying, 'published'::character varying, 'reconstructed'::character varying])::text[])))
+358a308
+> CON securities u UNIQUE (symbol)
+363,364c313,314
+< CON strategy_evaluations c CHECK (((result_class)::text = ANY (ARRAY[('screening'::character varying)::text, ('in_sample'::character varying)::text, ('out_of_sample'::character varying)::text])))
+< CON strategy_evaluations c CHECK (((status)::text = ANY (ARRAY[('queued'::character varying)::text, ('running'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])))
+---
+> CON strategy_evaluations c CHECK (((result_class)::text = ANY ((ARRAY['screening'::character varying, 'in_sample'::character varying, 'out_of_sample'::character varying])::text[])))
+> CON strategy_evaluations c CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying])::text[])))
+405d354
+< IDX ohlcv_adj_snapshot_20260810 CREATE UNIQUE INDEX USING btree (security_id, date)
+411c360
+< IDX screening_results CREATE INDEX USING btree (rank)
+---
+> IDX screening_results CREATE INDEX USING btree (run_id, rank)
+418a368
+> IDX securities CREATE INDEX USING btree (symbol)

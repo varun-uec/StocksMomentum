@@ -1,0 +1,460 @@
+COL alembic_version.version_num character varying null=NO
+COL alerts.armed_after date null=NO
+COL alerts.condition character varying null=NO
+COL alerts.created_at timestamp with time zone null=NO
+COL alerts.data_version character varying null=YES
+COL alerts.drawing jsonb null=YES
+COL alerts.id bigint null=NO
+COL alerts.interval character varying null=NO
+COL alerts.revision bigint null=NO
+COL alerts.security_id bigint null=NO
+COL alerts.seen boolean null=NO
+COL alerts.source character varying null=NO
+COL alerts.status character varying null=NO
+COL alerts.tenant_id bigint null=YES
+COL alerts.threshold numeric null=NO
+COL alerts.trigger_value numeric null=YES
+COL alerts.triggered_on date null=YES
+COL benchmark_index_daily.close numeric null=NO
+COL benchmark_index_daily.date date null=NO
+COL benchmark_index_daily.index_code character varying null=NO
+COL benchmark_index_daily.provenance character varying null=NO
+COL benchmark_index_daily.recorded_at timestamp with time zone null=YES
+COL benchmark_index_daily.revision_id bigint null=NO
+COL benchmark_index_daily_history.close numeric null=NO
+COL benchmark_index_daily_history.date date null=NO
+COL benchmark_index_daily_history.index_code character varying null=NO
+COL benchmark_index_daily_history.operation character varying null=NO
+COL benchmark_index_daily_history.provenance character varying null=NO
+COL benchmark_index_daily_history.recorded_at timestamp with time zone null=YES
+COL benchmark_index_daily_history.revision_id bigint null=NO
+COL benchmark_index_daily_history.superseded_at timestamp with time zone null=NO
+COL benchmark_index_daily_history.superseded_revision bigint null=NO
+COL bse_legacy_ohlcv_daily.adj_close numeric null=YES
+COL bse_legacy_ohlcv_daily.adj_factor numeric null=NO
+COL bse_legacy_ohlcv_daily.close numeric null=NO
+COL bse_legacy_ohlcv_daily.date date null=NO
+COL bse_legacy_ohlcv_daily.high numeric null=NO
+COL bse_legacy_ohlcv_daily.low numeric null=NO
+COL bse_legacy_ohlcv_daily.open numeric null=NO
+COL bse_legacy_ohlcv_daily.prev_close numeric null=YES
+COL bse_legacy_ohlcv_daily.security_id bigint null=NO
+COL bse_legacy_ohlcv_daily.turnover_value numeric null=YES
+COL bse_legacy_ohlcv_daily.volume bigint null=NO
+COL bse_scrip_junction.isin character varying null=NO
+COL bse_scrip_junction.name character varying null=NO
+COL bse_scrip_junction.observed_on date null=NO
+COL bse_scrip_junction.sc_code character varying null=NO
+COL corporate_action_inference_log.created_at timestamp with time zone null=YES
+COL corporate_action_inference_log.flagged boolean null=NO
+COL corporate_action_inference_log.id bigint null=NO
+COL corporate_action_inference_log.inferred_factor numeric null=NO
+COL corporate_action_inference_log.prev_close_reported numeric null=NO
+COL corporate_action_inference_log.prior_session_close numeric null=NO
+COL corporate_action_inference_log.security_id bigint null=NO
+COL corporate_action_inference_log.session_date date null=NO
+COL corporate_actions.ex_date date null=NO
+COL corporate_actions.id bigint null=NO
+COL corporate_actions.provenance character varying null=NO
+COL corporate_actions.ratio numeric null=YES
+COL corporate_actions.raw jsonb null=YES
+COL corporate_actions.recorded_at timestamp with time zone null=YES
+COL corporate_actions.revision_id bigint null=NO
+COL corporate_actions.security_id bigint null=NO
+COL corporate_actions.type character varying null=NO
+COL corporate_actions_history.ex_date date null=NO
+COL corporate_actions_history.id bigint null=NO
+COL corporate_actions_history.operation character varying null=NO
+COL corporate_actions_history.provenance character varying null=NO
+COL corporate_actions_history.ratio numeric null=YES
+COL corporate_actions_history.raw jsonb null=YES
+COL corporate_actions_history.recorded_at timestamp with time zone null=YES
+COL corporate_actions_history.revision_id bigint null=NO
+COL corporate_actions_history.security_id bigint null=NO
+COL corporate_actions_history.superseded_at timestamp with time zone null=NO
+COL corporate_actions_history.superseded_revision bigint null=NO
+COL corporate_actions_history.type character varying null=NO
+COL corporate_actions_snapshot_20260810.ex_date date null=YES
+COL corporate_actions_snapshot_20260810.id bigint null=YES
+COL corporate_actions_snapshot_20260810.ratio numeric null=YES
+COL corporate_actions_snapshot_20260810.raw jsonb null=YES
+COL corporate_actions_snapshot_20260810.security_id bigint null=YES
+COL corporate_actions_snapshot_20260810.type character varying null=YES
+COL data_manifests.body jsonb null=NO
+COL data_manifests.created_at timestamp with time zone null=NO
+COL data_manifests.data_version character varying null=NO
+COL forward_returns.benchmark_return numeric null=YES
+COL forward_returns.computed_at timestamp with time zone null=YES
+COL forward_returns.excess_return numeric null=YES
+COL forward_returns.forward_mae numeric null=NO
+COL forward_returns.forward_max_drawdown numeric null=NO
+COL forward_returns.forward_mfe numeric null=NO
+COL forward_returns.forward_return numeric null=NO
+COL forward_returns.forward_volatility numeric null=NO
+COL forward_returns.horizon_days integer null=NO
+COL forward_returns.run_id bigint null=NO
+COL forward_returns.security_id bigint null=NO
+COL historical_universe.as_of_date date null=NO
+COL historical_universe.eligible boolean null=NO
+COL historical_universe.provenance character varying null=NO
+COL historical_universe.reason text null=YES
+COL historical_universe.recorded_at timestamp with time zone null=YES
+COL historical_universe.revision_id bigint null=NO
+COL historical_universe.security_id bigint null=NO
+COL historical_universe_history.as_of_date date null=NO
+COL historical_universe_history.eligible boolean null=NO
+COL historical_universe_history.operation character varying null=NO
+COL historical_universe_history.provenance character varying null=NO
+COL historical_universe_history.reason text null=YES
+COL historical_universe_history.recorded_at timestamp with time zone null=YES
+COL historical_universe_history.revision_id bigint null=NO
+COL historical_universe_history.security_id bigint null=NO
+COL historical_universe_history.superseded_at timestamp with time zone null=NO
+COL historical_universe_history.superseded_revision bigint null=NO
+COL legacy_ohlcv_daily.adj_close numeric null=YES
+COL legacy_ohlcv_daily.adj_factor numeric null=NO
+COL legacy_ohlcv_daily.close numeric null=NO
+COL legacy_ohlcv_daily.date date null=NO
+COL legacy_ohlcv_daily.high numeric null=NO
+COL legacy_ohlcv_daily.low numeric null=NO
+COL legacy_ohlcv_daily.open numeric null=NO
+COL legacy_ohlcv_daily.prev_close numeric null=YES
+COL legacy_ohlcv_daily.security_id bigint null=NO
+COL legacy_ohlcv_daily.turnover_value numeric null=YES
+COL legacy_ohlcv_daily.volume bigint null=NO
+COL ohlcv_adj_snapshot_20260810.adj_close numeric null=YES
+COL ohlcv_adj_snapshot_20260810.adj_factor numeric null=YES
+COL ohlcv_adj_snapshot_20260810.date date null=YES
+COL ohlcv_adj_snapshot_20260810.security_id bigint null=YES
+COL ohlcv_daily.adj_close numeric null=YES
+COL ohlcv_daily.adj_factor numeric null=NO
+COL ohlcv_daily.close numeric null=NO
+COL ohlcv_daily.date date null=NO
+COL ohlcv_daily.high numeric null=NO
+COL ohlcv_daily.low numeric null=NO
+COL ohlcv_daily.open numeric null=NO
+COL ohlcv_daily.prev_close numeric null=YES
+COL ohlcv_daily.provenance character varying null=NO
+COL ohlcv_daily.recorded_at timestamp with time zone null=YES
+COL ohlcv_daily.revision_id bigint null=NO
+COL ohlcv_daily.security_id bigint null=NO
+COL ohlcv_daily.turnover_value numeric null=YES
+COL ohlcv_daily.volume bigint null=NO
+COL ohlcv_daily_history.adj_close numeric null=YES
+COL ohlcv_daily_history.adj_factor numeric null=NO
+COL ohlcv_daily_history.close numeric null=NO
+COL ohlcv_daily_history.date date null=NO
+COL ohlcv_daily_history.high numeric null=NO
+COL ohlcv_daily_history.low numeric null=NO
+COL ohlcv_daily_history.open numeric null=NO
+COL ohlcv_daily_history.operation character varying null=NO
+COL ohlcv_daily_history.prev_close numeric null=YES
+COL ohlcv_daily_history.provenance character varying null=NO
+COL ohlcv_daily_history.recorded_at timestamp with time zone null=YES
+COL ohlcv_daily_history.revision_id bigint null=NO
+COL ohlcv_daily_history.security_id bigint null=NO
+COL ohlcv_daily_history.superseded_at timestamp with time zone null=NO
+COL ohlcv_daily_history.superseded_revision bigint null=NO
+COL ohlcv_daily_history.turnover_value numeric null=YES
+COL ohlcv_daily_history.volume bigint null=NO
+COL rule_results.contribution numeric null=NO
+COL rule_results.engine_id character varying null=NO
+COL rule_results.explanation text null=NO
+COL rule_results.operator character varying null=NO
+COL rule_results.passed boolean null=NO
+COL rule_results.raw_value numeric null=YES
+COL rule_results.rule_id character varying null=NO
+COL rule_results.run_id bigint null=NO
+COL rule_results.security_id bigint null=NO
+COL rule_results.threshold numeric null=YES
+COL rule_results.weight numeric null=NO
+COL screening_results.buy_setup_score numeric null=NO
+COL screening_results.hard_filters_passed boolean null=NO
+COL screening_results.momentum_score numeric null=NO
+COL screening_results.rank integer null=YES
+COL screening_results.run_id bigint null=NO
+COL screening_results.security_id bigint null=NO
+COL screening_results_snapshot_20260810.buy_setup_score numeric null=YES
+COL screening_results_snapshot_20260810.hard_filters_passed boolean null=YES
+COL screening_results_snapshot_20260810.momentum_score numeric null=YES
+COL screening_results_snapshot_20260810.rank integer null=YES
+COL screening_results_snapshot_20260810.run_id bigint null=YES
+COL screening_results_snapshot_20260810.security_id bigint null=YES
+COL screening_results_snapshot_run12_20260810.buy_setup_score numeric null=YES
+COL screening_results_snapshot_run12_20260810.hard_filters_passed boolean null=YES
+COL screening_results_snapshot_run12_20260810.momentum_score numeric null=YES
+COL screening_results_snapshot_run12_20260810.rank integer null=YES
+COL screening_results_snapshot_run12_20260810.run_id bigint null=YES
+COL screening_results_snapshot_run12_20260810.security_id bigint null=YES
+COL screening_runs.config_hash character varying null=NO
+COL screening_runs.data_version character varying null=NO
+COL screening_runs.error text null=YES
+COL screening_runs.finished_at timestamp with time zone null=YES
+COL screening_runs.id bigint null=NO
+COL screening_runs.run_date date null=NO
+COL screening_runs.started_at timestamp with time zone null=YES
+COL screening_runs.stats jsonb null=YES
+COL screening_runs.status character varying null=NO
+COL screening_runs.strategy_id bigint null=NO
+COL screening_runs.trigger character varying null=NO
+COL screening_runs_snapshot_run12_20260810.config_hash character varying null=YES
+COL screening_runs_snapshot_run12_20260810.data_version character varying null=YES
+COL screening_runs_snapshot_run12_20260810.error text null=YES
+COL screening_runs_snapshot_run12_20260810.finished_at timestamp with time zone null=YES
+COL screening_runs_snapshot_run12_20260810.id bigint null=YES
+COL screening_runs_snapshot_run12_20260810.run_date date null=YES
+COL screening_runs_snapshot_run12_20260810.started_at timestamp with time zone null=YES
+COL screening_runs_snapshot_run12_20260810.stats jsonb null=YES
+COL screening_runs_snapshot_run12_20260810.status character varying null=YES
+COL screening_runs_snapshot_run12_20260810.strategy_id bigint null=YES
+COL screening_runs_snapshot_run12_20260810.trigger character varying null=YES
+COL securities.created_at timestamp with time zone null=NO
+COL securities.delisting_date date null=YES
+COL securities.exchange character varying null=NO
+COL securities.id bigint null=NO
+COL securities.industry character varying null=YES
+COL securities.is_active boolean null=NO
+COL securities.isin character varying null=YES
+COL securities.last_trade_date date null=YES
+COL securities.listing_date date null=YES
+COL securities.name character varying null=NO
+COL securities.provenance character varying null=NO
+COL securities.recorded_at timestamp with time zone null=YES
+COL securities.revision_id bigint null=NO
+COL securities.sector character varying null=YES
+COL securities.symbol character varying null=NO
+COL securities.tenant_id bigint null=YES
+COL securities.termination_reason text null=YES
+COL securities.updated_at timestamp with time zone null=NO
+COL securities_history.created_at timestamp with time zone null=NO
+COL securities_history.delisting_date date null=YES
+COL securities_history.exchange character varying null=NO
+COL securities_history.id bigint null=NO
+COL securities_history.industry character varying null=YES
+COL securities_history.is_active boolean null=NO
+COL securities_history.isin character varying null=YES
+COL securities_history.last_trade_date date null=YES
+COL securities_history.listing_date date null=YES
+COL securities_history.name character varying null=NO
+COL securities_history.operation character varying null=NO
+COL securities_history.provenance character varying null=NO
+COL securities_history.recorded_at timestamp with time zone null=YES
+COL securities_history.revision_id bigint null=NO
+COL securities_history.sector character varying null=YES
+COL securities_history.superseded_at timestamp with time zone null=NO
+COL securities_history.superseded_revision bigint null=NO
+COL securities_history.symbol character varying null=NO
+COL securities_history.tenant_id bigint null=YES
+COL securities_history.termination_reason text null=YES
+COL securities_history.updated_at timestamp with time zone null=NO
+COL strategies.config jsonb null=NO
+COL strategies.config_hash character varying null=NO
+COL strategies.created_at timestamp with time zone null=NO
+COL strategies.family_id bigint null=YES
+COL strategies.id bigint null=NO
+COL strategies.is_active boolean null=NO
+COL strategies.kind character varying null=NO
+COL strategies.name character varying null=NO
+COL strategies.parent_config_hash character varying null=YES
+COL strategies.version integer null=NO
+COL strategy_evaluations.completed_at timestamp with time zone null=YES
+COL strategy_evaluations.config_hash character varying null=NO
+COL strategy_evaluations.created_at timestamp with time zone null=NO
+COL strategy_evaluations.data_version character varying null=NO
+COL strategy_evaluations.error text null=YES
+COL strategy_evaluations.family_id bigint null=NO
+COL strategy_evaluations.id bigint null=NO
+COL strategy_evaluations.progress_done integer null=NO
+COL strategy_evaluations.progress_total integer null=NO
+COL strategy_evaluations.result jsonb null=YES
+COL strategy_evaluations.result_class character varying null=NO
+COL strategy_evaluations.status character varying null=NO
+COL strategy_evaluations.tenant_id bigint null=YES
+COL strategy_evaluations.window_end date null=NO
+COL strategy_evaluations.window_start date null=NO
+COL strategy_families.created_at timestamp with time zone null=NO
+COL strategy_families.hypothesis text null=NO
+COL strategy_families.hypothesis_key text null=NO
+COL strategy_families.id bigint null=NO
+COL strategy_families.root_config_hash character varying null=NO
+COL strategy_families.tenant_id bigint null=YES
+COL survivorship_gap_event.created_at timestamp with time zone null=YES
+COL survivorship_gap_event.detected_on_date date null=NO
+COL survivorship_gap_event.gap_sessions integer null=NO
+COL survivorship_gap_event.id bigint null=NO
+COL survivorship_gap_event.last_seen_date date null=NO
+COL survivorship_gap_event.security_id bigint null=NO
+COL universe_membership.eligible boolean null=NO
+COL universe_membership.reason text null=YES
+COL universe_membership.run_id bigint null=NO
+COL universe_membership.security_id bigint null=NO
+COL user_documents.body jsonb null=NO
+COL user_documents.key character varying null=NO
+COL user_documents.kind character varying null=NO
+COL user_documents.revision bigint null=NO
+COL user_documents.schema_version integer null=NO
+COL user_documents.tenant_id bigint null=YES
+COL user_documents.updated_at timestamp with time zone null=NO
+COL v_adjfix_diff.new_pass boolean null=YES
+COL v_adjfix_diff.new_rank integer null=YES
+COL v_adjfix_diff.new_score numeric null=YES
+COL v_adjfix_diff.old_pass boolean null=YES
+COL v_adjfix_diff.old_rank integer null=YES
+COL v_adjfix_diff.old_score numeric null=YES
+COL v_adjfix_diff.run_date date null=YES
+COL v_adjfix_diff.security_id bigint null=YES
+COL v_adjfix_pairs.new_run bigint null=YES
+COL v_adjfix_pairs.old_run bigint null=YES
+COL v_adjfix_pairs.run_date date null=YES
+COL v_live_diff.new_pass boolean null=YES
+COL v_live_diff.new_rank integer null=YES
+COL v_live_diff.new_score numeric null=YES
+COL v_live_diff.old_pass boolean null=YES
+COL v_live_diff.old_rank integer null=YES
+COL v_live_diff.old_score numeric null=YES
+COL v_live_diff.security_id bigint null=YES
+COL watchlist_items.added_at timestamp with time zone null=NO
+COL watchlist_items.id bigint null=NO
+COL watchlist_items.security_id bigint null=NO
+CON alembic_version p PRIMARY KEY (version_num)
+CON alerts c CHECK ((((status)::text = 'active'::text) = (triggered_on IS NULL)))
+CON alerts c CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('triggered'::character varying)::text])))
+CON alerts f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON alerts p PRIMARY KEY (id)
+CON benchmark_index_daily c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+CON benchmark_index_daily p PRIMARY KEY (index_code, date)
+CON bse_legacy_ohlcv_daily f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON bse_legacy_ohlcv_daily p PRIMARY KEY (security_id, date)
+CON bse_scrip_junction p PRIMARY KEY (sc_code)
+CON corporate_action_inference_log f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON corporate_action_inference_log p PRIMARY KEY (id)
+CON corporate_action_inference_log u UNIQUE (security_id, session_date)
+CON corporate_actions c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+CON corporate_actions f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON corporate_actions p PRIMARY KEY (id)
+CON corporate_actions u UNIQUE (security_id, ex_date, type)
+CON data_manifests p PRIMARY KEY (data_version)
+CON forward_returns f FOREIGN KEY (run_id) REFERENCES screening_runs(id)
+CON forward_returns f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON forward_returns p PRIMARY KEY (run_id, security_id, horizon_days)
+CON historical_universe c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+CON historical_universe p PRIMARY KEY (as_of_date, security_id)
+CON legacy_ohlcv_daily f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON legacy_ohlcv_daily p PRIMARY KEY (security_id, date)
+CON ohlcv_daily c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+CON ohlcv_daily f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON ohlcv_daily p PRIMARY KEY (security_id, date)
+CON rule_results f FOREIGN KEY (run_id) REFERENCES screening_runs(id)
+CON rule_results f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON rule_results p PRIMARY KEY (run_id, security_id, rule_id)
+CON screening_results f FOREIGN KEY (run_id) REFERENCES screening_runs(id)
+CON screening_results f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON screening_results p PRIMARY KEY (run_id, security_id)
+CON screening_runs c CHECK (((status)::text = ANY (ARRAY[('PENDING'::character varying)::text, ('RUNNING'::character varying)::text, ('COMPLETED'::character varying)::text, ('FAILED'::character varying)::text])))
+CON screening_runs f FOREIGN KEY (strategy_id) REFERENCES strategies(id)
+CON screening_runs p PRIMARY KEY (id)
+CON screening_runs u UNIQUE (strategy_id, run_date, data_version, config_hash)
+CON securities c CHECK (((provenance)::text = ANY (ARRAY[('recorded'::character varying)::text, ('published'::character varying)::text, ('reconstructed'::character varying)::text])))
+CON securities p PRIMARY KEY (id)
+CON strategies c CHECK ((((kind)::text = 'user'::text) = (family_id IS NOT NULL)))
+CON strategies f FOREIGN KEY (family_id) REFERENCES strategy_families(id)
+CON strategies p PRIMARY KEY (id)
+CON strategies u UNIQUE (name, version)
+CON strategy_evaluations c CHECK (((result_class)::text = ANY (ARRAY[('screening'::character varying)::text, ('in_sample'::character varying)::text, ('out_of_sample'::character varying)::text])))
+CON strategy_evaluations c CHECK (((status)::text = ANY (ARRAY[('queued'::character varying)::text, ('running'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])))
+CON strategy_evaluations f FOREIGN KEY (data_version) REFERENCES data_manifests(data_version)
+CON strategy_evaluations f FOREIGN KEY (family_id) REFERENCES strategy_families(id)
+CON strategy_evaluations p PRIMARY KEY (id)
+CON strategy_families p PRIMARY KEY (id)
+CON strategy_families u UNIQUE (hypothesis_key)
+CON survivorship_gap_event f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON survivorship_gap_event p PRIMARY KEY (id)
+CON survivorship_gap_event u UNIQUE (security_id, last_seen_date, detected_on_date)
+CON universe_membership f FOREIGN KEY (run_id) REFERENCES screening_runs(id)
+CON universe_membership f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON universe_membership p PRIMARY KEY (run_id, security_id)
+CON user_documents c CHECK ((revision >= 1))
+CON user_documents p PRIMARY KEY (kind, key)
+CON watchlist_items f FOREIGN KEY (security_id) REFERENCES securities(id)
+CON watchlist_items p PRIMARY KEY (id)
+CON watchlist_items u UNIQUE (security_id)
+IDX alembic_version CREATE UNIQUE INDEX USING btree (version_num)
+IDX alerts CREATE INDEX USING btree (status)
+IDX alerts CREATE UNIQUE INDEX USING btree (id)
+IDX benchmark_index_daily CREATE INDEX USING btree (date)
+IDX benchmark_index_daily CREATE INDEX USING btree (revision_id)
+IDX benchmark_index_daily CREATE UNIQUE INDEX USING btree (index_code, date)
+IDX benchmark_index_daily_history CREATE INDEX USING btree (superseded_revision)
+IDX bse_legacy_ohlcv_daily CREATE UNIQUE INDEX USING btree (security_id, date)
+IDX bse_scrip_junction CREATE INDEX USING btree (isin)
+IDX bse_scrip_junction CREATE UNIQUE INDEX USING btree (sc_code)
+IDX corporate_action_inference_log CREATE UNIQUE INDEX USING btree (id)
+IDX corporate_action_inference_log CREATE UNIQUE INDEX USING btree (security_id, session_date)
+IDX corporate_actions CREATE INDEX USING btree (revision_id)
+IDX corporate_actions CREATE INDEX USING btree (security_id)
+IDX corporate_actions CREATE UNIQUE INDEX USING btree (id)
+IDX corporate_actions CREATE UNIQUE INDEX USING btree (security_id, ex_date, type)
+IDX corporate_actions_history CREATE INDEX USING btree (superseded_revision)
+IDX data_manifests CREATE UNIQUE INDEX USING btree (data_version)
+IDX forward_returns CREATE INDEX USING btree (security_id)
+IDX forward_returns CREATE UNIQUE INDEX USING btree (run_id, security_id, horizon_days)
+IDX historical_universe CREATE INDEX USING btree (revision_id)
+IDX historical_universe CREATE UNIQUE INDEX USING btree (as_of_date, security_id)
+IDX historical_universe_history CREATE INDEX USING btree (superseded_revision)
+IDX legacy_ohlcv_daily CREATE UNIQUE INDEX USING btree (security_id, date)
+IDX ohlcv_adj_snapshot_20260810 CREATE UNIQUE INDEX USING btree (security_id, date)
+IDX ohlcv_daily CREATE INDEX USING btree (date)
+IDX ohlcv_daily CREATE INDEX USING btree (revision_id)
+IDX ohlcv_daily CREATE UNIQUE INDEX USING btree (security_id, date)
+IDX ohlcv_daily_history CREATE INDEX USING btree (superseded_revision)
+IDX rule_results CREATE UNIQUE INDEX USING btree (run_id, security_id, rule_id)
+IDX screening_results CREATE INDEX USING btree (rank)
+IDX screening_results CREATE INDEX USING btree (security_id)
+IDX screening_results CREATE UNIQUE INDEX USING btree (run_id, security_id)
+IDX screening_runs CREATE INDEX USING btree (status)
+IDX screening_runs CREATE UNIQUE INDEX USING btree (id)
+IDX screening_runs CREATE UNIQUE INDEX USING btree (strategy_id, run_date, data_version, config_hash)
+IDX securities CREATE INDEX USING btree (isin)
+IDX securities CREATE INDEX USING btree (revision_id)
+IDX securities CREATE INDEX USING gin (symbol gin_trgm_ops)
+IDX securities CREATE INDEX USING gin (upper((name)::text) gin_trgm_ops)
+IDX securities CREATE UNIQUE INDEX USING btree (id)
+IDX securities CREATE UNIQUE INDEX USING btree (symbol)
+IDX securities_history CREATE INDEX USING btree (superseded_revision)
+IDX strategies CREATE INDEX USING btree (family_id)
+IDX strategies CREATE INDEX USING btree (name)
+IDX strategies CREATE UNIQUE INDEX USING btree (config_hash) WHERE ((kind)::text = 'user'::text)
+IDX strategies CREATE UNIQUE INDEX USING btree (id)
+IDX strategies CREATE UNIQUE INDEX USING btree (name, version)
+IDX strategy_evaluations CREATE INDEX USING btree (family_id)
+IDX strategy_evaluations CREATE UNIQUE INDEX USING btree (family_id, window_start, window_end) WHERE ((result_class)::text = 'out_of_sample'::text)
+IDX strategy_evaluations CREATE UNIQUE INDEX USING btree (id)
+IDX strategy_families CREATE UNIQUE INDEX USING btree (hypothesis_key)
+IDX strategy_families CREATE UNIQUE INDEX USING btree (id)
+IDX survivorship_gap_event CREATE UNIQUE INDEX USING btree (id)
+IDX survivorship_gap_event CREATE UNIQUE INDEX USING btree (security_id, last_seen_date, detected_on_date)
+IDX universe_membership CREATE UNIQUE INDEX USING btree (run_id, security_id)
+IDX user_documents CREATE UNIQUE INDEX USING btree (kind, key)
+IDX watchlist_items CREATE UNIQUE INDEX USING btree (id)
+IDX watchlist_items CREATE UNIQUE INDEX USING btree (security_id)
+TRG benchmark_index_daily benchmark_index_daily_versioned DELETE
+TRG benchmark_index_daily benchmark_index_daily_versioned INSERT
+TRG benchmark_index_daily benchmark_index_daily_versioned UPDATE
+TRG corporate_actions corporate_actions_versioned DELETE
+TRG corporate_actions corporate_actions_versioned INSERT
+TRG corporate_actions corporate_actions_versioned UPDATE
+TRG historical_universe historical_universe_no_update_delete DELETE
+TRG historical_universe historical_universe_no_update_delete UPDATE
+TRG historical_universe historical_universe_versioned DELETE
+TRG historical_universe historical_universe_versioned INSERT
+TRG historical_universe historical_universe_versioned UPDATE
+TRG ohlcv_daily ohlcv_daily_versioned DELETE
+TRG ohlcv_daily ohlcv_daily_versioned INSERT
+TRG ohlcv_daily ohlcv_daily_versioned UPDATE
+TRG securities securities_versioned DELETE
+TRG securities securities_versioned INSERT
+TRG securities securities_versioned UPDATE
+TRG strategy_evaluations strategy_evaluations_guard DELETE
+TRG strategy_evaluations strategy_evaluations_guard UPDATE
+TRG strategy_families strategy_families_append_only DELETE
+TRG strategy_families strategy_families_append_only UPDATE

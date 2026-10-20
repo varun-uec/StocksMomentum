@@ -1,0 +1,530 @@
+{
+  "as_of": "2026-10-19",
+  "run_id": 149,
+  "adjustment_factors": {
+    "securities_with_priced_actions": 703,
+    "bars_checked": 893479,
+    "factor_mismatches": 0,
+    "mismatch_examples": [],
+    "non_unit_factor_without_later_action": 0,
+    "non_split_bonus_actions_with_ratio": 0
+  },
+  "indicators": {
+    "RELIANCE": {
+      "bars": 277,
+      "first_bar": "2025-09-03",
+      "reference": {
+        "sma50": "1258.0480",
+        "sma150": "1310.7953",
+        "sma200": "1344.5360",
+        "high_52w": "1611.8000",
+        "low_52w": "1152.2000",
+        "adr_pct": "1.8986",
+        "avg_volume50": "12070065.8600",
+        "rel_volume_spec": "1.2902",
+        "rel_volume_impl_49d": "1.2979",
+        "sma200_slope_pct": "-2.7700",
+        "pct_above_low_52w": "4.3222",
+        "pct_below_high_52w": "25.4250"
+      },
+      "series_compare": {
+        "rsi14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "atr14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "adx14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_line": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_signal": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_histogram": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        }
+      },
+      "rule_value_compare": {
+        "tt_above_52w_low": {
+          "ref": "4.3222",
+          "api": "4.3222",
+          "match": true
+        },
+        "tt_near_52w_high": {
+          "ref": "25.4250",
+          "api": "25.4250",
+          "match": true
+        },
+        "tt_sma200_uptrend": {
+          "ref": "-2.7700",
+          "api": "-2.7700",
+          "match": true
+        },
+        "tt_close_above_sma50": {
+          "ref": "1202.0000",
+          "api": "1202.0000",
+          "match": true
+        },
+        "tt_sma150_above_sma200": {
+          "ref": "1310.7953",
+          "api": "1310.7953",
+          "match": true
+        },
+        "risk_atr": {
+          "ref": "1.8986",
+          "api": "1.8986",
+          "match": true
+        }
+      },
+      "api_sma_stack_text": "SMA50 1258.0480 <= SMA150 1310.7953 and SMA200 1344.5360 (bullish stack).",
+      "adj_close_vs_close_x_factor_max_abs": 0.0
+    },
+    "TCS": {
+      "bars": 277,
+      "first_bar": "2025-09-03",
+      "reference": {
+        "sma50": "2243.3820",
+        "sma150": "2292.2720",
+        "sma200": "2461.7740",
+        "high_52w": "3350.0000",
+        "low_52w": "1976.8000",
+        "adr_pct": "2.8952",
+        "avg_volume50": "3922810.2000",
+        "rel_volume_spec": "2.2118",
+        "rel_volume_impl_49d": "2.2679",
+        "sma200_slope_pct": "-4.4947",
+        "pct_above_low_52w": "24.4891",
+        "pct_below_high_52w": "26.5403"
+      },
+      "series_compare": {
+        "rsi14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "atr14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "adx14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_line": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_signal": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_histogram": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        }
+      },
+      "rule_value_compare": {
+        "tt_above_52w_low": {
+          "ref": "24.4891",
+          "api": "24.4891",
+          "match": true
+        },
+        "tt_near_52w_high": {
+          "ref": "26.5403",
+          "api": "26.5403",
+          "match": true
+        },
+        "tt_sma200_uptrend": {
+          "ref": "-4.4947",
+          "api": "-4.4947",
+          "match": true
+        },
+        "tt_close_above_sma50": {
+          "ref": "2460.9000",
+          "api": "2460.9000",
+          "match": true
+        },
+        "tt_sma150_above_sma200": {
+          "ref": "2292.2720",
+          "api": "2292.2720",
+          "match": true
+        },
+        "risk_atr": {
+          "ref": "2.8952",
+          "api": "2.8952",
+          "match": true
+        }
+      },
+      "api_sma_stack_text": "SMA50 2243.3820 <= SMA150 2292.2720 and SMA200 2461.7740 (bullish stack).",
+      "adj_close_vs_close_x_factor_max_abs": 0.0
+    },
+    "MCX": {
+      "bars": 277,
+      "first_bar": "2025-09-03",
+      "reference": {
+        "sma50": "3207.6860",
+        "sma150": "2950.7087",
+        "sma200": "2807.8345",
+        "high_52w": "3481.4000",
+        "low_52w": "1635.7000",
+        "adr_pct": "3.3089",
+        "avg_volume50": "2236340.3000",
+        "rel_volume_spec": "0.5168",
+        "rel_volume_impl_49d": "0.5118",
+        "sma200_slope_pct": "5.0430",
+        "pct_above_low_52w": "94.6873",
+        "pct_below_high_52w": "8.5282"
+      },
+      "series_compare": {
+        "rsi14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "atr14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "adx14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_line": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_signal": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_histogram": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        }
+      },
+      "rule_value_compare": {
+        "tt_above_52w_low": {
+          "ref": "94.6873",
+          "api": "94.6873",
+          "match": true
+        },
+        "tt_near_52w_high": {
+          "ref": "8.5282",
+          "api": "8.5282",
+          "match": true
+        },
+        "tt_sma200_uptrend": {
+          "ref": "5.0430",
+          "api": "5.0430",
+          "match": true
+        },
+        "tt_close_above_sma50": {
+          "ref": "3184.5000",
+          "api": "3184.5000",
+          "match": true
+        },
+        "tt_sma150_above_sma200": {
+          "ref": "2950.7087",
+          "api": "2950.7087",
+          "match": true
+        },
+        "risk_atr": {
+          "ref": "3.3089",
+          "api": "3.3089",
+          "match": true
+        }
+      },
+      "api_sma_stack_text": "SMA50 3207.6860 > SMA150 2950.7087 and SMA200 2807.8345 (bullish stack).",
+      "adj_close_vs_close_x_factor_max_abs": 4.547473508864641e-13
+    },
+    "GOLDIAM": {
+      "bars": 277,
+      "first_bar": "2025-09-03",
+      "reference": {
+        "sma50": "336.5800",
+        "sma150": "316.1234",
+        "sma200": "302.6486",
+        "high_52w": "398.2000",
+        "low_52w": "198.7500",
+        "adr_pct": "3.6615",
+        "avg_volume50": "720574.8000",
+        "rel_volume_spec": "0.6876",
+        "rel_volume_impl_49d": "0.6833",
+        "sma200_slope_pct": "1.2621",
+        "pct_above_low_52w": "60.9308",
+        "pct_below_high_52w": "19.6760"
+      },
+      "series_compare": {
+        "rsi14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "atr14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "adx14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_line": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_signal": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_histogram": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        }
+      },
+      "rule_value_compare": {
+        "tt_above_52w_low": {
+          "ref": "60.9308",
+          "api": "60.9308",
+          "match": true
+        },
+        "tt_near_52w_high": {
+          "ref": "19.6760",
+          "api": "19.6760",
+          "match": true
+        },
+        "tt_sma200_uptrend": {
+          "ref": "1.2621",
+          "api": "1.2621",
+          "match": true
+        },
+        "tt_close_above_sma50": {
+          "ref": "319.8500",
+          "api": "319.8500",
+          "match": true
+        },
+        "tt_sma150_above_sma200": {
+          "ref": "316.1234",
+          "api": "316.1234",
+          "match": true
+        },
+        "risk_atr": {
+          "ref": "3.6615",
+          "api": "3.6615",
+          "match": true
+        }
+      },
+      "api_sma_stack_text": "SMA50 336.5800 > SMA150 316.1234 and SMA200 302.6486 (bullish stack).",
+      "adj_close_vs_close_x_factor_max_abs": 5.684341886080802e-14
+    },
+    "TRENT": {
+      "bars": 277,
+      "first_bar": "2025-09-03",
+      "reference": {
+        "sma50": "2853.9280",
+        "sma150": "2821.7940",
+        "sma200": "2783.8088",
+        "high_52w": "3399.7000",
+        "low_52w": "2183.6667",
+        "adr_pct": "2.3344",
+        "avg_volume50": "900786.6400",
+        "rel_volume_spec": "0.9034",
+        "rel_volume_impl_49d": "0.9016",
+        "sma200_slope_pct": "0.1258",
+        "pct_above_low_52w": "32.4195",
+        "pct_below_high_52w": "14.9454"
+      },
+      "series_compare": {
+        "rsi14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "atr14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "adx14": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_line": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_signal": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        },
+        "macd_histogram": {
+          "compared": 277,
+          "mismatch": 0,
+          "max_abs_diff": 0.0
+        }
+      },
+      "rule_value_compare": {
+        "tt_above_52w_low": {
+          "ref": "32.4195",
+          "api": "32.4195",
+          "match": true
+        },
+        "tt_near_52w_high": {
+          "ref": "14.9454",
+          "api": "14.9454",
+          "match": true
+        },
+        "tt_sma200_uptrend": {
+          "ref": "0.1258",
+          "api": "0.1258",
+          "match": true
+        },
+        "tt_close_above_sma50": {
+          "ref": "2891.6000",
+          "api": "2891.6000",
+          "match": true
+        },
+        "tt_sma150_above_sma200": {
+          "ref": "2821.7940",
+          "api": "2821.7940",
+          "match": true
+        },
+        "risk_atr": {
+          "ref": "2.3344",
+          "api": "2.3344",
+          "match": true
+        }
+      },
+      "api_sma_stack_text": "SMA50 2853.9280 > SMA150 2821.7940 and SMA200 2783.8088 (bullish stack).",
+      "adj_close_vs_close_x_factor_max_abs": 0.18431490500006475
+    }
+  },
+  "rs_ratings": {
+    "universe_ranked": 3073,
+    "exact_return_ties": 1,
+    "stored_scored": 1338,
+    "mismatches_vs_stored": 0,
+    "mismatch_examples": [],
+    "spec_eligible_universe_size": 1338,
+    "spec_variant_rating_changes": 1253,
+    "spec_variant_rs70_crossings": 39
+  },
+  "period_aggregation": {
+    "RELIANCE": {
+      "1W": {
+        "api_bars": 369,
+        "ref_bars": 369,
+        "mismatches": 0,
+        "examples": []
+      },
+      "1M": {
+        "api_bars": 85,
+        "ref_bars": 85,
+        "mismatches": 0,
+        "examples": []
+      }
+    },
+    "TCS": {
+      "1W": {
+        "api_bars": 369,
+        "ref_bars": 369,
+        "mismatches": 0,
+        "examples": []
+      },
+      "1M": {
+        "api_bars": 85,
+        "ref_bars": 85,
+        "mismatches": 0,
+        "examples": []
+      }
+    },
+    "MCX": {
+      "1W": {
+        "api_bars": 369,
+        "ref_bars": 369,
+        "mismatches": 0,
+        "examples": []
+      },
+      "1M": {
+        "api_bars": 85,
+        "ref_bars": 85,
+        "mismatches": 0,
+        "examples": []
+      }
+    },
+    "GOLDIAM": {
+      "1W": {
+        "api_bars": 369,
+        "ref_bars": 369,
+        "mismatches": 0,
+        "examples": []
+      },
+      "1M": {
+        "api_bars": 85,
+        "ref_bars": 85,
+        "mismatches": 0,
+        "examples": []
+      }
+    },
+    "TRENT": {
+      "1W": {
+        "api_bars": 369,
+        "ref_bars": 369,
+        "mismatches": 0,
+        "examples": []
+      },
+      "1M": {
+        "api_bars": 85,
+        "ref_bars": 85,
+        "mismatches": 0,
+        "examples": []
+      }
+    }
+  },
+  "gates_scores_ranks": {
+    "rule_rows": 32112,
+    "operator_recompute_mismatches": 0,
+    "exact_boundary_rows": {
+      "tt_rs_rating_min": 18
+    },
+    "hard_filter_mismatches": 0,
+    "momentum_score_mismatches_gt_0.0005": 164,
+    "momentum_score_max_abs_diff": "0.0018",
+    "buy_setup_mismatches_gt_0.0005": 275,
+    "qualified": 155,
+    "rank_mismatches": 0,
+    "rank_ties_broken_by_security_id": 0
+  }
+}

@@ -1,0 +1,14 @@
+alembic_version|1|1035580577
+alerts|0|0
+benchmark_index_daily|2907|80616828717
+corporate_actions|26562|395073604309
+data_manifests|2|295431096
+ohlcv_daily|3206035|1389871715350
+ohlcv_daily_history|0|0
+rule_results|5272526|-747576309244
+screening_results|221540|-1261082646630
+screening_runs|138|18818592282
+securities|3463|-65870836668
+strategies|7|9118045815
+universe_membership|445093|-531492566899
+user_documents|1|426778186

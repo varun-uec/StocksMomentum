@@ -1,0 +1,15 @@
+## mutate future (date > 2026-08-07) in the audit copy only
+UPDATE 17510
+DELETE 4349
+INSERT 0 3
+UPDATE 2
+## rerun minervini as of 2026-08-07
+{"run_id":159,"run_date":"2026-08-07","total_evaluated":2301,"total_passed":251,"total_failed":1541,"strategy_name":"minervini_trend_template"}
+run 157: historical:2026-08-07:pit:c64e78a3e82f:1792494349 results=f42d739e5bfb1bab4b089ac1341965e1 rules=e69fe49fcedc7695c39461af558e7869 universe=1a1d9e691314aae853c8f6503793a219
+run 159: historical:2026-08-07:pit:bfb84fefdd30:1792494409 results=f42d739e5bfb1bab4b089ac1341965e1 rules=e69fe49fcedc7695c39461af558e7869 universe=1a1d9e691314aae853c8f6503793a219
+## two strategies, same data, same date: 157 minervini vs 158 benchmark_b_rs_only
+5|25|25
+157|TFCILTD,CUPID,SANSERA,COMSYN,SKYGOLD
+158|ARIHANT,CUPID,MAHASTEEL,SUMEETINDS,SUPREMEINF
+157|1fe19b434a6b|historical:2026-08-07:pit:c64e78a3e82f:1792494349
+158|61639a9c390c|historical:2026-08-07:pit:c64e78a3e82f:1792494371

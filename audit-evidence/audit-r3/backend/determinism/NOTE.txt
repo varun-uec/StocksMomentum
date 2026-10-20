@@ -1,0 +1,1 @@
+The .rules exports (4.3 MB each) were removed after hashing; see hashes.txt and after_fixes_run.log for their SHA-256.

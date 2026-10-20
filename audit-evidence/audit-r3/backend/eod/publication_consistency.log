@@ -1,0 +1,10 @@
+## data changes while a screen runs
+Imported 1 bars for 1 symbols; saved 0 actions and adjusted 0 bars.
+import during screen:
+Imported 1 bars for 1 symbols; saved 0 actions and adjusted 0 bars.
+Screening failed: Market data changed during screening (manifest revision 155505, current revision 155508); no result snapshot was saved. Retry screening to use the corrected data.
+165|FAILED|Market data changed during screening (manifest revision 155505, current revision 155508); no result snapshot was saved. Retry screening to use the corrected data.
+result rows for failed run: 0/0/0
+## retry after the change
+Screening result run 166 for minervini_trend_template using stored data.
+166|COMPLETED|f34d8c5f19d0

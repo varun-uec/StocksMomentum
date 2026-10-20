@@ -1,0 +1,363 @@
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 31%]
+........................................................................ [ 38%]
+........................................................................ [ 46%]
+........................................................................ [ 54%]
+........................................................................ [ 62%]
+........................................................................ [ 70%]
+...................................................FFF..FFF............. [ 77%]
+........................................................................ [ 85%]
+........................................................................ [ 93%]
+.............................................................            [100%]
+=================================== FAILURES ===================================
+______________ test_weekly_indicators_are_computed_on_weekly_bars ______________
+
+    async def test_weekly_indicators_are_computed_on_weekly_bars() -> None:
+        use_case = GetIndicatorSeries(
+            _Securities(),
+            _Strategies(),
+            IndicatorPipelineImpl,
+            _Ohlcv(),
+            _Calendar(),  # type: ignore[arg-type]
+        )
+>       weekly = await use_case.execute("TEST", interval="1W")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_period_bars.py:193: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <momentum25.application.use_cases.stocks.GetIndicatorSeries object at 0x110b31b80>
+symbol = 'TEST', strategy_name = 'minervini_trend_template', interval = '1W'
+as_of = None, config_hash = None
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
+        config_hash: str | None = None,
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*.
+    
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
+        """
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+    
+>       strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_Strategies' object has no attribute 'get_for_workspace'
+
+src/momentum25/application/use_cases/stocks.py:243: AttributeError
+____________ test_price_and_indicator_series_share_one_data_version ____________
+
+    async def test_price_and_indicator_series_share_one_data_version() -> None:
+        prices = await GetSecurityOHLCV(_Securities(), _Ohlcv(), _Calendar()).execute(  # type: ignore[arg-type]
+            "TEST", to=date(2030, 1, 1), interval="1W"
+        )
+>       series = await GetIndicatorSeries(
+            _Securities(),
+            _Strategies(),
+            IndicatorPipelineImpl,
+            _Ohlcv(),
+            _Calendar(),  # type: ignore[arg-type]
+        ).execute("TEST", interval="1W")
+
+tests/unit/test_period_bars.py:210: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <momentum25.application.use_cases.stocks.GetIndicatorSeries object at 0x110b32a50>
+symbol = 'TEST', strategy_name = 'minervini_trend_template', interval = '1W'
+as_of = None, config_hash = None
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
+        config_hash: str | None = None,
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*.
+    
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
+        """
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+    
+>       strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_Strategies' object has no attribute 'get_for_workspace'
+
+src/momentum25/application/use_cases/stocks.py:243: AttributeError
+_____________ test_monthly_indicators_are_computed_on_monthly_bars _____________
+
+    async def test_monthly_indicators_are_computed_on_monthly_bars() -> None:
+>       monthly = await GetIndicatorSeries(
+            _Securities(),
+            _Strategies(),
+            IndicatorPipelineImpl,
+            _Ohlcv(),
+            _Calendar(),  # type: ignore[arg-type]
+        ).execute("TEST", interval="1M")
+
+tests/unit/test_period_bars.py:223: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <momentum25.application.use_cases.stocks.GetIndicatorSeries object at 0x1112e1250>
+symbol = 'TEST', strategy_name = 'minervini_trend_template', interval = '1M'
+as_of = None, config_hash = None
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
+        config_hash: str | None = None,
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*.
+    
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
+        """
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+    
+>       strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_Strategies' object has no attribute 'get_for_workspace'
+
+src/momentum25/application/use_cases/stocks.py:243: AttributeError
+______________ test_replayed_indicators_never_use_a_later_bar[1D] ______________
+
+interval = '1D'
+
+    @pytest.mark.parametrize("interval", ["1D", "1W", "1M"])
+    async def test_replayed_indicators_never_use_a_later_bar(interval: Interval) -> None:
+        """A value is the same whether replay stops on its date or later: no look-ahead."""
+        use_case = GetIndicatorSeries(
+            _Securities(),
+            _Strategies(),
+            IndicatorPipelineImpl,
+            _Ohlcv(),
+            _Calendar(),  # type: ignore[arg-type]
+        )
+        early, late = date(2025, 9, 30), date(2025, 12, 31)
+>       a = await use_case.execute("TEST", interval=interval, as_of=early)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_period_bars.py:296: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <momentum25.application.use_cases.stocks.GetIndicatorSeries object at 0x1112e2870>
+symbol = 'TEST', strategy_name = 'minervini_trend_template', interval = '1D'
+as_of = datetime.date(2025, 9, 30), config_hash = None
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
+        config_hash: str | None = None,
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*.
+    
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
+        """
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+    
+>       strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_Strategies' object has no attribute 'get_for_workspace'
+
+src/momentum25/application/use_cases/stocks.py:243: AttributeError
+______________ test_replayed_indicators_never_use_a_later_bar[1W] ______________
+
+interval = '1W'
+
+    @pytest.mark.parametrize("interval", ["1D", "1W", "1M"])
+    async def test_replayed_indicators_never_use_a_later_bar(interval: Interval) -> None:
+        """A value is the same whether replay stops on its date or later: no look-ahead."""
+        use_case = GetIndicatorSeries(
+            _Securities(),
+            _Strategies(),
+            IndicatorPipelineImpl,
+            _Ohlcv(),
+            _Calendar(),  # type: ignore[arg-type]
+        )
+        early, late = date(2025, 9, 30), date(2025, 12, 31)
+>       a = await use_case.execute("TEST", interval=interval, as_of=early)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_period_bars.py:296: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <momentum25.application.use_cases.stocks.GetIndicatorSeries object at 0x1112e3bc0>
+symbol = 'TEST', strategy_name = 'minervini_trend_template', interval = '1W'
+as_of = datetime.date(2025, 9, 30), config_hash = None
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
+        config_hash: str | None = None,
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*.
+    
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
+        """
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+    
+>       strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_Strategies' object has no attribute 'get_for_workspace'
+
+src/momentum25/application/use_cases/stocks.py:243: AttributeError
+______________ test_replayed_indicators_never_use_a_later_bar[1M] ______________
+
+interval = '1M'
+
+    @pytest.mark.parametrize("interval", ["1D", "1W", "1M"])
+    async def test_replayed_indicators_never_use_a_later_bar(interval: Interval) -> None:
+        """A value is the same whether replay stops on its date or later: no look-ahead."""
+        use_case = GetIndicatorSeries(
+            _Securities(),
+            _Strategies(),
+            IndicatorPipelineImpl,
+            _Ohlcv(),
+            _Calendar(),  # type: ignore[arg-type]
+        )
+        early, late = date(2025, 9, 30), date(2025, 12, 31)
+>       a = await use_case.execute("TEST", interval=interval, as_of=early)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_period_bars.py:296: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <momentum25.application.use_cases.stocks.GetIndicatorSeries object at 0x1112e2690>
+symbol = 'TEST', strategy_name = 'minervini_trend_template', interval = '1M'
+as_of = datetime.date(2025, 9, 30), config_hash = None
+
+    async def execute(
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
+        config_hash: str | None = None,
+    ) -> SecurityIndicatorSeriesDTO:
+        """Return the indicator series for *symbol* under *strategy_name*.
+    
+        Daily series keep the snapshot's own bar window, so the last value always
+        equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
+        """
+        security = await self._securities.get_by_symbol(symbol)
+        if security is None or security.id is None:
+            raise NotFoundError(f"Security not found: {symbol}")
+    
+>       strategy = await self._strategies.get_for_workspace(strategy_name, config_hash)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_Strategies' object has no attribute 'get_for_workspace'
+
+src/momentum25/application/use_cases/stocks.py:243: AttributeError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/integration/test_alerts_api.py::test_unsupported_drawing_rules_are_rejected[overrides3]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x110914d50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_alerts_api.py::test_the_alert_reads_the_charts_own_values[1M]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x110915450>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_alerts_api.py::test_the_alert_reads_the_charts_own_values[1M]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x110914150>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_alerts_api.py::test_rearm_rescales_only_price_scaled_studies[macd_line]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x110916c50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_api_explainability.py::test_latest_run_on_or_before_a_replay_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x110b28050>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_api_explainability.py::test_latest_run_on_or_before_a_replay_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x1109dc150>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_latest_completed_excludes_historical.py::test_score_history_returns_one_live_point_per_run_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/momentum25/infrastructure/persistence/repositories/screening_run.py:565: SADeprecationWarning: Passing expression to ``distinct`` to generate a DISTINCT ON clause is deprecated. Use instead the ``postgresql.distinct_on`` function as an extension.
+    .distinct(ScreeningRunModel.run_date)
+
+tests/integration/test_studio_api.py::test_sections_outside_the_registry_cannot_change
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x1109dcf50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_studio_api.py::test_sections_outside_the_registry_cannot_change
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10b3f4b50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/unit/test_host_origin_guard.py::test_unlisted_host_is_misdirected[PUT]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x110bbb750>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/unit/test_host_origin_guard.py::test_unlisted_host_is_misdirected[PUT]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10b3d5250>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_period_bars.py::test_weekly_indicators_are_computed_on_weekly_bars
+FAILED tests/unit/test_period_bars.py::test_price_and_indicator_series_share_one_data_version
+FAILED tests/unit/test_period_bars.py::test_monthly_indicators_are_computed_on_monthly_bars
+FAILED tests/unit/test_period_bars.py::test_replayed_indicators_never_use_a_later_bar[1D]
+FAILED tests/unit/test_period_bars.py::test_replayed_indicators_never_use_a_later_bar[1W]
+FAILED tests/unit/test_period_bars.py::test_replayed_indicators_never_use_a_later_bar[1M]
+6 failed, 919 passed, 12 warnings in 38.49s
+exit=1

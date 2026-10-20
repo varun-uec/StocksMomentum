@@ -1,0 +1,2 @@
+{'sessions': 1739, 'first': '2019-10-01', 'last': '2026-10-19', 'holdout': ['2023-01-02', '2025-12-31'], 'holdout_exit_of_last_decision': '2026-07-01', 'in_sample': ['2020-11-12', '2022-07-06'], 'last_is_forward_exit': '2022-12-30', 'gap_ok': True}
+production holdout (datetime.date(2023, 1, 2), datetime.date(2025, 12, 31)) research (datetime.date(2020, 11, 12), datetime.date(2022, 7, 6))

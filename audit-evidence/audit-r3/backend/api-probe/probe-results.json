@@ -1,0 +1,303 @@
+[
+ {
+  "check": "workspaces/r3probe: PUT without precondition -> 428",
+  "pass": true,
+  "detail": "428"
+ },
+ {
+  "check": "workspaces/r3probe: create with If-None-Match:* -> 201",
+  "pass": true,
+  "detail": "(201, '\"1\"', '{\"key\":\"r3probe\",\"schema_version\":1,\"revision\":1,\"updated_at\":\"2026-10-20T11:25:13.358338Z\",\"body\":{\"active_chart_id\":null,\"right_panel\":\"watchlist\",\"layout\":\"1x1\",\"sync\":{\"symbol\":false,\"interval\":false,\"crosshair\":true},\"charts\":{}}}')"
+ },
+ {
+  "check": "workspaces/r3probe: second create -> 412",
+  "pass": true,
+  "detail": "412"
+ },
+ {
+  "check": "workspaces/r3probe: malformed If-Match -> 412",
+  "pass": true,
+  "detail": "412"
+ },
+ {
+  "check": "workspaces/r3probe: 10 concurrent PUT If-Match 1 -> one 200, nine 412",
+  "pass": true,
+  "detail": "[200, 412, 412, 412, 412, 412, 412, 412, 412, 412]"
+ },
+ {
+  "check": "workspaces/r3probe: final revision 2",
+  "pass": true,
+  "detail": "(200, '\"2\"')"
+ },
+ {
+  "check": "workspaces/r3probe: unknown field -> 422 (strict schema)",
+  "pass": true,
+  "detail": "422"
+ },
+ {
+  "check": "drawings/R3PROBE: PUT without precondition -> 428",
+  "pass": true,
+  "detail": "428"
+ },
+ {
+  "check": "drawings/R3PROBE: create with If-None-Match:* -> 201",
+  "pass": true,
+  "detail": "(201, '\"1\"', '{\"key\":\"R3PROBE\",\"schema_version\":1,\"revision\":1,\"updated_at\":\"2026-10-20T11:25:13.413315Z\",\"body\":{\"price_basis\":\"traded\",\"drawings\":[]}}')"
+ },
+ {
+  "check": "drawings/R3PROBE: second create -> 412",
+  "pass": true,
+  "detail": "412"
+ },
+ {
+  "check": "drawings/R3PROBE: malformed If-Match -> 412",
+  "pass": true,
+  "detail": "412"
+ },
+ {
+  "check": "drawings/R3PROBE: 10 concurrent PUT If-Match 1 -> one 200, nine 412",
+  "pass": true,
+  "detail": "[200, 412, 412, 412, 412, 412, 412, 412, 412, 412]"
+ },
+ {
+  "check": "drawings/R3PROBE: final revision 2",
+  "pass": true,
+  "detail": "(200, '\"2\"')"
+ },
+ {
+  "check": "drawings/R3PROBE: unknown field -> 422 (strict schema)",
+  "pass": true,
+  "detail": "422"
+ },
+ {
+  "check": "screens/r3probe: PUT without precondition -> 428",
+  "pass": true,
+  "detail": "428"
+ },
+ {
+  "check": "screens/r3probe: create with If-None-Match:* -> 201",
+  "pass": true,
+  "detail": "(201, '\"1\"', '{\"key\":\"r3probe\",\"schema_version\":1,\"revision\":1,\"updated_at\":\"2026-10-20T11:25:13.546168Z\",\"body\":{\"screens\":[]}}')"
+ },
+ {
+  "check": "screens/r3probe: second create -> 412",
+  "pass": true,
+  "detail": "412"
+ },
+ {
+  "check": "screens/r3probe: malformed If-Match -> 412",
+  "pass": true,
+  "detail": "412"
+ },
+ {
+  "check": "screens/r3probe: 10 concurrent PUT If-Match 1 -> one 200, nine 412",
+  "pass": true,
+  "detail": "[200, 412, 412, 412, 412, 412, 412, 412, 412, 412]"
+ },
+ {
+  "check": "screens/r3probe: final revision 2",
+  "pass": true,
+  "detail": "(200, '\"2\"')"
+ },
+ {
+  "check": "screens/r3probe: unknown field -> 422 (strict schema)",
+  "pass": true,
+  "detail": "422"
+ },
+ {
+  "check": "15 MB drawings body -> 4xx, not 5xx",
+  "pass": true,
+  "detail": "(422, 0.15, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{')"
+ },
+ {
+  "check": "malformed JSON -> 422",
+  "pass": true,
+  "detail": "422"
+ },
+ {
+  "check": "non-finite number in alert body -> 4xx",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'string_type\\', \\'loc\\': (\\'body\\', \\'symbol\\'), \\'msg\\': \\'In')"
+ },
+ {
+  "check": "GET /api/v1/runs?limit=0 -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'greater_than_equal\\', \\'loc\\': (\\'query\\', \\'limit\\'), \\'ms')"
+ },
+ {
+  "check": "GET /api/v1/runs?limit=100000 -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'less_than_equal\\', \\'loc\\': (\\'query\\', \\'limit\\'), \\'msg\\':')"
+ },
+ {
+  "check": "GET /api/v1/runs?offset=-1 -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'greater_than_equal\\', \\'loc\\': (\\'query\\', \\'offset\\'), \\'m')"
+ },
+ {
+  "check": "GET /api/v1/runs/abc -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'int_parsing\\', \\'loc\\': (\\'path\\', \\'run_id\\'), \\'msg\\': \\'In')"
+ },
+ {
+  "check": "GET /api/v1/runs/999999999 -> 404",
+  "pass": true,
+  "detail": "(404, '{\"type\":\"urn:momentum25:error:not_found\",\"title\":\"not_found\",\"status\":404,\"detail\":\"Run not found: 999999999\",\"instance\":\"/api/v1/runs/999999999\"}')"
+ },
+ {
+  "check": "GET /api/v1/runs/99999999999999999999999 -> 422",
+  "pass": false,
+  "detail": "(500, '{\"type\":\"urn:momentum25:error:internal_error\",\"title\":\"internal_error\",\"status\":500,\"detail\":\"An unexpected error occurred.\",\"instance\":\"/api/v1/runs/9999999999')"
+ },
+ {
+  "check": "GET /api/v1/stocks/NOPE_X/live -> 404",
+  "pass": true,
+  "detail": "(404, '{\"type\":\"urn:momentum25:error:not_found\",\"title\":\"not_found\",\"status\":404,\"detail\":\"Security not found: NOPE_X\",\"instance\":\"/api/v1/stocks/NOPE_X/live\"}')"
+ },
+ {
+  "check": "GET /api/v1/securities/RELIANCE/ohlcv?interval=7X -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'literal_error\\', \\'loc\\': (\\'query\\', \\'interval\\'), \\'msg\\'')"
+ },
+ {
+  "check": "GET /api/v1/stocks/RELIANCE/indicators/series?as_of=2026-13-45 -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'date_from_datetime_parsing\\', \\'loc\\': (\\'query\\', \\'as_o')"
+ },
+ {
+  "check": "GET /api/v1/stocks/RELIANCE/indicators/series?as_of=2031-01-01 -> <500",
+  "pass": true,
+  "detail": "(200, '{\"symbol\":\"RELIANCE\",\"interval\":\"1D\",\"data_version\":\"3a33e051f63d\",\"bars\":[{\"date\":\"2019-10-01\",\"rsi14\":null,\"atr14\":null,\"adx14\":null,\"macd_line\":null,\"macd_si')"
+ },
+ {
+  "check": "GET /api/v1/strategies/does_not_exist -> 404",
+  "pass": true,
+  "detail": "(404, '{\"type\":\"urn:momentum25:error:strategy_not_found\",\"title\":\"strategy_not_found\",\"status\":404,\"detail\":\"Strategy not found: does_not_exist\",\"instance\":\"/api/v1/st')"
+ },
+ {
+  "check": "GET /api/v1/rankings/runs/149/stocks/abc/explanation -> 422",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'int_parsing\\', \\'loc\\': (\\'path\\', \\'security_id\\'), \\'msg\\'')"
+ },
+ {
+  "check": "GET /api/v1/validation/historical/minervini_trend_template?start=2026-01-01&end=2025-01-01 -> <500",
+  "pass": true,
+  "detail": "(200, '{\"strategy_name\":\"minervini_trend_template\",\"strategy_id\":0,\"windows\":[{\"strategy_name\":\"minervini_trend_template\",\"window\":{\"label\":\"1Y\",\"start_date\":\"2025-10-')"
+ },
+ {
+  "check": "GET /api/v1/indices/NIFTY500/closes?start=2026-12-01&end=2026-01-01 -> <500",
+  "pass": true,
+  "detail": "(200, '{\"index_code\":\"NIFTY500\",\"bars\":[{\"date\":\"2015-01-01\",\"close\":\"6786.1000\"},{\"date\":\"2015-01-02\",\"close\":\"6866.4500\"},{\"date\":\"2015-01-05\",\"close\":\"6857.4500\"},{')"
+ },
+ {
+  "check": "symbol injection RELIANCE'%20OR%20'1'='1 -> 4xx JSON, no reflection as HTML",
+  "pass": true,
+  "detail": "(404, 'application/problem+json', '{\"type\":\"urn:momentum25:error:not_found\",\"title\":\"not_found\",\"status\":404,\"detail\":\"Security not found: RELIANCE\\' OR \\'1\\'=\\'1\",\"instance\":\"/api/v1/stocks/RELIANCE')"
+ },
+ {
+  "check": "symbol injection RELIANCE%3B%20DROP%20TABLE%20s -> 4xx JSON, no reflection as HTML",
+  "pass": true,
+  "detail": "(404, 'application/problem+json', '{\"type\":\"urn:momentum25:error:not_found\",\"title\":\"not_found\",\"status\":404,\"detail\":\"Security not found: RELIANCE; DROP TABLE securities;--\",\"instance\":\"/api/v1/')"
+ },
+ {
+  "check": "symbol injection %3Cscript%3Ealert(1)%3C%2Fscri -> 4xx JSON, no reflection as HTML",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "search q with SQL metachars -> <500",
+  "pass": true,
+  "detail": "(200, '[]')"
+ },
+ {
+  "check": "strategy name injection -> 404",
+  "pass": true,
+  "detail": "404"
+ },
+ {
+  "check": "traversal /..%2f..%2f.env -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /%2e%2e/%2e%2e/.env -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /static/../../.env -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /.env -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /../backend/.env -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /assets/..%2f..%2f..%2fetc%2fpasswd -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /api/v1/stocks/..%2f..%2fetc%2fpasswd/live -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "traversal /alembic.ini -> no file leak",
+  "pass": true,
+  "detail": "(404, 'application/json', '{\"detail\":\"Not Found\"}')"
+ },
+ {
+  "check": "hostile Host -> rejected (4xx)",
+  "pass": true,
+  "detail": "421"
+ },
+ {
+  "check": "cross-origin PUT -> 403",
+  "pass": true,
+  "detail": "403"
+ },
+ {
+  "check": "Origin null + text/plain POST (form CSRF) -> 403",
+  "pass": true,
+  "detail": "403"
+ },
+ {
+  "check": "no Origin + text/plain POST -> not 2xx (JSON content type required)",
+  "pass": true,
+  "detail": "(422, '{\"type\":\"urn:momentum25:error:validation_error\",\"title\":\"validation_error\",\"status\":422,\"detail\":\"[{\\'type\\': \\'model_attributes_type\\', \\'loc\\': (\\'body\\',), \\'msg\\': \\'I')"
+ },
+ {
+  "check": "CORS preflight from evil origin -> no ACAO",
+  "pass": true,
+  "detail": "(405, None)"
+ },
+ {
+  "check": "security headers present",
+  "pass": true,
+  "detail": "{'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'content-security-policy': \"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'\", 'referrer-policy': 'strict-origin-when-cross-origin'}"
+ },
+ {
+  "check": "unknown API path -> JSON 404",
+  "pass": true,
+  "detail": "(404, 'application/json')"
+ },
+ {
+  "check": "wrong method -> 405",
+  "pass": true,
+  "detail": "405"
+ },
+ {
+  "check": "openapi exposed on loopback (informational)",
+  "pass": true,
+  "detail": "200"
+ }
+]
+FAILED: ['GET /api/v1/runs/99999999999999999999999 -> 422']

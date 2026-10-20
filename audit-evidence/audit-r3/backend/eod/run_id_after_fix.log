@@ -1,0 +1,4 @@
+## wrong-run-id regression on real copy (run 162 has later run_date 2026-10-20)
+Imported 1 bars for 1 symbols; saved 0 actions and adjusted 0 bars.
+Screening result run 164 for minervini_trend_template using stored data.
+max run id in DB: 164

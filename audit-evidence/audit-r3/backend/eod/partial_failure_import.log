@@ -1,0 +1,13 @@
+## inject DB failure on the second symbol of an import (file passes validation)
+CREATE FUNCTION
+CREATE TRIGGER
+RELIANCE close before: 1226.0000 revision=155511
+exit=1
+R3 injected import failure
+Traceback
+RELIANCE close after failed import: 1226.0000 revision=155511
+DROP TRIGGER
+DROP FUNCTION
+## retry after fault removed
+Imported 2 bars for 2 symbols; saved 0 actions and adjusted 0 bars.
+RELIANCE close: 1230.0000

@@ -1,0 +1,5 @@
+2026-10-20 16:41:56 [info     ] scheduler_job_registered       coalesce=True cron='39 16 * * *' misfire_grace_seconds=86400
+2026-10-20 16:41:56 [info     ] scheduler_started              timezone=Asia/Kolkata
+2026-10-20 16:41:56 [info     ] scheduler_job_state            job_id=daily_screening next_run=2026-10-21T16:39:00+05:30 pending=False
+{'missed_slot': '2026-10-20 16:39', 'job_ran_after_restart': False, 'next_run': '2026-10-21T16:39:00+05:30'}
+2026-10-20 16:42:01 [info     ] scheduler_stopped

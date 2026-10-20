@@ -1,0 +1,10 @@
+{"case": "search securities q=REL", "n": 30, "p50_ms": 3.3, "p95_ms": 5.8, "max_ms": 14.4, "status": [200]}
+{"case": "ohlcv RELIANCE 1D", "n": 30, "p50_ms": 26.5, "p95_ms": 62.5, "max_ms": 63.0, "status": [200]}
+{"case": "ohlcv RELIANCE 1W", "n": 30, "p50_ms": 26.4, "p95_ms": 60.2, "max_ms": 65.6, "status": [200]}
+{"case": "indicator series RELIANCE", "n": 30, "p50_ms": 28.1, "p95_ms": 66.2, "max_ms": 67.8, "status": [200]}
+{"case": "rankings latest completed run", "n": 30, "p50_ms": 5.4, "p95_ms": 7.2, "max_ms": 10.1, "status": [200]}
+{"case": "rankings run 149", "n": 30, "p50_ms": 42.3, "p95_ms": 75.7, "max_ms": 78.3, "status": [200]}
+{"case": "workspace GET", "n": 30, "p50_ms": 2.7, "p95_ms": 3.5, "max_ms": 5.9, "status": [200]}
+{"case": "workspace PUT (If-Match chain)", "n": 30, "p50_ms": 3.6, "p95_ms": 4.6, "max_ms": 8.2, "status": [200]}
+{"case": "stocks RELIANCE live (universe RS)", "n": 10, "p50_ms": 21.2, "p95_ms": 58.7, "max_ms": 58.7, "status": [200]}
+{"case": "alerts evaluate", "n": 10, "p50_ms": 2.9, "p95_ms": 5.2, "max_ms": 5.2, "status": [200]}

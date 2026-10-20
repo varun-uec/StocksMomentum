@@ -1,0 +1,11 @@
+## after fix f3e9110 + conflict mapping: two concurrent POST /runs/execute background=false
+{"type":"urn:momentum25:error:internal_error","title":"internal_error","status":500,"detail":"An unexpected error occurred.","instance":"/api/v1/runs/execute"} status=500
+{"id":169,"status":"COMPLETED","run_date":"2026-10-19","trigger":"MANUAL","strategy":"minervini_trend_template","data_version":"a961cd97d0e9","config_hash":"1fe19b434a6befb772274368447802abfb1eeb0e1df
+169|COMPLETED|a961cd97d0e9
+## historical same-second pair
+{"run_id":170,"run_date":"2026-06-30","total_evaluated":3,"total_passed":0,"total_failed":3,"strategy_name":"minervini_trend_template"} status=201
+{"type":"urn:momentum25:error:run_already_exists","title":"run_already_exists","status":409,"detail":"A screening run already exists for strategy 8, 2026-06-30, data version historical:2026-06-30:pit:
+## after fixes: two concurrent POST /runs/execute background=false
+{"type":"urn:momentum25:error:conflict","title":"conflict","status":409,"detail":"An identical screening run is already running (run_id=172)","instance":"/api/v1/runs/execute"} status=409
+{"id":172,"status":"COMPLETED","run_date":"2026-10-19","trigger":"MANUAL","strategy":"minervini_trend_template","data_version":"2fdde12da37e","config_hash":"1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d
+172|COMPLETED|2fdde12da37e

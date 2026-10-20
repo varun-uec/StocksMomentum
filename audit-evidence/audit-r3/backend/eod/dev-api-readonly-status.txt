@@ -1,0 +1,8 @@
+GET :8000/api/v1/health/data-freshness
+{"latest_bar_date":"2026-10-19","as_of":"2026-10-20","sessions_missed":0,"classification":"FRESH","next_session":"2026-10-21","calendar_source":"XBOM (NSE observes the same trading holidays)"}
+GET :8000/api/v1/market-data/status
+{"direct_exchange_downloads_enabled":false,"authorized_csv_import_supported":true}
+GET :8000/api/v1/runs/latest
+{"id":149,"status":"COMPLETED","run_date":"2026-10-19","trigger":"MANUAL","strategy":"minervini_trend_template","data_version":"8790a000bd4f","config_hash":"1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3","started_at":"2026-10-20T10:26:44.329542Z","finished_at":"2026-10-20T10:27:17.335921Z","stats":{"git_commit":"5961b9c2f74bc41bf3ba5c33101fefc1eda3a6a3","total_failed":1183,"total_passed":155,"data_manifest":{"revision":133621,"git_commit":"5961b9c2f74bc41bf3ba5c33101fefc1eda3a6a3","calendar_version":"exchange_calendars 4.13.2 XBOM","indicator_version":2,"rule_registry_version":"41cc5e4529c8"},"total_skipped":714,"total_evaluated":3096,"universe_source":"declared_liquidity_
+{"timezone": "Asia/Kolkata", "event": "scheduler_started", "level": "info", "timestamp": "2026-10-20T11:00:01.022991Z"}
+{"job_id": "daily_screening", "next_run": "2026-10-20T18:30:00+05:30", "pending": false, "event": "scheduler_job_state", "level": "info", "timestamp": "2026-10-20T11:00:01.023010Z"}

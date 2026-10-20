@@ -1,0 +1,10 @@
+GET :8000/..%2f..%2f.env -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000/%2e%2e/%2e%2e/.env -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000/..%2f..%2falembic.ini -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000/assets/..%2f..%2falembic.ini -> 404 application/json 22 leak_markers=0
+GET :8000/assets/%2e%2e/%2e%2e/alembic.ini -> 404 application/json 22 leak_markers=0
+GET :8000/.env -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000/strategies/minervini_trend_template.json -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000/..%2fstrategies%2fminervini_trend_template.json -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000/%2e%2e%2f%2e%2e%2fetc%2fpasswd -> 200 text/html; charset=utf-8 741 leak_markers=0
+GET :8000//etc/passwd -> 200 text/html; charset=utf-8 741 leak_markers=0

@@ -1,0 +1,8 @@
+## two concurrent POST /runs/execute background=false (new data version)
+{"type":"urn:momentum25:error:internal_error","title":"internal_error","status":500,"detail":"An unexpected error occurred.","instance":"/api/v1/runs/execute"} status=500
+{"id":162,"status":"COMPLETED","run_date":"2026-10-20","trigger":"MANUAL","strategy":"minervini_trend_template","data_version":"40a56e9d9dde","config_hash":"1fe19b434a6befb772274368447802abfb1eeb0e1df5e762d8c59a3d708b08d3","started_at":"2026-10-20T11:09:35.299
+168|COMPLETED|e53dcaca78e6|
+## two concurrent POST /runs/execute background=true (same identity, already completed)
+{"id":168,"status":"COMPLETED","run_date":"2026-10-19","trigger":"MANUAL","strategy":"minervini_trend_template","data_version":"e53dcaca78e6","config_hash":"1fe19b434a6befb772274368447802abfb1eeb0e1df
+{"id":168,"status":"COMPLETED","run_date":"2026-10-19","trigger":"MANUAL","strategy":"minervini_trend_template","data_version":"e53dcaca78e6","config_hash":"1fe19b434a6befb772274368447802abfb1eeb0e1df
+168|COMPLETED|e53dcaca78e6|

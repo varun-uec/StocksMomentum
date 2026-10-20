@@ -1,0 +1,12 @@
+2026-10-20 10:30:44 [info     ] settings_loaded                database_url=postgresql+asyncpg://momentum25:momentum25@db:5432/momentum25 environment=development log_level=INFO redis_url=redis://redis:6379/0 retry_max_attempts=3 scheduler_enabled=True
+2026-10-20 10:30:46 [info     ] settings_loaded                database_url=postgresql+asyncpg://momentum25:momentum25@db:5432/momentum25 environment=development log_level=INFO redis_url=redis://redis:6379/0 retry_max_attempts=3 scheduler_enabled=True
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+{"cron": "30 18 * * 1-5", "misfire_grace_seconds": 86400, "coalesce": true, "event": "scheduler_job_registered", "level": "info", "timestamp": "2026-10-20T10:30:46.843991Z"}
+Added job "_run_daily_screening_job" to job store "default"
+{"timezone": "Asia/Kolkata", "event": "scheduler_started", "level": "info", "timestamp": "2026-10-20T10:30:46.844440Z"}
+{"job_id": "daily_screening", "next_run": "2026-10-20T18:30:00+05:30", "pending": false, "event": "scheduler_job_state", "level": "info", "timestamp": "2026-10-20T10:30:46.844465Z"}
+{"environment": "development", "version": "0.1.0", "event": "application_started", "level": "info", "timestamp": "2026-10-20T10:30:46.844507Z"}
+{"method": "GET", "path": "/api/v1/alerts", "status_code": "200", "duration_ms": 26.98, "event": "http_request", "correlation_id": "f11bf6bb5f51411d", "request_id": "99484bf4-d1d6-4a7d-8aa8-745fa14c5645", "level": "info", "timestamp": "2026-10-20T10:34:57.624055Z"}
+INFO:     172.18.0.1:62252 - "GET /api/v1/alerts HTTP/1.1" 200 OK
+{"method": "GET", "path": "/api/v1/alerts", "status_code": "200", "duration_ms": 6.42, "event": "http_request", "correlation_id": "74682c55a8e544ea", "request_id": "eb8d3485-034e-4243-a905-0d88a67a5dbd", "level": "info", "timestamp": "2026-10-20T10:35:07.660440Z"}
+INFO:     172.18.0.1:56908 - "GET /api/v1/alerts HTTP/1.1" 200 OK

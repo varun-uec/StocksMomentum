@@ -1,0 +1,1 @@
+{'universe': 3096, 'stored_rows': 3096, 'eligible_ref': 1338, 'eligible_stored': 1338, 'mismatches': 0, 'examples': [], 'reasons_ref': Counter({None: 1338, 'insufficient_history': 714, 'stale_data': 453, 'below_liquidity_floor': 355, 'close_below_floor': 203, 'no_bar_on_trading_date': 33}), 'exact_boundary_cases': {}}

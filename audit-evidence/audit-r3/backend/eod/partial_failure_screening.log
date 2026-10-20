@@ -1,0 +1,13 @@
+## inject failure in the result-write transaction (audit copy trigger on rule_results)
+CREATE FUNCTION
+CREATE TRIGGER
+Imported 1 bars for 1 symbols; saved 0 actions and adjusted 0 bars.
+(Background on this error at: https://sqlalche.me/e/21/dbapi)
+167|FAILED|1967151d1148|(sqlalchemy.dialects.postgresql.asyncpg.Error) R3 injected failure mid-transaction
+[SQL: INSERT INTO rule_results (run_id, security_id, rule_id, engine_id, pass
+rows for failed run (results/rules/universe): 0/0/0
+## remove the fault and retry the same identity
+DROP TRIGGER
+DROP FUNCTION
+Screening result run 167 for minervini_trend_template using stored data.
+167|COMPLETED|1967151d1148||1290

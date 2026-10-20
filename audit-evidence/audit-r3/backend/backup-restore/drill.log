@@ -1,0 +1,11 @@
+dump: 4dc1152ef66ad56a75a9e02650b11b37c497e8bfc0a43ee2efcf851de500970a  /private/tmp/claude-501/-Users-varunagarwal-Downloads-Applications-StocksMomentum/dd42bed8-2c73-40ca-bb48-912a84573231/scratchpad/dev.dump
+dump size bytes: 686820056
+restore exit=0 seconds=14
+ERROR:  syntax error at or near "corporate_actions"
+LINE 1: ...(x::text)::bigint),0) from ohlcv_daily securities corporate_...
+                                                             ^
+ERROR:  syntax error at or near "corporate_actions"
+LINE 1: ...(x::text)::bigint),0) from ohlcv_daily securities corporate_...
+                                                             ^
+ALL TABLE COUNTS+CHECKSUMS MATCH
+ALL 14 TABLE COUNTS+ROW CHECKSUMS MATCH (restored copy vs live dev DB, read-only)

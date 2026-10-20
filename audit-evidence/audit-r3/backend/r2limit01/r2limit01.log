@@ -1,0 +1,19 @@
+## step1 screen
+Screening result run 155 for minervini_trend_template using stored data.
+## step2 screen again (expect reuse)
+Screening result run 155 for minervini_trend_template using stored data.
+run A=155 hash=8e1a3aeda35a268834739d76344c9b95 16132cc73175|COMPLETED
+## step3 import corrected RELIANCE 2026-10-19 close 1202->1222
+Imported 1 bars for 1 symbols; saved 0 actions and adjusted 0 bars.
+ERROR:  column reference "revision_id" is ambiguous
+LINE 1: select date,close,adj_close,adj_factor,revision_id from ohlc...
+                                               ^
+1
+## step4 screen after correction
+Screening result run 156 for minervini_trend_template using stored data.
+run B=156 c64e78a3e82f|COMPLETED
+run A after: hash=8e1a3aeda35a268834739d76344c9b95 16132cc73175|COMPLETED|2026-10-20 11:04:35.625162+00
+155|32.0712|
+156|36.6376|
+155|1202.000000
+156|1222.000000

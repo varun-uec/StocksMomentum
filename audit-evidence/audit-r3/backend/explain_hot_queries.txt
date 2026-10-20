@@ -1,0 +1,61 @@
+### select * from ohlcv_daily where security_id=1741 and date<='2026-10-19' order by date desc limit 300
+Limit (actual time=0.063..0.290 rows=300 loops=1)
+  ->  Index Scan Backward using ohlcv_daily_pkey on ohlcv_daily (actual time=0.062..0.278 rows=300 loops=1)
+Execution Time: 0.357 ms
+### select max(date) from ohlcv_daily
+Result (actual time=0.016..0.017 rows=1 loops=1)
+    ->  Limit (actual time=0.015..0.015 rows=1 loops=1)
+          ->  Index Only Scan Backward using ix_ohlcv_daily_date on ohlcv_daily (actual time=0.014..0.014 rows=1 loops=1)
+Execution Time: 0.041 ms
+### select * from screening_runs where status='COMPLETED' and data_version not like 'historical:%' order by run_date desc, id desc limit 1
+Limit (actual time=0.122..0.123 rows=1 loops=1)
+  ->  Sort (actual time=0.121..0.122 rows=1 loops=1)
+        Sort Key: run_date DESC, id DESC
+        Sort Method: top-N heapsort  Memory: 26kB
+        ->  Seq Scan on screening_runs (actual time=0.010..0.101 rows=16 loops=1)
+Execution Time: 0.139 ms
+### select * from screening_results where run_id=149 order by rank nulls last limit 50
+Limit (actual time=8.239..56.607 rows=50 loops=1)
+  ->  Index Scan using ix_screening_results_rank on screening_results (actual time=8.238..56.593 rows=50 loops=1)
+Execution Time: 56.641 ms
+### select * from rule_results where run_id=149 and security_id=1741
+Index Scan using rule_results_pkey on rule_results (actual time=0.544..0.547 rows=24 loops=1)
+Execution Time: 0.583 ms
+### select * from universe_membership where run_id=149
+Bitmap Heap Scan on universe_membership (actual time=1.724..2.246 rows=3096 loops=1)
+  ->  Bitmap Index Scan on universe_membership_pkey (actual time=1.253..1.253 rows=3096 loops=1)
+Execution Time: 2.532 ms
+### select coalesce(max(r),0) from (select max(revision_id) r from ohlcv_daily union all select max(revision_id) from securities union all select max(revision_id) from corporate_actions union all select max(revision_id) from benchmark_index_daily union all select max(revision_id) from historical_universe union all select max(superseded_revision) from ohlcv_daily_history union all select max(superseded_revision) from securities_history union all select max(superseded_revision) from corporate_actions_history union all select max(superseded_revision) from benchmark_index_daily_history union all select max(superseded_revision) from historical_universe_history) x
+Aggregate (actual time=0.320..0.322 rows=1 loops=1)
+        ->  Result (actual time=0.029..0.030 rows=1 loops=1)
+                ->  Limit (actual time=0.028..0.028 rows=1 loops=1)
+                      ->  Index Only Scan Backward using ix_ohlcv_daily_revision_id on ohlcv_daily (actual time=0.027..0.027 rows=1 loops=1)
+        ->  Result (actual time=0.030..0.030 rows=1 loops=1)
+                ->  Limit (actual time=0.029..0.030 rows=1 loops=1)
+                      ->  Index Only Scan Backward using ix_securities_revision_id on securities (actual time=0.029..0.029 rows=1 loops=1)
+        ->  Result (actual time=0.022..0.022 rows=1 loops=1)
+### select * from ohlcv_daily where date='2026-10-19'
+Index Scan using ix_ohlcv_daily_date on ohlcv_daily (actual time=0.024..0.481 rows=2609 loops=1)
+Execution Time: 0.570 ms
+### select * from securities where symbol ilike '%relia%' limit 20
+Limit (actual time=0.544..0.553 rows=2 loops=1)
+  ->  Bitmap Heap Scan on securities (actual time=0.543..0.551 rows=2 loops=1)
+        ->  Bitmap Index Scan on ix_securities_symbol_trgm (actual time=0.513..0.513 rows=5 loops=1)
+Execution Time: 1.301 ms
+ix_screening_runs_status|screening_runs
+screening_runs_pkey|screening_runs
+screening_runs_strategy_id_run_date_data_version_config_has_key|screening_runs
+ix_securities_name_trgm|securities
+ix_securities_isin|securities
+ix_securities_revision_id|securities
+ix_securities_symbol|securities
+ix_securities_symbol_trgm|securities
+securities_pkey|securities
+universe_membership_pkey|universe_membership
+ix_screening_results_rank|screening_results
+ix_screening_results_security_id|screening_results
+screening_results_pkey|screening_results
+ix_ohlcv_daily_revision_id|ohlcv_daily
+ix_ohlcv_daily_date|ohlcv_daily
+ohlcv_daily_pkey|ohlcv_daily
+rule_results_pkey|rule_results
