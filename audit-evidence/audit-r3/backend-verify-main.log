@@ -1,0 +1,11 @@
+All checks passed!
+Success: no issues found in 263 source files
+Domain is pure (no infrastructure/interface/application imports) KEPT
+
+Contracts: 2 kept, 0 broken.
+tests/integration/test_latest_completed_excludes_historical.py::test_score_history_returns_one_live_point_per_run_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/momentum25/infrastructure/persistence/repositories/screening_run.py:581: SADeprecationWarning: Passing expression to ``distinct`` to generate a DISTINCT ON clause is deprecated. Use instead the ``postgresql.distinct_on`` function as an extension.
+    .distinct(ScreeningRunModel.run_date)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+947 passed, 2 warnings in 39.08s

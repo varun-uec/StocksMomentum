@@ -1,0 +1,81 @@
+{
+  "measured_at": "2026-10-20T11:34:20.763Z",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "database": "wickstreet_r3q_e2e; loopback-only isolated PostgreSQL; synthetic fixtures only",
+  "results": {
+    "api_latency": {
+      "synthetic_dataset": "22 symbols, 2,610 daily bars each, 2016-08-08 through 2026-08-07",
+      "search": {
+        "runs": 30,
+        "p50_ms": 4,
+        "p95_ms": 7,
+        "max_ms": 38
+      },
+      "workspace_save": {
+        "runs": 30,
+        "p50_ms": 5,
+        "p95_ms": 7,
+        "max_ms": 35
+      },
+      "live_screening_after_same_session_correction": {
+        "runs": 10,
+        "p50_ms": 329,
+        "p95_ms": 355,
+        "max_ms": 355
+      },
+      "screening_run_ids": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "screening_data_versions": [
+        "3ac0ad207409",
+        "05f64a70d912",
+        "6165971dac9e",
+        "40777455f92b",
+        "b4aa026db774",
+        "97386206d299",
+        "b92056a96c50",
+        "6be2de2c9c55",
+        "b6812222d268",
+        "c4409e510d40"
+      ],
+      "alert_evaluation_20_active_alerts": {
+        "runs": 20,
+        "p50_ms": 753,
+        "p95_ms": 783,
+        "max_ms": 793
+      }
+    },
+    "strategy_studio": {
+      "synthetic_dataset": "same isolated 22-symbol, 10-year fixture",
+      "screening_result": {
+        "runs": 10,
+        "p50_ms": 315,
+        "p95_ms": 831,
+        "max_ms": 831
+      },
+      "in_sample_research": {
+        "runs": 3,
+        "p50_ms": 62616,
+        "p95_ms": 65104,
+        "max_ms": 65104
+      },
+      "in_sample_research_decisions": [
+        237,
+        237,
+        237
+      ],
+      "research_p95_note": "3 observations; empirical P95 is the observed maximum, not a stable production percentile."
+    }
+  }
+}
