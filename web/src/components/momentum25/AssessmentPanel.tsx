@@ -6,12 +6,12 @@
  * symbol's or run's result while the next one loads.
  */
 
+import { lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Badge, StatusDot } from '@/components/shared/Card';
 import { ExplanationSummary } from '@/components/workspace/ExplanationSummary';
 import { ProvenanceLine, useLatestRun } from '@/components/momentum25/run';
-import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { getLiveStockAnalysis, getOhlcv, getRun, getStockExplanation } from '@/lib/api-client';
 import { useChartColors } from '@/lib/useChartColors';
 import { num } from '@/lib/format';
@@ -19,6 +19,8 @@ import { focusRing } from '@/lib/theme';
 import type { RuleExplanation } from '@/lib/types';
 import { evidenceLayer, type EvidenceControl } from '@/components/momentum25/evidence';
 import type { ReplayState } from '@/lib/replay';
+
+const YearClosesChart = lazy(() => import('@/components/momentum25/YearClosesChart'));
 
 const link = `text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`;
 
@@ -179,17 +181,9 @@ function YearCloses({ symbol }: { symbol: string }) {
   return (
     <div className="h-24" aria-label={`${symbol}, last year of closes`} role="img">
       {closes.length > 1 && (
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={closes}>
-            <YAxis hide domain={['auto', 'auto']} />
-            <Tooltip
-              formatter={(value) => (typeof value === 'number' ? value.toFixed(2) : String(value))}
-              labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
-              contentStyle={{ backgroundColor: colors.tooltipBg, borderColor: colors.tooltipBorder, fontSize: 11 }}
-            />
-            <Line type="monotone" dataKey="close" dot={false} strokeWidth={1.5} stroke="#6366f1" isAnimationActive={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        <Suspense fallback={null}>
+          <YearClosesChart closes={closes} tooltipBg={colors.tooltipBg} tooltipBorder={colors.tooltipBorder} />
+        </Suspense>
       )}
     </div>
   );
