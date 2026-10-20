@@ -1,5 +1,5 @@
 {
-  "audited_at": "2026-10-19T07:07:17.362Z",
+  "audited_at": "2026-10-20T03:07:21.731Z",
   "browser": "Chromium 153.0.8010.12 (headless)",
   "hardware": "Apple M4 Pro × 14, 48 GB RAM",
   "requested_viewports": [
@@ -34,7 +34,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2489
+      "scroll_height": 1069
     },
     {
       "route": "dashboard",
@@ -43,7 +43,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2489
+      "scroll_height": 1069
     },
     {
       "route": "dashboard",
@@ -52,7 +52,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2489
+      "scroll_height": 1213
     },
     {
       "route": "dashboard",
@@ -61,7 +61,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2489
+      "scroll_height": 1213
     },
     {
       "route": "dashboard",
@@ -70,7 +70,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2633
+      "scroll_height": 1374
     },
     {
       "route": "dashboard",
@@ -79,7 +79,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2633
+      "scroll_height": 1374
     },
     {
       "route": "dashboard",
@@ -88,7 +88,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3035
+      "scroll_height": 1563
     },
     {
       "route": "dashboard",
@@ -97,7 +97,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3035
+      "scroll_height": 1563
     },
     {
       "route": "chart-entry",
@@ -142,7 +142,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1043
+      "scroll_height": 1024
     },
     {
       "route": "chart-entry",
@@ -151,7 +151,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1043
+      "scroll_height": 1024
     },
     {
       "route": "chart-entry",
@@ -160,7 +160,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1070
+      "scroll_height": 844
     },
     {
       "route": "chart-entry",
@@ -169,7 +169,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1070
+      "scroll_height": 844
     },
     {
       "route": "chart",
@@ -214,7 +214,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1043
+      "scroll_height": 1024
     },
     {
       "route": "chart",
@@ -223,7 +223,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1043
+      "scroll_height": 1024
     },
     {
       "route": "chart",
@@ -232,7 +232,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1070
+      "scroll_height": 844
     },
     {
       "route": "chart",
@@ -241,7 +241,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1070
+      "scroll_height": 844
     },
     {
       "route": "stock-detail",
@@ -250,7 +250,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 8120
+      "scroll_height": 7660
     },
     {
       "route": "stock-detail",
@@ -259,7 +259,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 8120
+      "scroll_height": 7660
     },
     {
       "route": "stock-detail",
@@ -268,7 +268,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 8120
+      "scroll_height": 7660
     },
     {
       "route": "stock-detail",
@@ -277,7 +277,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 8120
+      "scroll_height": 7660
     },
     {
       "route": "stock-detail",
@@ -286,7 +286,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 10117
+      "scroll_height": 9548
     },
     {
       "route": "stock-detail",
@@ -295,7 +295,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 10117
+      "scroll_height": 9548
     },
     {
       "route": "stock-detail",
@@ -304,7 +304,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 12449
+      "scroll_height": 11653
     },
     {
       "route": "stock-detail",
@@ -313,7 +313,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 12449
+      "scroll_height": 11653
     },
     {
       "route": "stock-analysis",
@@ -322,7 +322,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 3848
+      "scroll_height": 3624
     },
     {
       "route": "stock-analysis",
@@ -331,7 +331,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 3848
+      "scroll_height": 3624
     },
     {
       "route": "stock-analysis",
@@ -340,7 +340,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 3848
+      "scroll_height": 3624
     },
     {
       "route": "stock-analysis",
@@ -349,7 +349,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 3848
+      "scroll_height": 3624
     },
     {
       "route": "stock-analysis",
@@ -358,7 +358,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 6711
+      "scroll_height": 6421
     },
     {
       "route": "stock-analysis",
@@ -367,7 +367,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 6711
+      "scroll_height": 6421
     },
     {
       "route": "stock-analysis",
@@ -376,7 +376,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 8505
+      "scroll_height": 7992
     },
     {
       "route": "stock-analysis",
@@ -385,7 +385,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 8505
+      "scroll_height": 7992
     },
     {
       "route": "elliott-wave",
@@ -394,7 +394,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1413
+      "scroll_height": 1314
     },
     {
       "route": "elliott-wave",
@@ -403,7 +403,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1413
+      "scroll_height": 1314
     },
     {
       "route": "elliott-wave",
@@ -412,7 +412,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1413
+      "scroll_height": 1314
     },
     {
       "route": "elliott-wave",
@@ -421,7 +421,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1413
+      "scroll_height": 1314
     },
     {
       "route": "elliott-wave",
@@ -430,7 +430,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1741
+      "scroll_height": 1577
     },
     {
       "route": "elliott-wave",
@@ -439,7 +439,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1741
+      "scroll_height": 1577
     },
     {
       "route": "elliott-wave",
@@ -448,7 +448,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2027
+      "scroll_height": 1670
     },
     {
       "route": "elliott-wave",
@@ -457,7 +457,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2027
+      "scroll_height": 1670
     },
     {
       "route": "watchlist",
@@ -466,7 +466,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "watchlist",
@@ -475,7 +475,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "watchlist",
@@ -484,7 +484,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "watchlist",
@@ -493,7 +493,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "watchlist",
@@ -502,7 +502,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "watchlist",
@@ -511,7 +511,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "watchlist",
@@ -520,7 +520,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "watchlist",
@@ -529,7 +529,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "market",
@@ -538,7 +538,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "market",
@@ -547,7 +547,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "market",
@@ -556,7 +556,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "market",
@@ -565,7 +565,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "market",
@@ -574,7 +574,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "market",
@@ -583,7 +583,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "market",
@@ -592,7 +592,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1093
+      "scroll_height": 983
     },
     {
       "route": "market",
@@ -601,7 +601,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1093
+      "scroll_height": 983
     },
     {
       "route": "strategies",
@@ -610,7 +610,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2183
+      "scroll_height": 2476
     },
     {
       "route": "strategies",
@@ -619,7 +619,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2183
+      "scroll_height": 2476
     },
     {
       "route": "strategies",
@@ -628,7 +628,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2183
+      "scroll_height": 2414
     },
     {
       "route": "strategies",
@@ -637,7 +637,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2183
+      "scroll_height": 2414
     },
     {
       "route": "strategies",
@@ -646,7 +646,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 3037
+      "scroll_height": 3340
     },
     {
       "route": "strategies",
@@ -655,7 +655,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 3037
+      "scroll_height": 3340
     },
     {
       "route": "strategies",
@@ -664,7 +664,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3796
+      "scroll_height": 4157
     },
     {
       "route": "strategies",
@@ -673,7 +673,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3796
+      "scroll_height": 4157
     },
     {
       "route": "studio",
@@ -682,7 +682,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1132
+      "scroll_height": 1046
     },
     {
       "route": "studio",
@@ -691,7 +691,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1132
+      "scroll_height": 1046
     },
     {
       "route": "studio",
@@ -700,7 +700,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "studio",
@@ -709,7 +709,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "studio",
@@ -718,7 +718,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1228
+      "scroll_height": 1294
     },
     {
       "route": "studio",
@@ -727,7 +727,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1228
+      "scroll_height": 1294
     },
     {
       "route": "studio",
@@ -736,7 +736,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1436
+      "scroll_height": 1506
     },
     {
       "route": "studio",
@@ -745,7 +745,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1436
+      "scroll_height": 1506
     },
     {
       "route": "validation",
@@ -754,7 +754,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2247
+      "scroll_height": 2030
     },
     {
       "route": "validation",
@@ -763,7 +763,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2247
+      "scroll_height": 2030
     },
     {
       "route": "validation",
@@ -772,7 +772,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2247
+      "scroll_height": 2030
     },
     {
       "route": "validation",
@@ -781,7 +781,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2247
+      "scroll_height": 2030
     },
     {
       "route": "validation",
@@ -790,7 +790,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2693
+      "scroll_height": 2498
     },
     {
       "route": "validation",
@@ -799,7 +799,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2693
+      "scroll_height": 2498
     },
     {
       "route": "validation",
@@ -808,7 +808,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3861
+      "scroll_height": 3511
     },
     {
       "route": "validation",
@@ -817,7 +817,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3861
+      "scroll_height": 3511
     },
     {
       "route": "backtest",
@@ -826,7 +826,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 1001
     },
     {
       "route": "backtest",
@@ -835,7 +835,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 1001
     },
     {
       "route": "backtest",
@@ -844,7 +844,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "backtest",
@@ -853,7 +853,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "backtest",
@@ -862,7 +862,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1197
     },
     {
       "route": "backtest",
@@ -871,7 +871,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1197
     },
     {
       "route": "backtest",
@@ -880,7 +880,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 1017
     },
     {
       "route": "backtest",
@@ -889,7 +889,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 1017
     },
     {
       "route": "historical",
@@ -898,7 +898,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 1001
     },
     {
       "route": "historical",
@@ -907,7 +907,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 1001
     },
     {
       "route": "historical",
@@ -916,7 +916,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "historical",
@@ -925,7 +925,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "historical",
@@ -934,7 +934,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1197
     },
     {
       "route": "historical",
@@ -943,7 +943,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1197
     },
     {
       "route": "historical",
@@ -952,7 +952,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 1017
     },
     {
       "route": "historical",
@@ -961,7 +961,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 1017
     },
     {
       "route": "experiment",
@@ -970,7 +970,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 1001
     },
     {
       "route": "experiment",
@@ -979,7 +979,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 1001
     },
     {
       "route": "experiment",
@@ -988,7 +988,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "experiment",
@@ -997,7 +997,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1181
     },
     {
       "route": "experiment",
@@ -1006,7 +1006,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1197
     },
     {
       "route": "experiment",
@@ -1015,7 +1015,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1197
     },
     {
       "route": "experiment",
@@ -1024,7 +1024,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 1017
     },
     {
       "route": "experiment",
@@ -1033,7 +1033,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 1017
     },
     {
       "route": "analytics",
@@ -1042,7 +1042,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1790
+      "scroll_height": 1670
     },
     {
       "route": "analytics",
@@ -1051,7 +1051,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1790
+      "scroll_height": 1670
     },
     {
       "route": "analytics",
@@ -1060,7 +1060,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1790
+      "scroll_height": 1670
     },
     {
       "route": "analytics",
@@ -1069,7 +1069,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1790
+      "scroll_height": 1670
     },
     {
       "route": "analytics",
@@ -1078,7 +1078,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2935
+      "scroll_height": 2884
     },
     {
       "route": "analytics",
@@ -1087,7 +1087,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2935
+      "scroll_height": 2884
     },
     {
       "route": "analytics",
@@ -1096,7 +1096,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3225
+      "scroll_height": 3092
     },
     {
       "route": "analytics",
@@ -1105,7 +1105,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3225
+      "scroll_height": 3092
     },
     {
       "route": "data",
@@ -1114,7 +1114,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "data",
@@ -1123,7 +1123,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "data",
@@ -1132,7 +1132,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "data",
@@ -1141,7 +1141,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "data",
@@ -1150,7 +1150,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "data",
@@ -1159,7 +1159,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "data",
@@ -1168,7 +1168,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "data",
@@ -1177,7 +1177,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "learn",
@@ -1186,7 +1186,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "learn",
@@ -1195,7 +1195,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "learn",
@@ -1204,7 +1204,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "learn",
@@ -1213,7 +1213,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "learn",
@@ -1222,7 +1222,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "learn",
@@ -1231,7 +1231,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "learn",
@@ -1240,7 +1240,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1641
+      "scroll_height": 1597
     },
     {
       "route": "learn",
@@ -1249,7 +1249,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1641
+      "scroll_height": 1597
     },
     {
       "route": "learn-momentum-investing",
@@ -1258,7 +1258,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1456
+      "scroll_height": 1369
     },
     {
       "route": "learn-momentum-investing",
@@ -1267,7 +1267,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1456
+      "scroll_height": 1369
     },
     {
       "route": "learn-momentum-investing",
@@ -1276,7 +1276,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1456
+      "scroll_height": 1369
     },
     {
       "route": "learn-momentum-investing",
@@ -1285,7 +1285,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1456
+      "scroll_height": 1369
     },
     {
       "route": "learn-momentum-investing",
@@ -1294,7 +1294,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1752
+      "scroll_height": 1781
     },
     {
       "route": "learn-momentum-investing",
@@ -1303,7 +1303,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1752
+      "scroll_height": 1781
     },
     {
       "route": "learn-momentum-investing",
@@ -1312,7 +1312,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2707
+      "scroll_height": 2663
     },
     {
       "route": "learn-momentum-investing",
@@ -1321,7 +1321,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2707
+      "scroll_height": 2663
     },
     {
       "route": "learn-minervini-methodology",
@@ -1330,7 +1330,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2545
+      "scroll_height": 2458
     },
     {
       "route": "learn-minervini-methodology",
@@ -1339,7 +1339,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2545
+      "scroll_height": 2458
     },
     {
       "route": "learn-minervini-methodology",
@@ -1348,7 +1348,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2545
+      "scroll_height": 2458
     },
     {
       "route": "learn-minervini-methodology",
@@ -1357,7 +1357,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2545
+      "scroll_height": 2458
     },
     {
       "route": "learn-minervini-methodology",
@@ -1366,7 +1366,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 3030
+      "scroll_height": 3058
     },
     {
       "route": "learn-minervini-methodology",
@@ -1375,7 +1375,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 3030
+      "scroll_height": 3058
     },
     {
       "route": "learn-minervini-methodology",
@@ -1384,7 +1384,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 4671
+      "scroll_height": 4628
     },
     {
       "route": "learn-minervini-methodology",
@@ -1393,7 +1393,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 4671
+      "scroll_height": 4628
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1402,7 +1402,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1250
+      "scroll_height": 1163
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1411,7 +1411,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1250
+      "scroll_height": 1163
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1420,7 +1420,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1250
+      "scroll_height": 1163
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1429,7 +1429,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1250
+      "scroll_height": 1163
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1438,7 +1438,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1645
+      "scroll_height": 1674
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1447,7 +1447,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1645
+      "scroll_height": 1674
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1456,7 +1456,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2322
+      "scroll_height": 2278
     },
     {
       "route": "learn-momentum25-methodology",
@@ -1465,7 +1465,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2322
+      "scroll_height": 2278
     },
     {
       "route": "learn-scoring-guide",
@@ -1474,7 +1474,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2295
+      "scroll_height": 2208
     },
     {
       "route": "learn-scoring-guide",
@@ -1483,7 +1483,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 2295
+      "scroll_height": 2208
     },
     {
       "route": "learn-scoring-guide",
@@ -1492,7 +1492,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2295
+      "scroll_height": 2208
     },
     {
       "route": "learn-scoring-guide",
@@ -1501,7 +1501,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 2295
+      "scroll_height": 2208
     },
     {
       "route": "learn-scoring-guide",
@@ -1510,7 +1510,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2899
+      "scroll_height": 2928
     },
     {
       "route": "learn-scoring-guide",
@@ -1519,7 +1519,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 2899
+      "scroll_height": 2928
     },
     {
       "route": "learn-scoring-guide",
@@ -1528,7 +1528,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3988
+      "scroll_height": 3944
     },
     {
       "route": "learn-scoring-guide",
@@ -1537,7 +1537,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 3988
+      "scroll_height": 3944
     },
     {
       "route": "learn-rule-guide",
@@ -1546,7 +1546,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 3471
+      "scroll_height": 3384
     },
     {
       "route": "learn-rule-guide",
@@ -1555,7 +1555,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 3471
+      "scroll_height": 3384
     },
     {
       "route": "learn-rule-guide",
@@ -1564,7 +1564,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 3471
+      "scroll_height": 3384
     },
     {
       "route": "learn-rule-guide",
@@ -1573,7 +1573,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 3471
+      "scroll_height": 3384
     },
     {
       "route": "learn-rule-guide",
@@ -1582,7 +1582,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 4731
+      "scroll_height": 4760
     },
     {
       "route": "learn-rule-guide",
@@ -1591,7 +1591,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 4731
+      "scroll_height": 4760
     },
     {
       "route": "learn-rule-guide",
@@ -1600,7 +1600,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 6113
+      "scroll_height": 6069
     },
     {
       "route": "learn-rule-guide",
@@ -1609,7 +1609,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 6113
+      "scroll_height": 6069
     },
     {
       "route": "learn-faq",
@@ -1618,7 +1618,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1149
+      "scroll_height": 1020
     },
     {
       "route": "learn-faq",
@@ -1627,7 +1627,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 1149
+      "scroll_height": 1020
     },
     {
       "route": "learn-faq",
@@ -1636,7 +1636,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "learn-faq",
@@ -1645,7 +1645,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "learn-faq",
@@ -1654,7 +1654,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1646
+      "scroll_height": 1669
     },
     {
       "route": "learn-faq",
@@ -1663,7 +1663,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1646
+      "scroll_height": 1669
     },
     {
       "route": "learn-faq",
@@ -1672,7 +1672,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2486
+      "scroll_height": 2437
     },
     {
       "route": "learn-faq",
@@ -1681,7 +1681,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 2486
+      "scroll_height": 2437
     },
     {
       "route": "about",
@@ -1690,7 +1690,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "about",
@@ -1699,7 +1699,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "about",
@@ -1708,7 +1708,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "about",
@@ -1717,7 +1717,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "about",
@@ -1726,7 +1726,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "about",
@@ -1735,7 +1735,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "about",
@@ -1744,7 +1744,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "about",
@@ -1753,7 +1753,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "chart-grid-diagnostic",
@@ -1816,7 +1816,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1220
+      "scroll_height": 935
     },
     {
       "route": "chart-grid-diagnostic",
@@ -1825,7 +1825,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1220
+      "scroll_height": 935
     },
     {
       "route": "not-found",
@@ -1834,7 +1834,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "not-found",
@@ -1843,7 +1843,7 @@
       "viewport": "1440x900",
       "document_width": 1440,
       "body_width": 1440,
-      "scroll_height": 998
+      "scroll_height": 962
     },
     {
       "route": "not-found",
@@ -1852,7 +1852,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "not-found",
@@ -1861,7 +1861,7 @@
       "viewport": "1920x1080",
       "document_width": 1920,
       "body_width": 1920,
-      "scroll_height": 1178
+      "scroll_height": 1142
     },
     {
       "route": "not-found",
@@ -1870,7 +1870,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "not-found",
@@ -1879,7 +1879,7 @@
       "viewport": "768x1024",
       "document_width": 768,
       "body_width": 768,
-      "scroll_height": 1122
+      "scroll_height": 1158
     },
     {
       "route": "not-found",
@@ -1888,7 +1888,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     },
     {
       "route": "not-found",
@@ -1897,7 +1897,7 @@
       "viewport": "390x844",
       "document_width": 390,
       "body_width": 390,
-      "scroll_height": 1014
+      "scroll_height": 978
     }
   ]
 }

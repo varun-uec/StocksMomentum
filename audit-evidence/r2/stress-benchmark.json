@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-19T07:12:41.153Z",
+  "measured_at": "2026-10-20T03:05:07.540Z",
   "hardware": "Apple M4 Pro × 14, 48 GB RAM",
   "os": "Darwin 27.0.0 arm64",
   "browser": "Chromium 153.0.8010.12 (headless)",
@@ -8,60 +8,60 @@
   "load_configuration": "7 catalogue indicators, four comparison symbols, four moving averages, 120 saved drawings per symbol",
   "results": {
     "1": {
-      "ready_ms": 1244,
+      "ready_ms": 882,
       "charts": 1,
       "bars_per_chart": 2610,
       "indicators_per_chart": 7,
       "comparison_symbols_per_chart": 4,
       "drawings_per_symbol": 120,
       "pan_frame_rate": 62,
-      "js_heap_mb_after_gc": 22.910358428955078,
+      "js_heap_mb_after_gc": 24.968372344970703,
       "canvas_count": 19,
       "long_tasks": []
     },
     "4": {
-      "ready_ms": 1136,
+      "ready_ms": 994,
       "charts": 4,
       "bars_per_chart": 2610,
       "indicators_per_chart": 7,
       "comparison_symbols_per_chart": 4,
       "drawings_per_symbol": 120,
       "pan_frame_rate": 62,
-      "js_heap_mb_after_gc": 67.6324462890625,
+      "js_heap_mb_after_gc": 71.03703689575195,
       "canvas_count": 76,
       "long_tasks": []
     },
     "16": {
-      "ready_ms": 2348,
+      "ready_ms": 1950,
       "charts": 16,
       "bars_per_chart": 2610,
       "indicators_per_chart": 7,
       "comparison_symbols_per_chart": 4,
       "drawings_per_symbol": 120,
-      "pan_frame_rate": 62,
-      "js_heap_mb_after_gc": 242.85761260986328,
+      "pan_frame_rate": 61,
+      "js_heap_mb_after_gc": 248.63763809204102,
       "canvas_count": 304,
       "long_tasks": []
     },
     "endurance": [
       {
         "symbol": "E2E10Y1",
-        "heap_mb": 12.775951385498047,
+        "heap_mb": 14.000869750976562,
         "canvas_count": 7
       },
       {
         "symbol": "E2E10Y3",
-        "heap_mb": 13.877052307128906,
+        "heap_mb": 15.666698455810547,
         "canvas_count": 7
       },
       {
         "symbol": "E2E10Y5",
-        "heap_mb": 14.900592803955078,
+        "heap_mb": 17.142745971679688,
         "canvas_count": 7
       },
       {
         "symbol": "E2E10Y7",
-        "heap_mb": 15.85586166381836,
+        "heap_mb": 18.621410369873047,
         "canvas_count": 7
       }
     ]

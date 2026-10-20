@@ -1,32 +1,31 @@
 {
-  "measured_at": "2026-10-19T08:20:50.905Z",
-  "hardware": "Apple M4 Pro \u00d7 14, 48 GB RAM",
+  "measured_at": "2026-10-20T02:59:06.624Z",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
   "os": "Darwin 27.0.0 arm64",
   "browser": "Chromium 153.0.8010.12 (headless)",
-  "database": "Marked loopback-only synthetic E2E databases; see database_by_section.",
+  "database": "wickstreet_tv_e2e; loopback-only isolated PostgreSQL; synthetic fixtures only",
   "results": {
     "api_latency": {
       "synthetic_dataset": "22 symbols, 2,610 daily bars each, 2016-08-08 through 2026-08-07",
       "search": {
         "runs": 30,
-        "p50_ms": 5,
-        "p95_ms": 8,
-        "max_ms": 40
+        "p50_ms": 4,
+        "p95_ms": 7,
+        "max_ms": 7
       },
       "workspace_save": {
         "runs": 30,
-        "p50_ms": 6,
-        "p95_ms": 7,
-        "max_ms": 37
+        "p50_ms": 4,
+        "p95_ms": 5,
+        "max_ms": 6
       },
       "live_screening_after_same_session_correction": {
         "runs": 10,
-        "p50_ms": 340,
-        "p95_ms": 394,
-        "max_ms": 394
+        "p50_ms": 337,
+        "p95_ms": 358,
+        "max_ms": 358
       },
       "screening_run_ids": [
-        2,
         3,
         4,
         5,
@@ -35,40 +34,41 @@
         8,
         9,
         10,
-        11
+        11,
+        12
       ],
       "screening_data_versions": [
-        "b12ce220a61b",
-        "98739fc49b3b",
-        "f50efcdc7e41",
-        "e61992e78ba6",
-        "ed8bf6bc0d8d",
-        "3bf522a4314f",
-        "5090c181e86f",
-        "79a6f05aa6b9",
-        "508085737116",
-        "bfa15d5e3ce8"
+        "d0db541582bc",
+        "9b344b0bf806",
+        "68836897db76",
+        "95ae5504b2d2",
+        "d5ac0f6852cd",
+        "056ef85502a2",
+        "83a1bca8464d",
+        "b59d13c10f32",
+        "f370506230d2",
+        "eb831892accc"
       ],
       "alert_evaluation_20_active_alerts": {
         "runs": 20,
-        "p50_ms": 757,
-        "p95_ms": 781,
-        "max_ms": 1002
+        "p50_ms": 777,
+        "p95_ms": 797,
+        "max_ms": 801
       }
     },
     "strategy_studio": {
       "synthetic_dataset": "same isolated 22-symbol, 10-year fixture",
       "screening_result": {
         "runs": 10,
-        "p50_ms": 895,
-        "p95_ms": 924,
-        "max_ms": 924
+        "p50_ms": 875,
+        "p95_ms": 930,
+        "max_ms": 930
       },
       "in_sample_research": {
         "runs": 3,
-        "p50_ms": 66744,
-        "p95_ms": 67052,
-        "max_ms": 67052
+        "p50_ms": 66623,
+        "p95_ms": 66626,
+        "max_ms": 66626
       },
       "in_sample_research_decisions": [
         237,
@@ -86,54 +86,43 @@
       ],
       "long_history_bars_per_chart": 2610,
       "drawings_created_and_deleted": 24,
-      "starting_heap_mb_after_gc": 15.27071762084961,
-      "ending_heap_mb_after_gc": 18.472408294677734,
-      "heap_delta_mb_after_gc": 3.201690673828125,
+      "starting_heap_mb_after_gc": 16.91039276123047,
+      "ending_heap_mb_after_gc": 20.425010681152344,
+      "heap_delta_mb_after_gc": 3.514617919921875,
       "initial_canvas_count": 7,
       "final_canvas_count": 7,
       "samples": [
         {
           "cycle": 4,
-          "heap_mb": 17.497081756591797,
+          "heap_mb": 19.29873275756836,
           "canvases": 7
         },
         {
           "cycle": 8,
-          "heap_mb": 17.659526824951172,
+          "heap_mb": 19.913619995117188,
           "canvases": 7
         },
         {
           "cycle": 12,
-          "heap_mb": 18.428436279296875,
+          "heap_mb": 20.448230743408203,
           "canvases": 7
         },
         {
           "cycle": 16,
-          "heap_mb": 18.459766387939453,
+          "heap_mb": 20.653911590576172,
           "canvases": 7
         },
         {
           "cycle": 20,
-          "heap_mb": 18.938880920410156,
+          "heap_mb": 20.772037506103516,
           "canvases": 7
         },
         {
           "cycle": 24,
-          "heap_mb": 19.01230239868164,
+          "heap_mb": 20.8934326171875,
           "canvases": 7
         }
       ]
     }
-  },
-  "database_by_section": {
-    "api_latency": "wickstreet_guard_perf_e2e",
-    "strategy_studio": "wickstreet_final_e2e",
-    "chart_endurance": "wickstreet_final_e2e"
-  },
-  "section_measured_at": {
-    "api_latency": "2026-10-19T08:20:50.905Z",
-    "strategy_studio": "2026-10-19T08:08:33.719Z",
-    "chart_endurance": "2026-10-19T08:08:33.719Z"
-  },
-  "measurement_note": "API latency was remeasured after the live screening revision guard was added. Strategy Studio and chart endurance were measured earlier the same day; the guard does not change those paths. All databases were isolated and synthetic-only."
+  }
 }
