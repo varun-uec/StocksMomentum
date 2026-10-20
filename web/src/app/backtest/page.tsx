@@ -85,29 +85,69 @@ export default function BacktestPage() {
               <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">
                 Known data caveat — read before using these numbers
               </p>
-              <p className="text-sm text-amber-800 dark:text-amber-200">{result.survivorship_warning}</p>
+              <p className="text-sm text-amber-800 dark:text-amber-200">{result.simulation_notice}</p>
+              <p className="text-sm text-amber-800 dark:text-amber-200 mt-2">{result.survivorship_warning}</p>
             </div>
 
             <Card title="Result" subtitle={`${result.start} to ${result.end}`}>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <MetricCard label="Final NAV" value={parseFloat(result.final_nav).toLocaleString('en-IN', { maximumFractionDigits: 0 })} />
                 <MetricCard
                   label="Total Return"
                   value={formatPercent(result.total_return)}
                   color={parseFloat(result.total_return) >= 0 ? 'text-emerald-400' : 'text-rose-400'}
                 />
+                {/* The lower bound sits next to the return (execution method v2). */}
+                <MetricCard
+                  label="Lower bound (non-trading holdings at zero)"
+                  value={result.lower_bound_return === null ? 'Not available' : formatPercent(result.lower_bound_return)}
+                />
+                <MetricCard label="CAGR" value={result.cagr === null ? 'Not available' : formatPercent(result.cagr)} />
+                <MetricCard label="Max drawdown" value={formatPercent(result.max_drawdown)} />
                 {/* The benchmark number never appears without its label. */}
                 <MetricCard
                   label={result.benchmark_return === null ? 'Benchmark' : `Benchmark — ${result.benchmark_label ?? 'UNLABELED BENCHMARK'}`}
                   value={result.benchmark_return === null ? 'Not available' : formatPercent(result.benchmark_return)}
                 />
                 <MetricCard label="Rebalances" value={String(result.rebalance_count)} />
-                <MetricCard label="Trades" value={String(result.trade_count)} />
+                <MetricCard label="Fills" value={`${result.trade_count} (${result.partial_fill_count} partial, ${result.deferred_fill_count} deferred)`} />
               </div>
+              <p className="text-xs text-slate-500 mt-4" data-testid="backtest-provenance">
+                Method v{result.provenance.method_version}. Buy window {String(result.provenance.execution_policy.buy_window_sessions)} sessions; fills capped at {formatPercent(String(result.provenance.execution_policy.participation_cap))} of the session&apos;s traded value. Market data {result.provenance.market_data_version ?? 'unknown'} (revision {result.provenance.data_revision}); build {result.provenance.build_id ?? 'unknown'}.
+              </p>
             </Card>
 
+            {result.nontrading_holdings.length > 0 && (
+              <Card title="Non-trading holdings at the end" subtitle="No bar for more than 20 sessions. Valued at the last close; zero in the lower bound.">
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
+                        <th scope="col" className="text-left px-3 py-3">Security</th>
+                        <th scope="col" className="text-left px-3 py-3">Last bar</th>
+                        <th scope="col" className="text-right px-3 py-3">Sessions without a bar</th>
+                        <th scope="col" className="text-right px-3 py-3">Weight</th>
+                        <th scope="col" className="text-left px-3 py-3">Identity</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
+                      {result.nontrading_holdings.map((h) => (
+                        <tr key={h.security_id}>
+                          <td className="px-3 py-3 tabular-nums">{h.security_id}</td>
+                          <td className="px-3 py-3">{h.last_bar_date}</td>
+                          <td className="px-3 py-3 text-right tabular-nums">{h.sessions_without_bar}</td>
+                          <td className="px-3 py-3 text-right tabular-nums">{formatPercent(h.weight)}</td>
+                          <td className="px-3 py-3">{h.identity_status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
             {equityCurve.length > 0 && (
-              <Card title="Equity Curve" subtitle="NAV before costs, at each rebalance">
+              <Card title="Equity Curve" subtitle="NAV before trading, at each rebalance">
                 <div role="img" aria-label="Equity curve chart" className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={equityCurve}>

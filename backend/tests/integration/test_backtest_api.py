@@ -14,11 +14,15 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
+from momentum25.application.dto.walk_forward import SIMULATION_NOTICE
 from momentum25.application.use_cases.walk_forward import (
+    NonTradingHolding,
     RebalanceRecord,
     TradeRecord,
     WalkForwardResult,
 )
+from momentum25.domain.backtest.execution import ExecutionPolicy
+from momentum25.domain.value_objects.manifest import DataManifest
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
 )
@@ -33,6 +37,10 @@ _TRADE = TradeRecord(
     notional=Decimal("1000"),
     fill_date=date(2023, 3, 1),
     cost=Decimal("1.5"),
+    order_date=date(2023, 3, 1),
+    delay_sessions=0,
+    partial=False,
+    participation=Decimal("0.001"),
 )
 
 _RESULT = WalkForwardResult(
@@ -42,10 +50,13 @@ _RESULT = WalkForwardResult(
             fill_date=date(2023, 3, 1),
             universe_size=500,
             eligible_count=420,
+            scored_count=400,
             selected=(7,),
             trades=(_TRADE,),
             total_cost=Decimal("1.5"),
             nav_pre_cost=Decimal("1000000"),
+            stale_marks=0,
+            buy_scale=Decimal("1"),
         ),
     ),
     trades=(_TRADE,),
@@ -54,6 +65,30 @@ _RESULT = WalkForwardResult(
     total_return=Decimal("0.1"),
     benchmark_return=Decimal("0.05"),
     benchmark_label="Nifty 500 Price Index (not TRI)",
+    execution_policy=ExecutionPolicy().as_dict(),
+    cagr=Decimal("0.07"),
+    max_drawdown=Decimal("-0.12"),
+    lower_bound_nav=Decimal("1050000"),
+    nontrading_holdings=(
+        NonTradingHolding(
+            security_id=9,
+            last_bar_date=date(2023, 6, 1),
+            sessions_without_bar=40,
+            value=Decimal("50000"),
+            weight=Decimal("0.0455"),
+            identity_status="no verified identity link",
+        ),
+    ),
+)
+
+_MANIFEST = DataManifest(
+    revision=133621,
+    indicator_version=2,
+    rule_registry_version="41cc5e4529c8",
+    calendar_version="exchange_calendars 4.13.2 XBOM",
+    build_id="img-1",
+    engine_version=1,
+    reference_universe_version=1,
 )
 
 
@@ -67,8 +102,8 @@ class _StubRunner:
 def _client() -> TestClient:
     app = create_app()
 
-    async def _factory(start: date, end: date) -> _StubRunner:
-        return _StubRunner()
+    async def _factory(start: date, end: date) -> tuple[_StubRunner, DataManifest]:
+        return _StubRunner(), _MANIFEST
 
     app.dependency_overrides[get_walk_forward_runner_factory] = lambda: _factory
     return TestClient(app)
@@ -88,6 +123,21 @@ def test_walk_forward_route_returns_full_dto() -> None:
     assert body["rebalances"][0]["selected"] == [7]
     assert body["rebalances"][0]["nav_pre_cost"] == "1000000"
     assert body["trades"][0]["side"] == "BUY"
+
+
+def test_response_names_its_method_data_and_lower_bound() -> None:
+    body = _client().post(
+        "/api/v1/backtest/walk-forward",
+        json={"start": "2023-03-01", "end": "2023-08-31"},
+    ).json()
+    provenance = body["provenance"]
+    assert provenance["method_version"] == 2
+    assert provenance["execution_policy"]["participation_cap"] == "0.10"
+    assert provenance["market_data_version"] == _MANIFEST.market_data_version
+    assert provenance["data_revision"] == 133621 and provenance["build_id"] == "img-1"
+    assert body["lower_bound_return"] == "0.05"
+    assert body["nontrading_holdings"][0]["identity_status"] == "no verified identity link"
+    assert body["simulation_notice"] == SIMULATION_NOTICE
 
 
 def test_benchmark_number_never_travels_without_its_label() -> None:

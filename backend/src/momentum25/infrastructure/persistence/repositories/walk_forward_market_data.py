@@ -45,7 +45,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.backtest.eligibility import EligibilityFacts
+from momentum25.domain.backtest.execution import ExecutionBar
 from momentum25.domain.ports.walk_forward import PricePoint
+from momentum25.domain.universe import in_reference_universe
 from momentum25.infrastructure.persistence.models import (
     BenchmarkIndexDailyModel,
     OHLCVDailyModel,
@@ -64,67 +66,97 @@ BENCHMARK_LABEL = "Nifty 500 Price Index (not TRI)"
 
 
 class SqlPriceHistoryProvider:
-    """Real ``PriceHistoryProvider`` backed by ``ohlcv_daily.adj_close``.
+    """Real ``PriceHistoryProvider`` backed by ``ohlcv_daily``.
 
-    Rows with a ``NULL adj_close`` are excluded at load time (fail closed, same
-    policy the runner already applies when a provider returns ``None`` —
-    never fall back to an unadjusted ``close``).
+    Every price is ``raw × adj_factor`` (IMPLEMENTATION_SPEC §8, R3-B-30). The
+    stored ``adj_close`` column is not read: it was NULL on 17% of rows (all
+    with ``adj_factor = 1``), and dropping those rows made names that traded
+    look absent. Volume is ``raw / adj_factor``.
     """
 
-    def __init__(
-        self,
-        series: dict[int, tuple[list[date], list[Decimal], list[Decimal]]],
-    ) -> None:
-        """Bind sorted per-security (dates, adjusted opens, adjusted closes)."""
+    def __init__(self, series: dict[int, _Series]) -> None:
+        """Bind sorted per-security series."""
         self._series = series
 
     @classmethod
-    async def load(
-        cls, session: AsyncSession, start: date, end: date
-    ) -> SqlPriceHistoryProvider:
-        """Load adjusted closes and opens in ``[start, end]`` in one query."""
+    async def load(cls, session: AsyncSession, start: date, end: date) -> SqlPriceHistoryProvider:
+        """Load every bar in ``[start, end]`` in one query."""
         result = await session.execute(
             select(
                 OHLCVDailyModel.security_id,
                 OHLCVDailyModel.date,
                 OHLCVDailyModel.open,
+                OHLCVDailyModel.high,
+                OHLCVDailyModel.low,
+                OHLCVDailyModel.close,
+                OHLCVDailyModel.volume,
                 OHLCVDailyModel.adj_factor,
-                OHLCVDailyModel.adj_close,
+                OHLCVDailyModel.turnover_value,
             )
-            .where(
-                OHLCVDailyModel.date >= start,
-                OHLCVDailyModel.date <= end,
-                OHLCVDailyModel.adj_close.is_not(None),
-            )
+            .where(OHLCVDailyModel.date >= start, OHLCVDailyModel.date <= end)
             .order_by(OHLCVDailyModel.security_id, OHLCVDailyModel.date)
         )
-        by_security: dict[int, tuple[list[date], list[Decimal], list[Decimal]]] = {}
-        for security_id, session_date, raw_open, adj_factor, adj_close in result.all():
-            if adj_close is None:  # excluded by the query; this narrows the type
-                continue
-            dates, opens, closes = by_security.setdefault(security_id, ([], [], []))
-            dates.append(session_date)
-            opens.append(raw_open * adj_factor)
-            closes.append(adj_close)
+        by_security: dict[int, _Series] = {}
+        for sid, day, o, h, lo, c, volume, factor, turnover in result.all():
+            f = factor if factor is not None else Decimal(1)
+            series = by_security.setdefault(sid, _Series())
+            series.append(
+                ExecutionBar(
+                    session_date=day,
+                    adj_open=o * f,
+                    adj_high=h * f,
+                    adj_low=lo * f,
+                    adj_close=c * f,
+                    volume=int(volume or 0),
+                    turnover_value=turnover if turnover is not None else Decimal(0),
+                )
+            )
         return cls(by_security)
 
     def price_on_or_before(
         self, security_id: int, target: date, as_of: date
     ) -> PricePoint | None:
-        """Latest adjusted close on or before ``min(target, as_of)``.
+        """Latest adjusted bar on or before ``min(target, as_of)``.
 
         Never looks past ``as_of`` even when ``target`` is later — matching
         the no-look-ahead contract the runner enforces on every call.
         """
         series = self._series.get(security_id)
-        if not series:
+        if series is None:
             return None
-        dates, opens, closes = series
-        horizon = min(target, as_of)
-        idx = bisect_right(dates, horizon) - 1
-        if idx < 0:
+        bar = series.on_or_before(min(target, as_of))
+        if bar is None:
             return None
-        return PricePoint(security_id, dates[idx], closes[idx], opens[idx])
+        return PricePoint(security_id, bar.session_date, bar.adj_close, bar.adj_open)
+
+    def execution_bar(self, security_id: int, session: date) -> ExecutionBar | None:
+        """The adjusted bar dated exactly ``session``, or ``None``."""
+        series = self._series.get(security_id)
+        return series.on(session) if series is not None else None
+
+
+class _Series:
+    """One security's bars, ascending by date."""
+
+    __slots__ = ("bars", "dates", "index")
+
+    def __init__(self) -> None:
+        self.dates: list[date] = []
+        self.bars: list[ExecutionBar] = []
+        self.index: dict[date, int] = {}
+
+    def append(self, bar: ExecutionBar) -> None:
+        self.index[bar.session_date] = len(self.bars)
+        self.dates.append(bar.session_date)
+        self.bars.append(bar)
+
+    def on(self, day: date) -> ExecutionBar | None:
+        i = self.index.get(day)
+        return self.bars[i] if i is not None else None
+
+    def on_or_before(self, day: date) -> ExecutionBar | None:
+        i = bisect_right(self.dates, day) - 1
+        return self.bars[i] if i >= 0 else None
 
 
 class SqlBenchmarkProvider:
@@ -232,68 +264,58 @@ class StubAllActiveSecuritiesEligibilityProvider:
 SURVIVORSHIP_ELIGIBILITY_WARNING = (
     "Nifty 500 membership and T2T/ASM surveillance status are still STUB "
     "(is_t2t=False, is_under_surveillance=False, in_nifty_500=True for every "
-    "security) -- see this module's docstring, no adapter for that data "
-    "exists yet (docs/history/backtest-loop/brief-addendum-loop3.md Item 13, NSE reconstitution/ "
-    "circular endpoints attempted and blocked, see builder-notes/round-1.md). "
-    "Survivorship IS real: securities.delisting_date/last_trade_date are "
-    "populated from observed ohlcv_daily/legacy_ohlcv_daily bar coverage "
-    "(scripts/rp012_populate_survivorship_dates.py), so a delisted security "
-    "is included up to its last trade date and excluded after, regardless of "
-    "the is_active flag (which is not a reliable delisting signal in this "
-    "database -- some is_active=true rows carry a populated delisting_date)."
+    "security) -- no adapter for that data exists "
+    "(docs/history/backtest-loop/brief-addendum-loop3.md Item 13). The candidate "
+    "set is the reference equity universe: NSE and dual-listed equities, no "
+    "fund or ETF units, listed and not delisted on the decision date. "
+    "Survivorship IS real: securities.delisting_date/last_trade_date come from "
+    "observed bar coverage (scripts/rp012_populate_survivorship_dates.py), so a "
+    "delisted security is included until its delisting date and excluded from "
+    "it, regardless of the is_active flag. Renames are separate security rows "
+    "until a verified identity link joins them (R3-B-31); a holding whose bars "
+    "stop is reported as a non-trading holding, never guessed to be a rename."
 )
 
 
 class SqlSurvivorshipEligibilityProvider:
-    """Real survivorship, stub membership/surveillance -- see ``SURVIVORSHIP_ELIGIBILITY_WARNING``.
+    """Reference equity universe with real survivorship, stub membership/surveillance.
 
-    Unlike ``StubAllActiveSecuritiesEligibilityProvider``, this provider does
-    not filter on ``is_active`` (an unreliable delisting signal here -- see
-    warning). It includes a security for ``decision_date`` iff
-    ``listing_date <= decision_date <= (delisting_date or +inf)``, using
-    ``securities.delisting_date`` populated by
-    ``scripts/rp012_populate_survivorship_dates.py`` from real bar coverage.
-    This is the mechanism checklist item 8 requires: a delisted name is
-    eligible before its delisting date and excluded from it onward.
+    See ``SURVIVORSHIP_ELIGIBILITY_WARNING``. A security is a candidate on
+    ``decision_date`` when ``in_reference_universe`` holds (IMPLEMENTATION_SPEC
+    §8) and its listing date is known, which the brief's twelve-month rule
+    needs. ``is_active`` is never read.
     """
 
-    def __init__(
-        self, rows: list[tuple[int, date, date | None]]
-    ) -> None:
-        """Bind (security_id, listing_date, delisting_date) rows for every NSE security."""
+    def __init__(self, rows: list[tuple[int, str, str | None, date, date | None]]) -> None:
+        """Bind (security_id, exchange, isin, listing_date, delisting_date) rows."""
         self._rows = rows
 
     @classmethod
     async def load(cls, session: AsyncSession) -> SqlSurvivorshipEligibilityProvider:
-        """Load every NSE security's listing/delisting dates in one query."""
+        """Load every security with a known listing date, ordered by id."""
         result = await session.execute(
             select(
                 SecurityModel.id,
+                SecurityModel.exchange,
+                SecurityModel.isin,
                 SecurityModel.listing_date,
                 SecurityModel.delisting_date,
-            ).where(
-                SecurityModel.exchange == "NSE",
-                SecurityModel.listing_date.is_not(None),
             )
+            .where(SecurityModel.listing_date.is_not(None))
+            .order_by(SecurityModel.id)
         )
-        rows = result.all()
-        return cls([(sid, listed, gone) for sid, listed, gone in rows if listed is not None])
+        return cls([tuple(row) for row in result.all()])  # type: ignore[misc]
 
     def facts_as_of(self, decision_date: date) -> list[EligibilityFacts]:
-        """Return facts for every security listed and not yet delisted as of ``decision_date``."""
-        facts = []
-        for security_id, listed, delisted in self._rows:
-            if listed > decision_date:
-                continue
-            if delisted is not None and decision_date > delisted:
-                continue
-            facts.append(
-                EligibilityFacts(
-                    security_id=security_id,
-                    listing_days_as_of_decision_date=(decision_date - listed).days,
-                    is_t2t=False,
-                    is_under_surveillance=False,
-                    in_nifty_500=True,
-                )
+        """Return facts for every reference-universe security on ``decision_date``."""
+        return [
+            EligibilityFacts(
+                security_id=security_id,
+                listing_days_as_of_decision_date=(decision_date - listed).days,
+                is_t2t=False,
+                is_under_surveillance=False,
+                in_nifty_500=True,
             )
-        return facts
+            for security_id, exchange, isin, listed, delisted in self._rows
+            if in_reference_universe(exchange, isin, listed, delisted, decision_date)
+        ]

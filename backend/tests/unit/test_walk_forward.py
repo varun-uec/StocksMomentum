@@ -21,6 +21,7 @@ from momentum25.application.use_cases.walk_forward import (
     format_walk_forward_report,
 )
 from momentum25.domain.backtest.eligibility import EligibilityFacts
+from momentum25.domain.backtest.execution import ExecutionBar
 from momentum25.domain.ports.walk_forward import PricePoint
 
 # ── Fakes ──────────────────────────────────────────────────────────────────
@@ -49,16 +50,37 @@ class WeekdayCalendar:
 
 
 class FakePrices:
-    """Deterministic per-security adjusted-close series with an as-of spy."""
+    """Deterministic per-security adjusted-close series with an as-of spy.
+
+    Every bar is tradable with deep liquidity unless ``turnover`` overrides a
+    session's traded value.
+    """
 
     def __init__(
         self,
         series: dict[int, dict[date, Decimal]],
         open_series: dict[int, dict[date, Decimal]] | None = None,
+        turnover: dict[tuple[int, date], Decimal] | None = None,
     ) -> None:
         self._series = {sid: dict(sorted(s.items())) for sid, s in series.items()}
         self._open_series = {sid: dict(sorted(s.items())) for sid, s in (open_series or {}).items()}
+        self._turnover = turnover or {}
         self.calls: list[tuple[int, date, date]] = []  # spy for item 13
+
+    def execution_bar(self, security_id: int, session: date) -> ExecutionBar | None:
+        close = self._series.get(security_id, {}).get(session)
+        if close is None:
+            return None
+        open_price = self._open_series.get(security_id, {}).get(session, close)
+        return ExecutionBar(
+            session_date=session,
+            adj_open=open_price,
+            adj_high=max(open_price, close),
+            adj_low=min(open_price, close),
+            adj_close=close,
+            volume=1_000_000,
+            turnover_value=self._turnover.get((security_id, session), Decimal("1e15")),
+        )
 
     def price_on_or_before(
         self, security_id: int, target: date, as_of: date
@@ -83,6 +105,12 @@ class LeakyPrices:
         self, security_id: int, target: date, as_of: date
     ) -> PricePoint | None:
         return PricePoint(security_id, as_of + timedelta(days=1), Decimal(100), Decimal(100))
+
+    def execution_bar(self, security_id: int, session: date) -> ExecutionBar | None:
+        hundred = Decimal(100)
+        return ExecutionBar(
+            session + timedelta(days=1), hundred, hundred, hundred, hundred, 1, Decimal(10**9)
+        )
 
 
 class FixedUniverse:
@@ -227,14 +255,18 @@ def test_reconstructed_nav_matches_independent_replay():
     result = runner.run(start, end, capital)
 
     # Independent replay in the test itself, not calling the engine's summary.
+    # Fills replay in log order: notional, then cost (method v2 ledger contract).
     cash = capital
     qty: dict[int, Decimal] = {}
-    for t in sorted(result.trades, key=lambda x: (x.fill_date, x.security_id)):
-        cash -= t.notional + t.cost
+    for t in result.trades:
+        cash -= t.notional
+        cash -= t.cost
         qty[t.security_id] = qty.get(t.security_id, Decimal(0)) + t.quantity
     nav = cash
     prices = runner._prices  # the fake; read last price at end independently
     for sid, held in qty.items():
+        if held == 0:
+            continue
         point = prices.price_on_or_before(sid, end, end)
         assert point is not None
         nav += held * point.adj_close

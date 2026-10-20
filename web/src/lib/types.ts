@@ -1049,13 +1049,17 @@ export interface BacktestRebalance {
   fill_date: string;
   universe_size: number;
   eligible_count: number;
+  scored_count: number;
   selected: number[];
+  /** Every fill this plan produced, deferred fills included. */
   trade_count: number;
   total_cost: string;
   nav_pre_cost: string;
+  stale_marks: number;
+  buy_scale: string;
 }
 
-/** One fill in the trade log. Decimal fields arrive as strings. */
+/** One fill in the trade log. Decimal fields arrive as strings; quantity and notional are signed. */
 export interface BacktestTrade {
   security_id: number;
   side: string;
@@ -1064,6 +1068,38 @@ export interface BacktestTrade {
   notional: string;
   fill_date: string;
   cost: string;
+  order_date: string;
+  delay_sessions: number;
+  partial: boolean;
+  participation: string | null;
+}
+
+export interface BacktestClosedOrder {
+  security_id: number;
+  side: string;
+  order_date: string;
+  closed_on: string;
+  reason: 'expired' | 'superseded' | 'open_at_end' | string;
+  remaining_cash: string;
+  remaining_shares: string;
+}
+
+export interface BacktestNonTradingHolding {
+  security_id: number;
+  last_bar_date: string;
+  sessions_without_bar: number;
+  value: string;
+  weight: string;
+  identity_status: string;
+}
+
+export interface BacktestProvenance {
+  method_version: number;
+  execution_policy: Record<string, string | number | boolean>;
+  market_data_version: string | null;
+  data_revision: number;
+  calendar_version: string;
+  build_id: string | null;
 }
 
 export interface BacktestResponse {
@@ -1072,12 +1108,23 @@ export interface BacktestResponse {
   initial_capital: string;
   final_nav: string;
   total_return: string;
+  cagr: string | null;
+  max_drawdown: string;
+  lower_bound_nav: string | null;
+  /** Return with every non-trading holding at zero. Show it next to total_return. */
+  lower_bound_return: string | null;
   /** Never render this without `benchmark_label` next to it. */
   benchmark_return: string | null;
   benchmark_label: string | null;
   rebalance_count: number;
   trade_count: number;
+  partial_fill_count: number;
+  deferred_fill_count: number;
   rebalances: BacktestRebalance[];
   trades: BacktestTrade[];
+  closed_orders: BacktestClosedOrder[];
+  nontrading_holdings: BacktestNonTradingHolding[];
+  provenance: BacktestProvenance;
+  simulation_notice: string;
   survivorship_warning: string;
 }

@@ -20,6 +20,7 @@ from momentum25.application.dto.walk_forward import (
     to_backtest_response,
 )
 from momentum25.application.use_cases.walk_forward import WalkForwardRunner
+from momentum25.domain.value_objects.manifest import DataManifest
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
 )
@@ -27,7 +28,7 @@ from momentum25.interface.walk_forward_wiring import build_walk_forward_runner
 
 router = APIRouter(prefix="/backtest", tags=["backtest"])
 
-RunnerFactory = Callable[[date, date], Awaitable[WalkForwardRunner]]
+RunnerFactory = Callable[[date, date], Awaitable[tuple[WalkForwardRunner, DataManifest]]]
 
 
 def get_walk_forward_runner_factory() -> RunnerFactory:
@@ -39,8 +40,8 @@ def get_walk_forward_runner_factory() -> RunnerFactory:
     "/walk-forward",
     response_model=BacktestResponse,
     summary="Run a walk-forward backtest",
-    description="Run the monthly-rebalanced momentum backtest over a date range "
-    "against real point-in-time price, benchmark and survivorship data. "
+    description="Run the monthly-rebalanced momentum backtest (execution method v2) over a "
+    "date range against real point-in-time price, benchmark and survivorship data. "
     "The response carries the benchmark label next to the benchmark return and "
     "the survivorship/eligibility caveat; both must be shown wherever the "
     "numbers are shown.",
@@ -55,12 +56,12 @@ async def run_walk_forward(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="start must be on or before end",
         )
-    runner = await runner_factory(body.start, body.end)
+    runner, manifest = await runner_factory(body.start, body.end)
     # The run itself is synchronous, CPU-bound and can take seconds over a
     # multi-year range, so it must not block the event loop.
     result = await run_in_threadpool(
         runner.run, body.start, body.end, body.initial_capital
     )
     return to_backtest_response(
-        result, body.start, body.end, SURVIVORSHIP_ELIGIBILITY_WARNING
+        result, body.start, body.end, SURVIVORSHIP_ELIGIBILITY_WARNING, manifest
     )

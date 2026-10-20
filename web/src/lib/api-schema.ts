@@ -572,10 +572,10 @@ export interface paths {
          * List Strategies
          * @description List registered strategies.
          *
-         *     ``workspace=true`` includes the newest saved configuration for each user
-         *     strategy. ``with_runs=true`` restricts either list to versions that have a
-         *     completed live screening snapshot. The workstation uses the unfiltered list
-         *     so selecting a strategy without a run can show an honest empty state.
+         *     ``workspace=true`` includes every saved user version. ``with_runs=true``
+         *     restricts either list to versions that have a completed live screening
+         *     snapshot. The workstation uses the unfiltered list so selecting a version
+         *     without a run can show an honest empty state.
          */
         get: operations["list_strategies_api_v1_strategies_get"];
         put?: never;
@@ -1293,7 +1293,7 @@ export interface paths {
         put?: never;
         /**
          * Run a walk-forward backtest
-         * @description Run the monthly-rebalanced momentum backtest over a date range against real point-in-time price, benchmark and survivorship data. The response carries the benchmark label next to the benchmark return and the survivorship/eligibility caveat; both must be shown wherever the numbers are shown.
+         * @description Run the monthly-rebalanced momentum backtest (execution method v2) over a date range against real point-in-time price, benchmark and survivorship data. The response carries the benchmark label next to the benchmark return and the survivorship/eligibility caveat; both must be shown wherever the numbers are shown.
          */
         post: operations["run_walk_forward_api_v1_backtest_walk_forward_post"];
         delete?: never;
@@ -1407,6 +1407,16 @@ export interface components {
             strategy_name: string;
             /** Strategy Id */
             strategy_id: number;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             /** Period Label */
             period_label: string;
             /**
@@ -1428,6 +1438,26 @@ export interface components {
             /** Avg Alpha */
             avg_alpha?: string | null;
             measurability: components["schemas"]["MeasurabilityDTO"];
+        };
+        /**
+         * BacktestProvenance
+         * @description What produced the result (ADR-014 §11).
+         */
+        BacktestProvenance: {
+            /** Method Version */
+            method_version: number;
+            /** Execution Policy */
+            execution_policy: {
+                [key: string]: string | number | boolean;
+            };
+            /** Market Data Version */
+            market_data_version: string | null;
+            /** Data Revision */
+            data_revision: number;
+            /** Calendar Version */
+            calendar_version: string;
+            /** Build Id */
+            build_id: string | null;
         };
         /**
          * BacktestRequest
@@ -1471,6 +1501,14 @@ export interface components {
             final_nav: string;
             /** Total Return */
             total_return: string;
+            /** Cagr */
+            cagr: string | null;
+            /** Max Drawdown */
+            max_drawdown: string;
+            /** Lower Bound Nav */
+            lower_bound_nav: string | null;
+            /** Lower Bound Return */
+            lower_bound_return: string | null;
             /** Benchmark Return */
             benchmark_return: string | null;
             /** Benchmark Label */
@@ -1479,10 +1517,21 @@ export interface components {
             rebalance_count: number;
             /** Trade Count */
             trade_count: number;
+            /** Partial Fill Count */
+            partial_fill_count: number;
+            /** Deferred Fill Count */
+            deferred_fill_count: number;
             /** Rebalances */
             rebalances: components["schemas"]["RebalanceDTO"][];
             /** Trades */
             trades: components["schemas"]["TradeDTO"][];
+            /** Closed Orders */
+            closed_orders: components["schemas"]["ClosedOrderDTO"][];
+            /** Nontrading Holdings */
+            nontrading_holdings: components["schemas"]["NonTradingHoldingDTO"][];
+            provenance: components["schemas"]["BacktestProvenance"];
+            /** Simulation Notice */
+            simulation_notice: string;
             /** Survivorship Warning */
             survivorship_warning: string;
         };
@@ -1593,6 +1642,32 @@ export interface components {
             compare?: string[];
         };
         /**
+         * ClosedOrderDTO
+         * @description An order that ended without filling in full.
+         */
+        ClosedOrderDTO: {
+            /** Security Id */
+            security_id: number;
+            /** Side */
+            side: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /**
+             * Closed On
+             * Format: date
+             */
+            closed_on: string;
+            /** Reason */
+            reason: string;
+            /** Remaining Cash */
+            remaining_cash: string;
+            /** Remaining Shares */
+            remaining_shares: string;
+        };
+        /**
          * ConfidenceComponent
          * @description One weighted component of the labelling-confidence score.
          */
@@ -1615,6 +1690,16 @@ export interface components {
         ContributionAnalysisResponse: {
             /** Strategy Name */
             strategy_name: string;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             /** Run Count */
             run_count: number;
             /** Security Count */
@@ -1951,6 +2036,16 @@ export interface components {
             strategy_name: string;
             /** Strategy Id */
             strategy_id: number;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             /** Total Runs Analyzed */
             total_runs_analyzed: number;
             /** Engines */
@@ -2315,6 +2410,16 @@ export interface components {
             strategy_name: string;
             /** Strategy Id */
             strategy_id: number;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             /** Windows */
             windows: components["schemas"]["HistoricalValidationResultDTO"][];
             /** Total Trading Days */
@@ -2548,6 +2653,27 @@ export interface components {
             forward_returns_available: boolean;
             /** Reason */
             reason?: string | null;
+        };
+        /**
+         * NonTradingHoldingDTO
+         * @description A holding with no bar for more than the policy's flag window at the end date.
+         */
+        NonTradingHoldingDTO: {
+            /** Security Id */
+            security_id: number;
+            /**
+             * Last Bar Date
+             * Format: date
+             */
+            last_bar_date: string;
+            /** Sessions Without Bar */
+            sessions_without_bar: number;
+            /** Value */
+            value: string;
+            /** Weight */
+            weight: string;
+            /** Identity Status */
+            identity_status: string;
         };
         /**
          * OHLCVBarDTO
@@ -2917,7 +3043,7 @@ export interface components {
         };
         /**
          * RebalanceDTO
-         * @description One rebalance in the log.
+         * @description One rebalance in the log. Its trades include fills deferred past the fill date.
          */
         RebalanceDTO: {
             /**
@@ -2934,6 +3060,8 @@ export interface components {
             universe_size: number;
             /** Eligible Count */
             eligible_count: number;
+            /** Scored Count */
+            scored_count: number;
             /** Selected */
             selected: number[];
             /** Trade Count */
@@ -2942,6 +3070,10 @@ export interface components {
             total_cost: string;
             /** Nav Pre Cost */
             nav_pre_cost: string;
+            /** Stale Marks */
+            stale_marks: number;
+            /** Buy Scale */
+            buy_scale: string;
         };
         /**
          * RefreshMarketDataRequest
@@ -3005,6 +3137,11 @@ export interface components {
              * @default 1
              */
             window_years: number;
+            /**
+             * Config Hash
+             * @description Exact config version (ADR-014 §9). Omit for the strategy-file definition.
+             */
+            config_hash?: string | null;
         };
         /**
          * ResearchDashboardResponse
@@ -3015,6 +3152,16 @@ export interface components {
             strategy_name: string;
             /** Strategy Id */
             strategy_id: number;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             scorecard?: components["schemas"]["StrategyScorecardDTO"] | null;
             alpha_analysis?: components["schemas"]["AlphaAnalysisResponse"] | null;
             rule_effectiveness?: components["schemas"]["RuleEffectivenessResponse"] | null;
@@ -3140,6 +3287,16 @@ export interface components {
             strategy_name: string;
             /** Strategy Id */
             strategy_id: number;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             /** Total Runs Analyzed */
             total_runs_analyzed: number;
             /** Date Range */
@@ -3334,14 +3491,17 @@ export interface components {
             key: string;
             /** Schema Version */
             schema_version: number;
-            /** Revision */
+            /**
+             * Revision
+             * @description 0 when the document was never saved.
+             */
             revision: number;
             /**
              * Updated At
-             * Format: date-time
+             * @description null when the document was never saved.
              */
-            updated_at: string;
-            body: components["schemas"]["SavedScreensV1"];
+            updated_at: string | null;
+            body: components["schemas"]["SavedScreensV1"] | null;
         };
         /**
          * SavedScreensV1
@@ -3626,6 +3786,16 @@ export interface components {
         StrategyEvaluationResponse: {
             /** Strategy Name */
             strategy_name: string;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             performance: components["schemas"]["PortfolioPerformanceDTO"];
             /** Run Summaries */
             run_summaries: components["schemas"]["HistoricalRunSummaryDTO"][];
@@ -3642,6 +3812,16 @@ export interface components {
             strategy_name: string;
             /** Strategy Id */
             strategy_id: number;
+            /**
+             * Strategy Version
+             * @description Version of the strategy row that produced the evidence.
+             */
+            strategy_version?: number | null;
+            /**
+             * Config Hash
+             * @description Config hash whose runs are the evidence; never mixed.
+             */
+            config_hash?: string | null;
             /** Period Label */
             period_label: string;
             /** Start Date */
@@ -3818,14 +3998,17 @@ export interface components {
             key: string;
             /** Schema Version */
             schema_version: number;
-            /** Revision */
+            /**
+             * Revision
+             * @description 0 when the document was never saved.
+             */
             revision: number;
             /**
              * Updated At
-             * Format: date-time
+             * @description null when the document was never saved.
              */
-            updated_at: string;
-            body: components["schemas"]["SymbolDrawingsV1"];
+            updated_at: string | null;
+            body: components["schemas"]["SymbolDrawingsV1"] | null;
         };
         /**
          * SymbolDrawingsV1
@@ -3865,7 +4048,7 @@ export interface components {
         };
         /**
          * TradeDTO
-         * @description One fill in the trade log.
+         * @description One fill in the trade log. ``quantity`` and ``notional`` are signed: + buy, - sell.
          */
         TradeDTO: {
             /** Security Id */
@@ -3885,6 +4068,17 @@ export interface components {
             fill_date: string;
             /** Cost */
             cost: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Delay Sessions */
+            delay_sessions: number;
+            /** Partial */
+            partial: boolean;
+            /** Participation */
+            participation: string | null;
         };
         /**
          * TriggerRefreshRequest
@@ -4099,14 +4293,17 @@ export interface components {
             key: string;
             /** Schema Version */
             schema_version: number;
-            /** Revision */
+            /**
+             * Revision
+             * @description 0 when the document was never saved.
+             */
             revision: number;
             /**
              * Updated At
-             * Format: date-time
+             * @description null when the document was never saved.
              */
-            updated_at: string;
-            body: components["schemas"]["WorkspaceV1"];
+            updated_at: string | null;
+            body: components["schemas"]["WorkspaceV1"] | null;
         };
         /**
          * WorkspaceV1
@@ -4577,6 +4774,8 @@ export interface operations {
                 max_runs?: number;
                 date_from?: string | null;
                 date_to?: string | null;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -4610,6 +4809,8 @@ export interface operations {
         parameters: {
             query?: {
                 max_runs?: number;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -5390,6 +5591,8 @@ export interface operations {
         parameters: {
             query?: {
                 window_years?: number;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -5423,6 +5626,8 @@ export interface operations {
         parameters: {
             query?: {
                 max_runs?: number;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -5458,6 +5663,8 @@ export interface operations {
                 max_runs?: number;
                 date_from?: string | null;
                 date_to?: string | null;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -5491,6 +5698,8 @@ export interface operations {
         parameters: {
             query?: {
                 max_runs?: number;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {
@@ -5524,6 +5733,8 @@ export interface operations {
         parameters: {
             query?: {
                 max_runs?: number;
+                /** @description Exact config version. Omit for the strategy-file definition. */
+                config_hash?: string | null;
             };
             header?: never;
             path: {

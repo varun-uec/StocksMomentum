@@ -21,6 +21,7 @@ from decimal import Decimal
 from typing import Protocol, runtime_checkable
 
 from momentum25.domain.backtest.eligibility import EligibilityFacts
+from momentum25.domain.backtest.execution import ExecutionBar
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +52,14 @@ class PriceHistoryProvider(Protocol):
         never reach past ``as_of`` even if ``target`` is later. Returns
         ``None`` when the security has no session on or before ``target``
         within the ``as_of`` horizon (e.g. not yet listed).
+        """
+        ...
+
+    def execution_bar(self, security_id: int, session: date) -> ExecutionBar | None:
+        """Return the adjusted bar dated exactly ``session``, or ``None``.
+
+        Never a bar from another session: this is the only price a fill may
+        use (brief addendum "Execution method v2" §5).
         """
         ...
 

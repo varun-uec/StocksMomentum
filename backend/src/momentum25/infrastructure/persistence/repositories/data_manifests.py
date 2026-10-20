@@ -22,9 +22,9 @@ class SqlDataManifestRepository:
         """Bind the repository to a unit-of-work session."""
         self._session = session
 
-    async def capture(self, revision: int | None = None) -> DataManifest:
-        """Record the inputs at ``revision`` (default: now), the engine versions and the build."""
-        manifest = DataManifest(
+    async def current(self, revision: int | None = None) -> DataManifest:
+        """The manifest for ``revision`` (default: now), without storing it."""
+        return DataManifest(
             revision=await current_revision(self._session) if revision is None else revision,
             indicator_version=INDICATOR_VERSION,
             rule_registry_version=registry_version(),
@@ -33,6 +33,10 @@ class SqlDataManifestRepository:
             engine_version=ENGINE_VERSION,
             reference_universe_version=REFERENCE_UNIVERSE_VERSION,
         )
+
+    async def capture(self, revision: int | None = None) -> DataManifest:
+        """Record the inputs at ``revision`` (default: now), the engine versions and the build."""
+        manifest = await self.current(revision)
         await self._session.execute(
             insert(DataManifestModel)
             .values(data_version=manifest.data_version, body=manifest.body())

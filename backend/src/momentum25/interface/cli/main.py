@@ -130,9 +130,10 @@ def walk_forward(
 async def _run_walk_forward(start: str, end: str, initial_capital: str) -> None:
     start_date = date.fromisoformat(start)
     end_date = date.fromisoformat(end)
-    runner = await build_walk_forward_runner(start_date, end_date)
+    runner, manifest = await build_walk_forward_runner(start_date, end_date)
     result = runner.run(start_date, end_date, Decimal(initial_capital))
     typer.echo(format_walk_forward_report(result))
+    typer.echo(f"Market data: {manifest.market_data_version} (revision {manifest.revision})")
 
 
 async def _import_eod(file: Path, actions: Path | None) -> dict[str, int]:

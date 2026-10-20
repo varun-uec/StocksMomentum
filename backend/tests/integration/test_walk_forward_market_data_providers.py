@@ -28,9 +28,11 @@ from momentum25.infrastructure.persistence.repositories.walk_forward_market_data
 )
 
 
-async def _seed_security(session: AsyncSession, symbol: str) -> int:
+async def _seed_security(
+    session: AsyncSession, symbol: str, exchange: str = "NSE", isin: str | None = None
+) -> int:
     security = SecurityModel(
-        symbol=symbol, name=symbol, exchange="NSE", is_active=True
+        symbol=symbol, name=symbol, exchange=exchange, isin=isin, is_active=True
     )
     session.add(security)
     await session.flush()
@@ -47,10 +49,10 @@ async def test_price_provider_answers_latest_close_on_or_before_horizon(
             OHLCVDailyModel(
                 security_id=sid,
                 date=d,
-                open=Decimal(100),
-                high=Decimal(101),
-                low=Decimal(99),
-                close=Decimal(100),
+                open=Decimal(v),
+                high=Decimal(v),
+                low=Decimal(v),
+                close=Decimal(v),
                 volume=1000,
                 adj_close=Decimal(v),
                 adj_factor=Decimal(1),
@@ -85,10 +87,10 @@ async def test_price_provider_never_looks_past_as_of_even_when_target_is_later(
             OHLCVDailyModel(
                 security_id=sid,
                 date=d,
-                open=Decimal(100),
-                high=Decimal(101),
-                low=Decimal(99),
-                close=Decimal(100),
+                open=Decimal(v),
+                high=Decimal(v),
+                low=Decimal(v),
+                close=Decimal(v),
                 volume=1000,
                 adj_close=Decimal(v),
                 adj_factor=Decimal(1),
@@ -109,10 +111,10 @@ async def test_price_provider_never_looks_past_as_of_even_when_target_is_later(
 
 
 @pytest.mark.asyncio
-async def test_price_provider_excludes_rows_with_null_adj_close(
+async def test_price_provider_prices_rows_with_null_adj_close_from_the_factor(
     db_session: AsyncSession,
 ) -> None:
-    """Fail closed: an unadjusted row must never be substituted for a missing adj_close."""
+    """R3-B-30: a NULL ``adj_close`` row is a real bar; its price is ``close × adj_factor``."""
     sid = await _seed_security(db_session, "CCC")
     db_session.add(
         OHLCVDailyModel(
@@ -133,7 +135,10 @@ async def test_price_provider_excludes_rows_with_null_adj_close(
         db_session, date(2024, 1, 1), date(2024, 1, 31)
     )
 
-    assert provider.price_on_or_before(sid, date(2024, 1, 2), date(2024, 1, 2)) is None
+    point = provider.price_on_or_before(sid, date(2024, 1, 2), date(2024, 1, 2))
+    assert point is not None and point.adj_close == Decimal(100) and point.adj_open == Decimal(100)
+    bar = provider.execution_bar(sid, date(2024, 1, 2))
+    assert bar is not None and bar.valid
 
 
 @pytest.mark.asyncio
@@ -233,7 +238,7 @@ async def test_stub_eligibility_provider_excludes_inactive_securities(
 async def test_survivorship_provider_includes_delisted_security_before_delisting(
     db_session: AsyncSession,
 ) -> None:
-    """Checklist item 8: a delisted name stays eligible up to its delisting date."""
+    """Checklist item 8: a delisted name stays eligible until its delisting date."""
     sid = await _seed_security(db_session, "GGG")
     security = await db_session.get(SecurityModel, sid)
     security.listing_date = date(2015, 1, 1)
@@ -242,7 +247,7 @@ async def test_survivorship_provider_includes_delisted_security_before_delisting
 
     provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
 
-    before = {f.security_id for f in provider.facts_as_of(date(2020, 6, 30))}
+    before = {f.security_id for f in provider.facts_as_of(date(2020, 6, 29))}
     assert sid in before
 
 
@@ -259,8 +264,8 @@ async def test_survivorship_provider_excludes_delisted_security_after_delisting(
 
     provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
 
-    after = {f.security_id for f in provider.facts_as_of(date(2020, 7, 1))}
-    assert sid not in after
+    assert sid not in {f.security_id for f in provider.facts_as_of(date(2020, 6, 30))}
+    assert sid not in {f.security_id for f in provider.facts_as_of(date(2020, 7, 1))}
 
 
 @pytest.mark.asyncio
@@ -275,3 +280,62 @@ async def test_survivorship_provider_ignores_is_active_flag(db_session: AsyncSes
     provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
 
     assert sid in {f.security_id for f in provider.facts_as_of(date(2024, 6, 1))}
+
+
+@pytest.mark.asyncio
+async def test_survivorship_provider_uses_the_reference_equity_universe(
+    db_session: AsyncSession,
+) -> None:
+    """R3-B-27 and R3-B-28: dual-listed equities are in; fund units and BSE-only rows are out."""
+    rows = {
+        "NSEONLY": ("NSE", "INE000A01011"),
+        "DUAL": ("BOTH", "INE002A01018"),
+        "GOLDETF": ("NSE", "INF204KB17I5"),
+        "BSEONLY": ("BSE", "INE999Z01019"),
+    }
+    ids = {}
+    for symbol, (exchange, isin) in rows.items():
+        ids[symbol] = await _seed_security(db_session, symbol, exchange, isin)
+        (await db_session.get(SecurityModel, ids[symbol])).listing_date = date(2015, 1, 1)
+    await db_session.commit()
+
+    provider = await SqlSurvivorshipEligibilityProvider.load(db_session)
+    facts = {f.security_id for f in provider.facts_as_of(date(2024, 6, 1))}
+
+    assert ids["NSEONLY"] in facts and ids["DUAL"] in facts
+    assert ids["GOLDETF"] not in facts and ids["BSEONLY"] not in facts
+
+
+@pytest.mark.asyncio
+async def test_execution_bar_is_the_exact_session_or_nothing(db_session: AsyncSession) -> None:
+    """A fill price may only come from a bar dated on the fill session."""
+    sid = await _seed_security(db_session, "GAPPY")
+    db_session.add(
+        OHLCVDailyModel(
+            security_id=sid,
+            date=date(2024, 1, 2),
+            open=Decimal("200"),
+            high=Decimal("210"),
+            low=Decimal("190"),
+            close=Decimal("205"),
+            volume=1000,
+            adj_factor=Decimal("0.5"),
+            turnover_value=Decimal("205000"),
+        )
+    )
+    await db_session.commit()
+
+    provider = await SqlPriceHistoryProvider.load(
+        db_session, date(2024, 1, 1), date(2024, 1, 31)
+    )
+
+    bar = provider.execution_bar(sid, date(2024, 1, 2))
+    assert bar is not None
+    assert (bar.adj_open, bar.adj_high, bar.adj_low, bar.adj_close) == (
+        Decimal("100"),
+        Decimal("105"),
+        Decimal("95"),
+        Decimal("102.5"),
+    )
+    assert bar.turnover_value == Decimal("205000") and bar.valid
+    assert provider.execution_bar(sid, date(2024, 1, 3)) is None  # no stale substitute
