@@ -2,7 +2,13 @@ import { describe, expect, test } from 'vitest';
 import {
   applyDrawingChanges,
   channelOffset,
+  DRAWING_KINDS,
+  DRAWING_LABELS,
+  DRAWING_REQUIRED_POINTS,
   diffDrawings,
+  fibExtensionLevels,
+  inTriangle,
+  pitchforkLines,
   hitTest,
   hitTestAll,
   moveDrawing,
@@ -153,5 +159,72 @@ describe('undo and redo', () => {
   test('undoing a delete brings the drawing back', () => {
     const changes = diffDrawings([d('a'), d('b')], [d('b')]);
     expect(applyDrawingChanges([d('b')], changes, 'before').map((x) => x.id).sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('phase B3 tools', () => {
+  test('every kind has a label and a point count, and labels are unique', () => {
+    for (const kind of DRAWING_KINDS) {
+      expect(DRAWING_LABELS[kind]).toBeTruthy();
+      expect(DRAWING_REQUIRED_POINTS[kind]).toBeGreaterThan(0);
+    }
+    expect(new Set(Object.values(DRAWING_LABELS)).size).toBe(DRAWING_KINDS.length);
+  });
+
+  test('an arrow is hit on its shaft', () => {
+    expect(hitTest('arrow', trend.points, { x: 50, y: 52 })).toBe('body');
+    expect(hitTest('arrow', trend.points, { x: 50, y: 70 })).toBeNull();
+  });
+
+  test('an ellipse is hit inside its box ellipse, not in the box corners', () => {
+    const box = [{ x: 0, y: 0 }, { x: 100, y: 50 }];
+    expect(hitTest('ellipse', box, { x: 50, y: 25 })).toBe('body');
+    expect(hitTest('ellipse', box, { x: 99, y: 25 })).toBe('body');
+    expect(hitTest('ellipse', box, { x: 95, y: 3 })).toBeNull();
+  });
+
+  test('a triangle is hit inside or on an edge, in either winding', () => {
+    const [a, b, c] = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 50, y: 80 }];
+    expect(inTriangle({ x: 50, y: 30 }, a, b, c)).toBe(true);
+    expect(inTriangle({ x: 50, y: 30 }, a, c, b)).toBe(true);
+    expect(inTriangle({ x: 95, y: 70 }, a, b, c)).toBe(false);
+    expect(hitTest('triangle', [a, b, c], { x: 50, y: 30 })).toBe('body');
+    expect(hitTest('triangle', [a, b, c], { x: 0, y: 60 })).toBeNull();
+    // Two anchors are not a triangle yet.
+    expect(hitTest('triangle', [a, b], { x: 50, y: 1 })).toBeNull();
+  });
+
+  test('extension levels project the a→b move from c, by the standard ratios', () => {
+    const levels = fibExtensionLevels({ x: 0, y: 100 }, { x: 50, y: 0 }, { x: 80, y: 60 });
+    expect(levels.map((l) => [l.ratio, l.y])).toEqual([[0, 60], [0.618, 60 - 61.8], [1, -40], [1.272, 60 - 127.2], [1.618, 60 - 161.8], [2.618, 60 - 261.8]]);
+    expect([levels.from, levels.to]).toEqual([80, 130]);
+    expect(hitTest('fib_extension', [{ x: 0, y: 100 }, { x: 50, y: 0 }, { x: 80, y: 60 }], { x: 100, y: -40 })).toBe('body');
+    expect(hitTest('fib_extension', [{ x: 0, y: 100 }, { x: 50, y: 0 }, { x: 80, y: 60 }], { x: 100, y: 20 })).toBeNull();
+  });
+
+  test('a pitchfork median runs from the pivot through the midpoint of the other two; tines are parallel rays', () => {
+    const [a, b, c] = [{ x: 0, y: 50 }, { x: 40, y: 20 }, { x: 40, y: 80 }];
+    const [median, upper, lower] = pitchforkLines(a, b, c);
+    expect(median).toEqual({ start: a, dir: { x: 40, y: 0 } });
+    expect([upper.start, lower.start]).toEqual([b, c]);
+    expect(upper.dir).toEqual(median.dir);
+    expect(hitTest('pitchfork', [a, b, c], { x: 300, y: 50 })).toBe('body'); // far along the median
+    expect(hitTest('pitchfork', [a, b, c], { x: 300, y: 21 })).toBe('body'); // the upper tine
+    expect(hitTest('pitchfork', [a, b, c], { x: 300, y: 35 })).toBeNull();
+  });
+
+  test('a callout is hit on its text box or leader; a price label on its tag', () => {
+    const callout = [{ x: 10, y: 100 }, { x: 60, y: 40 }];
+    expect(hitTest('callout', callout, { x: 80, y: 35 }, 'Base')).toBe('body');
+    expect(hitTest('callout', callout, { x: 35, y: 70 }, 'Base')).toBe('body');
+    expect(hitTest('callout', callout, { x: 10, y: 40 }, 'Base')).toBeNull();
+    expect(hitTest('price_label', [{ x: 100, y: 100 }], { x: 130, y: 100 })).toBe('body');
+    expect(hitTest('price_label', [{ x: 100, y: 100 }], { x: 80, y: 100 })).toBeNull();
+  });
+
+  test('date ranges are hit anywhere inside their box', () => {
+    const box = [{ x: 10, y: 10 }, { x: 60, y: 90 }];
+    expect(hitTest('date_range', box, { x: 30, y: 50 })).toBe('body');
+    expect(hitTest('date_price_range', box, { x: 80, y: 50 })).toBeNull();
   });
 });

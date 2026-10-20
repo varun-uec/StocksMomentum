@@ -37,7 +37,17 @@ export type DrawingKind =
   | 'rectangle'
   | 'fib'
   | 'price_range'
-  | 'text';
+  | 'text'
+  // Phase B3: additive kinds; documents saved before them still load.
+  | 'arrow'
+  | 'date_range'
+  | 'date_price_range'
+  | 'ellipse'
+  | 'triangle'
+  | 'fib_extension'
+  | 'pitchfork'
+  | 'callout'
+  | 'price_label';
 
 export const DRAWING_KINDS: DrawingKind[] = [
   'trendline',
@@ -52,6 +62,15 @@ export const DRAWING_KINDS: DrawingKind[] = [
   'fib',
   'price_range',
   'text',
+  'arrow',
+  'date_range',
+  'date_price_range',
+  'ellipse',
+  'triangle',
+  'fib_extension',
+  'pitchfork',
+  'callout',
+  'price_label',
 ];
 
 export const DRAWING_LABELS: Record<DrawingKind, string> = {
@@ -67,6 +86,15 @@ export const DRAWING_LABELS: Record<DrawingKind, string> = {
   fib: 'Fib retracement',
   price_range: 'Price range',
   text: 'Text note',
+  arrow: 'Arrow',
+  date_range: 'Date range',
+  date_price_range: 'Date and price range',
+  ellipse: 'Ellipse',
+  triangle: 'Triangle',
+  fib_extension: 'Trend-based Fib extension',
+  pitchfork: 'Pitchfork',
+  callout: 'Callout',
+  price_label: 'Price label',
 };
 
 /** Points a tool needs until it is complete. */
@@ -83,7 +111,19 @@ export const DRAWING_REQUIRED_POINTS: Record<DrawingKind, number> = {
   fib: 2,
   price_range: 2,
   text: 1,
+  arrow: 2,
+  date_range: 2,
+  date_price_range: 2,
+  ellipse: 2,
+  triangle: 3,
+  fib_extension: 3,
+  pitchfork: 3,
+  callout: 2,
+  price_label: 1,
 };
+
+/** Kinds that carry text the owner writes; the note editor opens when one is placed. */
+export const TEXT_KINDS: ReadonlySet<DrawingKind> = new Set(['text', 'callout']);
 
 export interface DrawingPoint {
   /** ISO bar date (`YYYY-MM-DD`), the format every chart prop already uses. */
@@ -111,6 +151,8 @@ export const DRAWING_WIDTHS = [1, 2, 3, 4];
 
 /** Chart Drawing state is plain JSON; the `fib` ratios are the standard ones. */
 export const FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
+/** Trend-based extension ratios, projected from the third anchor by the a→b move. */
+export const FIB_EXTENSION_LEVELS = [0, 0.618, 1, 1.272, 1.618, 2.618] as const;
 
 export function toTime(isoDate: string): UTCTimestamp {
   return (Date.parse(`${isoDate}T00:00:00Z`) / 1000) as UTCTimestamp;
@@ -169,6 +211,34 @@ export function channelOffset(a: ScreenPoint, b: ScreenPoint, c: ScreenPoint): {
   return { a: { x: a.x, y: a.y + dy }, b: { x: b.x, y: b.y + dy } };
 }
 
+/** The y of each extension level, and the x span the levels draw over (right of the third anchor). */
+export function fibExtensionLevels(a: ScreenPoint, b: ScreenPoint, c: ScreenPoint): { ratio: number; y: number }[] & { from: number; to: number } {
+  const levels = FIB_EXTENSION_LEVELS.map((ratio) => ({ ratio, y: c.y + (b.y - a.y) * ratio }));
+  return Object.assign(levels, { from: c.x, to: c.x + Math.max(40, Math.abs(b.x - a.x)) });
+}
+
+/**
+ * Andrews' pitchfork: the median line runs from the pivot `a` through the
+ * midpoint of `b` and `c`; the two tines start at `b` and `c`, parallel to it.
+ * Each line is a start and a direction; all three are rays.
+ */
+export function pitchforkLines(a: ScreenPoint, b: ScreenPoint, c: ScreenPoint): { start: ScreenPoint; dir: ScreenPoint }[] {
+  const dir = { x: (b.x + c.x) / 2 - a.x, y: (b.y + c.y) / 2 - a.y };
+  return [a, b, c].map((start) => ({ start, dir }));
+}
+
+/** Whether `p` lies inside triangle a-b-c (either winding). */
+export function inTriangle(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint, c: ScreenPoint): boolean {
+  const side = (u: ScreenPoint, v: ScreenPoint) => (p.x - v.x) * (u.y - v.y) - (u.x - v.x) * (p.y - v.y);
+  const [d1, d2, d3] = [side(a, b), side(b, c), side(c, a)];
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+}
+
+/** The box a price label occupies, right of its anchor. */
+export function priceLabelBox(at: ScreenPoint): { x: number; y: number; w: number; h: number } {
+  return { x: at.x + 6, y: at.y - 9, w: 64, h: 18 };
+}
+
 /** The box a text note occupies, right of its anchor. */
 export function textBox(at: ScreenPoint, text: string): { x: number; y: number; w: number; h: number } {
   return { x: at.x, y: at.y - 14, w: Math.max(24, text.length * 6.5 + 8), h: 18 };
@@ -185,7 +255,8 @@ export function hitTest(kind: DrawingKind, points: (ScreenPoint | null)[], at: S
     if (p && distance(p, at) <= HANDLE_RADIUS) return i;
   }
   const [a, b, c] = points;
-  if (!a || (DRAWING_REQUIRED_POINTS[kind] > 1 && !b) || (kind === 'channel' && !c)) return null;
+  if (!a || points.length < DRAWING_REQUIRED_POINTS[kind] || points.slice(0, DRAWING_REQUIRED_POINTS[kind]).some((p) => !p)) return null;
+  const inBox = (box: { x: number; y: number; w: number; h: number }) => at.x >= box.x && at.x <= box.x + box.w && at.y >= box.y && at.y <= box.y + box.h;
   const hit = (near: boolean): DrawingPart | null => (near ? 'body' : null);
   switch (kind) {
     case 'horizontal':
@@ -210,6 +281,28 @@ export function hitTest(kind: DrawingKind, points: (ScreenPoint | null)[], at: S
     }
     case 'trendline':
       return distanceToSegment(at, a, b!) <= LINE_TOLERANCE ? 'body' : null;
+    case 'arrow':
+      return hit(distanceToSegment(at, a, b!) <= LINE_TOLERANCE);
+    case 'ellipse': {
+      const [rx, ry] = [Math.abs(b!.x - a.x) / 2 + LINE_TOLERANCE, Math.abs(b!.y - a.y) / 2 + LINE_TOLERANCE];
+      const [cx, cy] = [(a.x + b!.x) / 2, (a.y + b!.y) / 2];
+      return hit(((at.x - cx) / rx) ** 2 + ((at.y - cy) / ry) ** 2 <= 1);
+    }
+    case 'triangle':
+      return hit(inTriangle(at, a, b!, c!) || [[a, b], [b, c], [c, a]].some(([u, v]) => distanceToSegment(at, u!, v!) <= LINE_TOLERANCE));
+    case 'fib_extension': {
+      const levels = fibExtensionLevels(a, b!, c!);
+      const inX = at.x >= levels.from - LINE_TOLERANCE && at.x <= levels.to + LINE_TOLERANCE;
+      return hit((inX && levels.some((l) => Math.abs(at.y - l.y) <= LINE_TOLERANCE)) || distanceToSegment(at, a, b!) <= LINE_TOLERANCE || distanceToSegment(at, b!, c!) <= LINE_TOLERANCE);
+    }
+    case 'pitchfork':
+      return hit(pitchforkLines(a, b!, c!).some(({ start, dir }) => distanceToLine(at, start, { x: start.x + dir.x, y: start.y + dir.y }, 0) <= LINE_TOLERANCE));
+    case 'callout':
+      return hit(inBox(textBox(b!, text)) || distanceToSegment(at, a, b!) <= LINE_TOLERANCE);
+    case 'price_label':
+      return hit(inBox(priceLabelBox(a)));
+    case 'date_range':
+    case 'date_price_range':
     case 'price_range':
     case 'rectangle': {
       const inX = at.x >= Math.min(a.x, b!.x) - LINE_TOLERANCE && at.x <= Math.max(a.x, b!.x) + LINE_TOLERANCE;
@@ -532,6 +625,133 @@ class DrawingsPaneRenderer implements IPrimitivePaneRenderer {
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'left';
         ctx.fillText(drawing.text ?? '', box.x + 4, box.y + 13);
+        break;
+      }
+      case 'arrow': {
+        const [a, b] = [screen(0), screen(1)];
+        if (!a || !b) break;
+        line(a, b);
+        // The head: two short strokes back from b, 28° either side of the shaft.
+        const angle = Math.atan2(b.y - a.y, b.x - a.x);
+        const size = 8 + width * 2;
+        for (const side of [-1, 1]) line(b, { x: b.x - size * Math.cos(angle + side * 0.5), y: b.y - size * Math.sin(angle + side * 0.5) });
+        break;
+      }
+      case 'ellipse': {
+        const [a, b] = [screen(0), screen(1)];
+        if (!a || !b) break;
+        ctx.beginPath();
+        ctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2);
+        ctx.fillStyle = `${drawing.color}14`;
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+      case 'triangle': {
+        const [a, b, c] = [screen(0), screen(1), screen(2)];
+        if (!a || !b) break;
+        if (!c) { line(a, b); break; }
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.closePath();
+        ctx.fillStyle = `${drawing.color}14`;
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+      case 'date_range':
+      case 'date_price_range': {
+        const [a, b] = [screen(0), screen(1)];
+        const [pa, pb] = drawing.points;
+        if (!a || !b || !pa || !pb) break;
+        const [left, right, top, bottom] = [Math.min(a.x, b.x), Math.max(a.x, b.x), Math.min(a.y, b.y), Math.max(a.y, b.y)];
+        ctx.fillStyle = `${drawing.color}1f`;
+        ctx.fillRect(left, top, right - left, bottom - top);
+        const midY = (top + bottom) / 2;
+        line({ x: left, y: midY }, { x: right, y: midY });
+        if (drawing.kind === 'date_price_range') line({ x: (left + right) / 2, y: top }, { x: (left + right) / 2, y: bottom });
+        const index = (date: string) => chart.timeScale().timeToIndex(toTime(date), true) ?? 0;
+        const bars = Math.abs(index(pb.date) - index(pa.date));
+        const days = Math.round(Math.abs(Date.parse(pb.date) - Date.parse(pa.date)) / 86_400_000);
+        const change = pb.price - pa.price;
+        const pct = pa.price === 0 ? 0 : (change / pa.price) * 100;
+        const label = `${bars} bars, ${days}d${drawing.kind === 'date_price_range' ? ` · ${change >= 0 ? '+' : ''}${change.toFixed(2)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)` : ''}`;
+        ctx.fillStyle = drawing.color;
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, (left + right) / 2, bottom + 14);
+        break;
+      }
+      case 'fib_extension': {
+        const [a, b, c] = [screen(0), screen(1), screen(2)];
+        if (!a || !b) break;
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        line(a, b);
+        if (c) line(b, c);
+        ctx.setLineDash([]);
+        if (!c) break;
+        const levels = fibExtensionLevels(a, b, c);
+        for (const { ratio, y } of levels) {
+          ctx.strokeStyle = ratio === 0 || ratio === 1 ? drawing.color : `${drawing.color}80`;
+          ctx.lineWidth = ratio === 0 || ratio === 1 ? width : 1;
+          line({ x: levels.from, y }, { x: levels.to, y });
+          ctx.fillStyle = drawing.color;
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`${ratio}`, levels.to + 4, y + 3);
+        }
+        break;
+      }
+      case 'pitchfork': {
+        const [a, b, c] = [screen(0), screen(1), screen(2)];
+        if (!a || !b) break;
+        if (!c) { line(a, b); break; }
+        line(b, c);
+        for (const [i, { start, dir }] of pitchforkLines(a, b, c).entries()) {
+          ctx.lineWidth = i === 0 ? width : Math.max(1, width - 1);
+          extend(start, { x: start.x + dir.x, y: start.y + dir.y }, false);
+        }
+        break;
+      }
+      case 'callout': {
+        const [a, b] = [screen(0), screen(1)];
+        if (!a || !b) break;
+        line(a, b);
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = drawing.color;
+        ctx.fill();
+        const box = textBox(b, drawing.text ?? '');
+        ctx.fillStyle = `${drawing.color}22`;
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.fillStyle = drawing.color;
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(drawing.text ?? '', box.x + 4, box.y + 13);
+        break;
+      }
+      case 'price_label': {
+        const a = screen(0);
+        const price = drawing.points[0]?.price;
+        if (!a || price === undefined) break;
+        const box = priceLabelBox(a);
+        ctx.fillStyle = drawing.color;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(box.x, box.y);
+        ctx.lineTo(box.x + box.w, box.y);
+        ctx.lineTo(box.x + box.w, box.y + box.h);
+        ctx.lineTo(box.x, box.y + box.h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(price.toFixed(2), box.x + box.w / 2, box.y + 13);
         break;
       }
       case 'fib': {

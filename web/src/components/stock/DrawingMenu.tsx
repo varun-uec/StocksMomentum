@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { DRAWING_COLORS, DRAWING_WIDTHS, type ChartDrawing } from '@/components/stock/chart-drawings';
+import { DRAWING_COLORS, DRAWING_WIDTHS, TEXT_KINDS, type ChartDrawing } from '@/components/stock/chart-drawings';
 import type { PriceScale } from '@/components/stock/chart-types';
 import { focusRing } from '@/lib/theme';
 
@@ -107,7 +107,7 @@ export function DrawingMenu({
       <div className="flex flex-col">
         <button type="button" role="menuitem" className={ITEM_CLASS} onClick={() => onChange({ ...drawing, locked: !drawing.locked })}>{drawing.locked ? 'Unlock' : 'Lock'}</button>
         <button type="button" role="menuitem" className={ITEM_CLASS} onClick={() => { onChange({ ...drawing, hidden: !drawing.hidden }); onClose(); }}>{drawing.hidden ? 'Show' : 'Hide'}</button>
-        {drawing.kind === 'text' && (
+        {TEXT_KINDS.has(drawing.kind) && (
           <button
             type="button"
             role="menuitem"

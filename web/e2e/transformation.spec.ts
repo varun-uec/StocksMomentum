@@ -394,14 +394,14 @@ test('the grouped rail: flyouts, keys, last-used tools and the phone Draw sheet'
   const arrow = rail.getByRole('button', { name: 'Lines tools' });
   const flyout = page.getByRole('group', { name: 'Lines tools' });
   await arrow.click();
-  await expect(flyout.getByRole('button')).toHaveText(['Trendline', 'Ray', 'Extended line', 'Horizontal line', 'Horizontal ray', 'Vertical line', 'Cross line', 'Parallel channel'].map((n) => new RegExp(`^${n}`)));
+  await expect(flyout.getByRole('button')).toHaveText(['Trendline', 'Ray', 'Extended line', 'Horizontal line', 'Horizontal ray', 'Vertical line', 'Cross line', 'Parallel channel', 'Pitchfork'].map((n) => new RegExp(`^${n}`)));
   await expect(flyout.getByRole('button', { name: 'Trendline' })).toHaveAttribute('aria-keyshortcuts', 'Alt+T');
   await expect(flyout.getByRole('button', { name: 'Trendline' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(flyout.getByRole('button', { name: 'Ray', exact: true })).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
-  await expect(flyout.getByRole('button', { name: 'Parallel channel' })).toBeFocused();
+  await expect(flyout.getByRole('button', { name: 'Pitchfork' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(flyout).toHaveCount(0);
   await expect(arrow).toBeFocused();

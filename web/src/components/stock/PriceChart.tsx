@@ -56,6 +56,7 @@ import {
   DRAWING_KINDS,
   DRAWING_LABELS,
   DRAWING_REQUIRED_POINTS,
+  TEXT_KINDS,
   applyDrawingChanges,
   attachDrawingsLayer,
   diffDrawings,
@@ -175,16 +176,25 @@ const RAIL_ICONS: Record<DrawingKind | 'select' | 'clear', React.ReactNode> = {
   text: <path d="M4 5h12M10 5v11M7 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
   rectangle: <rect x="4" y="5" width="12" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" />,
   fib: <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />,
+  arrow: <path d="M4 16L16 4M16 4h-6M16 4v6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
+  date_range: <path d="M3 4v12M17 4v12M5 10h10M8 7l-3 3 3 3M12 7l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />,
+  date_price_range: <path d="M3 3h14v14H3zM5 10h10M10 5v10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />,
+  ellipse: <ellipse cx="10" cy="10" rx="7" ry="5" fill="none" stroke="currentColor" strokeWidth="1.6" />,
+  triangle: <path d="M10 3l7 13H3z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  fib_extension: <path d="M3 16L8 6l4 6M12 4h6M12 8h6M12 12h6M12 16h6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />,
+  pitchfork: <path d="M2 14L18 6M6 18L18 12M2 8l14-6M6 18L2 8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />,
+  callout: <path d="M3 17l4-5M7 4h10v8H7z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />,
+  price_label: <path d="M3 10l4-5h10v10H7z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />,
   clear: <path d="M6 6l1 11h6l1-11M4 6h12M8 6V4h4v2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />,
 };
 
 /** The rail's tool groups, in TradingView's order (plan 2026-10-19, step 4). */
 const TOOL_GROUPS: { name: string; tools: DrawingKind[] }[] = [
-  { name: 'Lines', tools: ['trendline', 'ray', 'extended', 'hline', 'horizontal', 'vline', 'crossline', 'channel'] },
-  { name: 'Fibonacci', tools: ['fib'] },
-  { name: 'Shapes', tools: ['rectangle'] },
-  { name: 'Annotation', tools: ['text'] },
-  { name: 'Measure', tools: ['price_range'] },
+  { name: 'Lines', tools: ['trendline', 'ray', 'extended', 'hline', 'horizontal', 'vline', 'crossline', 'channel', 'pitchfork'] },
+  { name: 'Fibonacci', tools: ['fib', 'fib_extension'] },
+  { name: 'Shapes', tools: ['rectangle', 'ellipse', 'triangle'] },
+  { name: 'Annotation', tools: ['text', 'callout', 'price_label', 'arrow'] },
+  { name: 'Measure', tools: ['price_range', 'date_range', 'date_price_range'] },
 ];
 
 /** Each group's last-used tool. Shared by every chart, so it survives a change of active chart. */
@@ -1173,10 +1183,10 @@ export function PriceChart({
       const next = [...draftPointsRef.current, point];
       draftPointsRef.current = next;
       if (next.length >= DRAWING_REQUIRED_POINTS[tool]) {
-        const text = tool === 'text' ? '' : undefined;
+        const writes = TEXT_KINDS.has(tool);
         // Every field the server stores, so the saved copy and this one compare equal.
-        const drawing: ChartDrawing = { id: drawingId(), kind: tool, points: next, color: DRAWING_COLOR, width: 2, text: text ?? null };
-        if (tool === 'text') { setNoteEditor({ drawing, x: at.x, y: at.y }); selectTool(null); return; }
+        const drawing: ChartDrawing = { id: drawingId(), kind: tool, points: next, color: DRAWING_COLOR, width: 2, text: writes ? '' : null };
+        if (writes) { setNoteEditor({ drawing, x: at.x, y: at.y }); selectTool(null); return; }
         commitDrawings([...drawingsRef.current, drawing]);
         setSelectedId(drawing.id);
         selectTool(null);
