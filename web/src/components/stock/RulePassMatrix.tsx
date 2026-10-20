@@ -24,7 +24,7 @@ export function RulePassMatrix({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500 pb-1">
+      <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pb-1">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-400" /> passed
         </span>
@@ -62,7 +62,7 @@ export function RulePassMatrix({
                 />
               ))}
             </div>
-            <div className="ml-auto text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+            <div className="ml-auto text-xs text-slate-500 dark:text-slate-400 tabular-nums">
               {passed}/{engineRules.length}
             </div>
           </div>

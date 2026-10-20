@@ -10,9 +10,9 @@ import { PRESETS, type RuleState, type Signal } from '@/lib/strategies';
 import { focusRing } from '@/lib/theme';
 
 const DIRECTION_STYLE: Record<Signal['direction'], string> = {
-  long: 'text-emerald-600 dark:text-emerald-400',
-  short: 'text-rose-600 dark:text-rose-400',
-  exit: 'text-amber-600 dark:text-amber-400',
+  long: 'text-emerald-700 dark:text-emerald-400',
+  short: 'text-rose-700 dark:text-rose-400',
+  exit: 'text-amber-700 dark:text-amber-400',
 };
 
 export function StrategyPanel({
@@ -44,6 +44,7 @@ export function StrategyPanel({
     <div className="space-y-4">
       <div>
         <select
+          aria-label="Strategy preset"
           value={presetId}
           onChange={(e) => onPresetChange(e.target.value)}
           className={`w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm ${focusRing}`}
@@ -56,7 +57,7 @@ export function StrategyPanel({
         </select>
         <p className="text-[11px] text-slate-500 mt-1">
           {preset.description}
-          {edited && <span className="text-amber-600 dark:text-amber-400"> · edited</span>}
+          {edited && <span className="text-amber-700 dark:text-amber-400"> · edited</span>}
         </p>
       </div>
 
@@ -66,7 +67,7 @@ export function StrategyPanel({
         </div>
         <div className="text-2xl font-semibold tabular-nums text-slate-800 dark:text-slate-200">
           {score}
-          <span className="text-sm text-slate-400"> / 100</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400"> / 100</span>
         </div>
         <p className="text-[11px] text-slate-500">
           50 is neutral. Each rule moves it by its direction, weighted by how many sessions ago it
@@ -84,7 +85,7 @@ export function StrategyPanel({
                 {rule.contribution.toFixed(1)}
               </span>
             </div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+            <div className="text-[10px] text-slate-500 dark:text-slate-400">
               {rule.latest
                 ? `${rule.latest.direction} · ${rule.latest.date} · ${rule.ageBars} sessions ago`
                 : 'never fired in the loaded range'}

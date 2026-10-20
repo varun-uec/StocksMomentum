@@ -67,12 +67,12 @@ export function MetricCard({
   const isNegative = change && parseFloat(change) < 0;
   const valueColor =
     value === UNMEASURED
-      ? 'text-slate-400 dark:text-slate-500'
+      ? 'text-slate-500 dark:text-slate-400'
       : (color ??
         (good
-          ? 'text-emerald-600 dark:text-emerald-400'
+          ? 'text-emerald-700 dark:text-emerald-400'
           : bad
-            ? 'text-rose-600 dark:text-rose-400'
+            ? 'text-rose-700 dark:text-rose-400'
             : 'text-slate-800 dark:text-slate-200'));
 
   return (
@@ -93,7 +93,7 @@ export function MetricCard({
             <span
               className={`text-xs font-medium tabular-nums ${
                 isPositive
-                  ? 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-emerald-700 dark:text-emerald-400'
                   : isNegative
                     ? 'text-rose-700 dark:text-rose-400'
                     : 'text-slate-500 dark:text-slate-400'
@@ -183,7 +183,7 @@ export function ErrorMessage({ message, onRetry }: { message: string; onRetry?: 
 export function EmptyState({ message }: { message: string }) {
   return (
     <div role="status" className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-3">
+      <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="w-8 h-8 text-slate-300 dark:text-slate-400 mb-3">
         <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
       </svg>
       <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md">{message}</p>

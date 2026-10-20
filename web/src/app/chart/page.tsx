@@ -515,7 +515,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   );
 
   return (
-    <main className="chart-page" data-layout={grid.layout.id}>
+    <div className="chart-page" data-layout={grid.layout.id}>
       {routeSlot && createPortal(toolbar, routeSlot)}
       <div className="chart-body">
       <div ref={setRailSlot} className="chart-rail" />
@@ -582,6 +582,6 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         }}
         onClose={closeSearch}
       />
-    </main>
+    </div>
   );
 }

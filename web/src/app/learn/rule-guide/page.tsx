@@ -211,11 +211,11 @@ function EngineRuleTable({ engine }: { engine: EngineConfigDTO }) {
                     {meta.rationale}
                   </p>
                   <p>
-                    <span className="text-emerald-600 dark:text-emerald-400">Pass example: </span>
+                    <span className="text-emerald-700 dark:text-emerald-400">Pass example: </span>
                     {meta.passExample}
                   </p>
                   <p>
-                    <span className="text-rose-600 dark:text-rose-400">Fail example: </span>
+                    <span className="text-rose-700 dark:text-rose-400">Fail example: </span>
                     {meta.failExample}
                   </p>
                 </div>

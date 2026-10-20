@@ -74,7 +74,7 @@ function ChecklistPopover({
           type="button"
           onClick={onClick}
           aria-expanded={open}
-          aria-label={`Checklist for ${symbol}`}
+          aria-label={`${passedCount}/8 checks passed for ${symbol}`}
           className={`text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline decoration-dotted underline-offset-2 transition-colors ${focusRing}`}
         >
           {passedCount}/8
@@ -91,7 +91,7 @@ function ChecklistPopover({
             return (
               <li key={key} className="flex items-center gap-2 text-sm">
                 <StatusDot passed={passed} />
-                <span className={passed ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}>
+                <span className={passed ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}>
                   {RULE_LABELS[key]}
                 </span>
               </li>
@@ -109,7 +109,7 @@ function TrendTemplateBadge({ passed }: { passed: boolean }) {
       className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${
         passed
           ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500'
+          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300'
       }`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${passed ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-300 dark:bg-slate-600'}`} />
@@ -119,13 +119,13 @@ function TrendTemplateBadge({ passed }: { passed: boolean }) {
 }
 
 function RiskBadge({ bucket }: { bucket: string | null }) {
-  if (!bucket) return <span className="text-slate-400 dark:text-slate-600">—</span>;
+  if (!bucket) return <span className="text-slate-500 dark:text-slate-400">—</span>;
   const color =
     bucket === 'Low'
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-emerald-700 dark:text-emerald-400'
       : bucket === 'Medium'
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-rose-600 dark:text-rose-400';
+        ? 'text-amber-700 dark:text-amber-400'
+        : 'text-rose-700 dark:text-rose-400';
   return <span className={`text-xs font-medium ${color}`}>{bucket}</span>;
 }
 
@@ -145,7 +145,7 @@ function RankChange({ change }: { change: number | null }) {
   return (
     <span
       className={`inline-flex items-center gap-0.5 text-xs font-medium tabular-nums ${
-        isUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+        isUp ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
       }`}
     >
       <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
@@ -219,7 +219,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         cell: (info) => {
           const value = info.getValue();
           return value === null ? (
-            <span className="text-slate-400 dark:text-slate-600">…</span>
+            <span className="text-slate-500 dark:text-slate-400">…</span>
           ) : (
             <span className="tabular-nums font-medium">{value}</span>
           );
@@ -236,7 +236,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         },
         cell: (info) =>
           info.getValue() === 0 ? (
-            <span className="text-slate-400 dark:text-slate-600" title="Did not qualify for a rank">—</span>
+            <span className="text-slate-500 dark:text-slate-400" title="Did not qualify for a rank">—</span>
           ) : (
             <span className="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{info.getValue()}</span>
           ),
@@ -262,7 +262,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
       }),
       columnHelper.accessor('sector', {
         header: 'Sector',
-        cell: (info) => <span className="text-xs text-slate-500 dark:text-slate-500">{info.getValue() ?? '—'}</span>,
+        cell: (info) => <span className="text-xs text-slate-500 dark:text-slate-400">{info.getValue() ?? '—'}</span>,
       }),
       columnHelper.accessor('momentum_score', {
         header: 'Momentum',
@@ -287,7 +287,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         cell: (info) => {
           const explanation = info.row.original.explanation;
           const checklist = explanation?.checklist as unknown as RuleResults | undefined;
-          if (!checklist) return <span className="text-slate-400 dark:text-slate-600">—</span>;
+          if (!checklist) return <span className="text-slate-500 dark:text-slate-400">—</span>;
           const allPassed = Object.values(checklist).every(Boolean);
           return <TrendTemplateBadge passed={allPassed} />;
         },
@@ -309,12 +309,12 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         cell: (info) => {
           const explanation = info.row.original.explanation;
           const volQuality = (explanation?.volume_quality as string) ?? null;
-          if (!volQuality) return <span className="text-slate-400 dark:text-slate-600">—</span>;
+          if (!volQuality) return <span className="text-slate-500 dark:text-slate-400">—</span>;
           const color =
             volQuality === 'High'
-              ? 'text-emerald-600 dark:text-emerald-400'
+              ? 'text-emerald-700 dark:text-emerald-400'
               : volQuality === 'Medium'
-                ? 'text-amber-600 dark:text-amber-400'
+                ? 'text-amber-700 dark:text-amber-400'
                 : 'text-slate-500';
           return <span className={`text-xs font-medium ${color}`}>{volQuality}</span>;
         },
@@ -326,12 +326,12 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         cell: (info) => {
           const explanation = info.row.original.explanation;
           const bq = (explanation?.breakout_quality as string) ?? null;
-          if (!bq) return <span className="text-slate-400 dark:text-slate-600">—</span>;
+          if (!bq) return <span className="text-slate-500 dark:text-slate-400">—</span>;
           const color =
             bq === 'Strong'
-              ? 'text-emerald-600 dark:text-emerald-400'
+              ? 'text-emerald-700 dark:text-emerald-400'
               : bq === 'Moderate'
-                ? 'text-amber-600 dark:text-amber-400'
+                ? 'text-amber-700 dark:text-amber-400'
                 : 'text-slate-500';
           return <span className={`text-xs font-medium ${color}`}>{bq}</span>;
         },
@@ -343,7 +343,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
         cell: (info) => {
           const explanation = info.row.original.explanation;
           const pattern = (explanation?.pattern as string) ?? null;
-          if (!pattern) return <span className="text-slate-400 dark:text-slate-600">—</span>;
+          if (!pattern) return <span className="text-slate-500 dark:text-slate-400">—</span>;
           return <span className="text-xs text-indigo-600 dark:text-indigo-300">{pattern}</span>;
         },
         enableSorting: false,
@@ -372,7 +372,7 @@ export default function MomentumTable({ items, onSymbolClick, selectedSymbol = n
               />
             );
           }
-          return <span className="text-slate-400 dark:text-slate-600 text-xs">N/A</span>;
+          return <span className="text-slate-500 dark:text-slate-400 text-xs">N/A</span>;
         },
         enableSorting: false,
       }),

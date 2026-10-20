@@ -28,12 +28,12 @@ function pct(value: string | null): string {
 }
 
 function toneFor(value: string | null): string {
-  if (value === null) return 'text-slate-400 dark:text-slate-600';
+  if (value === null) return 'text-slate-500 dark:text-slate-400';
   const n = parseFloat(value);
-  if (!Number.isFinite(n)) return 'text-slate-400 dark:text-slate-600';
+  if (!Number.isFinite(n)) return 'text-slate-500 dark:text-slate-400';
   return n >= 0
-    ? 'text-emerald-600 dark:text-emerald-400'
-    : 'text-rose-600 dark:text-rose-400';
+    ? 'text-emerald-700 dark:text-emerald-400'
+    : 'text-rose-700 dark:text-rose-400';
 }
 
 export function RelativeStrengthVsIndex({
@@ -79,7 +79,7 @@ export function RelativeStrengthVsIndex({
               >
                 <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-300">
                   {PERIOD_LABELS[p.period] ?? p.period}
-                  <span className="text-slate-400 dark:text-slate-600"> · {p.sessions} sessions</span>
+                  <span className="text-slate-500 dark:text-slate-400"> · {p.sessions} sessions</span>
                 </td>
                 <td className="py-1.5 px-3 text-right tabular-nums text-slate-700 dark:text-slate-300">
                   {pct(p.stock_return_pct)}

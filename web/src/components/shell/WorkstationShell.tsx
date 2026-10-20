@@ -188,7 +188,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
         </header>
         <ConflictBanner />
         <div className="ws-body">
-          <div className="ws-main">{children}</div>
+          <main className="ws-main">{children}</main>
           {dock.desktop ? (
             <div className="ws-dock">
               {panel}

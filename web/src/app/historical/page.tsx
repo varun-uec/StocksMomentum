@@ -73,10 +73,11 @@ export default function HistoricalReplayPage() {
         <Card title="Replay Controls">
           <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-end gap-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label htmlFor="historical-date" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Select Date
               </label>
               <input
+                id="historical-date"
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
@@ -86,10 +87,11 @@ export default function HistoricalReplayPage() {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label htmlFor="historical-run" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Or Select Existing Run
               </label>
               <select
+                id="historical-run"
                 value={selectedRunId ?? ''}
                 onChange={(e) => setSelectedRunId(e.target.value ? Number(e.target.value) : null)}
                 className={`w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm ${focusRing}`}
@@ -112,7 +114,7 @@ export default function HistoricalReplayPage() {
               {isReplaying ? 'Replaying…' : 'Replay Date'}
             </button>
           </div>
-          {replayError && <div className="mt-3 text-sm text-rose-600 dark:text-rose-400">{replayError}</div>}
+          {replayError && <div className="mt-3 text-sm text-rose-700 dark:text-rose-400">{replayError}</div>}
         </Card>
 
         {/* Replay Result */}

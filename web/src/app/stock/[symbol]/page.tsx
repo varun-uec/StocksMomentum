@@ -110,7 +110,7 @@ function AnalysisSection({
             <div className="flex-1">
               <div className="text-slate-700 dark:text-slate-300">{rule.explanation}</div>
               {!rule.passed && IMPROVEMENT_HINTS[rule.rule_id] && (
-                <div className="text-amber-600 dark:text-amber-400/90 mt-0.5">{IMPROVEMENT_HINTS[rule.rule_id]}</div>
+                <div className="text-amber-700 dark:text-amber-400/90 mt-0.5">{IMPROVEMENT_HINTS[rule.rule_id]}</div>
               )}
             </div>
           </div>
@@ -309,7 +309,7 @@ export default function StockResearchPage() {
           >
             {liveLoading && <LoadingSpinner text="Evaluating this symbol on demand…" />}
             {liveError && (
-              <p className="text-xs text-rose-600 dark:text-rose-400">
+              <p className="text-xs text-rose-700 dark:text-rose-400">
                 The live evaluation for {symbol} could not be completed. The historical run data
                 below is unaffected.
               </p>
@@ -317,13 +317,13 @@ export default function StockResearchPage() {
             {live && (
               <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
                 {!live.data_sufficient && (
-                  <p className="text-amber-600 dark:text-amber-400">
+                  <p className="text-amber-700 dark:text-amber-400">
                     Insufficient price history to evaluate every rule — the figures below are
                     partial.
                   </p>
                 )}
                 {live.indeterminate_rules.length > 0 && (
-                  <p className="text-amber-600 dark:text-amber-400">
+                  <p className="text-amber-700 dark:text-amber-400">
                     Could not be measured for this symbol: {live.indeterminate_rules.join(', ')}.
                     This is reported as {live.verdict}, not as a failure.
                   </p>
@@ -386,7 +386,7 @@ export default function StockResearchPage() {
               <MetricCard
                 label="Momentum Score"
                 value={num(explanation.momentum_score, 1)}
-                color={parseFloat(explanation.momentum_score) >= 50 ? 'text-emerald-600 dark:text-emerald-400' : undefined}
+                color={parseFloat(explanation.momentum_score) >= 50 ? 'text-emerald-700 dark:text-emerald-400' : undefined}
               />
               <MetricCard label="Buy Setup Score" value={num(explanation.buy_setup_score, 1)} />
               <MetricCard label="Composite Score" value={num(explanation.composite_score, 1)} />
@@ -576,7 +576,7 @@ export default function StockResearchPage() {
                       <span className="text-slate-700 dark:text-slate-300">{r.explanation}</span>
                     </div>
                   ))}
-                  {strengths.length === 0 && <div className="text-xs text-slate-400 dark:text-slate-600">No passing rules.</div>}
+                  {strengths.length === 0 && <div className="text-xs text-slate-500 dark:text-slate-400">No passing rules.</div>}
                 </div>
               </Card>
               <Card title="Weaknesses" badge={{ text: `${failedRules.length} rules`, color: 'rose' }}>
@@ -588,7 +588,7 @@ export default function StockResearchPage() {
                       {explanation.hard_filter_failures.includes(r.rule_id) && <Badge color="rose">gate</Badge>}
                     </div>
                   ))}
-                  {weaknesses.length === 0 && <div className="text-xs text-slate-400 dark:text-slate-600">No failing rules.</div>}
+                  {weaknesses.length === 0 && <div className="text-xs text-slate-500 dark:text-slate-400">No failing rules.</div>}
                 </div>
               </Card>
             </div>

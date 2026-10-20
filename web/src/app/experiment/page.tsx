@@ -81,10 +81,11 @@ export default function ExperimentLaboratoryPage() {
         <Card title="Experiment Configuration">
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label htmlFor="experiment-base-strategy" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Base Strategy
               </label>
               <select
+                id="experiment-base-strategy"
                 value={baseStrategy}
                 onChange={(e) => setBaseStrategy(e.target.value)}
                 className={`w-full max-w-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm ${focusRing}`}
@@ -142,7 +143,7 @@ export default function ExperimentLaboratoryPage() {
                       type="button"
                       onClick={() => removeOverride(idx)}
                       aria-label="Remove override"
-                      className={`p-2 text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors ${focusRing} rounded`}
+                      className={`p-2 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 transition-colors ${focusRing} rounded`}
                     >
                       <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                         <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -232,10 +233,10 @@ export default function ExperimentLaboratoryPage() {
                         <tr key={b.run_date} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                           <td className="px-3 py-3 text-slate-700 dark:text-slate-300">{b.run_date}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{b.total_evaluated}</td>
-                          <td className="px-3 py-3 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{b.total_passed}</td>
+                          <td className="px-3 py-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{b.total_passed}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{b.avg_momentum_score}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{v?.total_evaluated ?? '—'}</td>
-                          <td className="px-3 py-3 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{v?.total_passed ?? '—'}</td>
+                          <td className="px-3 py-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{v?.total_passed ?? '—'}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{v?.avg_momentum_score ?? '—'}</td>
                         </tr>
                       );

@@ -18,9 +18,9 @@ function StatCard({
   description?: string;
 }) {
   const accentColors: Record<string, string> = {
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    amber: 'text-amber-600 dark:text-amber-400',
-    rose: 'text-rose-600 dark:text-rose-400',
+    emerald: 'text-emerald-700 dark:text-emerald-400',
+    amber: 'text-amber-700 dark:text-amber-400',
+    rose: 'text-rose-700 dark:text-rose-400',
     slate: 'text-slate-800 dark:text-slate-100',
     indigo: 'text-indigo-600 dark:text-indigo-400',
   };

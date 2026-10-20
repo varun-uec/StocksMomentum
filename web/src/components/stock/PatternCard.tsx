@@ -140,7 +140,7 @@ function ChartPatternSection({
         </div>
 
         {detection.error && (
-          <p className="text-xs text-rose-600 dark:text-rose-400">
+          <p className="text-xs text-rose-700 dark:text-rose-400">
             Pattern detection for {symbol} could not be completed.
           </p>
         )}
@@ -152,7 +152,7 @@ function ChartPatternSection({
         )}
 
         {analysis && analysis.patterns.length > 1 && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
             More than one formation fits this price action. Select a candidate to draw its
             geometry — these are alternative readings of the same bars, not confirmations of
             each other.

@@ -151,7 +151,7 @@ export default function Home() {
   const matches = rankings ? applyFilters(rankings.items, screen.filters) : [];
 
   return (
-    <main className="min-h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <PageHeader title="Stock Screener" subtitle="Top-ranked stocks from deterministic momentum screening">
         <StrategySelector />
         {run && isScreening && activeRun && <Badge color="amber">Run #{activeRun.id} screening in progress</Badge>}
@@ -228,6 +228,6 @@ export default function Home() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -136,7 +136,7 @@ export function AlertsTab({ symbol, price, drawing }: { symbol?: string; price?:
                 type="button"
                 aria-label={`Delete alert: ${describeAlert(a)}`}
                 onClick={() => remove.mutate(a.id)}
-                className={`text-rose-600 dark:text-rose-400 hover:underline ${focusRing}`}
+                className={`text-rose-700 dark:text-rose-400 hover:underline ${focusRing}`}
               >
                 Delete
               </button>

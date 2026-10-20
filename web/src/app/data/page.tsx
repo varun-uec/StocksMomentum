@@ -53,10 +53,10 @@ function ResultCard({ result }: { result: ExchangeRefreshResult }) {
         <Stat label="Unmapped" value={result.securities_unmapped} />
       </div>
       {result.provider_error && (
-        <p className="mt-3 text-xs text-rose-600 dark:text-rose-400">{result.provider_error}</p>
+        <p className="mt-3 text-xs text-rose-700 dark:text-rose-400">{result.provider_error}</p>
       )}
       {result.warnings.map((warning) => (
-        <p key={warning} className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+        <p key={warning} className="mt-3 text-xs text-amber-700 dark:text-amber-400">
           {warning}
         </p>
       ))}

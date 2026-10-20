@@ -69,7 +69,7 @@ export default function MomentumInvestingPage() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60 mt-3">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-500 text-xs uppercase tracking-wider">
+            <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
               <th scope="col" className="text-left py-3 px-3">Horizon</th>
               <th scope="col" className="text-left py-3 px-3">Captures</th>
               <th scope="col" className="text-left py-3 px-3">Typical use</th>

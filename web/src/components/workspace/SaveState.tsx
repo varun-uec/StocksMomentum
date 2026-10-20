@@ -14,7 +14,7 @@ export function SaveState({
   const failed = documents.find((d) => d.status === 'error');
   if (failed) {
     return (
-      <span role="status" className="text-xs text-rose-600 dark:text-rose-400">
+      <span role="status" className="text-xs text-rose-700 dark:text-rose-400">
         Not saved.{' '}
         <button type="button" className="underline" onClick={() => documents.forEach((d) => d.retry())}>
           Retry

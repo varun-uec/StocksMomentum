@@ -8,9 +8,9 @@ import { describe, type DegreeNode } from '@/components/stock/useElliottWaveChar
 import type { ElliottEvidenceStatus, ElliottWaveCount } from '@/lib/types';
 
 const STATUS_STYLE: Record<ElliottEvidenceStatus, string> = {
-  supporting: 'text-emerald-600 dark:text-emerald-400',
-  contradicting: 'text-rose-600 dark:text-rose-400',
-  'not measurable': 'text-slate-400 dark:text-slate-500',
+  supporting: 'text-emerald-700 dark:text-emerald-400',
+  contradicting: 'text-rose-700 dark:text-rose-400',
+  'not measurable': 'text-slate-500 dark:text-slate-400',
 };
 
 export function Evidence({
@@ -119,7 +119,7 @@ export function CountSummary({ count, color }: { count: ElliottWaveCount; color:
       </div>
 
       {!count.is_current && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
+        <p className="text-xs text-amber-700 dark:text-amber-400">
           This structure ended before the latest confirmed pivot, so no completion zone is
           projected.
         </p>
@@ -135,7 +135,7 @@ export function CountSummary({ count, color }: { count: ElliottWaveCount; color:
             {parseFloat(count.projection.high).toFixed(2)}
           </div>
           <div className="text-xs text-slate-500">{count.projection.basis}</div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
             Elliott Wave analytical projection; not part of the Momentum25 score or ranking.
           </p>
         </div>

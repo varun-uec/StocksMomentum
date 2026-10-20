@@ -27,8 +27,8 @@ export function MomentumView({ explanation }: { explanation: StockExplanation })
               <span
                 className={
                   rule.passed
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-rose-600 dark:text-rose-400'
+                    ? 'text-emerald-700 dark:text-emerald-400'
+                    : 'text-rose-700 dark:text-rose-400'
                 }
                 aria-hidden
               >

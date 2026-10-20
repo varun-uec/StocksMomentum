@@ -67,12 +67,12 @@ export function MarketBreadthPanel({ breadth }: { breadth: MarketBreadth }) {
         <MetricCard
           label="New 52-week highs"
           value={String(breadth.new_52w_highs)}
-          color="text-emerald-600 dark:text-emerald-400"
+          color="text-emerald-700 dark:text-emerald-400"
         />
         <MetricCard
           label="New 52-week lows"
           value={String(breadth.new_52w_lows)}
-          color="text-rose-600 dark:text-rose-400"
+          color="text-rose-700 dark:text-rose-400"
         />
         <MetricCard label="Measured for extremes" value={String(breadth.high_low_of)} />
       </div>

@@ -66,7 +66,7 @@ function RemoveAction({
     <>
       <span className="hidden sm:inline">
         {button(
-          `px-2 py-1 rounded-md text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 ${focusRing}`
+          `px-2 py-1 rounded-md text-slate-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 ${focusRing}`
         )}
       </span>
       {/* On a narrow screen a ninth always-visible column costs more than it
@@ -90,7 +90,7 @@ function RemoveAction({
         >
           <div className="p-1">
             {button(
-              `w-full text-left px-3 py-2 rounded-md text-sm text-rose-600 dark:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 ${focusRing}`
+              `w-full text-left px-3 py-2 rounded-md text-sm text-rose-700 dark:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 ${focusRing}`
             )}
           </div>
         </FloatingPanel>
@@ -139,7 +139,7 @@ export function WatchlistTable({ strategy = DEFAULT_STRATEGY }: { strategy?: str
               </Link>
               {!item.in_latest_run && (
                 <span
-                  className="ml-1.5 text-[10px] text-slate-400 dark:text-slate-500"
+                  className="ml-1.5 text-[10px] text-slate-500 dark:text-slate-400"
                   title="Evaluated live — not part of the latest screening run"
                 >
                   live
@@ -165,8 +165,8 @@ export function WatchlistTable({ strategy = DEFAULT_STRATEGY }: { strategy?: str
                 changePct === null
                   ? 'text-slate-500 dark:text-slate-400'
                   : changePct >= 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-rose-600 dark:text-rose-400'
+                    ? 'text-emerald-700 dark:text-emerald-400'
+                    : 'text-rose-700 dark:text-rose-400'
               }
             >
               {changePct !== null ? `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%` : '—'}
@@ -194,13 +194,13 @@ export function WatchlistTable({ strategy = DEFAULT_STRATEGY }: { strategy?: str
           if (item.rank != null) return `#${item.rank}`;
           return item.in_latest_run ? (
             <span
-              className="text-[10px] font-medium text-amber-600 dark:text-amber-400"
+              className="text-[10px] font-medium text-amber-700 dark:text-amber-400"
               title="Evaluated in the latest run but did not pass every gate, so it is unranked."
             >
               not qualified
             </span>
           ) : (
-            <span className="text-slate-400 dark:text-slate-600" title="Not part of the latest screening run.">
+            <span className="text-slate-500 dark:text-slate-400" title="Not part of the latest screening run.">
               —
             </span>
           );
@@ -217,14 +217,14 @@ export function WatchlistTable({ strategy = DEFAULT_STRATEGY }: { strategy?: str
             rankChange === null || rankChange === undefined
               ? 'text-slate-500 dark:text-slate-400'
               : rankChange > 0
-                ? 'text-emerald-600 dark:text-emerald-400'
+                ? 'text-emerald-700 dark:text-emerald-400'
                 : rankChange < 0
-                  ? 'text-rose-600 dark:text-rose-400'
+                  ? 'text-rose-700 dark:text-rose-400'
                   : 'text-slate-500 dark:text-slate-400';
           return (
             <span className={tone}>
               {item.rank == null ? (
-                <span className="text-slate-400 dark:text-slate-600">—</span>
+                <span className="text-slate-500 dark:text-slate-400">—</span>
               ) : rankChange == null ? (
                 <span className="text-[10px] font-medium" title="No rank in the previous run to compare against.">
                   new

@@ -205,10 +205,10 @@ function AlphaSection({ data }: { data: AlphaAnalysisResponse | null }) {
         ))}
         <div className="flex flex-wrap gap-4 text-xs text-slate-500">
           <span>
-            Best Alpha: <span className="text-emerald-600 dark:text-emerald-400 font-mono">{fmt(data.best_alpha, 4)}</span>
+            Best Alpha: <span className="text-emerald-700 dark:text-emerald-400 font-mono">{fmt(data.best_alpha, 4)}</span>
           </span>
           <span>
-            Worst Alpha: <span className="text-rose-600 dark:text-rose-400 font-mono">{fmt(data.worst_alpha, 4)}</span>
+            Worst Alpha: <span className="text-rose-700 dark:text-rose-400 font-mono">{fmt(data.worst_alpha, 4)}</span>
           </span>
           <span>
             Avg Alpha: <span className="text-slate-700 dark:text-slate-300 font-mono">{fmt(data.avg_alpha, 4)}</span>
@@ -245,7 +245,7 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
       <div className="space-y-4">
         {data.high_value_rules.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2">
               High-Value Rules ({data.high_value_rules.length})
             </h4>
             <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
@@ -265,7 +265,7 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
                       <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">{r.rule_name}</td>
                       <td className="py-2 px-3 text-right text-slate-600 dark:text-slate-400">{r.engine_id}</td>
                       <td className="py-2 px-3 text-right text-slate-700 dark:text-slate-300">{pct(r.pass_rate)}</td>
-                      <td className="py-2 px-3 text-right text-emerald-600 dark:text-emerald-400">{fmt(r.return_delta)}</td>
+                      <td className="py-2 px-3 text-right text-emerald-700 dark:text-emerald-400">{fmt(r.return_delta)}</td>
                       <td className="py-2 px-3 text-right text-slate-700 dark:text-slate-300">{fmt(r.significance_score)}</td>
                     </tr>
                   ))}
@@ -277,7 +277,7 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
 
         {data.redundant_rules.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">
               Redundant Rules ({data.redundant_rules.length})
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -292,7 +292,7 @@ function RulesSection({ data }: { data: RuleEffectivenessResponse | null }) {
 
         {data.weak_rules.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider mb-2">
               Weak Rules ({data.weak_rules.length})
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -353,15 +353,15 @@ function EnginesSection({ data }: { data: EngineEffectivenessResponse | null }) 
                 <td className="py-2 px-3 text-right text-slate-700 dark:text-slate-300">{fmt(e.contribution_to_final_score, 4)}</td>
                 <td className="py-2 px-3 text-right text-slate-700 dark:text-slate-300">{fmt(e.correlation_with_outcome, 2)}</td>
                 <td className="py-2 px-3 text-right">
-                  <span className={e.improves_performance ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                  <span className={e.improves_performance ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
                     {pct(e.avg_forward_return_when_engine_scores_high)}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-right">
                   {e.improves_performance ? (
-                    <span className="text-emerald-600 dark:text-emerald-400">Pass</span>
+                    <span className="text-emerald-700 dark:text-emerald-400">Pass</span>
                   ) : (
-                    <span className="text-rose-600 dark:text-rose-400">Review</span>
+                    <span className="text-rose-700 dark:text-rose-400">Review</span>
                   )}
                 </td>
               </tr>
@@ -412,10 +412,10 @@ function ValidationSection({ data }: { data: HistoricalValidationResponse | null
                 Runs: <span className="text-slate-800 dark:text-slate-200">{w.total_runs}</span>
               </p>
               <p className="text-slate-600 dark:text-slate-400">
-                Successful: <span className="text-emerald-600 dark:text-emerald-400">{w.successful_runs}</span>
+                Successful: <span className="text-emerald-700 dark:text-emerald-400">{w.successful_runs}</span>
               </p>
               <p className="text-slate-600 dark:text-slate-400">
-                Failed: <span className="text-rose-600 dark:text-rose-400">{w.failed_runs}</span>
+                Failed: <span className="text-rose-700 dark:text-rose-400">{w.failed_runs}</span>
               </p>
               <p className="text-slate-600 dark:text-slate-400">
                 Pass Rate:{' '}
@@ -428,7 +428,7 @@ function ValidationSection({ data }: { data: HistoricalValidationResponse | null
 
       <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
         <span>
-          Overall Pass Rate: <span className="text-emerald-600 dark:text-emerald-400 font-mono">{pct(data.overall_pass_rate)}</span>
+          Overall Pass Rate: <span className="text-emerald-700 dark:text-emerald-400 font-mono">{pct(data.overall_pass_rate)}</span>
         </span>
         <span>Generated: {data.generated_at}</span>
       </div>
@@ -443,10 +443,10 @@ function QualityMetric({ title, value, good }: { title: string; value: string | 
       <div
         className={`text-2xl font-bold font-mono ${
           unmeasured
-            ? 'text-slate-400 dark:text-slate-500'
+            ? 'text-slate-500 dark:text-slate-400'
             : good
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-rose-600 dark:text-rose-400'
+              ? 'text-emerald-700 dark:text-emerald-400'
+              : 'text-rose-700 dark:text-rose-400'
         }`}
       >
         {pct(value)}
@@ -491,6 +491,7 @@ export default function ValidationPage() {
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <select
+            aria-label="Strategy"
             value={strategy}
             onChange={(e) => setStrategy(e.target.value)}
             className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-700 dark:text-slate-300 ${focusRing}`}
@@ -498,6 +499,7 @@ export default function ValidationPage() {
             <option value="minervini_trend_template">Minervini Trend Template</option>
           </select>
           <select
+            aria-label="Window"
             value={windowYears}
             onChange={(e) => setWindowYears(Number(e.target.value))}
             className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-700 dark:text-slate-300 ${focusRing}`}

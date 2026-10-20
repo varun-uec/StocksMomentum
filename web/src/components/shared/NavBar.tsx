@@ -160,7 +160,7 @@ function ThemeToggle() {
           className={`w-7 h-7 flex items-center justify-center rounded-md text-xs transition-colors ${focusRing} ${
             mode === opt.mode
               ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-              : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           {opt.icon}
@@ -313,7 +313,7 @@ export function NavLink({
           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
       }`}
     >
-      <span className={isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'}>
+      <span className={isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}>
         {item.icon}
       </span>
       {item.label}
@@ -499,7 +499,7 @@ export function PhoneNav() {
             ))}
           </div>
           <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
-            <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-600">
+            <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Research
             </div>
             {RESEARCH_TOOLS.map((item) => (

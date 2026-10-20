@@ -28,12 +28,12 @@ function num(value: string | null | undefined): number | null {
 function Cell({ value }: { value: string | null | undefined }) {
   const n = num(value);
   if (n === null) {
-    return <span className="text-slate-400 dark:text-slate-600">—</span>;
+    return <span className="text-slate-500 dark:text-slate-400">—</span>;
   }
   return (
     <span
       className={
-        n >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+        n >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
       }
     >
       {n >= 0 ? '+' : ''}
@@ -129,7 +129,7 @@ export function SectorStrengthTable({
                 key={row.sector}
                 className="border-t border-slate-200 dark:border-slate-700/40"
               >
-                <td className="py-1.5 pr-3 tabular-nums text-slate-400 dark:text-slate-600">
+                <td className="py-1.5 pr-3 tabular-nums text-slate-500 dark:text-slate-400">
                   {idx + 1}
                 </td>
                 <td className="py-1.5 pr-3 text-slate-800 dark:text-slate-200 font-medium">

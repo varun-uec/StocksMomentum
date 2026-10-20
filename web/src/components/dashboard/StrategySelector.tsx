@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listStrategies } from '@/lib/api-client';
 import { useStrategy } from '@/app/strategy-context';
@@ -22,12 +21,6 @@ export function StrategySelector() {
   const selected = strategies?.find((s) => s.config_hash === strategyHash)
     ?? strategies?.find((s) => s.name === strategyName)
     ?? strategies?.[0];
-
-  useEffect(() => {
-    if (selected && (selected.name !== strategyName || selected.config_hash !== strategyHash)) {
-      setStrategyName(selected.name, selected.config_hash);
-    }
-  }, [selected, strategyName, strategyHash, setStrategyName]);
 
   if (isLoading || !strategies || strategies.length === 0 || !selected) return null;
   const completedHashes = new Set((completed ?? []).map((s) => s.config_hash));

@@ -111,7 +111,7 @@ export default function ScoringGuidePage() {
           <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-500 text-xs uppercase tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                   <th scope="col" className="text-left py-3 px-3">Engine</th>
                   <th scope="col" className="text-right py-3 px-3">Momentum Weight</th>
                   <th scope="col" className="text-right py-3 px-3">Buy Setup Weight</th>
@@ -156,11 +156,11 @@ export default function ScoringGuidePage() {
                       {g.matters}
                     </p>
                     <p>
-                      <span className="text-emerald-600 dark:text-emerald-400">Improves the score: </span>
+                      <span className="text-emerald-700 dark:text-emerald-400">Improves the score: </span>
                       {g.improves}
                     </p>
                     <p>
-                      <span className="text-rose-600 dark:text-rose-400">Reduces the score: </span>
+                      <span className="text-rose-700 dark:text-rose-400">Reduces the score: </span>
                       {g.reduces}
                     </p>
                   </div>

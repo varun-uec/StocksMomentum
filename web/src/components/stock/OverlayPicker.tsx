@@ -106,7 +106,7 @@ export function OverlayPicker({
       />
 
       {paneFull && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
           {maxPanes} sub-panes is the cap — remove one before adding another, or the price pane
           gets too short to read.
         </p>
@@ -176,7 +176,7 @@ export function OverlayPicker({
                   <button
                     type="button"
                     onClick={() => remove(instance.uid)}
-                    className={`text-[11px] text-rose-600 dark:text-rose-400 hover:underline ${focusRing}`}
+                    className={`text-[11px] text-rose-700 dark:text-rose-400 hover:underline ${focusRing}`}
                   >
                     Remove
                   </button>

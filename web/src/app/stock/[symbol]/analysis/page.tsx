@@ -113,7 +113,7 @@ function SegmentedControl({
           className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${focusRing} ${
             value === mode.id
               ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-sm'
-              : 'text-slate-500 dark:text-slate-400'
+              : 'text-slate-600 dark:text-slate-400'
           }`}
         >
           {mode.label}
@@ -576,7 +576,7 @@ export default function UnifiedAnalysisPage() {
                   );
                 })}
               </ul>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
                 R:R = (target − last close {lastClose === null ? '' : inr(lastClose)}) ÷ (last close −
                 suggested stop). The stop is the live endpoint&apos;s own `suggested_stop`.
               </p>
@@ -644,7 +644,7 @@ export default function UnifiedAnalysisPage() {
                     </div>
                   )}
                   {(patterns.analysis?.patterns.length ?? 0) > 1 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
                       More than one formation fits these bars. They are alternative readings, not
                       confirmations of each other.
                     </p>

@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { listStrategies } from '@/lib/api-client';
 
 const STORAGE_KEY = 'momentum25.selectedStrategy';
 const HASH_STORAGE_KEY = 'momentum25.selectedStrategyHash';
@@ -34,6 +36,23 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (configHash) window.localStorage.setItem(HASH_STORAGE_KEY, configHash);
     else window.localStorage.removeItem(HASH_STORAGE_KEY);
   }, []);
+
+  // A stored choice can name a strategy the workspace no longer offers (a research or an
+  // archived one). Settle it here, on every route, so no screen asks for a run that cannot exist.
+  const { data: strategies } = useQuery({
+    queryKey: ['strategies', 'workspace'],
+    queryFn: () => listStrategies(false, true),
+    staleTime: 30_000,
+  });
+  useEffect(() => {
+    if (!strategies || strategies.length === 0) return;
+    const selected = strategies.find((s) => s.config_hash === strategyHash)
+      ?? strategies.find((s) => s.name === strategyName)
+      ?? strategies[0];
+    if (selected.name !== strategyName || selected.config_hash !== strategyHash) {
+      setStrategyName(selected.name, selected.config_hash);
+    }
+  }, [strategies, strategyName, strategyHash, setStrategyName]);
 
   return (
     <StrategyContext.Provider value={{ strategyName, strategyHash, setStrategyName }}>

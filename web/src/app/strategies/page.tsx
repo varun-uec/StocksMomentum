@@ -101,12 +101,12 @@ export default function StrategyResearchPage() {
                 <MetricCard label="Avg Buy Setup" value={perf.avg_buy_setup_score} />
                 <MetricCard label="Volatility" value={perf.momentum_score_volatility} />
                 <MetricCard label="Max Score Drawdown" value={perf.max_momentum_score_drawdown} />
-                <MetricCard label="Avg Pass Rate" value={`${(parseFloat(perf.avg_pass_rate) * 100).toFixed(1)}%`} color="text-emerald-400" />
+                <MetricCard label="Avg Pass Rate" value={`${(parseFloat(perf.avg_pass_rate) * 100).toFixed(1)}%`} color="text-emerald-700 dark:text-emerald-400" />
                 <MetricCard label="Score Stability" value={perf.momentum_score_stability} />
                 <MetricCard label="Score Downside Stability" value={perf.momentum_score_downside_stability} />
                 <MetricCard label="Score Gain/Loss Ratio" value={perf.momentum_score_gain_loss_ratio} />
                 <MetricCard label="Rank Stability" value={`${(parseFloat(perf.avg_top_rank_stability) * 100).toFixed(0)}%`} />
-                <MetricCard label="Max Score" value={perf.max_momentum_score} color="text-emerald-400" />
+                <MetricCard label="Max Score" value={perf.max_momentum_score} color="text-emerald-700 dark:text-emerald-400" />
                 <MetricCard label="Min Score" value={perf.min_momentum_score} />
               </div>
               <ScoreSeriesDisclaimer className="mt-3" />
@@ -131,8 +131,8 @@ export default function StrategyResearchPage() {
                         <td className="px-3 py-3 text-slate-700 dark:text-slate-300">#{run.run_id}</td>
                         <td className="px-3 py-3 text-slate-700 dark:text-slate-300">{run.run_date}</td>
                         <td className="px-3 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">{run.total_evaluated}</td>
-                        <td className="px-3 py-3 text-right text-emerald-600 dark:text-emerald-400 tabular-nums">{run.total_passed}</td>
-                        <td className="px-3 py-3 text-right text-rose-600 dark:text-rose-400 tabular-nums">{run.total_failed}</td>
+                        <td className="px-3 py-3 text-right text-emerald-700 dark:text-emerald-400 tabular-nums">{run.total_passed}</td>
+                        <td className="px-3 py-3 text-right text-rose-700 dark:text-rose-400 tabular-nums">{run.total_failed}</td>
                         <td className="px-3 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
                           {run.total_evaluated > 0 ? `${((run.total_passed / run.total_evaluated) * 100).toFixed(1)}%` : '—'}
                         </td>
@@ -178,7 +178,7 @@ export default function StrategyResearchPage() {
                     <span className="text-slate-700 dark:text-slate-300 capitalize">{engine.engine_name.replace(/_/g, ' ')}</span>
                     <div className="flex items-center gap-4">
                       <span className="text-slate-500 tabular-nums">{engine.rule_count} rules</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">{(parseFloat(engine.avg_pass_rate) * 100).toFixed(0)}% pass</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 tabular-nums">{(parseFloat(engine.avg_pass_rate) * 100).toFixed(0)}% pass</span>
                       <span className="text-indigo-600 dark:text-indigo-400 tabular-nums">{parseFloat(engine.avg_importance).toFixed(2)} importance</span>
                     </div>
                   </div>
@@ -220,8 +220,8 @@ export default function StrategyResearchPage() {
                     <div key={rule.rule_id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <StatusDot passed />
                       <span>{rule.rule_id}</span>
-                      <span className="text-slate-400 dark:text-slate-600">({rule.engine_id})</span>
-                      <span className="text-slate-600 ml-auto">100% pass rate</span>
+                      <span className="text-slate-500 dark:text-slate-400">({rule.engine_id})</span>
+                      <span className="text-slate-600 dark:text-slate-400 ml-auto">100% pass rate</span>
                     </div>
                   ))}
                 </div>
@@ -235,8 +235,8 @@ export default function StrategyResearchPage() {
                     <div key={rule.rule_id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <StatusDot passed={rule.pass_rate === '1'} />
                       <span>{rule.rule_id}</span>
-                      <span className="text-slate-400 dark:text-slate-600">({rule.engine_id})</span>
-                      <span className="text-slate-600 ml-auto">imp: {parseFloat(rule.importance_score).toFixed(3)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">({rule.engine_id})</span>
+                      <span className="text-slate-600 dark:text-slate-400 ml-auto">imp: {parseFloat(rule.importance_score).toFixed(3)}</span>
                     </div>
                   ))}
                 </div>
@@ -288,7 +288,7 @@ export default function StrategyResearchPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <MetricCard label="Total Comparisons" value={String(comparison.total_comparisons)} />
-                <MetricCard label="Agreement Rate" value={`${(parseFloat(comparison.agreement_rate) * 100).toFixed(1)}%`} color="text-emerald-400" />
+                <MetricCard label="Agreement Rate" value={`${(parseFloat(comparison.agreement_rate) * 100).toFixed(1)}%`} color="text-emerald-700 dark:text-emerald-400" />
                 <MetricCard label={`${comparison.strategy_a_name} Wins`} value={String(comparison.a_wins)} color="text-cyan-400" />
                 <MetricCard label={`${comparison.strategy_b_name} Wins`} value={String(comparison.b_wins)} color="text-purple-400" />
               </div>

@@ -71,7 +71,7 @@ export default function StudioPage() {
   const requestedReturn = searchParams.get('from');
   const returnPath = requestedReturn?.startsWith('/') && !requestedReturn.startsWith('//') ? requestedReturn : undefined;
   const family = families.data?.find((f) => f.id === familyId) ?? null;
-  const mainRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (familyId !== null || !strategyHash || !families.data) return;
     const selected = families.data.find((item) => item.members.some((member) => member.config_hash === strategyHash));
@@ -130,10 +130,10 @@ export default function StudioPage() {
             registry={registry.data}
           />
         </aside>
-        <main ref={mainRef} className="min-w-0 space-y-6 scroll-mt-16">
+        <div ref={mainRef} className="min-w-0 space-y-6 scroll-mt-16">
           {!family && <EmptyState message="Choose a family, or state a new hypothesis." />}
           {family && registry.data && <FamilyView key={family.id} family={family} registry={registry.data} returnPath={returnPath} />}
-        </main>
+        </div>
       </div>
     </div>
   );

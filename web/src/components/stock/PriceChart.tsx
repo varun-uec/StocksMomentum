@@ -247,7 +247,7 @@ function DrawingRail({
       active
         ? 'bg-indigo-100 dark:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300'
         : danger
-          ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+          ? 'text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
           : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
     }`;
   const icon = (key: keyof typeof RAIL_ICONS) => (
@@ -1923,7 +1923,7 @@ export function PriceChart({
                   <button
                     type="button"
                     onClick={clearDrawings}
-                    className={`px-2 py-1 rounded-md text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 ${focusRing}`}
+                    className={`px-2 py-1 rounded-md text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 ${focusRing}`}
                   >
                     Clear
                   </button>

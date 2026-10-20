@@ -125,7 +125,7 @@ export function DrawingMenu({
             {drawing.kind === 'rectangle' ? 'Alert on this zone…' : 'Alert on this line…'}
           </button>
         )}
-        <button type="button" role="menuitem" disabled={drawing.locked} className={`${ITEM_CLASS} text-rose-600 dark:text-rose-400 disabled:opacity-40`} onClick={onDelete}>
+        <button type="button" role="menuitem" disabled={drawing.locked} className={`${ITEM_CLASS} text-rose-700 dark:text-rose-400 disabled:opacity-40`} onClick={onDelete}>
           Delete
         </button>
       </div>

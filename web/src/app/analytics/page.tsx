@@ -80,7 +80,7 @@ export default function ResearchAnalyticsPage() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <MetricCard label="Total Runs" value={String(runs.length)} />
-              <MetricCard label="Completed Runs" value={String(statusCounts.COMPLETED ?? 0)} color="text-emerald-400" />
+              <MetricCard label="Completed Runs" value={String(statusCounts.COMPLETED ?? 0)} color="text-emerald-700 dark:text-emerald-400" />
               <MetricCard label="Failed Runs" value={String(statusCounts.FAILED ?? 0)} color="text-rose-400" />
               <MetricCard
                 label="Avg Pass Rate"
@@ -89,7 +89,7 @@ export default function ResearchAnalyticsPage() {
                     ? `${(passRateData.reduce((s, d) => s + d.passRate, 0) / passRateData.length).toFixed(1)}%`
                     : '—'
                 }
-                color="text-emerald-400"
+                color="text-emerald-700 dark:text-emerald-400"
               />
             </div>
 
@@ -307,9 +307,9 @@ function StatBox({
   accent?: 'emerald' | 'rose' | 'amber' | 'slate';
 }) {
   const colorMap = {
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    rose: 'text-rose-600 dark:text-rose-400',
-    amber: 'text-amber-600 dark:text-amber-400',
+    emerald: 'text-emerald-700 dark:text-emerald-400',
+    rose: 'text-rose-700 dark:text-rose-400',
+    amber: 'text-amber-700 dark:text-amber-400',
     slate: 'text-slate-800 dark:text-slate-200',
   };
   return (

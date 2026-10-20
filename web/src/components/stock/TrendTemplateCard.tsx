@@ -80,7 +80,7 @@ function RuleRow({
       <span
         aria-hidden
         className={`mt-px shrink-0 text-sm leading-none ${
-          rule.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
+          rule.passed ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
         }`}
       >
         {rule.passed ? '✓' : '✗'}
@@ -101,7 +101,7 @@ function RuleRow({
         </div>
         <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{rule.explanation}</div>
         {!rule.passed && hint && (
-          <div className="text-xs text-amber-600 dark:text-amber-400/90 mt-0.5">{hint}</div>
+          <div className="text-xs text-amber-700 dark:text-amber-400/90 mt-0.5">{hint}</div>
         )}
       </div>
     </li>
@@ -168,7 +168,7 @@ export function TrendTemplateCard({
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                   {group.title}
                 </h4>
-                <span className="text-xs tabular-nums text-slate-400 dark:text-slate-500 shrink-0">
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400 shrink-0">
                   {groupPassed}/{group.rules.length}
                 </span>
               </div>

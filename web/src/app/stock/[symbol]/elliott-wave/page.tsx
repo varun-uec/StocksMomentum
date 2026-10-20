@@ -44,7 +44,7 @@ function RankingPanel({
         </div>
         <div className="text-2xl font-semibold tabular-nums text-slate-800 dark:text-slate-200">
           {parseFloat(confidence).toFixed(0)}
-          <span className="text-sm text-slate-400"> / 100</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400"> / 100</span>
         </div>
         <p className="text-[11px] text-slate-500 mt-1">
           How cleanly the price action fits this labelling — a measure of fit to Elliott Wave
@@ -61,7 +61,7 @@ function RankingPanel({
                 {parseFloat(component.points).toFixed(1)} / {parseFloat(component.weight).toFixed(0)}
               </span>
             </div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500">{component.detail}</div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400">{component.detail}</div>
           </li>
         ))}
       </ul>
