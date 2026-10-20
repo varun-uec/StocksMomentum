@@ -269,6 +269,7 @@ test('strategy switching is run-specific and never borrows another strategy’s 
 
 test('the exact custom run follows the selected chart cell and watchlist, and return navigation preserves other cells', async ({ page, request }) => {
   test.skip(!saved || !completed, 'The preceding strategy screening must complete first.');
+  test.setTimeout(180_000);
   await request.delete('/api/v1/watchlist/INFY');
   await page.addInitScript(({ name, hash }) => {
     localStorage.setItem('momentum25.selectedStrategy', name);
@@ -303,6 +304,29 @@ test('the exact custom run follows the selected chart cell and watchlist, and re
   const card = workstationCard(page);
   await expect(card).toContainText(`config ${saved!.hash.slice(0, 12)}`);
   await expect(page.getByRole('heading', { name: 'Judge this config' })).toBeVisible();
+  const liveRunsBeforeResearch = await request.get('/api/v1/runs?limit=200').then((response) => response.json());
+  const evaluationsBeforeResearch = await request.get(`/api/v1/studio/families/${saved!.familyId}/evaluations`).then((response) => response.json());
+  const inSampleResponse = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/v1/studio/families/${saved!.familyId}/evaluations`) && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Run Historical Research — In-Sample' }).click();
+  const queuedInSample = await inSampleResponse;
+  expect(queuedInSample.status()).toBe(202);
+  let inSample = await queuedInSample.json();
+  await expect.poll(async () => {
+    inSample = await request.get(`/api/v1/studio/evaluations/${inSample.id}`).then((response) => response.json());
+    return inSample.status;
+  }, { timeout: 150_000, intervals: [500, 1000, 2000] }).toBe('completed');
+  expect(inSample).toMatchObject({ config_hash: saved!.hash, result_class: 'in_sample', status: 'completed' });
+  expect(inSample.result.label).toBe('Historical Research — In-Sample');
+  expect(inSample.result.decisions).toBeGreaterThan(0);
+  expect(inSample.result.window.end).toBe(inSample.window_end);
+  expect(inSample.window_end).toBeLessThan('2024-07-01');
+  const liveRunsAfterResearch = await request.get('/api/v1/runs?limit=200').then((response) => response.json());
+  expect(liveRunsAfterResearch.total).toBe(liveRunsBeforeResearch.total);
+  const inSampleRecord = page.getByRole('region', { name: `Historical Research — In-Sample ${inSample.id}` });
+  await expect(inSampleRecord.getByText(/decision sessions, every \d+th session/)).toBeVisible();
+  await page.screenshot({ path: `${EVIDENCE}/06-in-sample-research.png`, fullPage: false });
   await card.getByRole('link', { name: 'Return to chart' }).click();
   await expect(page).toHaveURL(/\/chart\/INFY$/);
   await chartReady(page);
@@ -400,6 +424,9 @@ test('point-in-time research results keep their original config hash when a late
     result_class: 'screening',
     status: 'completed',
   });
+  expect(evaluations.some((item: any) =>
+    item.config_hash === saved!.hash && item.result_class === 'in_sample' && item.status === 'completed',
+  )).toBe(true);
   expect(evaluations.some((item: any) => item.config_hash === newVersion.config_hash)).toBe(false);
 });
 
