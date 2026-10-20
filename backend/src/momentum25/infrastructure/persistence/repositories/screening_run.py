@@ -6,9 +6,11 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.run import ScreeningRun
+from momentum25.domain.errors import RunAlreadyExistsError
 from momentum25.domain.research.forward_returns import ForwardReturn
 from momentum25.domain.value_objects.results import (
     Ranking,
@@ -19,6 +21,8 @@ from momentum25.domain.value_objects.results import (
 )
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
 from momentum25.infrastructure.persistence.models import ScreeningRunModel
+
+_UNIQUE_VIOLATION = "23505"
 
 # A run is "live" when its ``data_version`` carries none of the historical-
 # backfill or ad-hoc research tags. Historical and research runs are real,
@@ -73,7 +77,19 @@ class SqlScreeningRunRepository:
             stats=run.stats or None,
         )
         self._session.add(model)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            # Two callers passed the identity check before either inserted.
+            # The unique (strategy, run_date, data_version, config_hash)
+            # constraint decides; the loser gets a conflict, not a 500.
+            if getattr(exc.orig, "sqlstate", None) != _UNIQUE_VIOLATION:
+                raise
+            await self._session.rollback()
+            raise RunAlreadyExistsError(
+                f"A screening run already exists for strategy {run.strategy_id}, "
+                f"{run.run_date}, data version {run.data_version}"
+            ) from exc
         return int(model.id)
 
     async def update(self, run: ScreeningRun) -> None:

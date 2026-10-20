@@ -21,6 +21,7 @@ from structlog import get_logger
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.errors import ConflictError
 from momentum25.domain.value_objects.types import RunStatus, Symbol
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
@@ -385,7 +386,7 @@ class ExecuteScreening:
                     )
                     return int(existing.id)
                 if existing.status.value in {"PENDING", "RUNNING"}:
-                    raise RuntimeError(
+                    raise ConflictError(
                         f"An identical screening run is already {existing.status.value.lower()} "
                         f"(run_id={existing.id})"
                     )

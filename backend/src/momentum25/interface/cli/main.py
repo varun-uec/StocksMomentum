@@ -14,6 +14,7 @@ from momentum25.application.use_cases.import_market_data import (
     ImportEodCsv,
 )
 from momentum25.application.use_cases.walk_forward import format_walk_forward_report
+from momentum25.domain.errors import Momentum25Error
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
@@ -98,7 +99,7 @@ def screen(strategy: str = typer.Option("minervini_trend_template")) -> None:
 
     try:
         run_id = asyncio.run(run_screening_pipeline(strategy, ingest_enabled=False))
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, Momentum25Error) as exc:
         typer.echo(f"Screening failed: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"Screening result run {run_id} for {strategy} using stored data.")

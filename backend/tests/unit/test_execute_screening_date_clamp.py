@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import pytest
 
 from momentum25.application.use_cases.screening import ExecuteScreening
+from momentum25.domain.errors import ConflictError
 
 
 class _FakeOHLCVRepo:
@@ -95,3 +96,31 @@ async def test_run_via_orchestrator_screens_latest_bar_date_not_reference_date(
     assert run_id == 7
     assert _CapturingOrchestrator.last_trading_date == latest_bar_date
     assert _CapturingOrchestrator.last_trading_date != reference_date
+
+
+class _InFlightRunRepo:
+    _session = None
+
+    async def get_by_identity(
+        self, strategy_id: int, run_date: date, data_version: str, config_hash: str
+    ) -> SimpleNamespace:
+        return SimpleNamespace(id=5, status=SimpleNamespace(value="RUNNING"))
+
+
+@pytest.mark.asyncio
+async def test_identical_run_in_flight_is_a_conflict() -> None:
+    # Regression R3-B: the loser of two concurrent POST /runs/execute raised a
+    # bare RuntimeError, which the API answered with 500 instead of 409.
+    use_case = ExecuteScreening(
+        market_data_provider=None,
+        security_repo=None,
+        ohlcv_repo=None,
+        screening_run_repo=_InFlightRunRepo(),
+        indicator_pipeline=None,
+        strategy_engine=None,
+    )
+    with pytest.raises(ConflictError, match="already running"):
+        await use_case._run_via_orchestrator(
+            strategy=SimpleNamespace(id=1, name="test", config_hash="test-config"),
+            trading_date=date(2026, 10, 19),
+        )
