@@ -1,0 +1,169 @@
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial schema — all tables from IMPLEMENTATION_SPEC §4.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_forward_returns, Forward-return feature store (Objective 4, Research Feature Store).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0002_forward_returns -> 0003_forward_returns_extended, Extend forward_returns with MFE/MAE and benchmark-relative return (Alpha Discovery Program).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0003_forward_returns_extended -> 0004_historical_data_foundation, Historical Data Foundation (RP-012 D3) — legacy bhavcopy fields, delisting
+[WebServer] metadata, and the immutable historical_universe table.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0004_historical_data_foundation -> 0005_overlap_backfill, Overlap-window backfill staging + validation-gap logs (RP-012 Phase 2).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0005_overlap_backfill -> 0006_exchange_dimension, Cross-listing support: index the ISIN reconciliation key (Phase 5.1).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0006_exchange_dimension -> 0007_watchlist, Watchlist: a single global list of tracked securities (Phase 6.9).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0007_watchlist -> 0008_security_search_trgm, Trigram indexes for security symbol/name search (Objective 4).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0008_security_search_trgm -> 0009_strategy_kind, Strategy ``kind`` field: production vs research (strategy lifecycle).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0009_strategy_kind -> 0010_bse_legacy_foundation, BSE legacy staging tables (RP-014): pre-UDiFF bars + SC_CODE identity junction.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0010_bse_legacy_foundation -> 0011_legacy_adjustment_columns, Adjustment columns on both legacy staging tables (RP-014 follow-up).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0011_legacy_adjustment_columns -> 0012_drop_legacy_ohlcv_bak, Drop the superseded ``legacy_ohlcv_daily_bak`` snapshot.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0012_drop_legacy_ohlcv_bak -> 0013_filter_column_indexes, Index the filter/join columns that composite primary keys do not lead with.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0013_filter_column_indexes -> 0014_user_documents, User documents: the saved workspace and per-symbol drawings (ADR-013 §5).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0014_user_documents -> 0015_alerts, Daily alerts (FR-22, M15): a condition on one value of a symbol's chart series.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0015_alerts -> 0016_history_tables, History tables for the evaluation inputs (ADR-014 §7, M14).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0016_history_tables -> 0017_data_manifests, Data-version manifests (ADR-014 §7, M14): the inputs and code behind an evaluation.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0017_data_manifests -> 0018_strategy_families, Strategy families and user strategies (ADR-014 §3–4, M14).
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0018_strategy_families -> 0019_strategy_evaluations, Strategy evaluations (ADR-014 §5–7, M14): the research namespace for the Studio.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0019_strategy_evaluations -> 0020_committed_revision_indexes, Index committed market-data revisions for deterministic manifest capture.
+
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0020_committed_revision_indexes -> 0021_alert_drawing_snapshots, Version armed rules and capture bounded drawing-linked EOD alerts.
+
+[WebServer] INFO:     Started server process [67162]
+
+[WebServer] INFO:     Waiting for application startup.
+
+[WebServer] INFO:     Application startup complete.
+
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+
+Running 6 tests using 1 worker
+
+[1/6] [chromium] › e2e/m13-bench.spec.ts:121:5 › 1 chart › warm open, pan and memory
+[chromium] › e2e/m13-bench.spec.ts:121:5 › 1 chart › warm open, pan and memory
+
+
+[2/6] [chromium] › e2e/m13-bench.spec.ts:141:5 › 1 chart › cold open
+[3/6] [chromium] › e2e/m13-bench.spec.ts:121:5 › 4 charts › warm open, pan and memory
+[chromium] › e2e/m13-bench.spec.ts:121:5 › 4 charts › warm open, pan and memory
+
+
+[4/6] [chromium] › e2e/m13-bench.spec.ts:141:5 › 4 charts › cold open
+[5/6] [chromium] › e2e/m13-bench.spec.ts:121:5 › 16 charts › warm open, pan and memory
+[chromium] › e2e/m13-bench.spec.ts:121:5 › 16 charts › warm open, pan and memory
+
+
+[6/6] [chromium] › e2e/m13-bench.spec.ts:141:5 › 16 charts › cold open
+[chromium] › e2e/m13-bench.spec.ts:141:5 › 16 charts › cold open
+
+
+{
+  "measured_at": "2026-10-20T11:24:19.158Z",
+  "git_commit": "e3b67dd",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "viewport": "1280 × 720 (Playwright default)",
+  "dataset": "16 synthetic symbols, 2016-08-08 → 2026-08-07, 2,610 daily bars each (marked E2E database); MAX range",
+  "extra_paint_marks_seen": 0,
+  "results": {
+    "1": {
+      "warm_open_ms": {
+        "runs": 30,
+        "p50": 132,
+        "p95": 151,
+        "max": 155
+      },
+      "pan_fps": {
+        "runs": 30,
+        "p5": 60,
+        "p50": 61
+      },
+      "js_heap_mb": {
+        "samples": 6,
+        "p50": 13,
+        "max": 13
+      },
+      "cold_open_ms": {
+        "runs": 30,
+        "p50": 174,
+        "p95": 193,
+        "max": 194
+      }
+    },
+    "4": {
+      "warm_open_ms": {
+        "runs": 30,
+        "p50": 427,
+        "p95": 448,
+        "max": 448
+      },
+      "pan_fps": {
+        "runs": 30,
+        "p5": 62,
+        "p50": 63
+      },
+      "js_heap_mb": {
+        "samples": 6,
+        "p50": 28,
+        "max": 28
+      },
+      "cold_open_ms": {
+        "runs": 30,
+        "p50": 398,
+        "p95": 497,
+        "max": 511
+      }
+    },
+    "16": {
+      "warm_open_ms": {
+        "runs": 30,
+        "p50": 1363,
+        "p95": 1525,
+        "max": 1526
+      },
+      "pan_fps": {
+        "runs": 30,
+        "p5": 61,
+        "p50": 62
+      },
+      "js_heap_mb": {
+        "samples": 6,
+        "p50": 84,
+        "max": 85
+      },
+      "cold_open_ms": {
+        "runs": 30,
+        "p50": 1447,
+        "p95": 1604,
+        "max": 1606
+      }
+    }
+  }
+}
+
+  6 passed (4.2m)
+16:54  up 8 days, 17:05, 1 user, load averages: 5.13 4.65 4.14
