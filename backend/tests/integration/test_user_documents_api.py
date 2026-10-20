@@ -317,3 +317,62 @@ async def test_the_layout_and_its_sync_flags_default_and_validate(
     for bad in ({"layout": "5x5"}, {"sync": {"drawings": True}}):
         res = await client.put(WORKSPACE, json={"charts": {}, **bad}, headers={"If-Match": '"2"'})
         assert res.status_code == 422
+
+
+SCREENS = "/api/v1/screens/default"
+
+
+def _screen(screen_id: str = "s1", name: str = "Leaders") -> dict[str, Any]:
+    return {
+        "id": screen_id,
+        "name": name,
+        "column_set": "Scores",
+        "filters": {"qualified": True, "ranges": {"rs_rating": {"min": 80}}},
+    }
+
+
+async def test_saved_screens_round_trip_with_defaults_written_out(
+    client: httpx.AsyncClient,
+) -> None:
+    created = await client.put(
+        SCREENS, json={"screens": [_screen()]}, headers={"If-None-Match": "*"}
+    )
+    assert created.status_code == 201
+    assert created.headers["etag"] == '"1"'
+    stored = (await client.get(SCREENS)).json()["body"]["screens"][0]
+    assert stored["filters"] == {
+        "qualified": True,
+        "trend": None,
+        "risk": None,
+        "volume": None,
+        "breakout": None,
+        "sector": None,
+        "ranges": {"rs_rating": {"min": 80.0, "max": None}},
+    }
+    stale = await client.put(SCREENS, json={"screens": []}, headers={"If-Match": '"0"'})
+    assert stale.status_code == 412
+    assert stale.json()["current"]["body"]["screens"][0]["name"] == "Leaders"
+
+
+@pytest.mark.parametrize(
+    "screen",
+    [
+        {**_screen(), "filters": {"ranges": {"price": {"min": 1}}}},
+        {**_screen(), "filters": {"ranges": {"rank": {"min": "NaN"}}}},
+        {**_screen(), "name": " "},
+        {**_screen(), "name": "x" * 65},
+        {**_screen(), "column_set": "Everything"},
+        {**_screen(), "filters": {"sort": "rank"}},
+    ],
+)
+async def test_invalid_screens_are_rejected(
+    client: httpx.AsyncClient, screen: dict[str, Any]
+) -> None:
+    res = await client.put(SCREENS, json={"screens": [screen]}, headers={"If-None-Match": "*"})
+    assert res.status_code == 422
+
+
+async def test_saved_screens_are_capped(client: httpx.AsyncClient) -> None:
+    many = [_screen(f"s{i}", f"Screen {i}") for i in range(51)]
+    res = await client.put(SCREENS, json={"screens": many}, headers={"If-None-Match": "*"})
+    assert res.status_code == 422

@@ -1031,6 +1031,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screens/{screens_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Screens
+         * @description Return the saved screener screens and their revision (``ETag``).
+         */
+        get: operations["read_screens_api_v1_screens__screens_id__get"];
+        /**
+         * Save Screens
+         * @description Save the screens if they are still at the revision named in ``If-Match``.
+         */
+        put: operations["save_screens_api_v1_screens__screens_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alerts": {
         parameters: {
             query?: never;
@@ -2804,6 +2828,16 @@ export interface components {
             basis: string;
         };
         /**
+         * RangeV1
+         * @description Inclusive bounds on one numeric run field. A missing bound is open.
+         */
+        RangeV1: {
+            /** Min */
+            min?: number | null;
+            /** Max */
+            max?: number | null;
+        };
+        /**
          * RankingComparisonDTO
          * @description A single ranking difference between two runs.
          */
@@ -3274,6 +3308,49 @@ export interface components {
             parent_config_hash: string;
         };
         /**
+         * SavedScreenV1
+         * @description One named screen: a column set and its filters. It applies to any run.
+         */
+        SavedScreenV1: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Column Set
+             * @default Overview
+             * @enum {string}
+             */
+            column_set: "Overview" | "Scores" | "Explanation" | "Technical";
+            filters: components["schemas"]["ScreenFiltersV1"];
+        };
+        /**
+         * SavedScreensDocument
+         * @description The stored screens and their revision.
+         */
+        SavedScreensDocument: {
+            /** Key */
+            key: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Revision */
+            revision: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            body: components["schemas"]["SavedScreensV1"];
+        };
+        /**
+         * SavedScreensV1
+         * @description The owner's saved screens, in the order they were saved.
+         */
+        SavedScreensV1: {
+            /** Screens */
+            screens: components["schemas"]["SavedScreenV1"][];
+        };
+        /**
          * ScoreComparisonDTO
          * @description A single score difference between two runs.
          */
@@ -3294,6 +3371,28 @@ export interface components {
             buy_setup_b?: string | null;
             /** Buy Setup Delta */
             buy_setup_delta?: string | null;
+        };
+        /**
+         * ScreenFiltersV1
+         * @description Screener filters over fields a run already stores. They never change a score or rank.
+         */
+        ScreenFiltersV1: {
+            /** Qualified */
+            qualified?: boolean | null;
+            /** Trend */
+            trend?: boolean | null;
+            /** Risk */
+            risk?: string | null;
+            /** Volume */
+            volume?: string | null;
+            /** Breakout */
+            breakout?: string | null;
+            /** Sector */
+            sector?: string | null;
+            /** Ranges */
+            ranges?: {
+                [key: string]: components["schemas"]["RangeV1"];
+            };
         };
         /**
          * SectorRelativeStrength
@@ -5747,6 +5846,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SymbolDrawingsDocument"];
+                };
+            };
+            /** @description The document changed since the revision you named. Body: `current`. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Send If-Match or If-None-Match: *. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    read_screens_api_v1_screens__screens_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screens_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedScreensDocument"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_screens_api_v1_screens__screens_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+                "if-none-match"?: string | null;
+            };
+            path: {
+                screens_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedScreensV1"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedScreensDocument"];
                 };
             };
             /** @description The document changed since the revision you named. Body: `current`. */

@@ -10,7 +10,7 @@ from momentum25.domain.ports.repositories import UserDocumentRepository
 
 # ponytail: one version per kind and no upgrade path yet. When v2 exists, add a
 # pure `upgrade(kind, version, body)` applied on read, with a golden test per version.
-SCHEMA_VERSION: dict[DocumentKind, int] = {"workspace": 1, "symbol_drawings": 1}
+SCHEMA_VERSION: dict[DocumentKind, int] = {"workspace": 1, "symbol_drawings": 1, "saved_screens": 1}
 
 
 class GetUserDocument:

@@ -122,6 +122,46 @@ class WorkspaceV1(_Strict):
     charts: dict[Identifier, ChartV1] = Field(max_length=32)
 
 
+# ── saved_screens ─────────────────────────────────────────────────────────
+
+Category = Annotated[str, Field(min_length=1, max_length=64)]
+RangeField = Literal["momentum_score", "buy_setup_score", "rs_rating", "rank", "rank_change"]
+
+
+class RangeV1(_Strict):
+    """Inclusive bounds on one numeric run field. A missing bound is open."""
+
+    min: FiniteFloat | None = None
+    max: FiniteFloat | None = None
+
+
+class ScreenFiltersV1(_Strict):
+    """Screener filters over fields a run already stores. They never change a score or rank."""
+
+    qualified: bool | None = None
+    trend: bool | None = None
+    risk: Category | None = None
+    volume: Category | None = None
+    breakout: Category | None = None
+    sector: Category | None = None
+    ranges: dict[RangeField, RangeV1] = Field(default_factory=dict)
+
+
+class SavedScreenV1(_Strict):
+    """One named screen: a column set and its filters. It applies to any run."""
+
+    id: Identifier
+    name: str = Field(min_length=1, max_length=64, pattern=r"\S")
+    column_set: Literal["Overview", "Scores", "Explanation", "Technical"] = "Overview"
+    filters: ScreenFiltersV1
+
+
+class SavedScreensV1(_Strict):
+    """The owner's saved screens, in the order they were saved."""
+
+    screens: list[SavedScreenV1] = Field(max_length=50)
+
+
 # ── responses ─────────────────────────────────────────────────────────────
 
 
@@ -163,4 +203,21 @@ class SymbolDrawingsDocument(_DocumentMeta):
             revision=doc.revision,
             updated_at=doc.updated_at,
             body=SymbolDrawingsV1.model_validate(doc.body),
+        )
+
+
+class SavedScreensDocument(_DocumentMeta):
+    """The stored screens and their revision."""
+
+    body: SavedScreensV1
+
+    @classmethod
+    def of(cls, doc: UserDocument) -> SavedScreensDocument:
+        """Build the response from a stored document."""
+        return cls(
+            key=doc.key,
+            schema_version=doc.schema_version,
+            revision=doc.revision,
+            updated_at=doc.updated_at,
+            body=SavedScreensV1.model_validate(doc.body),
         )

@@ -1,4 +1,4 @@
-"""Saved workspace and drawings, with HTTP preconditions (ADR-013 §5).
+"""Saved workspace, drawings and screens, with HTTP preconditions (ADR-013 §5).
 
 | Request                                   | Response                                   |
 |-------------------------------------------|--------------------------------------------|
@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 from momentum25.application.dto.user_documents import (
     ID_PATTERN,
     SYMBOL_PATTERN,
+    SavedScreensDocument,
+    SavedScreensV1,
     SymbolDrawingsDocument,
     SymbolDrawingsV1,
     WorkspaceDocument,
@@ -56,12 +58,13 @@ def _parse_if_match(value: str | None) -> int | None:
     return int(tag) if tag.isdigit() else 0
 
 
-Presenter = type[WorkspaceDocument] | type[SymbolDrawingsDocument]
+Document = WorkspaceDocument | SymbolDrawingsDocument | SavedScreensDocument
+Presenter = type[WorkspaceDocument] | type[SymbolDrawingsDocument] | type[SavedScreensDocument]
 
 
 async def _read(
     kind: DocumentKind, key: str, response: Response, read: GetUserDocument, present: Presenter
-) -> WorkspaceDocument | SymbolDrawingsDocument:
+) -> Document:
     document = await read.execute(kind, key)
     response.headers["ETag"] = _etag(document.revision)
     return present.of(document)
@@ -78,7 +81,7 @@ async def _save(
     save: SaveUserDocument,
     read: GetUserDocument,
     present: Presenter,
-) -> WorkspaceDocument | SymbolDrawingsDocument | JSONResponse:
+) -> Document | JSONResponse:
     create_only = if_none_match is not None and if_none_match.strip() == "*"
     try:
         document: UserDocument = await save.execute(
@@ -189,4 +192,40 @@ async def save_drawings(
         save,
         read,
         SymbolDrawingsDocument,
+    )
+
+
+@router.get("/screens/{screens_id}", response_model=SavedScreensDocument)
+async def read_screens(screens_id: WorkspaceId, response: Response, read: GetDep) -> Any:
+    """Return the saved screener screens and their revision (``ETag``)."""
+    return await _read("saved_screens", screens_id, response, read, SavedScreensDocument)
+
+
+@router.put(
+    "/screens/{screens_id}",
+    response_model=SavedScreensDocument,
+    responses=_PRECONDITION_RESPONSES,
+)
+async def save_screens(
+    screens_id: WorkspaceId,
+    body: SavedScreensV1,
+    request: Request,
+    response: Response,
+    save: SaveDep,
+    read: GetDep,
+    if_match: IfMatch = None,
+    if_none_match: IfNoneMatch = None,
+) -> Any:
+    """Save the screens if they are still at the revision named in ``If-Match``."""
+    return await _save(
+        "saved_screens",
+        screens_id,
+        body.model_dump(mode="json"),
+        request,
+        response,
+        if_match,
+        if_none_match,
+        save,
+        read,
+        SavedScreensDocument,
     )

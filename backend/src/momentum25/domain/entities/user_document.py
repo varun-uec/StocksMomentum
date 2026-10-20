@@ -1,4 +1,4 @@
-"""User documents: the owner's saved workspace and drawings (ADR-013 §5).
+"""User documents: the owner's saved workspace, drawings and screens (ADR-013 §5).
 
 A document is user data, not market data. It holds no business rule and never
 feeds a score, gate or rank. ``revision`` starts at 1 and rises by one on every
@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
-DocumentKind = Literal["workspace", "symbol_drawings"]
+DocumentKind = Literal["workspace", "symbol_drawings", "saved_screens"]
 
 
 @dataclass(frozen=True, slots=True)
