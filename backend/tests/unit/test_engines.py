@@ -1078,3 +1078,32 @@ def test_ibd_composite_flat_market_returns_near_zero() -> None:
     prices = pd.Series([100.0] * 280)
     composite = RelativeStrengthPipeline._ibd_composite(prices)
     assert abs(composite) < 1e-9, f"Expected ~0, got {composite}"
+
+
+# Gate boundaries (IMPLEMENTATION_SPEC §9): exactly at, just inside and just
+# outside each threshold. Pins the comparison operators; R3 audit gap.
+@pytest.mark.parametrize(
+    ("rule_id", "overrides", "passes"),
+    [
+        ("tt_above_52w_low", {"pct_above_low_52w": Decimal("30")}, True),
+        ("tt_above_52w_low", {"pct_above_low_52w": Decimal("29.9999")}, False),
+        ("tt_near_52w_high", {"pct_below_high_52w": Decimal("25")}, True),
+        ("tt_near_52w_high", {"pct_below_high_52w": Decimal("25.0001")}, False),
+        ("tt_rs_rating_min", {"rs_rating": 70}, True),
+        ("tt_rs_rating_min", {"rs_rating": 69}, False),
+        ("tt_sma200_uptrend", {"sma200_slope_pct": Decimal("0.0001")}, True),
+        ("tt_sma200_uptrend", {"sma200_slope_pct": Decimal("0")}, False),
+        ("tt_close_above_sma50", {"close": Decimal("140.0001")}, True),
+        ("tt_close_above_sma50", {"close": Decimal("140")}, False),
+        ("tt_sma150_above_sma200", {"sma150": Decimal("120.0001")}, True),
+        ("tt_sma150_above_sma200", {"sma150": Decimal("120")}, False),
+    ],
+)
+def test_trend_template_gate_boundaries(
+    rule_id: str, overrides: dict[str, object], passes: bool
+) -> None:
+    ctx = _make_context(
+        **{"pct_above_low_52w": Decimal("50"), "pct_below_high_52w": Decimal("10"), **overrides}  # type: ignore[arg-type]
+    )
+    result = TrendTemplateEngine().evaluate(ctx, _make_config("trend_template"))
+    assert result.metrics["checklist"][rule_id] is passes

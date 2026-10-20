@@ -94,3 +94,18 @@ class TestEligibility:
             close=Decimal("20"), trailing_turnovers=_turnovers(MIN_AVG_TURNOVER)
         )
         assert decision.eligible is True
+
+
+def test_floors_are_inclusive_at_the_exact_threshold() -> None:
+    # R3 audit gap: pins close >= 20 and mean turnover >= 1e7 at equality.
+    def decide(close: str, turnover: Decimal) -> str:
+        return evaluate_liquidity_eligibility(
+            close=Decimal(close),
+            series="EQ",
+            prior_session_count=MIN_PRIOR_SESSIONS,
+            trailing_turnovers=_turnovers(turnover),
+        ).reason
+
+    assert decide("20", MIN_AVG_TURNOVER) == REASON_ELIGIBLE
+    assert decide("19.9999", MIN_AVG_TURNOVER) == REASON_CLOSE_BELOW_FLOOR
+    assert decide("20", MIN_AVG_TURNOVER - Decimal("0.01")) == REASON_BELOW_LIQUIDITY_FLOOR
