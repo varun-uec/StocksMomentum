@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.application.use_cases.screening_orchestrator import ScreeningOrchestrator
+from momentum25.domain.engine_version import ENGINE_VERSION
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.strategy import EngineConfig, Strategy, StrategyConfig
 from momentum25.domain.ports.market_data import RawBar, RawInstrument
@@ -526,3 +527,30 @@ async def test_same_version_comparison_is_not_flagged(db_session: AsyncSession) 
     report = await ValidateRunComparisonUseCase(run_repo).execute(runs[1].id, runs[0].id)
 
     assert report.indicator_versions_differ() is False
+    assert report.engine_version_a == report.engine_version_b == ENGINE_VERSION
+    assert report.engine_versions_differ() is False
+
+
+@pytest.mark.asyncio
+async def test_cross_engine_comparison_is_disclosed(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR-014 §11: a run from engine 1 against one from engine 2 is flagged, not hidden."""
+    from momentum25.application.use_cases.research.validation import (
+        ValidateRunComparisonUseCase,
+    )
+
+    sec = await _seed_security(db_session, "LIQUID")
+    await _seed_uptrend(db_session, sec.id)
+    run_repo = SqlScreeningRunRepository(db_session)
+    target = "momentum25.application.use_cases.screening_orchestrator.ENGINE_VERSION"
+    monkeypatch.setattr(target, 1)
+    await _orchestrator(db_session, _strategy()).run_daily_screening(_TARGET)
+    monkeypatch.setattr(target, ENGINE_VERSION)
+    await _orchestrator(db_session, _strategy({"min_price_inr": 5})).run_daily_screening(_TARGET)
+    runs, _ = await run_repo.list_runs("completed", 2, 0)
+
+    report = await ValidateRunComparisonUseCase(run_repo).execute(runs[1].id, runs[0].id)
+
+    assert (report.engine_version_a, report.engine_version_b) == (1, ENGINE_VERSION)
+    assert report.engine_versions_differ() is True

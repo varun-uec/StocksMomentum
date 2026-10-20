@@ -12,6 +12,7 @@ from typing import Any
 from structlog import get_logger
 
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
+from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
@@ -230,6 +231,8 @@ class HistoricalScreeningUseCase:
                 ),
                 "git_commit": build_identity(),
                 "indicator_version": INDICATOR_VERSION,
+                "engine_version": ENGINE_VERSION,
+                "reference_universe_version": REFERENCE_UNIVERSE_VERSION,
             }
             await self._screening_run_repo.update(run)
             await self._commit()

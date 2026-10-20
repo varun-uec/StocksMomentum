@@ -179,6 +179,9 @@ class GetStockHistory:
         history = await self._screening_run_repo.score_history(
             strategy_id=strategy.id, security_id=security.id, limit=limit
         )
+        # ``history`` is newest first: a point breaks when the next (older)
+        # point was computed under another methodology.
+        older = [p.methodology for p in history[1:]] + [None]
         return StockHistoryDTO(
             symbol=symbol,
             score_history=[
@@ -188,8 +191,11 @@ class GetStockHistory:
                     rank=point.rank,
                     momentum_score=point.momentum_score,
                     buy_setup_score=point.buy_setup_score,
+                    methodology=point.methodology,
+                    methodology_break=index < len(history) - 1
+                    and point.methodology != older[index],
                 )
-                for point in history
+                for index, point in enumerate(history)
             ],
         )
 

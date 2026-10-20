@@ -6,7 +6,7 @@ import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, Empty
 import { DEFAULT_STRATEGY } from '@/app/strategy-context';
 import { strategyDisplayName } from '@/lib/format';
 import type { EngineExplanation, RuleExplanation, StockExplanation } from '@/lib/types';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from 'recharts';
 import { useChartColors } from '@/lib/useChartColors';
 import { ScoreGauge } from '@/components/shared/ScoreGauge';
 import { RulePassMatrix } from '@/components/stock/RulePassMatrix';
@@ -233,6 +233,20 @@ export default function StockResearchPage() {
     buySetup: parseFloat(p.buy_setup_score),
     rank: p.rank,
   }));
+  // A run under another indicator or engine version: scores on the two sides
+  // of the line are not comparable (ADR-014 §11).
+  const methodologyBreaks = (history?.score_history ?? [])
+    .filter((p) => p.methodology_break)
+    .map((p) => p.run_date.slice(0, 10));
+  const breakLines = methodologyBreaks.map((d) => (
+    <ReferenceLine key={d} x={d} stroke={chartColors.tick} strokeDasharray="4 4" />
+  ));
+  const breakNote =
+    methodologyBreaks.length > 0 ? (
+      <p className="text-xs text-slate-500 mt-2" data-testid="methodology-break-note">
+        The methodology changed on {methodologyBreaks.join(', ')} (dashed line). Values before and after it are not comparable.
+      </p>
+    ) : null;
 
   const passedRules = explanation.rule_explanations.filter((r) => r.passed);
   const failedRules = explanation.rule_explanations.filter((r) => !r.passed);
@@ -483,8 +497,10 @@ export default function StockResearchPage() {
                         <Legend wrapperStyle={{ fontSize: '12px' }} />
                         <Line type="monotone" dataKey="momentum" stroke={chartPalette.info} name="Momentum" dot={false} strokeWidth={2} />
                         <Line type="monotone" dataKey="buySetup" stroke={chartPalette.secondary} name="Buy Setup" dot={false} strokeWidth={2} />
+                        {breakLines}
                       </LineChart>
                     </ResponsiveContainer>
+                    {breakNote}
                   </div>
                 ) : (
                   <EmptyState message={`No score history for ${symbol} yet — it needs at least two screening runs.`} />
@@ -508,8 +524,10 @@ export default function StockResearchPage() {
                         />
                         <Legend wrapperStyle={{ fontSize: '12px' }} />
                         <Line type="monotone" dataKey="rank" stroke={chartPalette.warning} name="Rank" dot={false} strokeWidth={2} />
+                        {breakLines}
                       </LineChart>
                     </ResponsiveContainer>
+                    {breakNote}
                   </div>
                 ) : (
                   <EmptyState message={`No rank history for ${symbol} yet — it needs at least two screening runs.`} />

@@ -595,6 +595,8 @@ class SqlScreeningRunRepository:
                 ScreeningResultModel.momentum_score,
                 ScreeningResultModel.buy_setup_score,
                 ScreeningResultModel.rank,
+                ScreeningRunModel.stats["indicator_version"].astext.label("indicator_version"),
+                ScreeningRunModel.stats["engine_version"].astext.label("engine_version"),
             )
             .join(ScreeningResultModel, ScreeningRunModel.id == ScreeningResultModel.run_id)
             .where(
@@ -617,6 +619,14 @@ class SqlScreeningRunRepository:
                 momentum_score=row.momentum_score,
                 buy_setup_score=row.buy_setup_score,
                 rank=row.rank,
+                methodology=_methodology(row.indicator_version, row.engine_version),
             )
             for row in rows
         ]
+
+
+def _methodology(indicator_version: str | None, engine_version: str | None) -> str | None:
+    """``"i3e2"``; runs before ENGINE_VERSION existed are engine 1 (ADR-014 §11)."""
+    if indicator_version is None:
+        return None
+    return f"i{indicator_version}e{engine_version or 1}"

@@ -102,6 +102,18 @@ class NonTradingHoldingDTO(BaseModel):
     identity_status: str
 
 
+class TransferDTO(BaseModel):
+    """A holding carried to its successor under a verified rename (R3-B-31)."""
+
+    session: date
+    predecessor_id: int
+    successor_id: int
+    shares_out: Decimal
+    shares_in: Decimal
+    ratio: Decimal
+    evidence_reference: str
+
+
 class BacktestProvenance(BaseModel):
     """What produced the result (ADR-014 §11)."""
 
@@ -135,6 +147,7 @@ class BacktestResponse(BaseModel):
     trades: list[TradeDTO]
     closed_orders: list[ClosedOrderDTO]
     nontrading_holdings: list[NonTradingHoldingDTO]
+    transfers: list[TransferDTO]
     provenance: BacktestProvenance
     simulation_notice: str
     survivorship_warning: str
@@ -230,6 +243,18 @@ def to_backtest_response(
         trades=[to_trade_dto(t) for t in result.trades],
         closed_orders=[_closed(o) for o in result.closed_orders],
         nontrading_holdings=[_nontrading(h) for h in result.nontrading_holdings],
+        transfers=[
+            TransferDTO(
+                session=t.session,
+                predecessor_id=t.predecessor_id,
+                successor_id=t.successor_id,
+                shares_out=t.shares_out,
+                shares_in=t.shares_in,
+                ratio=t.ratio,
+                evidence_reference=t.evidence_reference,
+            )
+            for t in result.transfers
+        ],
         provenance=BacktestProvenance(
             method_version=result.method_version,
             execution_policy=result.execution_policy or {},

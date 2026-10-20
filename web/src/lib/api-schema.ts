@@ -1529,6 +1529,8 @@ export interface components {
             closed_orders: components["schemas"]["ClosedOrderDTO"][];
             /** Nontrading Holdings */
             nontrading_holdings: components["schemas"]["NonTradingHoldingDTO"][];
+            /** Transfers */
+            transfers: components["schemas"]["TransferDTO"][];
             provenance: components["schemas"]["BacktestProvenance"];
             /** Simulation Notice */
             simulation_notice: string;
@@ -3419,6 +3421,15 @@ export interface components {
              * @default false
              */
             indicator_versions_differ: boolean;
+            /** Engine Version A */
+            engine_version_a?: number | null;
+            /** Engine Version B */
+            engine_version_b?: number | null;
+            /**
+             * Engine Versions Differ
+             * @default false
+             */
+            engine_versions_differ: boolean;
         };
         /**
          * RunDTO
@@ -4081,6 +4092,29 @@ export interface components {
             participation: string | null;
         };
         /**
+         * TransferDTO
+         * @description A holding carried to its successor under a verified rename (R3-B-31).
+         */
+        TransferDTO: {
+            /**
+             * Session
+             * Format: date
+             */
+            session: string;
+            /** Predecessor Id */
+            predecessor_id: number;
+            /** Successor Id */
+            successor_id: number;
+            /** Shares Out */
+            shares_out: string;
+            /** Shares In */
+            shares_in: string;
+            /** Ratio */
+            ratio: string;
+            /** Evidence Reference */
+            evidence_reference: string;
+        };
+        /**
          * TriggerRefreshRequest
          * @description Request body for ``POST /runs`` and ``POST /runs/execute``.
          */
@@ -4387,6 +4421,13 @@ export interface components {
             momentum_score: string;
             /** Buy Setup Score */
             buy_setup_score: string;
+            /** Methodology */
+            methodology?: string | null;
+            /**
+             * Methodology Break
+             * @default false
+             */
+            methodology_break: boolean;
         };
         /**
          * ParameterOverrideDTO

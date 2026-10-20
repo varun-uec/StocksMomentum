@@ -36,7 +36,11 @@ from momentum25.infrastructure.persistence.repositories import (
 
 
 async def _create_run(
-    repo: SqlScreeningRunRepository, strategy_id: int, run_date: date, data_version: str
+    repo: SqlScreeningRunRepository,
+    strategy_id: int,
+    run_date: date,
+    data_version: str,
+    stats: dict[str, int] | None = None,
 ) -> int:
     run = ScreeningRun(
         strategy_id=strategy_id,
@@ -49,6 +53,7 @@ async def _create_run(
     run_id = await repo.create(run)
     run.id = run_id
     run.status = RunStatus.COMPLETED
+    run.stats = stats
     await repo.update(run)
     return run_id
 
@@ -166,6 +171,30 @@ async def test_score_history_returns_one_live_point_per_run_date(
     assert [p.run_date for p in points] == [date(2024, 1, 1), date(2023, 12, 29)]
     # The newest *live* run for the shared date wins; the backfill's 99 is gone.
     assert points[0].momentum_score == Decimal("20.0000")
+
+
+@pytest.mark.asyncio
+async def test_score_history_names_each_points_methodology(db_session: AsyncSession) -> None:
+    """ADR-014 §11: a point carries its run's indicator and engine versions.
+
+    Runs stamped before ENGINE_VERSION existed read as engine 1; unstamped runs
+    have no methodology at all.
+    """
+    strategy_id = await _make_strategy(db_session, "score_history_methodology_strategy")
+    repo = SqlScreeningRunRepository(db_session)
+    security_id = await _seed_security(db_session, "HISTMETH")
+    stamps = [
+        (date(2024, 1, 1), None),
+        (date(2024, 1, 2), {"indicator_version": 2}),
+        (date(2024, 1, 3), {"indicator_version": 3, "engine_version": 2}),
+    ]
+    for day, stats in stamps:
+        run_id = await _create_run(repo, strategy_id, day, day.isoformat(), stats)
+        await _save_score(repo, run_id, security_id, "10", 1)
+    await db_session.commit()
+
+    points = await repo.score_history(strategy_id, security_id, limit=90)
+    assert [p.methodology for p in points] == ["i3e2", "i2e1", None]
 
 
 @pytest.mark.asyncio

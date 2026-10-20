@@ -74,6 +74,10 @@ class ScorePoint:
     rank: int | None
     momentum_score: Decimal
     buy_setup_score: Decimal
+    # The run's indicator and engine versions ("i3e2"), ``None`` for runs
+    # stamped before either existed. Points with different stamps are not
+    # comparable (ADR-014 §11).
+    methodology: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

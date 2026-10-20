@@ -102,6 +102,10 @@ class RunComparisonResponse(BaseModel):
     indicator_version_a: int | None = None
     indicator_version_b: int | None = None
     indicator_versions_differ: bool = False
+    # Engine rules (RS, universe, ranking; ADR-014 §11), disclosed the same way.
+    engine_version_a: int | None = None
+    engine_version_b: int | None = None
+    engine_versions_differ: bool = False
 
 
 class DeterminismVerificationResponse(BaseModel):

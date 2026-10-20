@@ -17,6 +17,7 @@ from structlog import get_logger
 
 from momentum25.application.dto.runs import ScreeningRunSummary
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
+from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
@@ -242,6 +243,8 @@ class ScreeningOrchestrator:
                 "duration_seconds": summary.duration_seconds,
                 "git_commit": build_identity(),
                 "indicator_version": INDICATOR_VERSION,
+                "engine_version": ENGINE_VERSION,
+                "reference_universe_version": REFERENCE_UNIVERSE_VERSION,
                 "data_manifest": (data_manifest.body() if data_manifest is not None else None),
                 "strategy_config_hash": self._strategy.config_hash,
                 "universe_source": "declared_liquidity_floor",

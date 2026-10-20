@@ -218,6 +218,9 @@ async def compare_runs(
         indicator_version_a=report.indicator_version_a,
         indicator_version_b=report.indicator_version_b,
         indicator_versions_differ=report.indicator_versions_differ(),
+        engine_version_a=report.engine_version_a,
+        engine_version_b=report.engine_version_b,
+        engine_versions_differ=report.engine_versions_differ(),
     )
 
 

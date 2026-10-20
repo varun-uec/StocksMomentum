@@ -28,6 +28,11 @@ class ScorePointDTO(BaseModel):
     rank: int | None
     momentum_score: Decimal
     buy_setup_score: Decimal
+    # The run's indicator and engine versions, e.g. "i3e2" (None: before the stamp).
+    methodology: str | None = None
+    # True when this point's methodology differs from the point before it:
+    # scores on the two sides are not comparable (ADR-014 §11).
+    methodology_break: bool = False
 
 
 class StockHistoryDTO(BaseModel):

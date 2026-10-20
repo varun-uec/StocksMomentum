@@ -92,6 +92,8 @@ class ValidateRunComparisonUseCase:
         object.__setattr__(
             report, "indicator_version_b", (run_b.stats or {}).get("indicator_version")
         )
+        object.__setattr__(report, "engine_version_a", (run_a.stats or {}).get("engine_version"))
+        object.__setattr__(report, "engine_version_b", (run_b.stats or {}).get("engine_version"))
         return report
 
     async def _build_snapshots(

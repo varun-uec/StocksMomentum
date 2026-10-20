@@ -146,6 +146,35 @@ export default function BacktestPage() {
               </Card>
             )}
 
+            {result.transfers.length > 0 && (
+              <Card title="Identity transfers" subtitle="Holdings carried to a successor under a verified rename. No cash or cost moves.">
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
+                        <th scope="col" className="text-left px-3 py-3">Session</th>
+                        <th scope="col" className="text-left px-3 py-3">From</th>
+                        <th scope="col" className="text-left px-3 py-3">To</th>
+                        <th scope="col" className="text-right px-3 py-3">Ratio</th>
+                        <th scope="col" className="text-left px-3 py-3">Evidence</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
+                      {result.transfers.map((t) => (
+                        <tr key={`${t.session}-${t.predecessor_id}`}>
+                          <td className="px-3 py-3">{t.session}</td>
+                          <td className="px-3 py-3 tabular-nums">{t.predecessor_id}</td>
+                          <td className="px-3 py-3 tabular-nums">{t.successor_id}</td>
+                          <td className="px-3 py-3 text-right tabular-nums">{t.ratio}</td>
+                          <td className="px-3 py-3">{t.evidence_reference}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
             {equityCurve.length > 0 && (
               <Card title="Equity Curve" subtitle="NAV before trading, at each rebalance">
                 <div role="img" aria-label="Equity curve chart" className="h-64">

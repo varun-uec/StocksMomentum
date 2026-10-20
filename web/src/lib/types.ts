@@ -111,6 +111,10 @@ export interface ScorePoint {
   rank: number;
   momentum_score: string;
   buy_setup_score: string;
+  /** The run's indicator and engine versions, e.g. "i3e2"; null before the stamp. */
+  methodology?: string | null;
+  /** True where the methodology differs from the point before: not comparable across it. */
+  methodology_break?: boolean;
 }
 
 export interface StockHistoryResponse {
@@ -1093,6 +1097,16 @@ export interface BacktestNonTradingHolding {
   identity_status: string;
 }
 
+export interface BacktestTransfer {
+  session: string;
+  predecessor_id: number;
+  successor_id: number;
+  shares_out: string;
+  shares_in: string;
+  ratio: string;
+  evidence_reference: string;
+}
+
 export interface BacktestProvenance {
   method_version: number;
   execution_policy: Record<string, string | number | boolean>;
@@ -1124,6 +1138,8 @@ export interface BacktestResponse {
   trades: BacktestTrade[];
   closed_orders: BacktestClosedOrder[];
   nontrading_holdings: BacktestNonTradingHolding[];
+  /** Holdings carried to a successor under a verified rename (R3-B-31). */
+  transfers: BacktestTransfer[];
   provenance: BacktestProvenance;
   simulation_notice: string;
   survivorship_warning: string;

@@ -152,6 +152,10 @@ class RunComparisonReport:
     # correction and used the rolling-mean formulas.
     indicator_version_a: int | None = None
     indicator_version_b: int | None = None
+    # Engine revision of each run (``ScreeningRun.stats``, ADR-014 §11): RS,
+    # universe and ranking rules. ``None`` for runs before the stamp (engine 1).
+    engine_version_a: int | None = None
+    engine_version_b: int | None = None
 
     def is_identical(self) -> bool:
         """Return True if no ranking or score differences were detected."""
@@ -164,6 +168,10 @@ class RunComparisonReport:
         attributable to whatever change was under investigation.
         """
         return self.indicator_version_a != self.indicator_version_b
+
+    def engine_versions_differ(self) -> bool:
+        """Return True when the two runs used different engine rules (unstamped = 1)."""
+        return (self.engine_version_a or 1) != (self.engine_version_b or 1)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
