@@ -27,7 +27,7 @@ from momentum25.domain.value_objects.results import (
     UniverseMembership,
 )
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
-from momentum25.infrastructure.observability.research_metadata import get_git_commit
+from momentum25.infrastructure.observability.research_metadata import build_identity
 from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _logger = get_logger("historical_screening")
@@ -213,7 +213,7 @@ class HistoricalScreeningUseCase:
                     "available). Results may still overstate historical "
                     "performance for older dates."
                 ),
-                "git_commit": get_git_commit(),
+                "git_commit": build_identity(),
                 "indicator_version": INDICATOR_VERSION,
             }
             await self._screening_run_repo.update(run)

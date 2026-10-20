@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from momentum25.domain.strategy.rule_schemas import registry_version
 from momentum25.domain.value_objects.manifest import DataManifest
 from momentum25.infrastructure.calendar.nse_calendar import calendar_version
-from momentum25.infrastructure.observability.research_metadata import get_git_commit
+from momentum25.infrastructure.observability.research_metadata import build_identity
 from momentum25.infrastructure.persistence.models import DataManifestModel
 from momentum25.infrastructure.persistence.point_in_time import current_revision
 from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
@@ -22,13 +22,13 @@ class SqlDataManifestRepository:
         self._session = session
 
     async def capture(self, revision: int | None = None) -> DataManifest:
-        """Record the inputs at ``revision`` (default: now) and today's code state."""
+        """Record the inputs at ``revision`` (default: now), the engine versions and the build."""
         manifest = DataManifest(
             revision=await current_revision(self._session) if revision is None else revision,
             indicator_version=INDICATOR_VERSION,
             rule_registry_version=registry_version(),
-            git_commit=get_git_commit(),
             calendar_version=calendar_version(),
+            build_id=build_identity(),
         )
         await self._session.execute(
             insert(DataManifestModel)

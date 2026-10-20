@@ -7,10 +7,10 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 up: ## Start the full stack (db, redis, api); the app is at http://localhost:8000
-	docker compose up --build
+	BUILD_ID=$$(git rev-parse HEAD 2>/dev/null) docker compose up --build
 
 up-dev: ## Start full stack + dev tools (adminer, redisinsight)
-	docker compose --profile dev up --build
+	BUILD_ID=$$(git rev-parse HEAD 2>/dev/null) docker compose --profile dev up --build
 
 down: ## Stop and remove containers
 	docker compose down

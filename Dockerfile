@@ -71,6 +71,11 @@ USER momentum25
 
 EXPOSE 8000
 
+# Build identity for data manifests (ADR-014 §7): informational, never hashed.
+# `make up` passes the git commit; an empty value leaves it unset.
+ARG BUILD_ID=
+ENV M25_BUILD_ID=${BUILD_ID}
+
 # Health check for container orchestration.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live')"

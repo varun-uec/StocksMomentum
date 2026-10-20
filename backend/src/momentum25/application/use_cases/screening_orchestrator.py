@@ -33,7 +33,7 @@ from momentum25.domain.research.liquidity_floor import (
 from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.results import SectorStats, StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
-from momentum25.infrastructure.observability.research_metadata import get_git_commit
+from momentum25.infrastructure.observability.research_metadata import build_identity
 from momentum25.infrastructure.persistence.point_in_time import current_revision
 from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
@@ -237,7 +237,7 @@ class ScreeningOrchestrator:
                 "total_failed": summary.total_failed,
                 "total_skipped_stale_data": summary.total_skipped_stale_data,
                 "duration_seconds": summary.duration_seconds,
-                "git_commit": get_git_commit(),
+                "git_commit": build_identity(),
                 "indicator_version": INDICATOR_VERSION,
                 "data_manifest": (data_manifest.body() if data_manifest is not None else None),
                 "strategy_config_hash": self._strategy.config_hash,

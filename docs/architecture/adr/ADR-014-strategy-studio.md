@@ -79,7 +79,7 @@ No class claims future returns.
   - the indicator version (`INDICATOR_VERSION`), the rule-registry version and the git commit
   - the trading-calendar version
 
-  The as-of port rebuilds every input exactly as it stood at those revisions. Two evaluations with the same manifest give identical results (ADR-009). The manifest's hash is the short `data_version` string shown in the UI.
+  The as-of port rebuilds every input exactly as it stood at those revisions. Two evaluations with the same manifest give identical results (ADR-009). The manifest's hash is the short `data_version` string shown in the UI. *(Amended 2026-10-20: the build is no longer hashed. See §10.)*
 - **Information availability is labelled, not assumed.** Each input row carries a provenance class:
 
   | Provenance | Meaning | Example |
@@ -130,6 +130,32 @@ The workstation integration requirement authorizes saved Strategy Studio configs
 - **Honest empty state.** A saved version with no completed workstation run remains selectable and returns no run for that exact hash. The UI offers an explicit run action and does not show results belonging to another config.
 
 The compatibility tests must cover version persistence, hash-pinned background screening, differing configured results, workstation consistency and research-result provenance.
+
+### 10. Provenance identity amendment (2026-10-20)
+
+**What changed.** `data_version` now hashes only what a result depends on:
+
+- **Market-data identity:** the data revision and the trading-calendar version.
+- **Engine identity:** `INDICATOR_VERSION` and the rule-registry version. Results change when these change, so they stay in the hash.
+
+The strategy configuration keeps its own identity, `config_hash`. The run identity stays `(strategy, run_date, data_version, config_hash)`, and its unique constraint is unchanged.
+
+The build identity is stored but not hashed. It is `M25_BUILD_ID` when the image build sets it (build arg `BUILD_ID`). Otherwise it is the git commit, read once when the process starts. Otherwise it is null. It is saved in the manifest body as `build_id`, and in run stats as `git_commit`, for tracing only. Manifest capture no longer runs git on every call. New bodies carry `identity_schema: 2`.
+
+**Why.** The git commit was part of the hash. So every commit, even a docs-only one, gave identical data and an identical engine a new `data_version`. That meant a new run identity and a duplicate snapshot (R3-U-09). A container has no git, so it recorded null and could never match a run made on the host (R3-B-12).
+
+**Rule that replaces the commit.** A code change that changes any computed value must change the engine identity:
+
+- An indicator change bumps `INDICATOR_VERSION`.
+- A rule, parameter, bound or default change changes the registry fingerprint by itself.
+
+A change to scoring, ranking or engine code that alters results without either is not detected by `data_version`. It must bump `INDICATOR_VERSION` until a separate engine version exists.
+
+**Compatibility.** Stored manifests and runs are never rewritten.
+
+- A body without `identity_schema` is schema 1. It keeps the schema-1 hash over revision, indicator version, registry version, git commit and calendar. So every stored key still loads and replays. Example: run 149's `8790a000bd4f`.
+- The first capture after the upgrade gives the same data a schema-2 key. The next screen of unchanged data therefore writes one new snapshot with identical results, then reuses it.
+- Chart and alert `data_version` (the per-symbol content hash, ADR-013 §4) is unchanged.
 
 ## Consequences
 - The Studio judges a strategy with the same code that screens it, on data it can reproduce exactly.

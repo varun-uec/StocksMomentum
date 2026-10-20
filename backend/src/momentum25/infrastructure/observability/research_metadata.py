@@ -10,6 +10,7 @@ via a code deploy.
 from __future__ import annotations
 
 import subprocess
+from functools import lru_cache
 
 from momentum25.infrastructure.logging.setup import get_logger
 
@@ -36,3 +37,18 @@ def get_git_commit() -> str | None:
     except (subprocess.SubprocessError, OSError) as exc:
         _logger.warning("git_commit_unavailable", error=str(exc))
         return None
+
+
+@lru_cache(maxsize=1)
+def build_identity() -> str | None:
+    """Return the build identity, resolved once per process.
+
+    ``M25_BUILD_ID`` (baked into the image) wins; otherwise the git commit at
+    first call; otherwise ``None``. Cached, so manifest capture never shells
+    out to git per call and a commit made while the process runs does not
+    change what this process reports.
+    """
+    from momentum25.infrastructure.config.settings import get_settings
+
+    configured = (get_settings().build_id or "").strip()
+    return configured or get_git_commit()

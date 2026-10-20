@@ -35,6 +35,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BUILD_ID: ${BUILD_ID:-}
     env_file: .env
     environment:
       M25_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-momentum25}:${POSTGRES_PASSWORD:-momentum25}@db:5432/${POSTGRES_DB:-momentum25}

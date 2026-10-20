@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     # --- Environment ---
     environment: Literal["development", "test", "production"] = "development"
+    # Build identity stored in data manifests for tracing (ADR-014 §7). Set by the
+    # image build (``BUILD_ID`` build arg); without it the process reads the git
+    # commit once at start. Informational only: it never enters ``data_version``.
+    build_id: str | None = None
 
     # --- Persistence ---
     database_url: str = "postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25"
