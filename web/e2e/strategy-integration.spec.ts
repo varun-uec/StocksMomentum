@@ -203,8 +203,10 @@ test('a saved config runs through the real screener engine and differs from the 
   await expect(bodyRows).toHaveCount(1);
   await searchResults.clear();
   await expect(page.getByText(`Showing ${customRanks.total} of ${customRanks.total}`)).toBeVisible();
-  await page.getByRole('columnheader', { name: 'Rank', exact: true }).click();
-  await expect(page.getByRole('columnheader', { name: 'Rank', exact: true })).toHaveAttribute('aria-sort', 'ascending');
+  const rankHeader = page.getByRole('columnheader', { name: 'Rank', exact: true });
+  await rankHeader.click();
+  await rankHeader.click();
+  await expect(rankHeader).toHaveAttribute('aria-sort', 'ascending');
   const firstRow = page.getByRole('table').locator('tbody tr').filter({ has: page.getByRole('button', { name: top.symbol, exact: true }) });
   await firstRow.getByRole('button', { name: top.symbol, exact: true }).click();
   const assessment = page.getByRole('tabpanel', { name: 'Assessment' });
