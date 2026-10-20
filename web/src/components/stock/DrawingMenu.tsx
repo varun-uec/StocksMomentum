@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { DRAWING_COLORS, DRAWING_WIDTHS, TEXT_KINDS, type ChartDrawing } from '@/components/stock/chart-drawings';
+import { ALERTABLE_KINDS, DRAWING_COLORS, DRAWING_WIDTHS, TEXT_KINDS, type ChartDrawing } from '@/components/stock/chart-drawings';
 import type { PriceScale } from '@/components/stock/chart-types';
 import { focusRing } from '@/lib/theme';
 
@@ -50,6 +50,7 @@ export function DrawingMenu({
   onChange,
   onDelete,
   onEditText,
+  onAlert,
   onClose,
 }: {
   drawing: ChartDrawing;
@@ -57,6 +58,8 @@ export function DrawingMenu({
   onChange: (next: ChartDrawing) => void;
   onDelete: () => void;
   onEditText: () => void;
+  /** Present when the page can arm an EOD alert on a saved drawing (absent in replay). */
+  onAlert?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -115,6 +118,11 @@ export function DrawingMenu({
             onClick={onEditText}
           >
             Edit text…
+          </button>
+        )}
+        {onAlert && ALERTABLE_KINDS.has(drawing.kind) && (
+          <button type="button" role="menuitem" className={ITEM_CLASS} onClick={() => { onAlert(); onClose(); }}>
+            {drawing.kind === 'rectangle' ? 'Alert on this zone…' : 'Alert on this line…'}
           </button>
         )}
         <button type="button" role="menuitem" disabled={drawing.locked} className={`${ITEM_CLASS} text-rose-600 dark:text-rose-400 disabled:opacity-40`} onClick={onDelete}>

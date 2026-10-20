@@ -13,3 +13,7 @@ test('mixed-date zone anchors are adjusted individually before ordering low and 
 test('triggered, indicator and other-symbol alerts never become armed price lines', () => {
   expect(alertPriceLevels([{ ...alert, status: 'triggered' }, { ...alert, source: 'rsi14' }, { ...alert, symbol: 'XYZ' }], 'ABC', adjustments)).toEqual([]);
 });
+test('a sloped line alert has no single level, so it plots no price line', () => {
+  const line: AlertDTO = { ...alert, drawing: { id: 'line', kind: 'trendline', revision: 1, points: [{ date: '2025-07-01', price: '75' }, { date: '2025-08-01', price: '90' }] } };
+  expect(alertPriceLevels([line, { ...line, drawing: { ...line.drawing!, kind: 'ray' } }], 'ABC', adjustments)).toEqual([]);
+});

@@ -113,6 +113,7 @@ export function SidePanel({
   onClose,
   tabs,
   alertPrice,
+  alertDrawing,
   objectsRef,
   runId,
   evidence,
@@ -130,6 +131,8 @@ export function SidePanel({
   tabs?: React.ReactNode;
   /** A price picked on the chart for a new alert. */
   alertPrice?: number;
+  /** A saved drawing picked for a new alert ("Alert on this line…"). */
+  alertDrawing?: { id: string; n: number };
   /** Receives the Object tree's body, which the active chart fills. */
   objectsRef?: (el: HTMLElement | null) => void;
   /** The route's run in view, for the Assessment; the latest run when absent. */
@@ -156,7 +159,7 @@ export function SidePanel({
         {panel === 'details' && symbol && (
           <AssessmentPanel key={`${symbol}:${strategy}:${runId}:${replay ? `replay-${replay.runId}` : ''}`} symbol={symbol} strategy={strategy} runId={runId} replay={replay} evidence={evidence} onOpenChart={onOpenChart && (() => onOpenChart(symbol))} onCreateAlert={onCreateAlert} />
         )}
-        {panel === 'alerts' && (replay ? <ReplayPaused date={replay.date} /> : <AlertsTab symbol={symbol} price={alertPrice} />)}
+        {panel === 'alerts' && (replay ? <ReplayPaused date={replay.date} /> : <AlertsTab symbol={symbol} price={alertPrice} drawing={alertDrawing} />)}
         {panel === 'objects' && <div ref={objectsRef} className="p-2" />}
       </div>
     </aside>

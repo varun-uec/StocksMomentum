@@ -716,3 +716,85 @@ async def test_an_edited_drawing_rule_replays_after_another_corporate_action(
     assert fired["triggered_on"] == _LATER[1].isoformat()
     assert Decimal(fired["trigger_value"]) == (_close(301) / 4).quantize(Decimal("0.0001"))
     assert Decimal(fired["drawing"]["points"][0]["price"]) == new_level
+
+
+async def _save_line(
+    client: httpx.AsyncClient,
+    kind: str,
+    anchors: list[tuple[date, Decimal]],
+    *,
+    revision: int | None = None,
+) -> httpx.Response:
+    drawing = {
+        "id": "monitor-line",
+        "kind": kind,
+        "color": "#456789",
+        "points": [{"date": d.isoformat(), "price": str(p)} for d, p in anchors],
+    }
+    headers = {"If-Match": f'"{revision}"'} if revision else {"If-None-Match": "*"}
+    return await client.put("/api/v1/drawings/ALRT", json={"drawings": [drawing]}, headers=headers)
+
+
+async def test_a_sloped_ray_fires_on_its_first_close_cross_and_ignores_later_drawing_edits(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    """The ray rises 0.01 a session and meets session 299's close, so session 300 crosses it."""
+    slope = Decimal("0.01")
+    anchors = [(_HISTORY[-11], _close(299) - 10 * slope), (_HISTORY[-1], _close(299))]
+    assert _close(300) > _close(299) + slope
+    assert (await _save_line(client, "ray", anchors)).status_code == 201
+    created = await client.post(
+        "/api/v1/alerts",
+        json=_alert(condition="crosses_above", drawing_id="monitor-line"),
+    )
+    assert created.status_code == 201
+    row = created.json()
+    assert (row["drawing"]["kind"], row["drawing"]["revision"]) == ("ray", 1)
+    assert [Decimal(p["price"]) for p in row["drawing"]["points"]] == [p for _, p in anchors]
+
+    # Snapshot freeze: moving the saved line far above price changes nothing.
+    moved = [(d, p + 1000) for d, p in anchors]
+    assert (await _save_line(client, "ray", moved, revision=1)).status_code == 200
+    await _add_bars(db_session, security_id, _LATER, 300)
+    assert (await client.post("/api/v1/alerts/evaluate")).json()["fired"] == 1
+    [fired] = (await client.get("/api/v1/alerts")).json()["alerts"]
+    assert fired["triggered_on"] == _LATER[0].isoformat()
+    assert Decimal(fired["trigger_value"]) == _close(300)
+    assert fired["drawing"]["revision"] == 1
+
+
+async def test_a_trendline_ending_before_arming_never_fires(
+    client: httpx.AsyncClient, db_session: AsyncSession, security_id: int
+) -> None:
+    anchors = [(_HISTORY[-11], Decimal("1")), (_HISTORY[-1], Decimal("2"))]
+    assert (await _save_line(client, "trendline", anchors)).status_code == 201
+    created = await client.post(
+        "/api/v1/alerts", json=_alert(condition="crosses_below", drawing_id="monitor-line")
+    )
+    assert created.status_code == 201
+    await _add_bars(db_session, security_id, _LATER, 300)
+    assert (await client.post("/api/v1/alerts/evaluate")).json() == {
+        "evaluated": 1,
+        "fired": 0,
+        "failed": [],
+    }
+
+
+@pytest.mark.parametrize(
+    ("kind", "anchors", "condition"),
+    [
+        ("trendline", [(-1, "100"), (-1, "101")], "crosses_above"),  # one session
+        ("ray", [(-1, "100"), (-5, "101")], "crosses_above"),  # points back in time
+        ("extended", [(-5, "100"), (-1, "101")], "enters_zone"),  # lines need a crossing
+        ("ray", [(-5, "100")], "crosses_above"),  # one anchor
+    ],
+)
+async def test_invalid_line_rules_are_rejected(
+    client: httpx.AsyncClient, kind: str, anchors: list[tuple[int, str]], condition: str
+) -> None:
+    points = [(_HISTORY[i], Decimal(p)) for i, p in anchors]
+    assert (await _save_line(client, kind, points)).status_code == 201
+    response = await client.post(
+        "/api/v1/alerts", json=_alert(condition=condition, drawing_id="monitor-line")
+    )
+    assert response.status_code == 422

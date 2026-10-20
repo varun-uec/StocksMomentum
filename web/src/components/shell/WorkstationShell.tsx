@@ -40,6 +40,8 @@ function useRightDock(context: PanelContext) {
   const [localPanel, setLocalPanel] = useState<RightPanel>(null);
   const [overlay, setOverlay] = useState(false);
   const [alertPrice, setAlertPrice] = useState<number>();
+  // A drawing picked for a new alert; `n` makes a repeated pick of one drawing count.
+  const [alertDrawing, setAlertDrawing] = useState<{ id: string; n: number }>();
   const desktop = useMediaQuery('(min-width: 1024px)');
   const wide = useMediaQuery('(min-width: 1280px)');
 
@@ -47,6 +49,7 @@ function useRightDock(context: PanelContext) {
     setLocalPanel(null);
     setOverlay(false);
     setAlertPrice(undefined);
+    setAlertDrawing(undefined);
   }, [pathname]);
 
   const inline = desktop && wide && !!context.saved && context.inline !== false;
@@ -72,14 +75,16 @@ function useRightDock(context: PanelContext) {
     panel,
     visible,
     alertPrice,
+    alertDrawing,
     open,
     close,
     /** A strip icon: open its tab, or collapse the panel when it is the open one. */
     select: (tab: PanelTab) => (visible && panel === tab ? (inline ? setStored(null) : setOverlay(false)) : open(tab)),
     /** The narrow-screen "Panel" button. */
     toggle: () => (visible ? setOverlay(false) : open(panel ?? 'watchlist')),
-    openWithPrice: (tab: PanelTab, price?: number) => {
+    openWithPrice: (tab: PanelTab, price?: number, drawingId?: string) => {
       setAlertPrice(price);
+      setAlertDrawing((last) => (drawingId ? { id: drawingId, n: (last?.n ?? 0) + 1 } : undefined));
       open(tab);
     },
   };
@@ -104,7 +109,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
       routeSlot,
       objectsSlot,
       setPanelContext: setPanelContextState,
-      openPanel: (tab: PanelTab, price?: number) => dockRef.current.openWithPrice(tab, price),
+      openPanel: (tab: PanelTab, price?: number, drawingId?: string) => dockRef.current.openWithPrice(tab, price, drawingId),
     }),
     [routeSlot, objectsSlot],
   );
@@ -139,6 +144,7 @@ export function WorkstationShell({ children }: { children: React.ReactNode }) {
         onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)}
         onClose={dock.close}
         alertPrice={dock.alertPrice}
+        alertDrawing={dock.alertDrawing}
         objectsRef={setObjectsSlot}
         runId={panelContext.runId}
         evidence={panelContext.evidence}

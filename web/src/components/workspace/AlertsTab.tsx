@@ -5,6 +5,7 @@
  */
 
 import { Link } from 'react-router';
+import { ALERTABLE_KINDS, SLOPED_KINDS } from '@/components/stock/chart-drawings';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -50,8 +51,11 @@ export function useAlerts() {
 }
 
 /** What an alert watches, in words. */
-export function describeAlert(a: Pick<AlertDTO, 'symbol' | 'source' | 'condition' | 'threshold' | 'interval'>): string {
-  return `${a.symbol} ${label(SOURCES, a.source)} ${(a.condition === 'enters_zone' ? 'enters zone' : a.condition === 'leaves_zone' ? 'leaves zone' : label(CONDITIONS, a.condition))} ${parseFloat(a.threshold)} · ${label(INTERVALS, a.interval)}`;
+export function describeAlert(a: Pick<AlertDTO, 'symbol' | 'source' | 'condition' | 'threshold' | 'interval'> & { drawing?: AlertDTO['drawing'] }): string {
+  const condition = a.condition === 'enters_zone' ? 'enters zone' : a.condition === 'leaves_zone' ? 'leaves zone' : label(CONDITIONS, a.condition);
+  // A sloped line has no single level: name the line, not its first anchor's price.
+  const level = a.drawing && SLOPED_KINDS.has(a.drawing.kind) ? `the ${ALERT_DRAWING_NAMES[a.drawing.kind].toLowerCase()}` : parseFloat(a.threshold);
+  return `${a.symbol} ${label(SOURCES, a.source)} ${condition} ${level} · ${label(INTERVALS, a.interval)}`;
 }
 
 const field = `rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-1 text-xs ${focusRing}`;
@@ -61,11 +65,13 @@ function useAlertPrices(symbol?: string) {
   return useQuery({ queryKey: ['stock-ohlcv', symbol ?? '', '1D'], queryFn: () => getOhlcv(symbol ?? '', undefined, undefined, '1D'), enabled: !!symbol });
 }
 
+const ALERT_DRAWING_NAMES: Record<string, string> = { hline: 'Horizontal level', horizontal: 'Horizontal level', rectangle: 'Price zone', trendline: 'Trendline', ray: 'Ray', extended: 'Extended line' };
+
 /** A request from the list to edit an alert; `n` makes a repeated click count. */
 type EditRequest = { alert: AlertDTO; n: number };
 
 /** The alert list, and a form for the context symbol. A route without a symbol shows the list only. */
-export function AlertsTab({ symbol, price }: { symbol?: string; price?: number }) {
+export function AlertsTab({ symbol, price, drawing }: { symbol?: string; price?: number; drawing?: { id: string; n: number } }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useAlerts();
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -88,7 +94,7 @@ export function AlertsTab({ symbol, price }: { symbol?: string; price?: number }
 
   return (
     <div className="text-xs">
-      {symbol ? <AlertForm symbol={symbol} price={price} editRequest={editRequest} /> : <p className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 text-slate-500">Open a chart or a symbol page to create an alert.</p>}
+      {symbol ? <AlertForm symbol={symbol} price={price} drawing={drawing} editRequest={editRequest} /> : <p className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 text-slate-500">Open a chart or a symbol page to create an alert.</p>}
       {(remove.isError || rearm.isError) && <p role="alert" className="px-3 py-1 text-rose-600">The action failed. Try again. {String((remove.error ?? rearm.error)?.message ?? '')}</p>}
       {isLoading && <p className="px-3 py-2 text-slate-500">Loading alerts…</p>}
       {symbol && (
@@ -143,7 +149,7 @@ export function AlertsTab({ symbol, price }: { symbol?: string; price?: number }
 }
 
 /** New and edited alerts for one symbol. It owns the symbol's drawings, so it mounts only with a symbol. */
-function AlertForm({ symbol, price, editRequest }: { symbol: string; price?: number; editRequest: EditRequest | null }) {
+function AlertForm({ symbol, price, drawing, editRequest }: { symbol: string; price?: number; drawing?: { id: string; n: number }; editRequest: EditRequest | null }) {
   const queryClient = useQueryClient();
   const { data } = useAlerts();
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -151,13 +157,14 @@ function AlertForm({ symbol, price, editRequest }: { symbol: string; price?: num
   const [drawingId, setDrawingId] = useState('');
   const [notice, setNotice] = useState('');
   const drawingDocument = useSymbolDrawings(symbol);
-  const drawings = drawingDocument.drawings.filter((d) => ['hline', 'horizontal', 'rectangle'].includes(d.kind));
+  const drawings = drawingDocument.drawings.filter((d) => ALERTABLE_KINDS.has(d.kind));
   const prices = useAlertPrices(symbol);
   const currentVersionRef = useRef(prices.data?.data_version);
   currentVersionRef.current = prices.data?.data_version;
   const [basis, setBasis] = useState<AlertEditorBasis | null>(null);
   const linked = drawings.find((d) => d.id === drawingId);
   const rectangle = linked?.kind === 'rectangle';
+  const sloped = !!linked && SLOPED_KINDS.has(linked.kind);
   const [source, setSource] = useState<CreateAlertRequest['source']>('close');
   const [condition, setCondition] = useState<CreateAlertRequest['condition']>('crosses_above');
   const [interval, setBarInterval] = useState<NonNullable<CreateAlertRequest['interval']>>('1D');
@@ -175,6 +182,16 @@ function AlertForm({ symbol, price, editRequest }: { symbol: string; price?: num
     setThreshold(price.toFixed(2));
     setBasis(currentVersionRef.current ? { symbol, version: currentVersionRef.current } : null);
   }, [price, symbol]);
+
+  // "Alert on this line…" from the drawing menu picks the drawing.
+  useEffect(() => {
+    if (!drawing) return;
+    const kind = drawingDocument.drawings.find((d) => d.id === drawing.id)?.kind;
+    setEditing(null);
+    setDrawingId(drawing.id);
+    setCondition(kind === 'rectangle' ? 'leaves_zone' : 'crosses_above');
+    setNotice('');
+  }, [drawing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startEditing = (alert: AlertDTO) => {
     if (!prices.data || alert.symbol !== symbol) return;
@@ -214,12 +231,12 @@ function AlertForm({ symbol, price, editRequest }: { symbol: string; price?: num
       <label className="flex items-center gap-2 text-slate-500">Watch
         <select aria-label="Alert drawing" value={drawingId} className={`min-w-0 flex-1 ${field}`} onChange={(e) => { const next = drawings.find((d) => d.id === e.target.value); setDrawingId(e.target.value); setCondition(next?.kind === 'rectangle' ? 'leaves_zone' : 'crosses_above'); }}>
           <option value="">Price or backend indicator</option>
-          {drawings.map((d, i) => <option key={d.id} value={d.id}>{d.kind === 'rectangle' ? 'Price zone' : 'Horizontal level'} {i + 1} · {d.points.map((p) => p.price.toFixed(2)).join(' – ')}</option>)}
+          {drawings.map((d, i) => <option key={d.id} value={d.id}>{ALERT_DRAWING_NAMES[d.kind]} {i + 1} · {d.points.map((p) => p.price.toFixed(2)).join(' – ')}</option>)}
         </select>
       </label>
       {linked && !drawingSaved && <p role="status" className="text-amber-700 dark:text-amber-400">Waiting for the drawing to save before capturing its level. {drawingDocument.status === 'error' && <button type="button" onClick={drawingDocument.retry} className="underline">Retry drawing save</button>}</p>}
       {drawingId && !linked && <p role="status" className="text-amber-700 dark:text-amber-400">Original drawing unavailable. Choose a saved drawing to refresh, or a price condition.</p>}
-      {linked && <p className="text-[10px] text-slate-500">Daily close {rectangle ? 'enters or leaves the inclusive price band; gaps across it count as leaving only when the previous close was inside' : 'crosses the horizontal level'}. Captures the saved drawing now. Later drawing edits do not change this rule; edit the alert to refresh its snapshot. The rectangle’s date span does not limit the future price-band condition.</p>}
+      {linked && <p className="text-[10px] text-slate-500">Daily close {rectangle ? 'enters or leaves the inclusive price band; gaps across it count as leaving only when the previous close was inside' : sloped ? `crosses the line, compared with the line's value on each session. ${linked.kind === 'trendline' ? 'A trendline watches only the sessions between its anchors' : linked.kind === 'ray' ? 'A ray watches from its first anchor onward' : 'An extended line watches every session'}` : 'crosses the horizontal level'}. Captures the saved drawing now. Later drawing edits do not change this rule; edit the alert to refresh its snapshot. The rectangle’s date span does not limit the future price-band condition.</p>}
       <div className="flex flex-wrap gap-1">
         <select aria-label="Value" disabled={!!linked} value={linked ? 'close' : source} onChange={(e) => setSource(e.target.value as typeof source)} className={field}>
           {SOURCES.map((s) => (

@@ -122,6 +122,11 @@ export const DRAWING_REQUIRED_POINTS: Record<DrawingKind, number> = {
   price_label: 1,
 };
 
+/** Saved drawings an EOD close alert can watch (ADR-013 amendments): levels, a zone, sloped lines. */
+export const ALERTABLE_KINDS: ReadonlySet<string> = new Set(['hline', 'horizontal', 'rectangle', 'trendline', 'ray', 'extended']);
+/** The sloped ones: their level changes by session, so they have no single price line. */
+export const SLOPED_KINDS: ReadonlySet<string> = new Set(['trendline', 'ray', 'extended']);
+
 /** Kinds that carry text the owner writes; the note editor opens when one is placed. */
 export const TEXT_KINDS: ReadonlySet<DrawingKind> = new Set(['text', 'callout']);
 

@@ -192,6 +192,7 @@ function CellFrame({
   onSearch,
   onIndicators,
   onAlert,
+  onAlertOnDrawing,
   evidenceLayers,
   onRemoveEvidence,
 }: {
@@ -207,6 +208,7 @@ function CellFrame({
   onIndicators: () => void;
   /** Absent in replay: alerts are paused. */
   onAlert?: (price: number) => void;
+  onAlertOnDrawing?: (drawingId: string) => void;
   evidenceLayers?: EvidenceLayer[];
   onRemoveEvidence?: (id: string) => void;
 }) {
@@ -225,7 +227,7 @@ function CellFrame({
         <PriceChart {...slot.chartProps} chartLabel={<>
           <button type="button" onClick={onSearch} className={`font-semibold text-xs ${focusRing}`} title="Change this chart's symbol">{symbol}</button>
           <CompareChips symbol={symbol} compare={slot.compare} onRemove={(s) => slot.setCompare(slot.compareSymbols.filter((x) => x !== s))} />
-        </>} height={160} autoHeight compact bare toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} crosshairSync={crosshair} evidenceLayers={evidenceLayers} onRemoveEvidence={onRemoveEvidence} />
+        </>} height={160} autoHeight compact bare toolRail={active} chrome={active ? chrome : undefined} onOpenIndicators={onIndicators} onAlertAtPrice={onAlert} onAlertOnDrawing={onAlertOnDrawing} crosshairSync={crosshair} evidenceLayers={evidenceLayers} onRemoveEvidence={onRemoveEvidence} />
       ) : (
         <div className="h-full" />
       )}
@@ -278,6 +280,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const latestRun = useLatestRun(strategyName).data;
 
   const alertAt = replay ? undefined : (price: number) => openPanel('alerts', price);
+  const alertOn = replay ? undefined : (drawingId: string) => openPanel('alerts', undefined, drawingId);
   // Step targets: the active symbol's stored daily sessions (the shell's own cached key).
   const daily = useQuery({ queryKey: ['stock-ohlcv', symbol, '1D'], queryFn: () => getOhlcv(symbol, undefined, undefined, '1D'), enabled: !!replay });
   const sessions = useMemo(() => daily.data?.bars.map((b) => b.date) ?? [], [daily.data]);
@@ -510,7 +513,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       {!multi ? (
         <div className="chart-stage" data-plot-cell>
           {shell.ready ? (
-            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} legendChip={<LegendChip symbol={symbol} strategy={strategyName} runId={replayState ? (replayState.runId ?? undefined) : latestRun?.id} onOpen={() => openPanel('details')} />} evidenceLayers={activeLayers} onRemoveEvidence={(id) => removeEvidence(activeId, id)} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
+            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} legendChip={<LegendChip symbol={symbol} strategy={strategyName} runId={replayState ? (replayState.runId ?? undefined) : latestRun?.id} onOpen={() => openPanel('details')} />} evidenceLayers={activeLayers} onRemoveEvidence={(id) => removeEvidence(activeId, id)} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} onAlertOnDrawing={alertOn} autoHeight toolRail chrome={chrome} />
           ) : (
             <LoadingSpinner />
           )}
@@ -530,6 +533,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               onSearch: () => openSearch(''),
               onIndicators: () => setIndicatorsOpen(true),
               onAlert: alertAt,
+              onAlertOnDrawing: alertOn,
               evidenceLayers: layersOf(chartId),
               onRemoveEvidence: (id: string) => removeEvidence(chartId, id),
             };

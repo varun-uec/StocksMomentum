@@ -35,8 +35,8 @@ export interface ShellApi {
   /** The Object tree tab's body while it is open; the active chart portals its drawings list into it. */
   objectsSlot: HTMLElement | null;
   setPanelContext: (context: PanelContext) => void;
-  /** Open a panel tab; `alertPrice` prefills a new alert. */
-  openPanel: (tab: PanelTab, alertPrice?: number) => void;
+  /** Open a panel tab; `alertPrice` or `alertDrawingId` (a saved line or zone) prefills a new alert. */
+  openPanel: (tab: PanelTab, alertPrice?: number, alertDrawingId?: string) => void;
 }
 
 export const ShellContext = createContext<ShellApi>({ routeSlot: null, objectsSlot: null, setPanelContext: () => {}, openPanel: () => {} });

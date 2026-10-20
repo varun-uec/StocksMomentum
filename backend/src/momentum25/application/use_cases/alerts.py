@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
-from typing import Literal, cast
+from typing import cast
 
 from momentum25.application.dto.alerts import (
     AlertDTO,
@@ -23,15 +23,20 @@ from momentum25.application.dto.user_documents import SymbolDrawingsV1
 from momentum25.application.use_cases.securities import GetSecurityOHLCV
 from momentum25.application.use_cases.stocks import GetIndicatorSeries
 from momentum25.domain.entities.alert import (
+    LINE_KINDS,
     PRICE_SCALED,
     Alert,
     AlertInterval,
     DrawingAlert,
     DrawingAnchor,
+    DrawingKind,
+    LineKind,
     SeriesPoint,
     chart_threshold,
     first_firing,
+    first_line_firing,
     first_zone_firing,
+    line_levels,
 )
 from momentum25.domain.errors import ConflictError, NotFoundError, ValidationError
 from momentum25.domain.ports.repositories import (
@@ -52,6 +57,14 @@ async def _last_session(ohlcv: OHLCVRepository) -> date:
 def _factor_at(steps: Sequence[AdjustmentStepDTO], day: date) -> Decimal:
     step = next((s for s in steps if s.until >= day), steps[-1] if steps else None)
     return step.factor if step else Decimal("1")
+
+
+def _line_levels(drawing: DrawingAlert, prices: SecurityOHLCVDTO) -> list[Decimal | None]:
+    """The captured line's value on each stored session, each anchor adjusted at its own date."""
+    first, second = (
+        (p.date, p.price * _factor_at(prices.adjustments, p.date)) for p in drawing.points
+    )
+    return line_levels(cast(LineKind, drawing.kind), (first, second), [b.date for b in prices.bars])
 
 
 def _drawing_bounds(
@@ -130,11 +143,12 @@ class CreateAlert:
                 and doc.revision != request.expected_drawing_revision
             ):
                 raise ConflictError("Drawing changed; reload its saved revision before arming")
-            if found.kind not in {"horizontal", "hline", "rectangle"}:
+            if found.kind not in {"horizontal", "hline", "rectangle", *LINE_KINDS}:
                 raise ValidationError(
-                    "Only horizontal lines and rectangular price zones are supported"
+                    "Only horizontal lines, trendlines, rays, extended lines "
+                    "and rectangular price zones are supported"
                 )
-            count = 2 if found.kind == "rectangle" else 1
+            count = 2 if found.kind == "rectangle" or found.kind in LINE_KINDS else 1
             if len(found.points) != count:
                 raise ValidationError("Drawing has invalid anchors")
             if any(p.price <= 0 or p.price >= 10**14 for p in found.points):
@@ -146,7 +160,7 @@ class CreateAlert:
                 raise ValidationError("Rectangles require entry or exit; lines require crossing")
             drawing = DrawingAlert(
                 id=found.id,
-                kind=cast(Literal["horizontal", "hline", "rectangle"], found.kind),
+                kind=cast(DrawingKind, found.kind),
                 revision=doc.revision,
                 points=tuple(DrawingAnchor(p.date, Decimal(str(p.price))) for p in found.points),
             )
@@ -158,6 +172,15 @@ class CreateAlert:
                 lower, upper = _drawing_bounds(drawing, prices.adjustments)
                 if lower == upper:
                     raise ValidationError("A price zone must have distinct adjusted bounds")
+            if drawing.kind in LINE_KINDS:
+                if self._prices is None:
+                    raise ValidationError("Adjusted drawing prices are unavailable")
+                if prices is None:
+                    prices = await self._prices.execute(str(security.symbol), interval="1D")
+                try:
+                    _line_levels(drawing, prices)
+                except ValueError as exc:
+                    raise ValidationError(str(exc)) from exc
         alert = Alert(
             symbol=str(security.symbol),
             source=request.source,
@@ -295,7 +318,13 @@ class EvaluateAlerts:
         for alert in active:
             assert alert.id is not None
             try:
-                if alert.drawing is not None:
+                if alert.drawing is not None and alert.drawing.kind in LINE_KINDS:
+                    prices = await self._prices.execute(alert.symbol, interval="1D")
+                    points = [SeriesPoint(b.date, b.close, b.partial) for b in prices.bars]
+                    version = prices.data_version
+                    levels = _line_levels(alert.drawing, prices)
+                    firing = first_line_firing(alert.condition, alert.armed_after, points, levels)
+                elif alert.drawing is not None:
                     points, version, lower, upper = await self.drawing_inputs(alert)
                     firing = (
                         first_zone_firing(alert.condition, lower, upper, alert.armed_after, points)
@@ -305,7 +334,8 @@ class EvaluateAlerts:
                 else:
                     points, version, threshold = await self.inputs(alert)
                     firing = first_firing(alert.condition, threshold, alert.armed_after, points)
-            except NotFoundError:
+            except (NotFoundError, ValueError):
+                # ValueError: a data correction left a captured line without two sessions.
                 _logger.warning("alert_series_missing", alert_id=alert.id, symbol=alert.symbol)
                 failed.append(alert.symbol)
                 continue

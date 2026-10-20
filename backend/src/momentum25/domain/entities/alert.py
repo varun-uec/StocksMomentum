@@ -14,6 +14,7 @@ ADX do not scale with price.
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -34,6 +35,10 @@ PRICE_SCALED: frozenset[str] = frozenset(
     {"close", "atr14", "macd_line", "macd_signal", "macd_histogram"}
 )
 
+DrawingKind = Literal["horizontal", "hline", "rectangle", "trendline", "ray", "extended"]
+LineKind = Literal["trendline", "ray", "extended"]
+LINE_KINDS: frozenset[str] = frozenset({"trendline", "ray", "extended"})
+
 
 @dataclass(frozen=True, slots=True)
 class DrawingAnchor:
@@ -48,7 +53,7 @@ class DrawingAlert:
     """A saved drawing snapshot; subsequent drawing edits cannot rewrite a rule."""
 
     id: str
-    kind: Literal["horizontal", "hline", "rectangle"]
+    kind: DrawingKind
     points: tuple[DrawingAnchor, ...]
     revision: int
 
@@ -166,4 +171,60 @@ def first_zone_firing(
             if (condition == "enters_zone" and entered) or (condition == "leaves_zone" and left):
                 return Firing(point.date, point.value)
         previous_inside = inside
+    return None
+
+
+def line_levels(
+    kind: LineKind,
+    anchors: tuple[tuple[date, Decimal], tuple[date, Decimal]],
+    sessions: Sequence[date],
+) -> list[Decimal | None]:
+    """The line's value on each session; ``None`` outside the kind's domain.
+
+    ``anchors`` are in the chart's current price basis (each adjusted at its own
+    date). A date's index is the number of sessions before it, so the line is
+    linear in the session index, as the chart spaces bars (ADR-013 line amendment).
+    """
+    (date_a, price_a), (date_b, price_b) = anchors
+    index_a, index_b = bisect_left(sessions, date_a), bisect_left(sessions, date_b)
+    if index_a == index_b:
+        raise ValueError("A line needs anchors on two different sessions")
+    if kind == "ray" and index_b < index_a:
+        raise ValueError("A ray must point forward in time")
+    low, high = min(index_a, index_b), max(index_a, index_b)
+    slope = (price_b - price_a) / (index_b - index_a)
+    levels: list[Decimal | None] = []
+    for i in range(len(sessions)):
+        inside = kind == "extended" or (kind == "ray" and i >= index_a) or low <= i <= high
+        levels.append(price_a + slope * (i - index_a) if inside else None)
+    return levels
+
+
+def first_line_firing(
+    condition: AlertCondition,
+    armed_after: date,
+    points: Sequence[SeriesPoint],
+    levels: Sequence[Decimal | None],
+) -> Firing | None:
+    """The first completed close strictly after ``armed_after`` that crosses the line.
+
+    Each session is compared with the line's value on that session. A session
+    without a value or outside the line's domain breaks the crossing.
+    """
+    if condition not in {"crosses_above", "crosses_below"}:
+        return None
+    previous: tuple[Decimal, Decimal] | None = None
+    for point, level in zip(points, levels, strict=True):
+        if point.partial:
+            break
+        if point.value is None or level is None:
+            previous = None
+            continue
+        if previous is not None and point.date > armed_after:
+            close, line = previous
+            above = condition == "crosses_above" and close <= line and point.value > level
+            below = condition == "crosses_below" and close >= line and point.value < level
+            if above or below:
+                return Firing(point.date, point.value)
+        previous = (point.value, level)
     return None

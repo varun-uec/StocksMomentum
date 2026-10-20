@@ -566,6 +566,7 @@ export function PriceChart({
   onScaleChange,
   onOpenIndicators,
   onAlertAtPrice,
+  onAlertOnDrawing,
   replayDate,
   chrome,
   legendTitle,
@@ -620,6 +621,8 @@ export function PriceChart({
   onOpenIndicators?: () => void;
   /** Adds "Alert at this price…" to the chart's context menu (M15). */
   onAlertAtPrice?: (price: number) => void;
+  /** "Alert on this line…" from a drawing's menu: arm an EOD alert on the saved drawing. */
+  onAlertOnDrawing?: (drawingId: string) => void;
   /**
    * Bar replay (plan B2): the bars already stop at this date. While it is set the
    * newest bar stays in view; clearing it restores the viewport from before replay.
@@ -2092,6 +2095,7 @@ export function PriceChart({
           <DrawingMenu
             drawing={drawings.find((d) => d.id === menu.id)!}
             onEditText={() => { setNoteEditor({ drawing: drawings.find((d) => d.id === menu.id)!, x: menu.x, y: menu.y }); setMenu(null); }}
+            onAlert={onAlertOnDrawing && (() => onAlertOnDrawing(menu.id!))}
             at={menu}
             onChange={(next) => commitDrawings(drawings.map((d) => (d.id === next.id ? next : d)))}
             onDelete={() => {
