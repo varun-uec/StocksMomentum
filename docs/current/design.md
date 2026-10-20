@@ -26,13 +26,13 @@ flowchart LR
 |---|---|
 | Ingest | Every EQ-series symbol on the latest session. No index cap. |
 | Adjust | Splits and bonuses set a backward `adj_factor` per bar. Cash dividends are stored but do not adjust price. NSE data starts at 2011-01-06 for corporate actions; earlier bars are unadjusted and disclosed. |
-| Universe | Mutual-fund and ETF units are excluded by ISIN (`INF…`, `domain/value_objects/instrument.py`). Then the strategy's `universe` block: min price ₹20, min average turnover ₹1 crore, min 252 sessions of history, series `EQ`. Each security's admission reason goes to `universe_membership`. |
+| Universe | The reference equity universe (spec §8): `exchange` NSE or BOTH, mutual-fund and ETF units excluded by ISIN (`INF…`, `domain/value_objects/instrument.py`), listed and not delisted on the run date. Then the strategy's `universe` block: min price ₹20, min average turnover ₹1 crore, min 252 sessions of history, series `EQ`. Each security's admission reason goes to `universe_membership`. |
 | Indicators | SMA 50/150/200, EMA 10/21, RSI 14, ATR 14, ADR% 20, 52-week high/low, SMA200 slope (22 sessions), average volume 50, relative volume, RS-line slope (50). Insufficient history gives `None` and the stock is ineligible. |
-| RS rating | Weighted return over 63/126/189/252 sessions (0.4/0.2/0.2/0.2), then percentile across the run's universe (1–99). |
+| RS rating | Calendar-aligned weighted return over 63/126/189/252 NSE sessions (0.4/0.2/0.2/0.2). Each anchor is the last bar on or before the reference session, at most 5 sessions earlier. Then a percentile (1–99) across the RS reference population: equities with ≥ 253 bars, not stale, and a defined return. Spec §8. |
 | Engines | See §2. |
 | Scores and rank | See §3. |
 | Persist | `screening_runs` + `screening_results` + `rule_results`, keyed by `run_id`. |
-| Forward returns | Horizons 5, 10, 20, 60, 120 and 252 sessions, benchmark-relative to NIFTY 500. Appended once mature, never revised. |
+| Forward returns | Horizons 5, 10, 20, 60, 120 and 252 NSE sessions, benchmark-relative to NIFTY 500. The exit is the h-th session after the run; a stale exit bar is flagged (`exit_stale_sessions`). Appended once mature, never revised. Rows from before engine v2 count the security's own bars (`horizon_basis = 'own_bars'`) and are kept apart. Spec §10. |
 
 Run states: `PENDING` → `RUNNING` → `COMPLETED` or `FAILED`. A failed run exposes no partial snapshot.
 
@@ -74,7 +74,7 @@ hard_filters_passed = every gate engine and gate rule passed
 
 - **Gates.** A stock that fails a gate is still scored and explained, but gets `rank = None`. It is not in the qualified set.
 - **Gate engines are left out of the weighted scores.** Among qualifiers a gate engine scores 1.0 by construction, so it adds only a constant. The ADD §21 formula includes it. The ranking is the same either way.
-- **Ranking.** Sort qualifiers by `momentum_score` descending, then `buy_setup_score`, then `rs_rating`, then `symbol`. Top 25 = rank ≤ 25.
+- **Ranking.** Sort qualifiers by `momentum_score` descending, then `buy_setup_score`, then `rs_rating`, then `symbol`, `isin` and `security_id` (the symbol and ISIN recorded with the run). Top 25 = rank ≤ 25.
 - **Precision.** Prices 0.01, scores 0.0001, percentages 0.01 (ADR-009).
 
 ## 4. Explainability
@@ -90,19 +90,19 @@ ADR-009 is the contract. In practice:
 - `Decimal` at every persisted boundary. Indicator math uses numpy floats, then quantizes.
 - Rule contributions reduce in sorted `rule_id` order.
 - The domain reads no clock and no random source. `Clock` is a port.
-- Run identity = strategy + `data_version` + `config_hash`.
+- Run identity = strategy + `data_version` + `config_hash`. `data_version` (identity schema 3) hashes the market-data identity and the engine identity; both are also stored apart (ADR-014 §11).
 - `POST /research/verify/determinism` recomputes a run and compares it byte for byte.
 
 ## 6. Walk-forward backtest
 
-Ground truth: [backtest brief](../history/backtest-loop/brief.md) (status FINAL, 2026-08-17) and its three addenda. Code: `domain/backtest/` (math), `application/use_cases/walk_forward.py` (runner), `interface/walk_forward_wiring.py` (shared by CLI and API).
+Ground truth: [backtest brief](../history/backtest-loop/brief.md) (status FINAL, 2026-08-17), its three addenda and [execution method v2](../history/backtest-loop/brief-addendum-execution-v2.md) (2026-10-20). Code: `domain/backtest/` (math), `application/use_cases/walk_forward.py` (runner), `interface/walk_forward_wiring.py` (shared by CLI and API).
 
 | Item | Rule |
 |---|---|
-| Universe | Intended: Nifty 500 constituents at each rebalance, ≥12 months of history, no T2T/ASM stocks. |
+| Universe | Intended: Nifty 500 constituents at each rebalance, ≥12 months of history, no T2T/ASM stocks. Built: the reference equity universe (NSE and dual-listed equities, no fund units) with the twelve-month rule; membership and surveillance are stubs. |
 | Score | `(r3m + r6m + r12m) / 3` on adjusted close. No skip-month. |
 | Selection | Top 30, equal weight. Tie-break 12M, then 6M, then 3M return. |
-| Rebalance | Monthly. Decide at the close of the last session of month M-1 and fill at the first session of month M's adjusted open (`open × adj_factor`). Existing holdings are marked at that open for sizing. |
+| Rebalance | Monthly. Decide at the close of the last session of month M-1; only names with a bar on that session are scored. Orders fill at the adjusted open (`open × adj_factor`) of the first valid execution bar from the first session of month M: buys within 5 sessions, sells until filled. Each fill is at most 10% of the session's traded value. Holdings and cash change only through fills (method v2). |
 | Buffer | Hold while rank ≤ 45 (1.5 × 30). Add only from the top 30. |
 | Costs | 30 bps flat on traded notional, every buy and sell. |
 | Benchmark | Brief asks for Nifty 500 TRI. Only the price index exists, so every result carries the label "Nifty 500 Price Index (not TRI)". |

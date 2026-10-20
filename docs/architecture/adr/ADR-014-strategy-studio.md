@@ -157,6 +157,26 @@ A change to scoring, ranking or engine code that alters results without either i
 - The first capture after the upgrade gives the same data a schema-2 key. The next screen of unchanged data therefore writes one new snapshot with identical results, then reuses it.
 - Chart and alert `data_version` (the per-symbol content hash, ADR-013 §4) is unchanged.
 
+### 11. Identity schema 3 amendment (2026-10-20, approved by the owner as Stage A S-8)
+
+**What changed.** §10 asked for a separate engine version. Schema 3 adds it and keeps the identities apart:
+
+| Identity | Contents | Changes when |
+|---|---|---|
+| `market_data_version` | data revision, calendar version | Stored market or reference data changes. Never on a commit. |
+| `engine_identity` | `ENGINE_VERSION`, `INDICATOR_VERSION`, rule-registry fingerprint, `REFERENCE_UNIVERSE_VERSION` | Any change to how a value is computed |
+| `data_version` | hash of schema 3, the market block and the engine block | Either of the two above changes |
+| `config_hash` | strategy configuration | Unchanged rule |
+| `build_id` | image build or commit | Stored, never hashed |
+
+`ENGINE_VERSION` (`domain/engine_version.py`) is bumped by any change to scoring, ranking, RS, universe construction or another computation that alters results outside `INDICATOR_VERSION` and the registry. The run identity and its unique constraint stay `(strategy, run_date, data_version, config_hash)`. A new engine on unchanged data therefore makes a new run and never reuses an old one.
+
+**Caches** key on the engine identity: the RS rating cache key is `rs_ratings:v3:{engine_identity}:{rs_weights}:{date}`.
+
+**Compatibility.** Schema 1 and 2 bodies keep their hash rules and still load. Their `market_data_version` and `engine_identity` are reported as `null`, and their engine is shown as "before schema 3". No stored manifest, run or result is rewritten.
+
+**Not in this identity.** The walk-forward backtest is a separate method. Its response carries `market_data_version`, `BACKTEST_METHOD_VERSION` and its execution-policy constants (brief addendum "Execution method v2").
+
 ## Consequences
 - The Studio judges a strategy with the same code that screens it, on data it can reproduce exactly.
 - The as-of port and the history tables also fix the point-in-time gaps for existing research.

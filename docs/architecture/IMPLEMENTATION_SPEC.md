@@ -286,7 +286,26 @@ CREATE TABLE rule_results (
   explanation TEXT NOT NULL,
   PRIMARY KEY (run_id, security_id, rule_id)
 );
+
+-- Security identity continuity (R3-B-31). One row per verified rename:
+-- the predecessor row's history continues under the successor row from
+-- effective_date (the first session traded under the successor). Rows come
+-- only from an owner-supplied file backed by authoritative exchange evidence;
+-- nothing is inferred. Versioned like every input table, so a link is part of
+-- the market-data identity.
+CREATE TABLE security_identity_links (
+  predecessor_id     BIGINT PRIMARY KEY REFERENCES securities(id),
+  successor_id       BIGINT NOT NULL REFERENCES securities(id),
+  effective_date     DATE NOT NULL,
+  ratio              NUMERIC(20,10) NOT NULL DEFAULT 1,  -- successor shares per predecessor share
+  evidence_source    TEXT NOT NULL,                      -- e.g. 'NSE symbol-change file'
+  evidence_reference TEXT NOT NULL,                      -- circular number, file name and SHA-256
+  CHECK (predecessor_id <> successor_id),
+  CHECK (ratio > 0)
+);
 ```
+
+A link applies only when the predecessor's last bar is dated before `effective_date`, and the successor has no bar before it. A chain is followed to its end, and a cycle is rejected. Without a link, a security whose bars stop is a non-trading holding, never a guessed rename.
 
 ## 5. API Contracts
 
@@ -426,17 +445,26 @@ class RankingEngine:
 
 All computed on **adjusted** close unless noted. Quantize to Decimal at the end.
 
+**Adjusted price (engine v2, R3-B-30).** Every engine adjusts with one rule: an adjusted open, high, low or close is `raw × adj_factor`, and adjusted volume is `raw / adj_factor`. `adj_factor` is the product of the split and bonus ratios with an ex-date after the bar. The point-in-time path recomputes it from the corporate actions known at the decision. The stored `adj_close` column is not an input to any calculation.
+
+**Reference equity universe (engine v2).** On a date t, a security is in the reference universe when all of these hold: its `exchange` is `NSE` or `BOTH` (a dual-listed name uses its NSE print); its ISIN is not a fund or ETF unit (`is_equity`, `INF…` excluded); `listing_date` is null or ≤ t; `delisting_date` is null or > t. Today's `is_active` flag is never read for a past date. Strategy eligibility (price, turnover, history, staleness) and the backtest brief's eligibility apply after this set and never change it.
+
 - **SMA(n)** = mean(close[-n:]). Requires ≥ n bars.
-- **EMA(n)**: `ema_t = price_t·k + ema_{t-1}·(1-k)`, `k = 2/(n+1)`; seed = SMA(n) of first n bars.
+- **EMA(n)**: `ema_t = price_t·k + ema_{t-1}·(1-k)`, `k = 2/(n+1)`; seed = SMA(n) of first n bars. No value before bar n. MACD(12,26,9): the signal line is EMA(9) of the MACD line, seeded the same way from the first 9 MACD values. The browser fixture `web/src/lib/indicators/golden-fixture.json` is the reference.
 - **RSI(14)**: Wilder's smoothing of gains/losses over 14.
 - **ATR(14)**: Wilder's average of True Range; TR = max(high-low, |high-prevClose|, |low-prevClose|).
 - **ADR%(20)** = mean(high/low - 1 over last 20) × 100.
 - **52-week high/low** = max/min of high/low over last 252 trading days.
 - **pct_above_low_52w** = (close/low_52w - 1) × 100. **pct_below_high_52w** = (1 - close/high_52w) × 100.
 - **SMA200 slope %** = (SMA200_today / SMA200_{today-S} - 1) × 100, slope window S = 22 sessions; "trending up" if > 0.
-- **avg_volume50** = mean(volume[-50:]). **rel_volume** = volume_today / avg_volume50.
-- **RS raw return** = weighted multi-period price return: `0.4·R(63) + 0.2·R(126) + 0.2·R(189) + 0.2·R(252)` where `R(d)=close/close[-d]-1`.
-- **RS rating** = percentile rank (1–99) of RS raw return across the eligible universe in the same run.
+- **avg_volume50** = mean(volume[-50:]). **rel_volume** = volume_today / avg_volume50. Both use the same 50 bars, today's bar included.
+- **RS raw return** (calendar-aligned, engine v2) = weighted multi-period price return: `0.4·R(63) + 0.2·R(126) + 0.2·R(189) + 0.2·R(252)` (weights from the strategy's `rs_return_weights`). `R(d) = P(t) / P(A_d) − 1`, where:
+  - `t` is the run date, an NSE session (calendar `XBOM`, the production trading calendar). `P(t)` is the security's adjusted close of its last bar on or before t.
+  - `S_d` is the d-th NSE session before t on that calendar (t counts as session 0).
+  - The anchor `A_d` is the security's last bar dated on or before `S_d`. It is valid only if it is dated no more than **5 sessions** before `S_d`. If no valid anchor exists, `R(d)` is undefined.
+  - If any weighted `R(d)` is undefined, the RS raw return is undefined and the security has no RS rating. A window is never shortened to the bars available.
+- **RS reference population** = the reference equity universe on t, restricted to securities with at least 253 bars on or before t, a last bar not stale on t (no more than 30 days old, `is_stale_as_of`), and a defined RS raw return. It does not depend on any strategy's eligibility settings.
+- **RS rating** = percentile rank (1–99) of RS raw return across the RS reference population of the run: sort ascending by (raw return, `security_id`); the i-th of n (from 0) gets `round(i / (n − 1) · 98) + 1`. Fewer than 2 returns: no ratings. New listings, stale names and names with an undefined return get no rating.
 - **RS line** = close / benchmark_close; **rs_line_slope** = slope over 50 sessions (>0 = outperforming).
 
 ## 9. Rule Catalogue (Minervini strategy)
@@ -462,15 +490,31 @@ Other engines (scored, not gating unless noted): `rs_*` (rating/percentile/secto
 normalized_value(rule) ∈ [0,1]   # boolean → 0/1; numeric → clamp((value-min)/(max-min))
 rule.contribution      = rule.weight * normalized_value
 engine_score           = Σ rule.contribution  (sorted by rule_id) / Σ rule.weight   # → [0,1]
-momentum_score         = 100 * Σ(engine_weight * engine_score) / Σ engine_weight    # → [0,100]
-buy_setup_score        = 100 * Σ(setup_weight  * engine_score) / Σ setup_weight
-hard_filters_passed    = all gate engines passed
+momentum_score         = 100 * Σ(engine_weight * engine_score) / Σ engine_weight    # → [0,100], non-gate engines
+buy_setup_score        = 100 * Σ(setup_weight  * engine_score) / Σ setup_weight     # non-gate engines
+hard_filters_passed    = all gate engines and gate rules passed
 ranking: stocks with hard_filters_passed sorted by
-         (momentum_score desc, buy_setup_score desc, rs_rating desc, symbol asc)
+         (momentum_score desc, buy_setup_score desc, rs_rating desc,
+          symbol asc, isin asc, security_id asc)
          → rank = 1..N; Top-25 = rank ≤ 25
 stocks failing gates: rank = NULL, still scored & explained
 ```
 All sums use Decimal in sorted order; quantize `momentum_score`/`buy_setup_score` to 4 dp.
+
+**Gate engines are left out of both weighted scores** (R3-B-29). Among qualifiers a gate engine scores 1.0 by construction, so it adds only a constant; leaving it out does not change any rank.
+
+**Tie-break** (engine v2). `symbol` and `isin` are the values recorded for the security when the run is made. A later rename never reorders a stored run. A missing ISIN sorts as the empty string. `security_id` makes the key unique.
+
+### Research forward returns (R3-B-32)
+
+A forward return for horizon h measures exactly h NSE sessions after the run date t:
+
+- Entry: the security's adjusted close of its last bar on or before t.
+- Exit session `E = ` the h-th NSE session after t. The row is computed only once market data has been ingested through E.
+- Exit price: the adjusted close of the security's last bar on or before E. `exit_stale_sessions` stores how many sessions that bar lies before E (0 = a bar on E). A security that stops trading keeps its row, marked by `exit_stale_sessions`; it is never dropped.
+- Path metrics (drawdown, MFE, MAE, volatility) use the security's bars dated after t and on or before E.
+- Benchmark return: the benchmark close on or before t and on or before E.
+- Rows carry `horizon_basis = 'sessions'`. Rows written before engine v2 carry `horizon_basis = 'own_bars'` (h of the security's own bars). They are kept and never rewritten, and no reader mixes the two bases.
 
 **Partial credit on failed rules is intentional** (confirmed 2026-08-09, audit item S5). A
 numeric rule's `normalized_value` is a continuous function of its measured value and is
