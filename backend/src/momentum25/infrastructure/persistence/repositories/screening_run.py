@@ -123,6 +123,7 @@ class SqlScreeningRunRepository:
         exclude_historical: bool = True,
         exclude_research: bool = True,
         strategy_id: int | None = None,
+        config_hash: str | None = None,
     ) -> tuple[list[ScreeningRun], int]:
         """Return a page of runs and the total count, optionally scoped to one strategy.
 
@@ -148,6 +149,8 @@ class SqlScreeningRunRepository:
             )
         if strategy_id is not None:
             base = base.where(ScreeningRunModel.strategy_id == strategy_id)
+        if config_hash is not None:
+            base = base.where(ScreeningRunModel.config_hash == config_hash)
         total = await self._session.scalar(select(func.count()).select_from(base.subquery()))
         result = await self._session.execute(
             base.order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())

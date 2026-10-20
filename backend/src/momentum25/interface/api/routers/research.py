@@ -62,6 +62,7 @@ from momentum25.interface.api.dependencies_research import (
     get_strategy_evaluation_use_case,
     get_validate_run_comparison_use_case,
 )
+from momentum25.interface.api.params import ConfigHash
 
 router = APIRouter(prefix="/research", tags=["research"])
 
@@ -263,12 +264,17 @@ async def evaluate_strategy(
     max_runs: Annotated[int, Query(ge=1, le=200)] = 50,
     date_from: Annotated[date | None, Query()] = None,
     date_to: Annotated[date | None, Query()] = None,
+    config_hash: ConfigHash = None,
 ) -> StrategyEvaluationResponse:
     """Evaluate a strategy and return performance metrics."""
-    result = await use_case.execute(strategy_name, max_runs, date_from, date_to)
+    result = await use_case.execute(
+        strategy_name, max_runs, date_from, date_to, config_hash=config_hash
+    )
     p = result.performance
     return StrategyEvaluationResponse(
         strategy_name=result.strategy_name,
+        strategy_version=result.strategy_version,
+        config_hash=result.config_hash,
         performance=PortfolioPerformanceDTO(
             strategy_name=p.strategy_name,
             run_count=p.run_count,
@@ -333,9 +339,12 @@ async def contribution_analysis(
     strategy_name: str,
     use_case: Annotated[ContributionAnalysisUseCase, Depends(get_contribution_analysis_use_case)],
     max_runs: Annotated[int, Query(ge=1, le=100)] = 20,
+    config_hash: ConfigHash = None,
 ) -> ContributionAnalysisResponse:
     """Analyze rule contribution across runs for a given strategy."""
-    result = await use_case.execute(strategy_name=strategy_name, max_runs=max_runs)
+    result = await use_case.execute(
+        strategy_name=strategy_name, max_runs=max_runs, config_hash=config_hash
+    )
 
     def _rule_dto(r: RuleContributionStats) -> RuleContributionStatsDTO:
         return RuleContributionStatsDTO(
@@ -354,6 +363,8 @@ async def contribution_analysis(
 
     return ContributionAnalysisResponse(
         strategy_name=result.strategy_name,
+        strategy_version=result.strategy_version,
+        config_hash=result.config_hash,
         run_count=result.run_count,
         security_count=result.security_count,
         date_range=(

@@ -219,6 +219,7 @@ class ScreeningRunRepository(Protocol):
         exclude_historical: bool = True,
         exclude_research: bool = True,
         strategy_id: int | None = None,
+        config_hash: str | None = None,
     ) -> tuple[list[ScreeningRun], int]:
         """Return a page of runs and the total count, optionally scoped to one strategy."""
         ...

@@ -188,6 +188,12 @@ class StrategyEvaluationResponse(BaseModel):
     """Complete strategy evaluation result."""
 
     strategy_name: str
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     performance: PortfolioPerformanceDTO
     run_summaries: list[HistoricalRunSummaryDTO]
     score_history: list[ScorePointDTO]
@@ -225,6 +231,12 @@ class ContributionAnalysisResponse(BaseModel):
     """Complete contribution analysis report."""
 
     strategy_name: str
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     run_count: int  # distinct screening runs analysed
     security_count: int  # distinct securities across those runs
     date_range: str | None = None

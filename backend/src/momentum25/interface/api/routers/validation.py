@@ -52,6 +52,7 @@ from momentum25.interface.api.dependencies_validation import (
     get_rule_effectiveness_use_case,
     get_scorecard_use_case,
 )
+from momentum25.interface.api.params import ConfigHash
 
 
 def _measurability(report: Any) -> MeasurabilityDTO:
@@ -89,6 +90,8 @@ def _scorecard_dto(sc: Any) -> StrategyScorecardDTO:
     return StrategyScorecardDTO(
         strategy_name=sc.strategy_name,
         strategy_id=sc.strategy_id,
+        strategy_version=sc.strategy_version,
+        config_hash=sc.config_hash,
         period_label=sc.period_label,
         start_date=sc.start_date,
         end_date=sc.end_date,
@@ -134,6 +137,8 @@ def _alpha_dto(a: Any) -> AlphaAnalysisResponse:
     return AlphaAnalysisResponse(
         strategy_name=a.strategy_name,
         strategy_id=a.strategy_id,
+        strategy_version=a.strategy_version,
+        config_hash=a.config_hash,
         period_label=a.period_label,
         start_date=a.start_date,
         end_date=a.end_date,
@@ -166,6 +171,8 @@ def _rules_dto(rules: Any) -> RuleEffectivenessResponse:
     return RuleEffectivenessResponse(
         strategy_name=rules.strategy_name,
         strategy_id=rules.strategy_id,
+        strategy_version=rules.strategy_version,
+        config_hash=rules.config_hash,
         total_runs_analyzed=rules.total_runs_analyzed,
         date_range=(
             f"{rules.date_range[0].isoformat()} to {rules.date_range[1].isoformat()}"
@@ -186,6 +193,8 @@ def _engines_dto(engines: Any) -> EngineEffectivenessResponse:
     return EngineEffectivenessResponse(
         strategy_name=engines.strategy_name,
         strategy_id=engines.strategy_id,
+        strategy_version=engines.strategy_version,
+        config_hash=engines.config_hash,
         total_runs_analyzed=engines.total_runs_analyzed,
         engines=[
             EngineEffectivenessDTO(
@@ -231,13 +240,16 @@ async def historical_validation(
     strategy_name: str,
     use_case: Annotated[HistoricalValidationUseCase, Depends(get_historical_validation_use_case)],
     window_years: Annotated[int, Query(ge=1, le=10)] = 1,
+    config_hash: ConfigHash = None,
 ) -> HistoricalValidationResponse:
     """Run historical validation for a strategy."""
-    result = await use_case.execute(strategy_name, window_years)
+    result = await use_case.execute(strategy_name, window_years, config_hash=config_hash)
 
     return HistoricalValidationResponse(
         strategy_name=result.strategy_name,
         strategy_id=result.strategy_id,
+        strategy_version=result.strategy_version,
+        config_hash=result.config_hash,
         windows=[
             HistoricalValidationResultDTO(
                 strategy_name=w.strategy_name,
@@ -277,9 +289,10 @@ async def alpha_measurement(
     strategy_name: str,
     use_case: Annotated[AlphaMeasurementUseCase, Depends(get_alpha_measurement_use_case)],
     max_runs: Annotated[int, Query(ge=1, le=500)] = 252,
+    config_hash: ConfigHash = None,
 ) -> AlphaAnalysisResponse:
     """Compute alpha analysis for a strategy."""
-    result = await use_case.execute(strategy_name, max_runs)
+    result = await use_case.execute(strategy_name, max_runs, config_hash=config_hash)
 
     return _alpha_dto(result)
 
@@ -301,9 +314,12 @@ async def strategy_scorecard(
     max_runs: Annotated[int, Query(ge=1, le=500)] = 252,
     date_from: Annotated[date | None, Query()] = None,
     date_to: Annotated[date | None, Query()] = None,
+    config_hash: ConfigHash = None,
 ) -> StrategyScorecardDTO:
     """Compute strategy scorecard."""
-    result = await use_case.execute(strategy_name, max_runs, date_from, date_to)
+    result = await use_case.execute(
+        strategy_name, max_runs, date_from, date_to, config_hash=config_hash
+    )
 
     return _scorecard_dto(result)
 
@@ -323,9 +339,10 @@ async def rule_effectiveness(
     strategy_name: str,
     use_case: Annotated[RuleEffectivenessUseCase, Depends(get_rule_effectiveness_use_case)],
     max_runs: Annotated[int, Query(ge=1, le=200)] = 100,
+    config_hash: ConfigHash = None,
 ) -> RuleEffectivenessResponse:
     """Analyze rule effectiveness."""
-    result = await use_case.execute(strategy_name, max_runs)
+    result = await use_case.execute(strategy_name, max_runs, config_hash=config_hash)
 
     return _rules_dto(result)
 
@@ -345,9 +362,10 @@ async def engine_effectiveness(
     strategy_name: str,
     use_case: Annotated[EngineEffectivenessUseCase, Depends(get_engine_effectiveness_use_case)],
     max_runs: Annotated[int, Query(ge=1, le=200)] = 100,
+    config_hash: ConfigHash = None,
 ) -> EngineEffectivenessResponse:
     """Analyze engine effectiveness."""
-    result = await use_case.execute(strategy_name, max_runs)
+    result = await use_case.execute(strategy_name, max_runs, config_hash=config_hash)
 
     return _engines_dto(result)
 

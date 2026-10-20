@@ -43,6 +43,12 @@ class HistoricalValidationResponse(BaseModel):
 
     strategy_name: str
     strategy_id: int
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     windows: list[HistoricalValidationResultDTO]
     total_trading_days: int
     total_successful_runs: int
@@ -89,6 +95,12 @@ class AlphaAnalysisResponse(BaseModel):
 
     strategy_name: str
     strategy_id: int
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     period_label: str
     start_date: date
     end_date: date
@@ -109,6 +121,12 @@ class StrategyScorecardDTO(BaseModel):
 
     strategy_name: str
     strategy_id: int
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     period_label: str
     start_date: date | None = None
     end_date: date | None = None
@@ -195,6 +213,12 @@ class RuleEffectivenessResponse(BaseModel):
 
     strategy_name: str
     strategy_id: int
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     total_runs_analyzed: int
     date_range: str | None = None
     rules: list[RuleEffectivenessDTO]
@@ -233,6 +257,12 @@ class EngineEffectivenessResponse(BaseModel):
 
     strategy_name: str
     strategy_id: int
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     total_runs_analyzed: int
     engines: list[EngineEffectivenessDTO]
     best_engine: str

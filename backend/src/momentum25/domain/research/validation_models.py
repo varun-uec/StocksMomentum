@@ -85,6 +85,9 @@ class HistoricalValidationReport:
     total_successful_runs: int
     overall_pass_rate: Decimal
     generated_at: str
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -123,6 +126,9 @@ class AlphaAnalysisReport:
     worst_alpha: Decimal | None
     avg_alpha: Decimal | None
     measurability: Measurability = _MEASURABLE
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -194,6 +200,9 @@ class StrategyScorecard:
     monthly_returns: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     yearly_returns: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     rolling_sharpe: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -249,6 +258,9 @@ class RuleEffectivenessReport:
     high_value_rules: tuple[RuleEffectiveness, ...]
     summary: str
     measurability: Measurability = _MEASURABLE
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -286,6 +298,9 @@ class EngineEffectivenessReport:
     recommended_exclusions: tuple[str, ...]  # engines that don't improve performance
     summary: str
     measurability: Measurability = _MEASURABLE
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

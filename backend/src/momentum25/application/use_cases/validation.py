@@ -7,13 +7,16 @@ historical validation, and parameter research capabilities.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from structlog import get_logger
 
-from momentum25.domain.errors import StrategyNotFoundError
+from momentum25.application.services.evidence_strategy import resolve_evidence_strategy
+from momentum25.domain.entities.strategy import Strategy
+from momentum25.domain.errors import StrategyNotFoundError, ValidationError
 from momentum25.domain.research.validation_models import (
     NO_FORWARD_RETURNS,
     NO_RUNS,
@@ -100,12 +103,14 @@ class HistoricalValidationUseCase:
         strategy_name: str,
         window_years: int = 1,
         execute_missing: bool = False,
+        config_hash: str | None = None,
     ) -> HistoricalValidationReport:
         """Run historical validation for a strategy across a time window.
 
         Args:
             strategy_name: Name of the strategy to validate.
             window_years: Number of years to validate (1, 3, 5, or 10).
+            config_hash: Exact config version; omitted means the strategy file.
             execute_missing: If True, synchronously execute screening for any
                 sampled date in the window that has no existing run. This is
                 expensive (a full-universe screening run per missing date) and
@@ -125,14 +130,23 @@ class HistoricalValidationUseCase:
             execute_missing=execute_missing,
         )
 
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
+        strategy = await resolve_evidence_strategy(self._strategy_repo, strategy_name, config_hash)
+        if execute_missing and config_hash is not None:
+            # Backfill screens by name through HistoricalScreeningUseCase, which
+            # resolves the strategy-file definition, not a pinned version.
+            raise ValidationError("execute_missing supports strategy-file definitions only")
 
         # Get trading calendar from OHLCV data
         latest = await self._ohlcv_repo.latest_date()
         if latest is None:
-            raise ValueError("No market data available")
+            # No bars, no windows: the same empty report as too short a history.
+            return replace(
+                compute_validation_summary([]),
+                strategy_name=strategy_name,
+                strategy_id=strategy.id or 0,
+                strategy_version=strategy.version,
+                config_hash=strategy.config_hash,
+            )
 
         # Build trading calendar from available dates
         trading_dates = await self._get_trading_calendar(latest)
@@ -146,7 +160,9 @@ class HistoricalValidationUseCase:
         results: list[HistoricalValidationResult] = []
         if filtered_windows:
             for window in filtered_windows:
-                result = await self._execute_window(strategy_name, window, execute_missing)
+                result = await self._execute_window(
+                    strategy, strategy_name, window, execute_missing
+                )
                 results.append(result)
         else:
             _logger.warning(
@@ -156,10 +172,17 @@ class HistoricalValidationUseCase:
                 latest_date=latest.isoformat(),
             )
 
-        return compute_validation_summary(results)
+        return replace(
+            compute_validation_summary(results),
+            strategy_name=strategy_name,
+            strategy_id=strategy.id or 0,
+            strategy_version=strategy.version,
+            config_hash=strategy.config_hash,
+        )
 
     async def _execute_window(
         self,
+        strategy: Strategy,
         strategy_name: str,
         window: ValidationWindow,
         execute_missing: bool = False,
@@ -187,15 +210,13 @@ class HistoricalValidationUseCase:
         )
         sampled_dates = trading_dates[::5]
 
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        strategy_id = strategy.id if strategy else 0
-
         existing_runs, _total = await self._screening_run_repo.list_runs(
             status="COMPLETED",
             limit=10000,
             offset=0,
             exclude_historical=False,
-            strategy_id=strategy_id or None,
+            strategy_id=strategy.id or None,
+            config_hash=strategy.config_hash,
         )
         window_runs = [
             r for r in existing_runs if window.start_date <= r.run_date <= window.end_date
@@ -308,26 +329,49 @@ class AlphaMeasurementUseCase:
         self,
         strategy_name: str,
         max_runs: int = 252,
+        config_hash: str | None = None,
+    ) -> AlphaAnalysisReport:
+        """Resolve the exact strategy version, then report on its runs only.
+
+        Without ``config_hash`` this is the active strategy-file definition, as
+        before. With it, any active production or user version of that name
+        (ADR-014 §9). The report names the version and config it used.
+        """
+        strategy = await resolve_evidence_strategy(
+            self._strategy_repo, strategy_name, config_hash
+        )
+        report = await self._report(strategy, strategy_name, max_runs)
+        return replace(
+            report,
+            strategy_name=strategy_name,
+            strategy_id=strategy.id or 0,
+            strategy_version=strategy.version,
+            config_hash=strategy.config_hash,
+        )
+
+    async def _report(
+        self,
+        strategy: Strategy,
+        strategy_name: str,
+        max_runs: int = 252,
     ) -> AlphaAnalysisReport:
         """Compute alpha analysis for a strategy against benchmarks.
 
         Args:
+            strategy: The resolved strategy version whose runs are read.
             strategy_name: Name of the strategy to analyze.
             max_runs: Maximum number of historical runs to include.
 
         Returns:
             An AlphaAnalysisReport with benchmark comparisons.
         """
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
             limit=max_runs,
             offset=0,
             exclude_historical=False,
             strategy_id=strategy.id or None,
+            config_hash=strategy.config_hash,
         )
 
         if not strategy_runs:
@@ -460,10 +504,38 @@ class StrategyScorecardUseCase:
         max_runs: int = 252,
         date_from: date | None = None,
         date_to: date | None = None,
+        config_hash: str | None = None,
+    ) -> StrategyScorecard:
+        """Resolve the exact strategy version, then report on its runs only.
+
+        Without ``config_hash`` this is the active strategy-file definition, as
+        before. With it, any active production or user version of that name
+        (ADR-014 §9). The report names the version and config it used.
+        """
+        strategy = await resolve_evidence_strategy(
+            self._strategy_repo, strategy_name, config_hash
+        )
+        report = await self._report(strategy, strategy_name, max_runs, date_from, date_to)
+        return replace(
+            report,
+            strategy_name=strategy_name,
+            strategy_id=strategy.id or 0,
+            strategy_version=strategy.version,
+            config_hash=strategy.config_hash,
+        )
+
+    async def _report(
+        self,
+        strategy: Strategy,
+        strategy_name: str,
+        max_runs: int = 252,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> StrategyScorecard:
         """Compute a complete strategy scorecard.
 
         Args:
+            strategy: The resolved strategy version whose runs are read.
             strategy_name: Name of the strategy.
             max_runs: Maximum number of historical runs.
             date_from: Optional start date filter.
@@ -472,16 +544,13 @@ class StrategyScorecardUseCase:
         Returns:
             A StrategyScorecard with all performance metrics.
         """
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
             limit=max_runs,
             offset=0,
             exclude_historical=False,
             strategy_id=strategy.id or None,
+            config_hash=strategy.config_hash,
         )
 
         if date_from:
@@ -631,26 +700,49 @@ class RuleEffectivenessUseCase(_ForwardReturnJoinMixin):
         self,
         strategy_name: str,
         max_runs: int = 100,
+        config_hash: str | None = None,
+    ) -> RuleEffectivenessReport:
+        """Resolve the exact strategy version, then report on its runs only.
+
+        Without ``config_hash`` this is the active strategy-file definition, as
+        before. With it, any active production or user version of that name
+        (ADR-014 §9). The report names the version and config it used.
+        """
+        strategy = await resolve_evidence_strategy(
+            self._strategy_repo, strategy_name, config_hash
+        )
+        report = await self._report(strategy, strategy_name, max_runs)
+        return replace(
+            report,
+            strategy_name=strategy_name,
+            strategy_id=strategy.id or 0,
+            strategy_version=strategy.version,
+            config_hash=strategy.config_hash,
+        )
+
+    async def _report(
+        self,
+        strategy: Strategy,
+        strategy_name: str,
+        max_runs: int = 100,
     ) -> RuleEffectivenessReport:
         """Analyze rule effectiveness for a strategy.
 
         Args:
+            strategy: The resolved strategy version whose runs are read.
             strategy_name: Name of the strategy.
             max_runs: Maximum number of runs to analyze.
 
         Returns:
             A RuleEffectivenessReport with per-rule statistics.
         """
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
             limit=max_runs,
             offset=0,
             exclude_historical=False,
             strategy_id=strategy.id or None,
+            config_hash=strategy.config_hash,
         )
 
         if not strategy_runs:
@@ -730,26 +822,49 @@ class EngineEffectivenessUseCase(_ForwardReturnJoinMixin):
         self,
         strategy_name: str,
         max_runs: int = 100,
+        config_hash: str | None = None,
+    ) -> EngineEffectivenessReport:
+        """Resolve the exact strategy version, then report on its runs only.
+
+        Without ``config_hash`` this is the active strategy-file definition, as
+        before. With it, any active production or user version of that name
+        (ADR-014 §9). The report names the version and config it used.
+        """
+        strategy = await resolve_evidence_strategy(
+            self._strategy_repo, strategy_name, config_hash
+        )
+        report = await self._report(strategy, strategy_name, max_runs)
+        return replace(
+            report,
+            strategy_name=strategy_name,
+            strategy_id=strategy.id or 0,
+            strategy_version=strategy.version,
+            config_hash=strategy.config_hash,
+        )
+
+    async def _report(
+        self,
+        strategy: Strategy,
+        strategy_name: str,
+        max_runs: int = 100,
     ) -> EngineEffectivenessReport:
         """Analyze engine effectiveness for a strategy.
 
         Args:
+            strategy: The resolved strategy version whose runs are read.
             strategy_name: Name of the strategy.
             max_runs: Maximum number of runs to analyze.
 
         Returns:
             An EngineEffectivenessReport with per-engine statistics.
         """
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-
         strategy_runs, _ = await self._screening_run_repo.list_runs(
             status="COMPLETED",
             limit=max_runs,
             offset=0,
             exclude_historical=False,
             strategy_id=strategy.id or None,
+            config_hash=strategy.config_hash,
         )
 
         if not strategy_runs:

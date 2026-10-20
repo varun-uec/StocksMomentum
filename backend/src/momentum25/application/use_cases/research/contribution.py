@@ -6,11 +6,13 @@ rule importance, pass/fail frequency, and identifies redundant rules.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from structlog import get_logger
 
-from momentum25.domain.errors import StrategyNotFoundError
+from momentum25.application.services.evidence_strategy import resolve_evidence_strategy
+from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.research.models import ContributionAnalysisReport
 from momentum25.domain.research.services import analyze_contribution
 
@@ -34,6 +36,7 @@ class ContributionAnalysisUseCase:
         self,
         strategy_name: str,
         max_runs: int = 20,
+        config_hash: str | None = None,
     ) -> ContributionAnalysisReport:
         """Analyze rule contribution across runs for a given strategy.
 
@@ -45,17 +48,27 @@ class ContributionAnalysisUseCase:
         Args:
             strategy_name: The strategy name to analyze.
             max_runs: Maximum number of recent runs to include.
+            config_hash: Exact config version; omitted means the strategy file.
 
         Returns:
             A ContributionAnalysisReport with cross-run statistics.
         """
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-        strategy_id = strategy.id or 0
+        strategy = await resolve_evidence_strategy(self._strategy_repo, strategy_name, config_hash)
+        report = await self._analyze(strategy, strategy_name, max_runs)
+        return replace(
+            report, strategy_version=strategy.version, config_hash=strategy.config_hash
+        )
 
+    async def _analyze(
+        self, strategy: Strategy, strategy_name: str, max_runs: int
+    ) -> ContributionAnalysisReport:
+        strategy_id = strategy.id or 0
         strategy_runs, _total = await self._screening_run_repo.list_runs(
-            status="COMPLETED", limit=max_runs, offset=0, strategy_id=strategy_id
+            status="COMPLETED",
+            limit=max_runs,
+            offset=0,
+            strategy_id=strategy_id,
+            config_hash=strategy.config_hash,
         )
 
         if not strategy_runs:

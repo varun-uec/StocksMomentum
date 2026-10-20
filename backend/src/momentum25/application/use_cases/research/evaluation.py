@@ -6,13 +6,15 @@ volatility, Sharpe/Sortino ratios, profit factor, and rank stability.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from structlog import get_logger
 
-from momentum25.domain.errors import StrategyNotFoundError
+from momentum25.application.services.evidence_strategy import resolve_evidence_strategy
+from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.research.models import (
     HistoricalRunSummary,
     PortfolioPerformance,
@@ -47,6 +49,7 @@ class EvaluateStrategyUseCase:
         max_runs: int = 50,
         date_from: date | None = None,
         date_to: date | None = None,
+        config_hash: str | None = None,
     ) -> StrategyEvaluationResult:
         """Evaluate a strategy's performance across historical runs.
 
@@ -55,6 +58,7 @@ class EvaluateStrategyUseCase:
             max_runs: Maximum number of recent runs to include.
             date_from: Optional start date filter.
             date_to: Optional end date filter.
+            config_hash: Exact config version; omitted means the strategy file.
 
         Returns:
             A StrategyEvaluationResult with performance metrics.
@@ -62,17 +66,29 @@ class EvaluateStrategyUseCase:
         Raises:
             StrategyNotFoundError: If the strategy is not found.
         """
-        strategy = await self._strategy_repo.get_active(strategy_name)
-        if strategy is None:
-            raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-
-        # Load runs
-        runs, _total = await self._screening_run_repo.list_runs(
-            status="COMPLETED", limit=max_runs, offset=0
+        strategy = await resolve_evidence_strategy(self._strategy_repo, strategy_name, config_hash)
+        result = await self._evaluate(strategy, strategy_name, max_runs, date_from, date_to)
+        return replace(
+            result, strategy_version=strategy.version, config_hash=strategy.config_hash
         )
 
-        # Filter runs by strategy
-        strategy_runs = [r for r in runs if r.strategy_id == (strategy.id or 0)]
+    async def _evaluate(
+        self,
+        strategy: Strategy,
+        strategy_name: str,
+        max_runs: int,
+        date_from: date | None,
+        date_to: date | None,
+    ) -> StrategyEvaluationResult:
+        # Scope the query to this strategy version. Filtering after a global
+        # LIMIT let other strategies' runs use up ``max_runs``.
+        strategy_runs, _total = await self._screening_run_repo.list_runs(
+            status="COMPLETED",
+            limit=max_runs,
+            offset=0,
+            strategy_id=strategy.id or None,
+            config_hash=strategy.config_hash,
+        )
 
         # Apply date filters
         if date_from:

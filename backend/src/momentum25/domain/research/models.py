@@ -224,6 +224,9 @@ class StrategyEvaluationResult:
     performance: PortfolioPerformance
     run_summaries: tuple[HistoricalRunSummary, ...]
     score_history: tuple[dict[str, Any], ...]  # per-security score trajectories
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -280,6 +283,9 @@ class ContributionAnalysisReport:
     top_rules: tuple[RuleContributionStats, ...]  # top 10 rules by importance
     bottom_rules: tuple[RuleContributionStats, ...]  # bottom 10 rules by importance
     redundant_rules: tuple[RuleContributionStats, ...]  # rules that never/rarely fail
+    # The strategy version and config that produced the evidence (R3-U-07).
+    strategy_version: int | None = None
+    config_hash: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
