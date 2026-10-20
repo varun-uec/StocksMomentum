@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.run import ScreeningRun
 from momentum25.domain.errors import RunAlreadyExistsError
-from momentum25.domain.research.forward_returns import ForwardReturn
+from momentum25.domain.research.forward_returns import HORIZON_BASIS, ForwardReturn
 from momentum25.domain.value_objects.results import (
     Ranking,
     RuleResult,
@@ -343,6 +343,9 @@ class SqlScreeningRunRepository:
                     run_id=run_id,
                     security_id=fr.security_id,
                     horizon_days=fr.horizon_days,
+                    horizon_basis=fr.horizon_basis,
+                    exit_date=fr.exit_date,
+                    exit_stale_sessions=fr.exit_stale_sessions,
                     forward_return=fr.forward_return,
                     forward_max_drawdown=fr.forward_max_drawdown,
                     forward_volatility=fr.forward_volatility,
@@ -354,9 +357,13 @@ class SqlScreeningRunRepository:
             )
 
     async def get_forward_returns(
-        self, run_id: int, security_id: int | None = None, horizon_days: int | None = None
+        self,
+        run_id: int,
+        security_id: int | None = None,
+        horizon_days: int | None = None,
+        basis: str = HORIZON_BASIS,
     ) -> list[ForwardReturn]:
-        """Return persisted forward-return rows for a run.
+        """Return persisted forward-return rows of one horizon basis for a run.
 
         Optionally scoped to one security and/or one horizon. A run holds one
         row per security per horizon, so a caller that wants a single horizon
@@ -364,7 +371,10 @@ class SqlScreeningRunRepository:
         """
         from momentum25.infrastructure.persistence.models import ForwardReturnModel
 
-        conditions = [ForwardReturnModel.run_id == run_id]
+        conditions = [
+            ForwardReturnModel.run_id == run_id,
+            ForwardReturnModel.horizon_basis == basis,
+        ]
         if security_id is not None:
             conditions.append(ForwardReturnModel.security_id == security_id)
         if horizon_days is not None:
@@ -385,12 +395,15 @@ class SqlScreeningRunRepository:
                 forward_mae=row.forward_mae,
                 benchmark_return=row.benchmark_return,
                 excess_return=row.excess_return,
+                horizon_basis=row.horizon_basis,
+                exit_date=row.exit_date,
+                exit_stale_sessions=row.exit_stale_sessions,
             )
             for row in result.scalars().all()
         ]
 
     async def get_forward_return_by_security(
-        self, run_id: int, horizon_days: int
+        self, run_id: int, horizon_days: int, basis: str = HORIZON_BASIS
     ) -> dict[int, Decimal]:
         """Return ``{security_id: forward_return}`` for one run and one horizon.
 
@@ -405,6 +418,7 @@ class SqlScreeningRunRepository:
             select(ForwardReturnModel.security_id, ForwardReturnModel.forward_return).where(
                 ForwardReturnModel.run_id == run_id,
                 ForwardReturnModel.horizon_days == horizon_days,
+                ForwardReturnModel.horizon_basis == basis,
                 ForwardReturnModel.forward_return.is_not(None),
             )
         )

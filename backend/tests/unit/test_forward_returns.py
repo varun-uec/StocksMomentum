@@ -1,17 +1,26 @@
-"""Unit tests for the forward-return domain function (Objective 4)."""
+"""Unit tests for the forward-return domain function (Objective 4, R3-B-32).
+
+Horizons count NSE sessions. Most cases trade on every session, so the bars
+and the sessions line up; the session-rule cases at the end do not.
+"""
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from decimal import Decimal
 
 from momentum25.domain.research.forward_returns import (
+    HORIZON_BASIS,
     classify_performance_tier,
     compute_forward_return,
 )
 
+SESSIONS = [date(2024, 1, 1) + timedelta(days=i) for i in range(1, 30)]
+SESSIONS = [d for d in SESSIONS if d.weekday() < 5][:10]
 
-def _closes(*values: str) -> list[Decimal]:
-    return [Decimal(v) for v in values]
+
+def _bars(*values: str) -> list[tuple[date, Decimal]]:
+    return [(day, Decimal(v)) for day, v in zip(SESSIONS, values, strict=False)]
 
 
 class TestComputeForwardReturn:
@@ -20,21 +29,23 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=3,
             entry_close=Decimal("100"),
-            forward_closes=_closes("105", "110", "120"),
+            forward_bars=_bars("105", "110", "120"),
+            sessions=SESSIONS,
         )
         assert fr is not None
         assert fr.security_id == 1
         assert fr.horizon_days == 3
         assert fr.forward_return == Decimal("0.20")  # (120/100) - 1
 
-    def test_insufficient_forward_bars_returns_none(self) -> None:
-        # Only 2 bars available for a 5-day horizon -- the horizon hasn't
-        # elapsed yet, so this must not extrapolate a partial window.
+    def test_a_horizon_that_has_not_elapsed_returns_none(self) -> None:
+        # Market data reaches only 2 sessions past the run date: a 5-session
+        # horizon hasn't elapsed, so this must not extrapolate a partial window.
         fr = compute_forward_return(
             security_id=1,
             horizon_days=5,
             entry_close=Decimal("100"),
-            forward_closes=_closes("105", "110"),
+            forward_bars=_bars("105", "110"),
+            sessions=SESSIONS[:2],
         )
         assert fr is None
 
@@ -43,7 +54,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=1,
             entry_close=Decimal("0"),
-            forward_closes=_closes("100"),
+            forward_bars=_bars("100"),
+            sessions=SESSIONS,
         )
         assert fr is None
 
@@ -53,7 +65,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=2,
             entry_close=Decimal("100"),
-            forward_closes=_closes("90", "130"),
+            forward_bars=_bars("90", "130"),
+            sessions=SESSIONS,
         )
         assert fr is not None
         assert fr.forward_max_drawdown == Decimal("-0.1")  # (90-100)/100
@@ -64,7 +77,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=2,
             entry_close=Decimal("100"),
-            forward_closes=_closes("110", "120", "999"),
+            forward_bars=_bars("110", "120", "999"),
+            sessions=SESSIONS,
         )
         assert fr is not None
         assert fr.forward_return == Decimal("0.20")  # uses only the first 2 bars
@@ -74,7 +88,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=3,
             entry_close=Decimal("100"),
-            forward_closes=_closes("100", "100", "100"),
+            forward_bars=_bars("100", "100", "100"),
+            sessions=SESSIONS,
         )
         assert fr is not None
         assert fr.forward_volatility == Decimal("0")
@@ -87,7 +102,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=3,
             entry_close=Decimal("100"),
-            forward_closes=_closes("150", "80", "120"),
+            forward_bars=_bars("150", "80", "120"),
+            sessions=SESSIONS,
         )
         assert fr is not None
         assert fr.forward_mfe == Decimal("0.50")  # (150-100)/100
@@ -99,7 +115,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=2,
             entry_close=Decimal("100"),
-            forward_closes=_closes("110", "115"),
+            forward_bars=_bars("110", "115"),
+            sessions=SESSIONS,
             benchmark_entry_close=Decimal("1000"),
             benchmark_exit_close=Decimal("1050"),
         )
@@ -113,7 +130,8 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=1,
             entry_close=Decimal("100"),
-            forward_closes=_closes("110"),
+            forward_bars=_bars("110"),
+            sessions=SESSIONS,
         )
         assert fr is not None
         assert fr.benchmark_return is None
@@ -124,13 +142,38 @@ class TestComputeForwardReturn:
             security_id=1,
             horizon_days=1,
             entry_close=Decimal("100"),
-            forward_closes=_closes("110"),
+            forward_bars=_bars("110"),
+            sessions=SESSIONS,
             benchmark_entry_close=Decimal("0"),
             benchmark_exit_close=Decimal("1050"),
         )
         assert fr is not None
         assert fr.benchmark_return is None
         assert fr.excess_return is None
+
+
+class TestSessionHorizon:
+    def test_the_exit_is_the_hth_session_not_the_hth_own_bar(self) -> None:
+        # No bars on sessions 2 and 3. Counting own bars, a 3-day exit would be
+        # session 5 (130); on sessions it is session 3, last bar on session 1.
+        bars = [(SESSIONS[0], Decimal("110")), (SESSIONS[3], Decimal("120"))]
+        bars.append((SESSIONS[4], Decimal("130")))
+        fr = compute_forward_return(1, 3, Decimal("100"), bars, SESSIONS)
+        assert fr is not None
+        assert fr.forward_return == Decimal("0.10")
+        assert fr.exit_date == SESSIONS[2]
+        assert fr.exit_stale_sessions == 2
+        assert fr.horizon_basis == HORIZON_BASIS == "sessions"
+
+    def test_a_security_that_stopped_trading_keeps_its_row(self) -> None:
+        fr = compute_forward_return(1, 5, Decimal("100"), [], SESSIONS)
+        assert fr is not None
+        assert fr.forward_return == Decimal("0")  # the entry close is the last price
+        assert fr.exit_stale_sessions == 5
+
+    def test_a_bar_on_the_exit_session_is_not_stale(self) -> None:
+        fr = compute_forward_return(1, 2, Decimal("100"), _bars("101", "102"), SESSIONS)
+        assert fr is not None and fr.exit_stale_sessions == 0
 
 
 class TestClassifyPerformanceTier:

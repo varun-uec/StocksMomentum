@@ -294,11 +294,18 @@ class SurvivorshipGapEventModel(Base):
 class ForwardReturnModel(Base):
     """A security's realized forward return/drawdown/volatility for one run/horizon.
 
-    Append-only (ADR-006): a row is written only once ``horizon_days`` worth
-    of bars exist after the run date, and is never revised afterward.
+    Append-only (ADR-006): a row is written only once market data reaches its
+    exit session, and is never revised afterward. ``horizon_basis`` says what
+    the horizon counts (R3-B-32): ``sessions`` (NSE sessions, engine v2) or
+    ``own_bars`` (the security's own bars, rows written before it).
     """
 
     __tablename__ = "forward_returns"
+    __table_args__ = (
+        CheckConstraint(
+            "horizon_basis IN ('sessions', 'own_bars')", name="ck_forward_returns_horizon_basis"
+        ),
+    )
 
     run_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("screening_runs.id"), primary_key=True
@@ -309,6 +316,9 @@ class ForwardReturnModel(Base):
         BigInteger, ForeignKey("securities.id"), primary_key=True, index=True
     )
     horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    horizon_basis: Mapped[str] = mapped_column(String, primary_key=True)
+    exit_date: Mapped[date | None] = mapped_column(Date)
+    exit_stale_sessions: Mapped[int | None] = mapped_column(Integer)
     forward_return: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     forward_max_drawdown: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     forward_volatility: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
@@ -63,6 +63,11 @@ class LegacyBackedOHLCVRepository:
         )
         rows = list(reversed(result.scalars().all()))
         return OHLCVSeries(security_id=security_id, bars=tuple(_to_bar(r) for r in rows))
+
+    async def latest_date(self) -> date | None:
+        """Return the most recent legacy bar date, or ``None``."""
+        result = await self._session.execute(select(func.max(LegacyOHLCVDailyModel.date)))
+        return result.scalar_one_or_none()
 
     async def get_bars_after(
         self, security_id: int, after_date: date, limit: int

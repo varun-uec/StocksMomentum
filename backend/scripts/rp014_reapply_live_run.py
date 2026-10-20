@@ -78,6 +78,7 @@ async def main() -> None:
             screening_run_repo=screening_run_repo,
             ohlcv_repo=ohlcv_repo,
             benchmark_index_repo=SqlBenchmarkIndexRepository(session),
+            calendar=get_nse_trading_calendar(),
         )
         fr = await forward_backfill.execute(run_id)
 

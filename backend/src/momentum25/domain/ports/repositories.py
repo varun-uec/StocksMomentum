@@ -17,7 +17,7 @@ from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy, StrategyFamily
 from momentum25.domain.entities.user_document import DocumentKind, UserDocument
 from momentum25.domain.ports.market_data import RawCorporateAction, RawIndexBar
-from momentum25.domain.research.forward_returns import ForwardReturn
+from momentum25.domain.research.forward_returns import HORIZON_BASIS, ForwardReturn
 from momentum25.domain.research.period_correct_resolution import SymbolInterval
 from momentum25.domain.value_objects.results import (
     Ranking,
@@ -263,9 +263,13 @@ class ScreeningRunRepository(Protocol):
         ...
 
     async def get_forward_returns(
-        self, run_id: int, security_id: int | None = None, horizon_days: int | None = None
+        self,
+        run_id: int,
+        security_id: int | None = None,
+        horizon_days: int | None = None,
+        basis: str = HORIZON_BASIS,
     ) -> list[ForwardReturn]:
-        """Return persisted forward-return rows for a run.
+        """Return persisted forward-return rows of one horizon basis for a run.
 
         Optionally scoped to one security and/or one horizon. Scoping the
         horizon matters for the validation surfaces: a run holds one row per
@@ -274,7 +278,7 @@ class ScreeningRunRepository(Protocol):
         ...
 
     async def get_forward_return_by_security(
-        self, run_id: int, horizon_days: int
+        self, run_id: int, horizon_days: int, basis: str = HORIZON_BASIS
     ) -> dict[int, Decimal]:
         """Return ``{security_id: forward_return}`` for one run and one horizon.
 

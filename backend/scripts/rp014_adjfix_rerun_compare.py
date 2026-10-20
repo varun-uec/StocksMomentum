@@ -128,6 +128,7 @@ async def main(limit: int | None) -> None:
                         screening_run_repo=screening_run_repo,
                         ohlcv_repo=ohlcv_repo,
                         benchmark_index_repo=SqlBenchmarkIndexRepository(session),
+                        calendar=get_nse_trading_calendar(),
                     ),
                     screening_run_repo=screening_run_repo,
                     run_suffix=RERUN_SUFFIX,

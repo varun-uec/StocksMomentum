@@ -300,6 +300,7 @@ async def main() -> None:
                     screening_run_repo=screening_run_repo,
                     ohlcv_repo=legacy_ohlcv,
                     horizons=FORWARD_HORIZONS,
+                    calendar=get_nse_trading_calendar(),
                 )
                 res = await _run_one_date(
                     run_date=run_date,

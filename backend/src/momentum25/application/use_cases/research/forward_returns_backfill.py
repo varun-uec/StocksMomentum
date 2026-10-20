@@ -1,10 +1,12 @@
 """ForwardReturnsBackfill — persists forward-return features for a completed run.
 
 A run's forward return is not knowable at run time (ADR-009: no lookahead) --
-this use case is invoked later, once ``run_date + horizon_days`` worth of
-bars exist, and appends rows to ``forward_returns``. Already-computed
-(run_id, security_id, horizon_days) combinations are never recomputed or
-revised, so re-running this is always safe to repeat.
+this use case is invoked later, once market data reaches the exit session
+``horizon_days`` NSE sessions after the run date (R3-B-32), and appends rows
+to ``forward_returns`` with ``horizon_basis = 'sessions'``. Already-computed
+(run_id, security_id, horizon_days, basis) combinations are never recomputed
+or revised, so re-running this is always safe to repeat. Rows of the legacy
+``own_bars`` basis are left as they are.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.research.forward_returns import ForwardReturn, compute_forward_return
 
 _logger = get_logger("forward_returns_backfill")
@@ -29,8 +32,8 @@ DEFAULT_BENCHMARK_INDEX = "NIFTY500"
 
 
 def _adjusted_close(bar: Any) -> Any:
-    """Return a bar's corporate-action-adjusted close, falling back to raw close."""
-    return bar.adj_close if bar.adj_close is not None else bar.close
+    """``close × adj_factor``, the one adjusted-price rule (IMPLEMENTATION_SPEC §8)."""
+    return bar.close * bar.adj_factor
 
 
 class ForwardReturnsBackfill:
@@ -43,6 +46,8 @@ class ForwardReturnsBackfill:
         benchmark_index_repo: Any = None,
         horizons: tuple[int, ...] = DEFAULT_HORIZONS,
         benchmark_index_code: str = DEFAULT_BENCHMARK_INDEX,
+        *,
+        calendar: TradingCalendar,
     ) -> None:
         """Wire the use case with its collaborators.
 
@@ -55,6 +60,7 @@ class ForwardReturnsBackfill:
         self._benchmark_index_repo = benchmark_index_repo
         self._horizons = horizons
         self._benchmark_index_code = benchmark_index_code
+        self._calendar = calendar
 
     async def execute(self, run_id: int) -> dict[str, int]:
         """Compute and persist any newly-available forward-return rows for ``run_id``.
@@ -85,6 +91,15 @@ class ForwardReturnsBackfill:
                 self._benchmark_index_code
             )
         benchmark_entry_close = self._nearest_close(benchmark_closes, run.run_date)
+        # The sessions after the run date that market data has reached.
+        data_through = await self._ohlcv_repo.latest_date()
+        sessions = (
+            self._calendar.sessions_between(run.run_date + timedelta(days=1), data_through)[
+                :max_horizon
+            ]
+            if data_through is not None
+            else []
+        )
 
         for ranking in rankings:
             security_id = ranking.security_id
@@ -104,20 +119,21 @@ class ForwardReturnsBackfill:
             forward_bars = await self._ohlcv_repo.get_bars_after(
                 security_id, after_date=run.run_date, limit=max_horizon
             )
-            forward_closes = [_adjusted_close(b) for b in forward_bars]
+            path = [(b.date, _adjusted_close(b)) for b in forward_bars]
             securities_evaluated += 1
 
             for horizon in pending_horizons:
                 benchmark_exit_close = None
-                if benchmark_entry_close is not None and len(forward_bars) >= horizon:
+                if benchmark_entry_close is not None and len(sessions) >= horizon:
                     benchmark_exit_close = self._nearest_close(
-                        benchmark_closes, forward_bars[horizon - 1].date
+                        benchmark_closes, sessions[horizon - 1]
                     )
                 fr = compute_forward_return(
                     security_id,
                     horizon,
                     entry_close,
-                    forward_closes,
+                    path,
+                    sessions,
                     benchmark_entry_close=benchmark_entry_close,
                     benchmark_exit_close=benchmark_exit_close,
                 )
