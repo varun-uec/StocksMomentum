@@ -114,12 +114,12 @@ Status key: **PASS** (exercised, expected outcome observed), **FAIL** (observed 
 
 | # | Capability | Status | Measured | Limit |
 |---|---|---|---|---|
-| F1 | NFR-11 warm chart open, 30 runs | PASS | P50 135 ms, P95 152 ms | P95 ≤ 1 s |
-| F2 | NFR-11 cold chart open after API restart, 30 runs | PASS | P50 496 ms, P95 513 ms | P95 ≤ 3 s |
-| F3 | 1 / 4 / 16 charts warm open, 30 runs | Reported (no limit set by ADD A1) | P95 151 / 448 / 1,525 ms | none |
-| F4 | 1 / 4 / 16 charts cold open | Reported | P95 193 / 497 / 1,604 ms | none |
-| F5 | Pan responsiveness | PASS | FPS P5 60 / 62 / 61 | — |
-| F6 | JS heap at 1 / 4 / 16 charts | Reported | max 13 / 28 / 85 MB | — |
+| F1 | NFR-11 warm chart open, 30 runs, final build | PASS | P50 134 ms, P95 147 ms | P95 ≤ 1 s |
+| F2 | NFR-11 cold chart open after API restart, 30 runs, final build | PASS | P50 214 ms, P95 228 ms | P95 ≤ 3 s |
+| F3 | 1 / 4 / 16 charts warm open, 30 runs, final build | Reported (no limit set by ADD A1) | P95 147 / 380 / 1,316 ms | none |
+| F4 | 1 / 4 / 16 charts cold open, final build | Reported | P95 190 / 408 / 1,333 ms | none |
+| F5 | Pan responsiveness | PASS | FPS P5 61 / 61 / 60 | — |
+| F6 | JS heap at 1 / 4 / 16 charts | Reported | max 12 / 27 / 84 MB | — |
 | F7 | 24-cycle 1×1 ↔ 4×4 endurance releases DOM and canvases | PASS | `final-performance` | — |
 | F8 | Search, workspace save, live screening after a correction, 20-alert evaluation (API) | Reported | search P95 7 ms; save P95 7 ms; screening P95 355 ms (n=10); alerts P95 783 ms (n=20) | none set |
 | F9 | Studio Screening Result and In-Sample research | Reported | screening P50 315 / P95 831 ms (n=10); In-Sample research P50 62.6 s (n=3, P95 = max 65.1 s) | none set |
@@ -128,7 +128,7 @@ Status key: **PASS** (exercised, expected outcome observed), **FAIL** (observed 
 | F12 | Main web bundle | **Improved after fix** (R3-U-01) | 654.3 kB raw, 208.8 kB gzip (was 1,009.9 / 315.6; R2: 565.8 / 182.1). `recharts` entered the shell via the Assessment panel and now loads on demand. | warning at 500 kB (still above; accepted) |
 | F13 | Multi-hour memory stability | NOT VERIFIED | only a 24-cycle soak | — |
 
-Raw data: `ui/nfr11-r3.json`, `ui/m13-bench-r3.json`, `ui/performance-r3.json`, backend `determinism/timings.txt`, `api-probe/`.
+Raw data: `ui/nfr11-final.json`, `ui/m13-bench-final.json` (final build; the earlier `-r3` files are from before the bundle split), `ui/performance-r3.json`, backend `determinism/timings.txt`, `api-probe/`.
 
 ## G. Governance
 

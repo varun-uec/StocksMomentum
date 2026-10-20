@@ -45,8 +45,8 @@ Full record: [audit-evidence/audit-r3/AUDIT_REPORT.md](../../audit-evidence/audi
 | Backend `pytest` (isolated `_test` database) | **981 passed**, 2 warnings (6 failed at the start of the audit) |
 | Web ESLint, Vitest | Clean; **148 passed**, 21 files |
 | Web build, main chunk | 654 kB raw, 209 kB gzip (was 1,010 / 316 before R3-U-01) |
-| Playwright, full serial suite at HEAD | See the audit report, section 4 |
-| NFR-11, 30 samples each | Warm P95 and cold P95 in `audit-evidence/audit-r3/ui/nfr11-r3.json` (both inside the limits) |
+| Playwright, full serial suite at the final code | **229 passed, 0 failed**, 8 opt-in skipped (18.1 min) |
+| NFR-11, 30 samples each | Warm P95 147 ms (limit 1 s); cold P95 228 ms (limit 3 s). 16 charts: warm P95 1,316 ms. `audit-evidence/audit-r3/ui/nfr11-final.json`, `m13-bench-final.json` |
 | EOD scheduler | Fired unattended at 18:30:00 IST on 2026-10-20 (run 150, results identical to run 149). Old image: Tuesday to Saturday, no catch-up, trigger recorded as MANUAL. |
 
 Fixed in source in Round 3: import date guard (R3-B-02), run identity and conflict handling (R3-B-03, R3-B-04), scheduler trigger, weekday numbering and catch-up (R3-B-05, R3-B-11, R3-B-26), log masking (R3-B-06), read-path RS universe (R3-B-08, owner to confirm), `data_version` no longer hashes the git commit (R3-U-09, ADR-014 §10), never-saved documents read as revision 0 (R3-U-06, ADR-013 §5), rate limit 1,200 a minute with `Retry-After` (R3-U-08), WCAG 2.x A and AA on every route in both themes (R3-U-02 to R3-U-05, R3-U-12), stale stored strategy (R3-U-10), `/validation` strategy picker and `config_hash` (R3-U-07), bundle size (R3-U-01), improved-rank arrow (R3-U-11), compose memory caps and `restart: unless-stopped` with isolated test databases (R3-O-01, R3-O-02).

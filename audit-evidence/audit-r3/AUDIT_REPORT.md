@@ -1,126 +1,159 @@
 # Wickstreet and Momentum25 — Comprehensive Audit Report (Round 3)
 
-Date: 2026-10-20. Branch `wickstreet/m10-m11`, local only, nothing pushed. Audit base `1977039`. Fixes and evidence: 17 local commits (18 with the final report commit).
+Date: 2026-10-20. Branch `wickstreet/m10-m11`, local only, nothing pushed, published or deployed. Audit base `1977039`. 35 local commits of fixes, tests and evidence.
 
 ## 1. The answer
 
-**Is the platform functionally correct, financially trustworthy, operationally reliable, seamlessly integrated and ready for its intended release? No — not yet. It is close on correctness and integration, and not close on operations and release rights.**
+**Is the platform functionally correct, financially trustworthy, operationally reliable, seamlessly integrated and ready for its intended release? Not yet.** Correctness and integration are now strong. Operations and release rights are not ready.
 
-| Question | Verdict | One-line reason |
+| Question | Verdict | Reason |
 |---|---|---|
-| Functionally correct | **Yes, with fixed defects** | 3 P1, 23 P2 and 17 P3 defects were found (plus 3 inherited P2 counted in the register). 27 are fixed in source and tested. Browser and backend suites pass on the fixed code (section 4). |
-| Financially trustworthy — the live screener | **Yes** | Adjustment, indicators, RS, eligibility, gates, scores, ranks, determinism and point-in-time boundaries all equal independent recomputations. |
-| Financially trustworthy — the backtest | **No** | 27% of walk-forward notional fills at stale prices (R3-B-09, open, needs an owner methodology decision). |
-| Operationally reliable | **No** | The EOD job has never been observed to run. It does not catch up after downtime. The container does not restart. None of the fixes is deployed. |
-| Seamlessly integrated | **Yes, after one fix** | Strategy lifecycle, cross-screen provenance and multi-chart routing pass. One real defect (stale stored strategy, R3-U-10) is fixed. |
-| Ready for release | **No** | Blocked by the items below. |
+| Functionally correct | **Yes** | The full serial browser suite passes at the final code (229 passed, 0 failed, 8 opt-in skipped). Backend: 981 passed. |
+| Financially trustworthy: the live screener | **Yes** | Adjustment, indicators, RS, eligibility, gates, scores, ranks, determinism and point-in-time boundaries equal independent recomputations. |
+| Financially trustworthy: the backtest | **No** | 27% of walk-forward notional fills at stale prices (R3-B-09, open, owner decision). |
+| Operationally reliable | **No, until deployed** | The scheduler fired once unattended (good). The running image still fires Tuesday to Saturday, has no catch-up, does not restart, and records the wrong trigger. Every fix is in source and none is deployed. |
+| Seamlessly integrated | **Yes** | Strategy lifecycle, cross-screen provenance, multi-chart routing and `/validation` for saved strategies pass end to end. |
+| Ready for release | **No** | See the blockers. |
 
-**Release blockers**
+### Genuine release blockers (need an owner decision or action)
 
-1. **R3-B-09** — backtest fill policy. Blocks any backtest claim. The live screener is unaffected.
-2. **R3-B-10** — four differences from spec §8. The owner must amend the spec or change the code.
-3. **Deployment** — the running image predates every fix, including the import guard that stops one bad date row from emptying the screener (R3-B-02, P1).
-4. **EOD automation** — scheduled execution never observed; no catch-up (R3-B-11); restart policy `no` (R3-O-02); no authorised automated data source, so the job re-screens stored data and refreshes nothing.
-5. **Rights** — licence ADR-015 unaccepted, no LICENSE or NOTICE file, NSE and BSE data-use terms unverified, name clearance open. These block publication, not local use.
-6. **Dependency audits** — not run; need your approval.
+1. **R3-B-09** — walk-forward fill policy. Blocks any backtest claim. The live screener is unaffected.
+2. **R3-B-10** — four code-versus-spec differences (amend the spec or change the code).
+3. **Deployment** — the running image predates every Round 3 fix, including the import date guard (R3-B-02, P1) and the scheduler fixes. Rebuild with `make up`. This audit did not deploy.
+4. **A repeat of the scheduled run on the rebuilt image** — one unattended run is observed; stable repeated operation is not.
+5. **No authorised automated data source** — downloads are off by design and no subscriber agreement exists. The job only re-screens stored data. (BLOCKED, legal.)
+6. **Licence, data rights, name** — ADR-015 unaccepted, no LICENSE or NOTICE file, NSE and BSE terms unverified, name clearance open. These block publication, not local use.
+
+### Accepted limitations (documented, not blockers)
+
+- `/validation/experiment/run` and `/research/compare/strategies` still resolve a strategy by name, not by version.
+- The screener and watchlist APIs use opposite signs for rank change; the UI shows each correctly.
+- Remaining main-chunk weight (react-router, lightweight-charts, TanStack) is left whole to protect chart-open times.
+- Indicators with no vendor-neutral convention (Supertrend, Parabolic SAR, regression channel, pivots, VWAP variants) have property tests but no golden reference.
+- Chart-open benchmarks for 1, 4 and 16 charts have no acceptance limit in ADD A1 ("reports the results"); the figures are recorded.
+
+### Not verified
+
+Real screen-reader use; Safari and Firefox; forced-colours mode; `pip-audit` and `npm audit` (they send the dependency list off-machine; awaiting your approval); multi-hour memory stability. The worker ran the full-universe financial recomputation; the main session spot-checked it and did not repeat it.
 
 There is **no P0**. No financial methodology was changed.
 
 ## 2. Scope and method
 
-- **Two non-overlapping agents plus the main session.** An engineering agent (Opus) took backend, financial correctness, EOD pipeline, database reliability, security, ADR and documentation compliance on isolated databases. A dashboard agent kept `.dashboard/index.html`. The main session took the browser, UI, accessibility, charting, integration, performance and the final reports. The main session confirmed the worker's test counts (ruff, mypy strict on 263 files, import contracts, 947 passed on HEAD), its commit list, the RS read-path diff and the walk-forward trade list. It did not repeat the worker's full-universe recomputation.
-- **Inventory** rebuilt from source and the running app, not from the old ledger: 68 API operations on 59 paths, 24 page routes, 21 drawing kinds, about 35 indicators, 6 layouts, 7 alert sources, 18 ADR files (Capability Matrix).
-- **Real application, read-only:** Chromium on `localhost:8000` with all non-GET API calls blocked; GET-only API and SQL checks on the real database. 150 route states (25 routes × 3 sizes × 2 themes) and axe-core on 25 routes.
-- **Isolated environments for anything that writes:** disposable PostgreSQL databases ending in `_e2e` or `_test` in labelled containers, and a restored dump of the real database for the worker's real-data checks. No NSE or BSE request was made. Direct downloads stayed off.
+- **Two agents plus the main session.** An engineering agent (Opus) took backend, financial correctness, EOD pipeline, database reliability, security and ADR compliance on isolated databases, and later the provenance, resource-isolation, document-contract and rate-limit work. A dashboard agent kept `.dashboard/index.html`. The main session took browser, UI, accessibility, charting, integration, performance and the reports. The main session re-ran the backend gate itself (ruff, mypy strict on 265 files, import contracts, 981 passed) and reviewed the worker's commits, the RS read-path diff and the walk-forward evidence.
+- **Inventory** rebuilt from source and the running app: 68 API operations on 59 paths, 24 page routes, 21 drawing kinds, about 35 indicators, 6 layouts, 7 alert sources, 18 ADR files (`CAPABILITY_VALIDATION_MATRIX.md`).
+- **Real application, read-only:** Chromium on `localhost:8000` with every non-GET API call blocked; GET-only API and read-only SQL on the real database (run #149, data through 2026-10-19).
+- **Isolated environments for anything that writes:** disposable PostgreSQL databases in labelled containers on named volumes with a hard memory cap (`scripts/test-infra.sh`), and a restored dump for the worker's real-data checks. No NSE or BSE request was made. Direct downloads stayed off.
 - **Independent references:** pure-Python recomputation of indicators, aggregation, adjustment, RS, eligibility and gates. None imports Momentum25 code.
 
-## 3. System health
+## 3. Record of verification
+
+| Check | Result |
+|---|---|
+| Backend `ruff check` / `mypy --strict` / `lint-imports` | Clean / clean, 265 files / 2 kept, 0 broken (run by the main session on the final code) |
+| Backend `pytest`, isolated `_test` database | **981 passed**, 2 warnings (run by the main session). HEAD had 6 failing at the audit's start (R3-B-01). |
+| Web ESLint, `tsc --noEmit` | Clean |
+| Web Vitest | **148 passed**, 21 files |
+| Web production build, main chunk | 654 kB raw, 209 kB gzip (was 1,010 / 316; R2: 566 / 182) |
+| **Browser suite, full serial, final code** | **229 passed, 0 failed, 8 skipped** (18.1 min). Log: `ui/playwright-final4.log`. Skipped: 6 opt-in layout benchmark cases (run separately, below) and 2 opt-in visual sign-off cases. |
+| Browser suite, first run at audit HEAD | 214 passed, 8 failed, 12 skipped |
+| Axe, 23 routes × light and dark; scrollable regions at 390 and 1440 px | 0 violations (`r3-axe-routes.spec.ts`) |
+| NFR-11, 30 samples, final build | Warm P50 134 / P95 **147 ms** (limit 1 s). Cold P50 214 / P95 **228 ms** (limit 3 s). `ui/nfr11-final.json` |
+| 1 / 4 / 16 charts, 30 samples, final build | Warm P95 147 / 380 / 1,316 ms. Cold P95 190 / 408 / 1,333 ms. Pan FPS P5 61 / 61 / 60. Heap max 12 / 27 / 84 MB. `ui/m13-bench-final.json` |
+| Full-universe screening (3.2 M bars, 3,096 universe, 5 runs, real-data copy) | Pipeline P50 32.6 s, P95 33.5 s |
+| Scheduled EOD run | Observed at 18:30:00 IST (run 150, 37 s, results identical to run 149) |
+| Dev API under concurrent test load | 429 polls, 0 non-200, 0 OOMKilled (`backend/isolation/`) |
+
+Environment: Apple M4 Pro, 14 cores, 48 GB; Chromium 153 headless; Docker VM 8 GB. Benchmarks ran on an otherwise idle machine (load average about 1.8) with 2,610-bar synthetic fixtures.
+
+**The eight tests that failed in the first run, reconciled.**
+
+| First-run failure | Cause | Resolution |
+|---|---|---|
+| journey 1, 3, 7+8 and `momentum25` watchlist | Specs expected the UI from before commit `cecb3e5` (config hash in provenance, hash-valued selector) | Specs updated |
+| `m12-shell` Assessment tab | Copy changed to "Why it is not ranked" | Spec updated |
+| journey 4 | **Real defect R3-U-10**: a stored strategy the workspace no longer offers hung the chart Assessment | Fixed (provider reset; the fallback is the default production strategy) |
+| `/strategies` hard load (no `h1`) | Did not reproduce on any rerun, including the later full runs | Not reproduced; treated as a flake (R3-O-04) |
+| `strategy-integration` data_version | `data_version` moved with the git commit and with earlier specs' data corrections | Provenance fixed (R3-U-09); the spec now checks a 12-hex key, not equality with the seeded run |
+
+A previously triaged failure is not a pass, so the full suite was rerun after each round of fixes. Those reruns found more: stale helpers after the document contract change (about 45 tests), an order-dependent race I had introduced in the provider, and a wrong fallback. The last full run is clean.
+
+## 4. System health by layer
 
 | Layer | Health |
 |---|---|
 | Calculation engine and screener | Strong. Byte-deterministic. Matches independent recomputation. |
-| Chart workstation | Strong. All 21 drawing tools, indicators, layouts, replay, alerts pass. Candle geometry guarded by pixel tests. |
-| Strategy lifecycle and research | Strong, one integration defect fixed. Backtest fill pricing is wrong (open). |
-| Persistence and concurrency | Strong. Optimistic concurrency correct (10 parallel writes → one 200, nine 412). Backup and restore verified on 14 tables. |
-| Accessibility | Automated WCAG 2.x A and AA now clean on 23 routes in both themes. Screen reader not tested. |
-| Security (loopback model) | Sound. No auth by design; never expose it to a network. |
-| Operations | Weak. See blockers 3 and 4. |
-| Documentation | Several stale counts and claims (R3-B-21). |
+| Chart workstation | Strong. 21 drawing tools, indicators, layouts, replay and alerts pass. Candle geometry guarded by pixel tests. The earlier wick-size defect has not returned. |
+| Strategy lifecycle and research | Strong. `/validation` now validates saved versions. Backtest fill pricing is wrong (open). |
+| Persistence and concurrency | Strong. Ten parallel writes give one 200 and nine 412. A never-saved document now reads as revision 0. Backup and restore verified on 14 tables. |
+| Accessibility | Automated WCAG 2.x A and AA clean on every route in both themes. Screen readers not tested. |
+| Security (loopback model) | Sound. No authentication by design: never expose it to a network. |
+| Operations | Weak until deployed (blockers 3 and 4). |
+| Documentation | Counts and drawing-tool claims corrected. ADR-003, 007, 009, 012 text and the ADR index are still stale. |
 
-## 4. Test and verification record
+## 5. Findings
 
-| Check | Result |
-|---|---|
-| Backend `ruff check` | Clean |
-| Backend `mypy --strict` | Clean, 263 files |
-| `lint-imports` | 2 contracts kept, 0 broken (the contracts omit the application layer, R3-B-16) |
-| Backend `pytest`, isolated `_test` database | **947 passed**, 2 warnings (run by the main session on HEAD). At the start of the audit HEAD had **6 failing** tests (R3-B-01); the worker added 22 tests, each failing without its fix. |
-| Web ESLint | Clean |
-| Web Vitest | **144 passed**, 21 files (141 before; +3 golden indicator tests) |
-| Web production build | Passes. Main chunk 1,009.9 kB raw / 315.6 kB gzip (R3-U-01). |
-| Browser suite, first serial run at audit HEAD | 214 passed, **8 failed**, 12 skipped (16.9 min) |
-| Browser suite, final serial run | See `BROWSER_FINAL.md` section below once complete |
-| Axe sweep (`r3-axe-routes`) | 23 routes × 2 themes: 0 violations |
-| NFR-11 | Warm P95 152 ms (≤ 1 s); cold P95 513 ms (≤ 3 s) |
+Full list with status, owner and verification criteria: `REMEDIATION_REGISTER.md`.
 
-**What the 8 first-run failures were.** Four specs expected the UI from before commit `cecb3e5` (stale tests). One test asserted behaviour that commit removed. One was a real defect (R3-U-10). One was a provenance finding in disguise (R3-U-09: `data_version` moved when the worker committed during my run). One did not reproduce on four reruns (R3-O-04, not verified). The committed browser suite was red at HEAD before this audit, so the earlier "all pass" statements did not describe HEAD.
-
-**A regression I introduced and fixed inside the audit.** My first fix for R3-U-10 reset the stored strategy hash on every route. On a first visit that changed the watchlist query key just after load, and a fast Alt+W could write to the old key, so the panel never updated. Bisecting an order-dependent failure found it. The reset now acts only on a name or hash the workspace does not offer. Both specs pass.
-
-## 5. Findings summary
-
-Full list with status, owner and verification: `REMEDIATION_REGISTER.md`.
-
-| Severity | Count | Fixed | Open |
+| Severity | Count | Fixed in source | Open |
 |---|---|---|---|
 | P0 | 0 | — | — |
-| P1 | 3 | 2 (R3-B-02, R3-B-08 awaiting your confirmation) | 1 (R3-B-09, **blocker**) |
-| P2 | 25 (22 new, 3 inherited) | 11 | 14 (11 new, 3 inherited) |
-| P3 | 17 | 3 | 14 |
+| P1 | 3 | 2 (R3-B-02; R3-B-08, awaiting your confirmation) | 1 (R3-B-09, **blocker**) |
+| P2 | 26 (23 new, 3 inherited) | 17 | 9 (R3-B-10, 13, 14, 15, 16, 21 in part, and 3 inherited) |
+| P3 | 17 | 8 | 9 |
 
-Most significant, in order:
+**Resolved in this round, in the owner's priority order**
 
-1. **R3-B-09 (P1, open).** Walk-forward fills use stale prices for 27% of notional.
-2. **R3-B-02 (P1, fixed).** A holiday, weekend or future row in `import-eod` became the latest date and the screener served an empty run.
-3. **R3-B-08 (P1, fixed, confirm).** Live and watchlist RS ranked ETFs and funds; 101 equities crossed the RS ≥ 70 gate on the wrong side.
-4. **R3-B-10 (P2, open).** Four code-vs-spec differences, including RS ranked over all equities (1,253 of 1,338 ratings change).
-5. **R3-B-11 and R3-O-02 (P2, open).** No catch-up after downtime and no container restart: a sleeping Mac skips the day silently.
-6. **R3-U-09 / R3-B-12 (P2, open).** The manifest records `git rev-parse HEAD`: `null` in the container, a moving value on a host. Tonight's job will write a duplicate snapshot of 2026-10-19.
-7. **R3-U-10 (P2, fixed).** A stored strategy the workspace no longer offers hung the chart Assessment.
-8. **R3-U-02, 03, 04, 05 (P2/P3, fixed).** Accessibility: unlabelled controls, no main landmark, contrast in both themes, label in name.
+1. **R3-U-09 / R3-B-12 provenance identity** — ADR-014 §10. `data_version` hashes market data and engine versions; the strategy keeps `config_hash`; the build id is stored, not hashed; stored manifests keep their keys (run 149's `8790a000bd4f` reproduced in a test); stable across commits and with no git. Confirmed live before the fix: run 150 had identical results and a different key. Pending: an `ENGINE_VERSION` constant (Q4).
+2. **R3-U-07 `/validation`** — the picker lists each production and saved version; `config_hash` flows through the dashboard and the five GETs; evidence never mixes versions; an unrun version reads empty.
+3. **R3-O-01 resource isolation** — compose memory and CPU caps and `restart: unless-stopped`; `scripts/test-infra.sh` (named volume, hard cap, refuses without headroom, never tmpfs). My own test database moved to it. The dev API was unaffected under load.
+4. **R3-U-01 bundle** — 1,010 to 654 kB; chart-open times did not degrade (16-chart warm P95 1,525 to 1,316 ms).
+5. **EOD** — observed run; weekday numbering defect found and fixed (R3-B-26); catch-up added; source availability BLOCKED.
+6. **R3-U-06, U-08, U-11** — never-saved documents read 200 at revision 0 (ADR-013 §5); rate limit 1,200 a minute with `Retry-After` and a client retry; the improved-rank arrow points up.
+7. **The eight failing tests** — reconciled (section 3); the full suite is clean.
+8. **ADR-056** — not found anywhere (section 6).
 
-## 6. Gate status
+**Also found and fixed:** R3-B-02 (P1) import date guard; R3-U-10 stale stored strategy; R3-U-02 to R3-U-05 and R3-U-12 accessibility; R3-B-03 to R3-B-07; R3-U-15, a race I introduced and then removed. That regression came from my first R3-U-10 fix, which set the strategy hash on every first visit, so a fast Alt+W wrote to a stale query key. I found it by bisecting an order-dependent failure.
 
-| Gate (brief §13) | Status |
-|---|---|
-| Every capability has PASS, FAIL, BLOCKED or NOT VERIFIED | Done: `CAPABILITY_VALIDATION_MATRIX.md` |
-| Critical workflows have browser and backend evidence | Done |
-| Momentum25 outputs checked against independent references | Done: `FINANCIAL_CORRECTNESS_REPORT.md` |
-| Strategy lifecycle and cross-screen consistency proven | Done (one defect found and fixed) |
-| EOD automation status established exactly | Done, except the first scheduled execution (18:30 IST today); see `EOD_AUTOMATION_REPORT.md` |
-| Data integrity and replay correctness verified | Done |
-| Security and licensing documented | Done: `SECURITY_RELEASE_GATE_REPORT.md` |
-| Performance criteria evaluated | Done |
-| P0 and P1 resolved or named as blockers | Done: one P1 open and named (R3-B-09); one awaiting confirmation (R3-B-08) |
-| P2 and P3 have owners and dispositions | Done in the register |
-| Dashboard reflects the verified state | Updated at the end (`.dashboard/index.html`) |
+## 6. ADR-056
 
-## 7. What was not verified
+It does not exist. I searched the working tree, all git history, `docs/`, the plans, the ADD and its amendment, the implementation spec, the design record, the README, the owner's memory notes and the sibling projects. The only hits are in this audit's own reports. No ADR above 015 is mentioned anywhere. I did not invent or renumber a record. All 18 ADR files were reviewed (`ADR_COMPLIANCE.md`). **Owner: name the document.**
 
-- Real screen-reader use, Safari, Firefox, forced-colours mode.
-- The first scheduled EOD execution (due 18:30 IST).
-- `pip-audit` and `npm audit` (approval needed).
-- Indicator conventions without a vendor-neutral reference: Supertrend, Parabolic SAR, regression channel, pivots, VWAP variants.
-- Multi-hour memory stability (only a 24-cycle soak).
-- Killing the process mid-import; raw malformed HTTP headers.
-- The legal questions in the Security report.
-- The strategy-integration check that a saved config's run shares the seeded run's `data_version` was removed from the spec, because earlier specs legitimately correct bars; no replacement identity check was written.
+## 7. Gate status
+
+| # | Gate | Status | Basis |
+|---|---|---|---|
+| 1 | System inventory | **PASS** | Matrix rebuilt from source; document drift recorded; ADR-056 absent |
+| 2 | Functional validation | **PASS** | 229 / 0 / 8 on the final code; real-app read-only runs |
+| 3 | Momentum25 financial correctness | **PARTIAL** | Screener PASS; backtest fills FAIL (R3-B-09); spec differences open (R3-B-10) |
+| 4 | Strategy lifecycle integration | **PASS** | Journeys 1 to 8; saved-strategy spec; `/validation` spec |
+| 5 | Charting engine | **PASS** | Geometry, aggregation, adjustment, indicators, replay, layouts. Seven indicator families lack a golden reference (NOT VERIFIED). |
+| 6 | EOD refresh and pipeline | **PARTIAL** | Scheduler implemented, installed (in the container), enabled, one run observed. Deployed image defective. Source BLOCKED. |
+| 7 | Backend and database reliability | **PASS with open P2** | Concurrency, validation, migrations and restore verified. Schema drift open (R3-B-15). |
+| 8 | Security and licensing | **PARTIAL** | Code PASS. Licence and data rights BLOCKED. Dependency audits NOT VERIFIED. |
+| 9 | UI, UX, accessibility | **PASS (automated)** | Screen reader NOT VERIFIED |
+| 10 | Performance, resilience, regression | **PASS** | NFR-11 and layouts measured; full suites green; isolation verified |
+| 11 | ADR and documentation | **PARTIAL** | ADR-014 §10 and ADR-013 §5 amended; ADR-056 unresolved; some docs stale |
+| 12 | Findings and remediation | **PASS** | Register with owners and dispositions |
+| 13 | Final acceptance | **NOT READY** | Blockers 1 to 6 |
 
 ## 8. Incident during the audit
 
-At 10:59 UTC the owner's API container was OOM-killed when the audit's first restore, which sat on tmpfs, took the Docker VM's memory. The main session restarted it; the real database stayed healthy and was never written. The second restore used a disk volume with a 2 GB cap. The API container has no memory limit and no restart policy, which is why it died and stayed down (R3-O-02).
+At 10:59 UTC the owner's API container was OOM-killed when the worker's first restore, held in tmpfs (RAM), took the Docker VM's memory. The main session restarted it; the real database stayed healthy and was never written. The API container had no memory limit and no restart policy, so it died and stayed down. Both are fixed in source (not deployed). My own test container also used tmpfs (1.1 GB at its peak); it was replaced by the isolated infrastructure.
 
-## 9. Deliverables
+## 9. Owner decisions
+
+1. **R3-B-09** backtest fill policy. No default taken.
+2. **R3-B-10** per item: amend the spec or change the code. No default taken.
+3. **R3-B-08** confirm the read-path RS universe fix (`51f3239`). Kept; revert if you disapprove.
+4. **R3-U-09** add an `ENGINE_VERSION` constant. Not added.
+5. **R3-B-22** which document is ADR-056. Unresolved.
+6. Approve `pip-audit` and `npm audit`. Not run.
+7. **Deploy** the rebuilt image (`make up`). Not deployed.
+8. **R3-B-13** the `/live` `data_as_of` contract; **R3-B-18** repair of 22,328 `adj_close` rows in the development database (a real-data write).
+9. Accept ADR-012 and ADR-015; add LICENSE and NOTICE; clear the name; legal review of NSE and BSE terms.
+
+## 9a. Deliverables
 
 | Deliverable | File |
 |---|---|
@@ -131,6 +164,5 @@ At 10:59 UTC the owner's API container was OOM-killed when the audit's first res
 | UX Validation Report | `UX_VALIDATION_REPORT.md` |
 | Security and Release-Gate Report | `SECURITY_RELEASE_GATE_REPORT.md` |
 | Prioritised Remediation Register | `REMEDIATION_REGISTER.md` |
-| ADR and documentation compliance | `ADR_COMPLIANCE.md` |
-| Progress dashboard | `.dashboard/index.html` |
-| Raw evidence | `ui/` (main session), `backend/` (worker) |
+| Updated Progress Dashboard | `.dashboard/index.html` |
+| Also | `ADR_COMPLIANCE.md`; raw evidence in `ui/` and `backend/` |
