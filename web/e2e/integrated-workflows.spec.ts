@@ -152,7 +152,7 @@ test('journey 4: a stored research strategy cannot be selected; the workstation 
   await request.post('/api/v1/watchlist/TCS');
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/chart/TCS');
+  await page.goto('/chart/TCS'); await chartReady(page);
   await page.evaluate((name) => localStorage.setItem('momentum25.selectedStrategy', name), OTHER);
   await page.reload(); await chartReady(page);
   await openPanelTab(page, 'Assessment');

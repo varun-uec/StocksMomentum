@@ -52,7 +52,7 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     const byName = strategies.find((s) => s.name === strategyName);
     if (byHash && byHash.name === strategyName) return;
     if (!strategyHash && byName) return;
-    const selected = byName ?? strategies[0];
+    const selected = byName ?? strategies.find((s) => s.name === DEFAULT_STRATEGY) ?? strategies[0];
     setStrategyName(selected.name, selected.config_hash);
   }, [strategies, strategyName, strategyHash, setStrategyName]);
 
