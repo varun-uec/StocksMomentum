@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 from momentum25.infrastructure.logging.setup import get_logger
 
@@ -148,6 +149,14 @@ class Settings(BaseSettings):
         return self
 
 
+def redact_url(url: str) -> str:
+    """Return ``url`` with any password masked, for logs."""
+    try:
+        return make_url(url).render_as_string(hide_password=True)
+    except Exception:  # noqa: BLE001 - an unparseable URL is never logged raw
+        return "<unparseable url>"
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return the cached application settings singleton.
@@ -160,8 +169,8 @@ def get_settings() -> Settings:
         "settings_loaded",
         environment=settings.environment,
         log_level=settings.log_level,
-        database_url=settings.database_url,
-        redis_url=settings.redis_url,
+        database_url=redact_url(settings.database_url),
+        redis_url=redact_url(settings.redis_url),
         scheduler_enabled=settings.scheduler_enabled,
         retry_max_attempts=settings.retry_max_attempts,
     )
