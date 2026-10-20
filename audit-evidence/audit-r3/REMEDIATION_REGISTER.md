@@ -4,11 +4,38 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 
 "Fixed" means a regression test exists, it failed before the fix, and the suites pass. **None of the fixes is deployed.** The running container still has the old image (Release Gate G6). Commit hashes are on the local branch `wickstreet/m10-m11`. Nothing was pushed.
 
-**Totals: P0 0 · P1 7 (2 fixed, 5 open: R3-B-09, R3-B-27, R3-B-28, R3-B-30, R3-B-31) · P2 27 (17 fixed, 10 open, of which 3 are inherited from earlier rounds and 1 is fixed in part) · P3 18 (8 fixed, 10 open). 27 fixed in all. Every fix is in source and none is deployed.**
+**Totals: P0 0 · P1 7 (6 fixed; 1 open: R3-B-31, mechanism in source, no verified link data) · P2 27 (19 fixed, 8 open, of which 3 are inherited from earlier rounds and 1 is fixed in part) · P3 18 (9 fixed, 9 open). 34 fixed in all. Every fix is in source and none is deployed.**
 
 **2026-10-20 decision review.** R3-B-09 and R3-B-10 are investigated, not resolved. The evidence and the recommended defaults are in [R3-B-09_R3-B-10_DECISION_PACKET.md](R3-B-09_R3-B-10_DECISION_PACKET.md). The review also found R3-B-27, R3-B-28 and R3-B-29. No code, spec or stored result was changed.
 
-**2026-10-20 Stage A (owner direction).** The proposed methodology is in [STAGE_A_FINANCIAL_METHODOLOGY_SPEC.md](STAGE_A_FINANCIAL_METHODOLOGY_SPEC.md): the 15-question matrix mapped to the direction, 13 new owner questions (S-1 to S-13), the execution and ledger contract, the reference universe and RS rules, identity schema 3, sensitivity results, the test plan and the Stage B plan. It found R3-B-30, R3-B-31 and R3-B-32. **Nothing is approved. Stage B has not started.** No code, spec or stored result was changed.
+**2026-10-20 Stage A (owner direction).** The proposed methodology is in [STAGE_A_FINANCIAL_METHODOLOGY_SPEC.md](STAGE_A_FINANCIAL_METHODOLOGY_SPEC.md): the 15-question matrix mapped to the direction, 13 new owner questions (S-1 to S-13), the execution and ledger contract, the reference universe and RS rules, identity schema 3, sensitivity results, the test plan and the Stage B plan. It found R3-B-30, R3-B-31 and R3-B-32.
+
+**2026-10-20 Stage B (conditional owner authorisation, bounded).** These are implemented in source with local commits `f6ce742` to `8e096b2`:
+
+- engine v2: the reference universe, calendar-aligned RS, the tie-break and indicators v3;
+- backtest method v2: causal fills and the fill-driven ledger;
+- identity schema 3;
+- verified identity links;
+- session-bounded forward returns;
+- methodology provenance.
+
+Owner answers taken: S-2 same-session settlement, S-3 10% cap, S-4 5-session anchor, and R3-B-32 last bar on or before the exit with staleness stored. Every rule has an independent reference or golden test. Final regression on 2026-10-21:
+
+| Suite | Result |
+|---|---|
+| Backend `pytest` (isolated test DB) | 1,036 passed |
+| `ruff`, `mypy`, `lint-imports` | Clean; 2 of 2 contracts kept |
+| Web Vitest | 148 passed |
+| `tsc`, ESLint | Clean |
+| Playwright, full suite on the isolated `momentum25_e2e` DB | 229 passed, 0 failed, 8 opt-in skipped |
+
+Still open, and visible:
+
+- R3-B-31 has no verified link data (S-5).
+- No session-basis forward-return backfill has run.
+- No real database was changed. The hold-out was not read. Nothing was pushed or deployed.
+
+Recalculated backtest returns are simulations, not validated investment performance. **Release readiness is not claimed.**
 
 ## P1
 
@@ -16,12 +43,12 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 |---|---|---|---|---|---|
 | R3-B-02 | EOD import (`import-eod`) | One holiday, weekend or future-dated row became the latest date. The next screen made run 162 COMPLETED with 1 scored and 1,853 dropped, and `/runs/latest` served it. Expected: the row is rejected. Root cause: no date check against the exchange calendar and the clock. **Risk: the live screener shows an empty list after one bad row.** | **Fixed** `9a32526` (4 test cases); not deployed | worker `eod/` | The four cases fail without the fix. Rebuild the image. |
 | R3-B-08 | `/stocks/{s}/live`, watchlist RS | Ranked RS across ETFs and funds, unlike every run path. 2,679 equities got another rating; 101 crossed RS ≥ 70 (RELIANCE 30 against 34). Root cause: `list_active()` unfiltered. | **Fixed** `51f3239`; **owner to confirm** (it moves displayed numbers; run output unchanged, hashes byte-identical). Revert the commit to undo. | `rs_live_vs_run*.out` | Live RS equals the stored run RS for all 1,338 scored names |
-| **R3-B-09** | Walk-forward backtest | **27% of notional (176 of 649 trades) filled and marked at the last earlier bar** when a name had no bar on the fill date. Code docstring says skip. Example: 3PLAND bought 2025-01-01 at 81.50, last bar 2024-12-18. Expected by the docstring: skip. **Risk: backtest results are biased toward illiquid names and cannot support any claim.** | **OPEN. Investigated, awaiting owner decision (B09-1 to B09-8).** Reproduced byte for byte (SHA-256 `8da9853e…`). Root cause: every runner price lookup returns the last bar on or before the date (signal, fill, mark). The skip branch cannot run. `_settle` rebuilds holdings from targets, not fills. All 176 stale fills follow a stale signal. Current engine −9.0%; strict fills +25.5%. The bias has no fixed direction. Recommended: EXEC-1 (buys same session or cancel; sells same session or next session with a bar). | `walkforward/stale_fills.txt`, `trades.csv`, `backend/decision-packet/` | Packet §8.1 (11 criteria) |
-| **R3-B-27** | Walk-forward backtest universe | **New (decision review).** The universe provider loads `exchange == 'NSE'` only, so all 2,431 dual-listed names (`exchange = 'BOTH'`: RELIANCE, TCS, INFY, HDFCBANK) are excluded. Expected by brief §1: Nifty 500 constituents. **Risk: the backtest runs on 1,018 mostly small names; this drives most of R3-B-09.** | **OPEN. Owner decision B09-6** (methodology: changes results). | `backend/decision-packet/` | RELIANCE present in the universe; re-baselined result |
-| **R3-B-28** | Walk-forward backtest universe | **New (decision review).** No equity filter: 353 of 1,018 names are ETFs or fund units; EBBETF0425 was held. Expected by brief §1: equities. | **OPEN. Owner decision B09-6.** | `backend/decision-packet/` | No non-equity ISIN in the universe |
+| **R3-B-09** | Walk-forward backtest | **27% of notional (176 of 649 trades) filled and marked at the last earlier bar** when a name had no bar on the fill date. Code docstring says skip. Example: 3PLAND bought 2025-01-01 at 81.50, last bar 2024-12-18. Expected by the docstring: skip. **Risk: backtest results are biased toward illiquid names and cannot support any claim.** | **Fixed in source** `371af70` (backtest method v2, brief-addendum-execution-v2.md): a fill needs a valid bar dated on its session (buys within 5 sessions, sells until filled), fills are capped at 10% of traded value, the ledger changes only through fills, and the trade-log replay must equal it. An independent reference agrees fill for fill (`tests/reference/`). On real data: 0 stale fills in 2,823. Not deployed. Recalculated returns are simulations, not validated performance. | `walkforward/stale_fills.txt`, `trades.csv`, `backend/decision-packet/` | Packet §8.1 (11 criteria) |
+| **R3-B-27** | Walk-forward backtest universe | **New (decision review).** The universe provider loads `exchange == 'NSE'` only, so all 2,431 dual-listed names (`exchange = 'BOTH'`: RELIANCE, TCS, INFY, HDFCBANK) are excluded. Expected by brief §1: Nifty 500 constituents. **Risk: the backtest runs on 1,018 mostly small names; this drives most of R3-B-09.** | **Fixed in source** `371af70`, `79a4e99`: one reference equity universe (NSE and `BOTH`, `domain/universe.py`) for the backtest, screener, RS and research. Not deployed. | `backend/decision-packet/` | RELIANCE present in the universe; re-baselined result |
+| **R3-B-28** | Walk-forward backtest universe | **New (decision review).** No equity filter: 353 of 1,018 names are ETFs or fund units; EBBETF0425 was held. Expected by brief §1: equities. | **Fixed in source** `371af70`, `79a4e99`: fund and ETF units (`INF…`) are out of the reference universe. Not deployed. | `backend/decision-packet/` | No non-equity ISIN in the universe |
 
-| **R3-B-30** | Walk-forward backtest prices | **New (Stage A).** The price provider drops every bar with `adj_close` NULL: 553,534 bars (17%; 42% of 2026). All have `adj_factor = 1`, so `close × adj_factor` prices them exactly. Names that traded look absent. With the corrected universe over 2021–2026, the result moves from +334% to +281%. | **OPEN. Owner decision S-13** (one adjusted-price rule). | `backend/decision-packet/stage-a/` | No bar with a valid `close` and `adj_factor` is dropped |
-| **R3-B-31** | Security master identity | **New (Stage A).** Renames are split across unlinked rows (TWL → TITAGARH on 2023-06-19; MAGMA → POONAWALLA; MEGASOFT and SIGMAADV share one ISIN). The backtest froze MAGMA at its 2021 price for 1,269 sessions. The screener and RS treat successors as new listings. A heuristic finds up to 334 candidate pairs (not verified). **Risk: wrong holdings in backtests; successors excluded from screening for about a year.** | **OPEN. Owner decision S-5** (needs an authoritative symbol-change source). | `stage-a/stuckA.json` | TWL → TITAGARH carries a position 1:1; successor RS uses predecessor history |
+| **R3-B-30** | Walk-forward backtest prices | **New (Stage A).** The price provider drops every bar with `adj_close` NULL: 553,534 bars (17%; 42% of 2026). All have `adj_factor = 1`, so `close × adj_factor` prices them exactly. Names that traded look absent. With the corrected universe over 2021–2026, the result moves from +334% to +281%. | **Fixed in source** `371af70`, `79a4e99`, `3a30583`, `230e0e6`: every price is `close × adj_factor`. The stored `adj_close` is not an input. Reconciled read-only (`stage-b/adjustment_reconciliation.txt`): stored factors match the actions on all 3,206,035 bars, with 0 factor steps without an action and 0 actions without a step. 55,271 bars (98 names) store an `adj_close` from a 4-dp factor (median gap 0.01%, max 0.28%). No engine reads it. The repair stays with R3-B-18. Not deployed. | `backend/decision-packet/stage-a/` | No bar with a valid `close` and `adj_factor` is dropped |
+| **R3-B-31** | Security master identity | **New (Stage A).** Renames are split across unlinked rows (TWL → TITAGARH on 2023-06-19; MAGMA → POONAWALLA; MEGASOFT and SIGMAADV share one ISIN). The backtest froze MAGMA at its 2021 price for 1,269 sessions. The screener and RS treat successors as new listings. A heuristic finds up to 334 candidate pairs (not verified). **Risk: wrong holdings in backtests; successors excluded from screening for about a year.** | **Mechanism in source** `688631c`: the versioned `security_identity_links` table (migration 0022), the import CLI with SHA-256 evidence, backtest carry-over and history stitching. **OPEN for data:** the table is empty, because no authoritative rename evidence exists on disk and downloads are prohibited. Every renamed holding (MAGMA, TWL and the 334 heuristic candidates) stays flagged "no verified identity link". **Owner action S-5:** supply an evidence file. | `stage-a/stuckA.json` | TWL → TITAGARH carries a position 1:1; successor RS uses predecessor history |
 
 **Release blocker:** R3-B-09, for any backtest claim. The live screener is not affected. After the fix, G3 can pass for fill correctness only; the backtest still makes no performance claim (stub membership and surveillance, loop-3 Item 13).
 
@@ -29,8 +56,8 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 
 | ID | Component | Finding | Status |
 |---|---|---|---|
-| R3-B-10 | Screening vs spec §8 | Four differences: RS ranked over all equities (1,253 of 1,338 ratings change, 39 cross 70); `rel_volume` 49-session prior mean; EMA first-value seed; rank tie-break by `security_id`. | **OPEN. Investigated, awaiting owner decision (B10-1 to B10-7).** Reproduced (RS 0 mismatches, ranks 155/155). Recommended: (1) RS population: **owner clarification**; default all active equities with valid RS inputs, which removes 1,137 invalid inputs on run 149; Top-25 swaps 0–6 names per run over 8 runs. (2) `rel_volume`: fix code to spec; Top-25 unchanged. (3) EMA seed: fix code to spec; no screening effect. (4) Tie-break: fix code to `symbol`; 0 production ranks change. Packet §6, §8.2. |
-| R3-B-32 | Research forward returns | **New (Stage A).** Forward returns count the security's own next *h* bars, so a name with trading gaps gets a longer calendar horizon. In-Sample Top-25 names with gaps: 65.7% stored against 50.3% on exchange sessions (120 sessions). | **OPEN. Owner decision S-11** (research methodology; not part of engine v2). |
+| R3-B-10 | Screening vs spec §8 | Four differences: RS ranked over all equities (1,253 of 1,338 ratings change, 39 cross 70); `rel_volume` 49-session prior mean; EMA first-value seed; rank tie-break by `security_id`. | **Fixed in source** `79a4e99` (engine v2; ENGINE_VERSION 2, INDICATOR_VERSION 3). RS is calendar-aligned on NSE sessions, with the anchor at most 5 sessions early (S-4). It needs 253 bars and ranks the reference population. `rel_volume` uses the same 50 bars as `avg_volume50`. EMA and MACD are SMA-seeded and match the browser golden fixture to 1e-9. Ties break by symbol, ISIN, then security_id (S-7). Runs before and after are not comparable, and score history marks the break (`ed220b6`). Not deployed. |
+| R3-B-32 | Research forward returns | **New (Stage A).** Forward returns count the security's own next *h* bars, so a name with trading gaps gets a longer calendar horizon. In-Sample Top-25 names with gaps: 65.7% stored against 50.3% on exchange sessions (120 sessions). | **Fixed in source** `3a30583`. Horizons count NSE sessions. The exit is the last bar on or before the h-th session, stored with `exit_stale_sessions`. `horizon_basis` is in the key (migration 0023), so old `own_bars` rows are kept and never mixed with new ones. **No session-basis backfill has run** on any real database. The validation surfaces show no matured rows until the owner approves one. Not deployed. |
 | R3-B-01 | Backend tests | 6 period-bar unit tests failed at HEAD (fake still had `get_active`). Docs claimed green. | Fixed `4d485aa` |
 | R3-B-03 | Run API and CLI | Returned the newest completed run by date, not the run just written. | Fixed `f3e9110` |
 | R3-B-04 | Screening | Two identical concurrent screens gave HTTP 500, not 409. | Fixed `45bbd83` |
@@ -78,13 +105,15 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 | R3-B-23 | Unclosed httpx client; 20 unclosed test connections; no body-size cap. | OPEN |
 | R3-B-24 | Ad hoc research tables and views in the application database. | OPEN |
 | R3-O-04 | `/strategies` hard load lost its `h1` once in the 234-case run; did not reproduce on four reruns. | NOT VERIFIED (root cause). Re-check in the final run. |
-| R3-B-29 | **New (decision review).** The scoring engine leaves gate engines out of both weighted scores (`scoring_engine.py:119`); spec §10 sums every engine. The code documents it, and it is rank-neutral among names that pass the gates. | OPEN. Owner decision B10-7 (recommended: amend spec). |
+| R3-B-29 | **New (decision review).** The scoring engine leaves gate engines out of both weighted scores (`scoring_engine.py:119`); spec §10 sums every engine. The code documents it, and it is rank-neutral among names that pass the gates. | **Spec aligned** `f6ce742`: IMPLEMENTATION_SPEC §10 now leaves gate engines out of both weighted scores, as the code does (B10-7 default). Rank-neutral. Owner to confirm. |
 
 ## Decisions needed from the owner
 
-1. **R3-B-09, R3-B-27, R3-B-28** — backtest fill policy, signal freshness and universe. Questions B09-1 to B09-8, each with a recommended default, in the [decision packet](R3-B-09_R3-B-10_DECISION_PACKET.md) §1.
-2. **R3-B-10, R3-B-29** — the four spec differences plus the scoring-spec note. Questions B10-1 to B10-7, same packet. B10-5 depends on item 4 below (Q4, `ENGINE_VERSION`).
-   **Stage A update:** [STAGE_A_FINANCIAL_METHODOLOGY_SPEC.md](STAGE_A_FINANCIAL_METHODOLOGY_SPEC.md) §1 maps all 15 questions to the owner direction and adds S-1 to S-13 (R3-B-30, R3-B-31, R3-B-32 included). The open items that need a real choice are: S-4 (RS window alignment, no default taken), S-7 / B10-4 (the tie-break conflicts with ADD §21), S-5 (identity-chain data source) and S-8 (amend ADR-014 §10).
+1. **R3-B-31 (S-5)** — supply an identity-link file from authoritative exchange evidence (one row per rename: ids, effective date, ratio, source, and a reference with the document's SHA-256). Load it with `momentum25 import-identity-links FILE.csv`. Until then every renamed holding is flagged and no link is applied.
+2. **R3-B-32** — approve a session-basis forward-return backfill on the development database (it writes new rows beside the old ones and rewrites nothing). Until then the validation surfaces show no matured rows.
+   **R3-B-29** — confirm the spec amendment (gate engines out of both weighted scores).
+   **S-10** — not done: checking the trading gaps against one exchange bhavcopy needs an external download, which this stage prohibits. The EQ-only ingest lead stays unverified.
+   The Stage B decisions (S-1 to S-13 as answered) are implemented. See the Stage B note at the top.
 3. **R3-B-08** — confirm (or revert `51f3239`) the read-path RS universe.
 4. **R3-B-12 / R3-U-09** — what code version the manifest records.
 5. **R3-B-13** — the `/live` `data_as_of` contract.

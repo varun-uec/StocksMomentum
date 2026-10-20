@@ -15,8 +15,8 @@ Date: 2026-10-20. Branch `wickstreet/m10-m11`. No financial methodology was chan
 | In-Sample / hold-out boundaries | **PASS** |
 | Run identity and same-session corrections (R2-LIMIT-01) | **PASS** (resolved) |
 | Walk-forward backtest: reproducibility | **PASS** |
-| Walk-forward backtest: fill and mark prices | **FAIL — open, owner decision (R3-B-09)** |
-| Differences from spec §8 and the strategy config | **FAIL — open, owner decision (R3-B-10)** |
+| Walk-forward backtest: fill and mark prices | **Fixed in source, Stage B (R3-B-09)**; not deployed |
+| Differences from spec §8 and the strategy config | **Fixed in source, Stage B (R3-B-10)**; not deployed |
 
 ## How the checks were made
 
@@ -80,6 +80,20 @@ Date: 2026-10-20. Branch `wickstreet/m10-m11`. No financial methodology was chan
 | Walk-forward reproducibility | Two runs (2025-01 → 2026-07) have identical SHA-256. 19 rebalances, every fill dated after its decision. |
 
 ## Open financial findings
+
+## Stage B update, 2026-10-20
+
+The owner accepted the Stage A direction and authorised a bounded Stage B. The fixes below are in source on local commits (`f6ce742` to `8e096b2`). Nothing is deployed or pushed. No real database was changed, and the hold-out was not read.
+
+| Finding | What changed | How it is checked |
+|---|---|---|
+| R3-B-09, R3-B-27, R3-B-28, R3-B-30 | Backtest method v2 (`brief-addendum-execution-v2.md`). A fill needs a valid bar dated on its session. Buys wait at most 5 sessions and sells wait until they fill. Each fill is capped at 10% of the session's traded value. The ledger changes only through fills. The universe is NSE and `BOTH` equities. Prices are `close × adj_factor`. | An independent reference (no app imports) agrees fill for fill on a 91-name synthetic market. Mutations of the window or the cap fail the test. The trade-log replay must equal the ledger exactly. On real data, 2,823 fills match a separate simulator, with 0 stale fills. |
+| R3-B-10 | Engine v2. RS is calendar-aligned on NSE sessions with a 5-session anchor tolerance and 253 bars, over the reference population. `rel_volume` uses the same 50 bars. EMA and MACD are SMA-seeded. Ties break by symbol, ISIN, then security_id. | Golden parity with the browser fixture to 1e-9. Unit tests cover each RS rule. Runs carry ENGINE_VERSION 2 and INDICATOR_VERSION 3, and score history marks the break. |
+| R3-B-30 (values and dates) | Reconciled read-only (`backend/decision-packet/stage-b/`). | Stored factors equal the action product on all 3,206,035 bars. Every factor step has its action, and every priced action has its step. 55,271 bars hold an `adj_close` made with a 4-dp factor (median gap 0.01%, max 0.28%). No engine reads that column. |
+| R3-B-31 | Verified identity links: a versioned table, an import CLI that needs SHA-256 evidence, backtest carry-over and history stitching. | The reference agrees transfer for transfer on a synthetic rename with ratio 2. **The table is empty:** no authoritative rename evidence exists on disk. Renamed holdings stay flagged. |
+| R3-B-32 | Forward returns count NSE sessions, store the exit staleness, and keep the basis in the key. Old rows are kept. | Unit and integration tests. **No session-basis backfill has run.** |
+
+Final regression (2026-10-21): backend 1,036 passed; web 148 passed; Playwright 229 passed, 0 failed, 8 opt-in skipped. Recalculated backtest returns are simulations, not validated investment performance. This update does not claim release readiness.
 
 ### R3-B-09 (P1, methodology — STOP) Walk-forward fills use a stale price
 

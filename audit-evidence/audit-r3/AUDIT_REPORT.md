@@ -2,6 +2,8 @@
 
 Date: 2026-10-20. Branch `wickstreet/m10-m11`, local only, nothing pushed, published or deployed. Audit base `1977039`. 35 local commits of fixes, tests and evidence.
 
+> **Later update, 2026-10-20 (Stage B).** After this report, the owner authorised a bounded Stage B. R3-B-09, R3-B-10, R3-B-27, R3-B-28, R3-B-30 and R3-B-32 are now fixed in source, not deployed. R3-B-31 has its mechanism but no verified link data. The verdicts below are the audit's record as of its date. The current status is in [REMEDIATION_REGISTER.md](REMEDIATION_REGISTER.md) and the Stage B section of [FINANCIAL_CORRECTNESS_REPORT.md](FINANCIAL_CORRECTNESS_REPORT.md). The release verdict does not change: not ready.
+
 ## 1. The answer
 
 **Is the platform functionally correct, financially trustworthy, operationally reliable, seamlessly integrated and ready for its intended release? Not yet.** Correctness and integration are now strong. Operations and release rights are not ready.

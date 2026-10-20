@@ -51,7 +51,18 @@ Full record: [audit-evidence/audit-r3/AUDIT_REPORT.md](../../audit-evidence/audi
 
 Fixed in source in Round 3: import date guard (R3-B-02), run identity and conflict handling (R3-B-03, R3-B-04), scheduler trigger, weekday numbering and catch-up (R3-B-05, R3-B-11, R3-B-26), log masking (R3-B-06), read-path RS universe (R3-B-08, owner to confirm), `data_version` no longer hashes the git commit (R3-U-09, ADR-014 §10), never-saved documents read as revision 0 (R3-U-06, ADR-013 §5), rate limit 1,200 a minute with `Retry-After` (R3-U-08), WCAG 2.x A and AA on every route in both themes (R3-U-02 to R3-U-05, R3-U-12), stale stored strategy (R3-U-10), `/validation` strategy picker and `config_hash` (R3-U-07), bundle size (R3-U-01), improved-rank arrow (R3-U-11), compose memory caps and `restart: unless-stopped` with isolated test databases (R3-O-01, R3-O-02).
 
-Open: R3-B-09 and R3-B-10 (methodology, owner), R3-B-13 to R3-B-16, R3-B-18, R3-B-22 (ADR-056 does not exist), dependency audits, licence, data rights, name.
+**Stage B, 2026-10-20 (owner-authorised, bounded).** Fixed in source, not deployed:
+
+- engine v2 (R3-B-10): reference universe, calendar-aligned RS, tie-break, indicators v3;
+- backtest method v2 (R3-B-09, R3-B-27, R3-B-28, R3-B-30);
+- identity schema 3;
+- verified identity links (the R3-B-31 mechanism);
+- session-bounded forward returns (R3-B-32);
+- methodology provenance on runs, score history and comparisons.
+
+Records: [REMEDIATION_REGISTER.md](../../audit-evidence/audit-r3/REMEDIATION_REGISTER.md) and the Stage B section of [FINANCIAL_CORRECTNESS_REPORT.md](../../audit-evidence/audit-r3/FINANCIAL_CORRECTNESS_REPORT.md). Runs before engine v2 are not comparable with runs after it. Research reports dated before 2026-10-20 quote engine 1 results and own-bars forward returns (`horizon_basis = 'own_bars'`). They stay as written and are not comparable with engine v2 numbers.
+
+Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-13 to R3-B-16, R3-B-18, R3-B-22 (ADR-056 does not exist), dependency audits, licence, data rights, name.
 
 ## Delivery record
 
