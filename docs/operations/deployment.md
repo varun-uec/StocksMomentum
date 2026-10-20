@@ -159,3 +159,21 @@ All logs are structured JSON with the following keys:
 - `request_id`: Per-request correlation ID
 - `correlation_id`: Distributed tracing ID
 - `duration_ms`: Operation duration in milliseconds (where applicable)
+
+## Test databases and memory limits
+
+The development stack and test databases share one Docker VM (8 GB on the reference machine). A restored real-data copy on tmpfs once filled that VM, and the development API was OOM-killed. These rules prevent a repeat.
+
+- **Stack limits.** `docker-compose.yml` caps `db` and `api` at 2 GB and 2 CPUs each, and `redis` at 256 MB and 0.5 CPU. All three restart `unless-stopped`.
+- **Test databases.** Use `scripts/test-infra.sh` or the Make targets, never a hand-made container:
+  - `make test-db` starts `m25-test` on port 65479 with database `momentum25_test`. Then run `M25_DATABASE_URL=<printed URL> make test`.
+  - `make e2e-db` starts `m25-e2e` on port 65480 with an empty `momentum25_e2e` database for Playwright.
+  - `make test-infra-down` removes both containers and their volumes.
+  - `scripts/test-infra.sh up NAME PORT [MEMORY_MB] [DB_NAME]` starts any other copy, for example for a restored dump. `scripts/test-infra.sh list` and `scripts/test-infra.sh free` show what runs and how much memory is free.
+- **What the script enforces.**
+  - Data lives on a named volume, never tmpfs.
+  - Each container has a hard memory cap (default 2 GB), and `shared_buffers` is a quarter of it.
+  - It refuses to start when the VM's free memory is below the cap plus `MIN_FREE_MB` (default 1024 MB).
+  - It binds 127.0.0.1 only, and removes only containers it labelled `wickstreet.test-infra=true`.
+- **Never** point a test, seed or restore at the `momentum25` database. The suite refuses any database whose name does not end in `_test`.
+

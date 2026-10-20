@@ -54,8 +54,8 @@ Web checks:
 
 ```bash
 cd web && npm test && npm run lint   # Vitest, ESLint
-make e2e-db                           # create an empty momentum25_e2e database
-E2E_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_e2e make web-test
+make e2e-db                           # isolated, memory-capped Postgres with an empty momentum25_e2e
+E2E_DATABASE_URL=postgresql+asyncpg://momentum25:momentum25@127.0.0.1:65480/momentum25_e2e make web-test
                                       # Playwright seeds synthetic fixtures; it refuses a copied or app database
 ```
 
