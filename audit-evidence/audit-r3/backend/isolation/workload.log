@@ -1,0 +1,21 @@
+## 12:47:10 free before: 5767 MB free in the Docker VM
+postgresql+asyncpg://momentum25:momentum25@127.0.0.1:65473/momentum25_restore
+## 12:47:16 dump dev DB (read-only pg_dump)
+dump bytes 686820021
+## 12:47:36 restore -j 4 into r3-iso + backend pytest concurrently
+restore exit=0 12s
+971 passed, 2 warnings in 50.45s
+pytest exit=0
+restored ohlcv rows 3206035
+r3-iso OOMKilled=false status=running
+## 12:48:32 free after: 5151 MB free in the Docker VM
+## round 2 12:58:24: second restore + full-universe screen on the restored copy + backend pytest, concurrently
+restore2 exit=0 18s
+Screening result run 150 for minervini_trend_template using stored data.
+           226082816  maximum resident set size
+2 failed, 969 passed, 2 warnings in 62.89s (0:01:02)
+r3-iso OOMKilled=false status=running
+## round 2 end 12:59:28, free: 4710 MB free in the Docker VM
+
+Note: the 2 failures in round 2 are the two old W4 document tests (404 expectation), run before they were updated for revision 0. Updated suite: see final run.
+The dev container ran its own 18:30 IST daily job at 13:00 UTC during the poll; health stayed 200 (dev_api_scheduler_1300utc.txt).

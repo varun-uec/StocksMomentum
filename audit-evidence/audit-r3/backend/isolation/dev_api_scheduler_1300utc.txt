@@ -1,0 +1,7 @@
+Running job "_run_daily_screening_job (trigger: cron[month='*', day='*', day_of_week='1-5', hour='18', minute='30'], next run at: 2026-10-21 18:30:00 IST)" (scheduled at 2026-10-20 18:30:00+05:30)
+{"strategies": ["minervini_trend_template"], "event": "daily_screening_job_started", "level": "info", "timestamp": "2026-10-20T13:00:00.047168Z"}
+{"run_id": 150, "strategy": "minervini_trend_template", "event": "screening_job_completed", "level": "info", "timestamp": "2026-10-20T13:00:37.298948Z"}
+{"strategy_count": 1, "event": "daily_screening_job_completed", "level": "info", "timestamp": "2026-10-20T13:00:37.299113Z"}
+Job "_run_daily_screening_job (trigger: cron[month='*', day='*', day_of_week='1-5', hour='18', minute='30'], next run at: 2026-10-21 18:30:00 IST)" executed successfully
+149|2026-10-19|MANUAL|8790a000bd4f|COMPLETED|5961b9c2f74bc41bf3ba5c33101fefc1eda3a6a3|5961b9c2f74bc41bf3ba5c33101fefc1eda3a6a3|2026-10-20 10:26:44.329542+00
+150|2026-10-19|MANUAL|9c90de3657fc|COMPLETED|||2026-10-20 13:00:00.285218+00

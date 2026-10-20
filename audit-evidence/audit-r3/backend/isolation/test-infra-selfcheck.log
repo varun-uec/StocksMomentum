@@ -1,0 +1,10 @@
+test-infra: Docker VM has 5769 MB free; need 9000 MB plus 1024 MB headroom. Stop something first.
+exit=1
+postgresql+asyncpg://momentum25:momentum25@127.0.0.1:65472/smoke_test
+exit=0
+256MB
+mem=1073741824 tmpfs=map[] mounts=volume:r3-ti-check-data 
+r3-ti-check	Up 1 second	127.0.0.1:65472->5432/tcp
+test-infra: momentum25-db-1 is not a test-infra container; refusing to remove it
+exit=1
+removed r3-ti-check and r3-ti-check-data
