@@ -11,7 +11,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.market_data import OHLCVBar, OHLCVSeries
+from momentum25.domain.identity import IdentityLinks, with_history
 from momentum25.infrastructure.persistence.models import OHLCVDailyModel
+from momentum25.infrastructure.persistence.repositories.identity_links import load_identity_links
 
 
 class SqlOHLCVRepository:
@@ -20,6 +22,7 @@ class SqlOHLCVRepository:
     def __init__(self, session: AsyncSession) -> None:
         """Bind the repository to a unit-of-work session."""
         self._session = session
+        self._links: IdentityLinks | None = None
 
     async def upsert_bars(self, security_id: int, bars: list[OHLCVBar]) -> int:
         """Insert or update bars; return the number written."""
@@ -92,7 +95,20 @@ class SqlOHLCVRepository:
     async def get_series(
         self, security_id: int, lookback_days: int, as_of: date
     ) -> OHLCVSeries:
-        """Return the ascending price series up to ``as_of`` (most recent ``lookback_days``)."""
+        """Return the ascending price series up to ``as_of`` (most recent ``lookback_days``).
+
+        A verified rename continues the series through its predecessor
+        (R3-B-31, ``domain/identity.py``).
+        """
+        if self._links is None:
+            self._links = await load_identity_links(self._session)
+        own = await self._bars(security_id, as_of, lookback_days)
+        bars = await with_history(
+            own, self._links, security_id, as_of, lookback_days, self._bars
+        )
+        return OHLCVSeries(security_id=security_id, bars=tuple(bars))
+
+    async def _bars(self, security_id: int, as_of: date, limit: int) -> list[OHLCVBar]:
         result = await self._session.execute(
             select(OHLCVDailyModel)
             .where(
@@ -100,10 +116,10 @@ class SqlOHLCVRepository:
                 OHLCVDailyModel.date <= as_of,
             )
             .order_by(OHLCVDailyModel.date.desc())
-            .limit(lookback_days)
+            .limit(limit)
         )
         rows = list(reversed(result.scalars().all()))
-        bars = tuple(
+        return [
             OHLCVBar(
                 date=r.date,
                 open=r.open,
@@ -117,8 +133,7 @@ class SqlOHLCVRepository:
                 adj_factor=r.adj_factor,
             )
             for r in rows
-        )
-        return OHLCVSeries(security_id=security_id, bars=bars)
+        ]
 
     async def bars_by_security_on(self, on_date: date) -> dict[int, OHLCVBar]:
         """Return every current-provider bar on ``on_date`` keyed by ``security_id``.

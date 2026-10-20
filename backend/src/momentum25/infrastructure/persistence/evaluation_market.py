@@ -26,7 +26,7 @@ from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.domain.universe import reference_universe
 from momentum25.domain.value_objects.results import Ranking, StockScore
-from momentum25.infrastructure.persistence.history import VERSIONED
+from momentum25.infrastructure.persistence.history import ALL_VERSIONED
 from momentum25.infrastructure.persistence.point_in_time import (
     PointInTimeIndicatorPipeline,
     PointInTimeOHLCVRepository,
@@ -127,7 +127,7 @@ class PointInTimeMarket:
     async def incomplete_months(self, start: date, end: date) -> list[str]:
         """Months (``YYYY-MM``) with any ``reconstructed`` input row."""
         months = []
-        for table, (described, _) in VERSIONED.items():
+        for table, (described, _) in ALL_VERSIONED.items():
             t = visible(table, self._revision)
             if described is None:  # securities: the listing and delisting dates
                 columns = [t.c.listing_date, t.c.delisting_date]

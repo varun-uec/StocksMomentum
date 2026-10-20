@@ -42,7 +42,7 @@ A security is scored on D only if it has a valid bar dated D. Lookback prices ke
 
 - NAV(s) = cash + Σ quantity × the last adjusted close on or before s.
 - A **non-trading holding** has no bar for more than 20 sessions. It stays held and marked at its last close; it is never sold at a stale price and never written off automatically (S-6). Every result reports the NAV share in non-trading holdings and a lower bound with those holdings at zero.
-- A held security joined to a successor by a verified identity link carries over 1:1 × ratio on the link's effective date. A security without a link is flagged "no verified identity link".
+- A held security joined to a successor by a verified identity link carries over on the link's effective date: the successor receives shares × ratio, its live orders move with it (a sell's shares × ratio), and no cash or cost moves. The trade-log replay applies the same transfer before that session's fills. From the effective date, the successor's price history before its first bar is the predecessor's, price ÷ ratio. A security without a link is flagged "no verified identity link".
 - At the end date, pending orders close as `open_at_end`. Holdings are valued, not liquidated.
 
 ## 8. What a result reports

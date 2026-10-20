@@ -2,7 +2,8 @@
 
 The synthetic market is deterministic (no random source) and holds every case
 method v2 must handle: trading gaps, a delisting, thin-turnover sessions, a
-split, a fund unit, a dual-listed name, a BSE-only row and a late listing.
+split, a fund unit, a dual-listed name, a BSE-only row, a late listing and a
+verified rename carried to its successor.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from decimal import Decimal
 
 from momentum25.application.use_cases.walk_forward import WalkForwardRunner, _months_before
 from momentum25.domain.backtest.execution import ExecutionBar
+from momentum25.domain.identity import IdentityLink, IdentityLinks
 from momentum25.domain.ports.walk_forward import PricePoint
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SqlSurvivorshipEligibilityProvider,
@@ -33,6 +35,16 @@ GAPS = {
     41: CAL.sessions_between(JUNE_F, date(2022, 6, 30))[:4],
     42: CAL.sessions_between(JUNE_F, date(2022, 6, 30))[:5],
 }
+# A held name renamed mid-month: sid 52's bars stop before RENAME_DAY and sid 91
+# trades from it, 2 successor shares per predecessor share (prices halve).
+PREDECESSOR, SUCCESSOR, RENAME_DAY, RATIO = 52, 91, date(2023, 3, 15), Decimal(2)
+LINKS = [(PREDECESSOR, SUCCESSOR, RENAME_DAY, RATIO)]
+
+
+def _links() -> IdentityLinks:
+    return IdentityLinks(
+        IdentityLink(p, s, e, r, "synthetic", "test fixture") for p, s, e, r in LINKS
+    )
 
 
 def _q(x: float) -> Decimal:
@@ -42,12 +54,17 @@ def _q(x: float) -> Decimal:
 def _market() -> tuple[dict[int, list[tuple]], list[tuple]]:
     bars: dict[int, list[tuple]] = {}
     universe: list[tuple] = []
-    for sid in range(1, 91):
-        drift = 0.0002 * ((sid * 7) % 11 - 4) if sid not in GAPS else 0.003
-        price = 50.0 + sid
+    for sid in range(1, 92):
+        path = PREDECESSOR if sid == SUCCESSOR else sid
+        strong = path in GAPS or path == PREDECESSOR
+        drift = 0.003 if strong else 0.0002 * ((path * 7) % 11 - 4)
+        price = 50.0 + path
         rows = []
         for i, day in enumerate(DAYS):
-            price *= 1 + drift + 0.015 * math.sin(i * 0.21 + sid)
+            price *= 1 + drift + 0.015 * math.sin(i * 0.21 + path)
+            renamed = sid == PREDECESSOR and day >= RENAME_DAY
+            if renamed or (sid == SUCCESSOR and day < RENAME_DAY):
+                continue
             if sid % 9 == 0 and 300 <= i < 360:
                 continue  # a trading gap (suspension or trade-for-trade period)
             if sid == 17 and day > date(2023, 2, 15):
@@ -56,8 +73,9 @@ def _market() -> tuple[dict[int, list[tuple]], list[tuple]]:
                 continue  # an illiquid name that skips sessions
             if day in GAPS.get(sid, ()):
                 continue
-            close = _q(price)
-            open_ = _q(price * (1 + 0.004 * math.cos(i + sid)))
+            unit = price / float(RATIO) if sid == SUCCESSOR else price
+            close = _q(unit)
+            open_ = _q(unit * (1 + 0.004 * math.cos(i + path)))
             high, low = max(open_, close) + Decimal("0.5"), min(open_, close) - Decimal("0.5")
             turnover = Decimal(40_000) if sid % 5 == 0 and i % 3 == 0 else Decimal(50_000_000)
             factor = Decimal(1)
@@ -70,7 +88,7 @@ def _market() -> tuple[dict[int, list[tuple]], list[tuple]]:
         exchange = "BOTH" if sid % 4 == 0 else "NSE"
         isin = f"INE{sid:06d}01"
         listed = date(2015, 1, 1)
-        delisted = date(2023, 2, 15) if sid == 17 else None
+        delisted = {17: date(2023, 2, 15), PREDECESSOR: RENAME_DAY}.get(sid)
         if sid == 30:
             isin = "INF000030A01"  # a fund unit: excluded however strong
         if sid == 31:
@@ -113,10 +131,12 @@ class _Prices:
 
 def test_production_runner_matches_the_independent_reference() -> None:
     bars, universe = _market()
-    runner = WalkForwardRunner(CAL, _Prices(bars), SqlSurvivorshipEligibilityProvider(universe))
+    runner = WalkForwardRunner(
+        CAL, _Prices(bars), SqlSurvivorshipEligibilityProvider(universe), links=_links()
+    )
     result = runner.run(START, END, CAPITAL)
     sessions = CAL.sessions_between(_months_before(START, 13), END)
-    expected = reference.run(bars, universe, sessions, START, END, CAPITAL)
+    expected = reference.run(bars, universe, sessions, START, END, CAPITAL, LINKS)
 
     assert [r.selected for r in result.rebalances] == expected.selected
     produced = [
@@ -126,6 +146,11 @@ def test_production_runner_matches_the_independent_reference() -> None:
     assert produced == expected.fills
     closed = sorted((o.security_id, o.side, o.order_date, o.reason) for o in result.closed_orders)
     assert closed == sorted(expected.closed)
+    moves = [
+        (t.session, t.predecessor_id, t.successor_id, t.shares_out, t.shares_in)
+        for t in result.transfers
+    ]
+    assert moves == expected.transfers
     assert result.final_nav == expected.final_nav
     peak, worst = expected.navs[0], Decimal(0)
     for nav in expected.navs:
@@ -137,7 +162,9 @@ def test_production_runner_matches_the_independent_reference() -> None:
 def test_the_synthetic_market_exercises_every_rule() -> None:
     """Guards the fixture: if a case stops occurring, the agreement test proves less."""
     bars, universe = _market()
-    runner = WalkForwardRunner(CAL, _Prices(bars), SqlSurvivorshipEligibilityProvider(universe))
+    runner = WalkForwardRunner(
+        CAL, _Prices(bars), SqlSurvivorshipEligibilityProvider(universe), links=_links()
+    )
     result = runner.run(START, END, CAPITAL)
     selected = {sid for r in result.rebalances for sid in r.selected}
     reasons = {o.reason for o in result.closed_orders}
@@ -154,3 +181,18 @@ def test_the_synthetic_market_exercises_every_rule() -> None:
     late = [r for r in result.rebalances if 33 in r.selected]
     assert all(r.decision_date >= date(2023, 6, 1) for r in late)
     assert result.rebalances[0].scored_count < len(universe)
+    # The rename: the held predecessor moves to its successor, which is scored
+    # on the stitched history at the next decision and kept, not re-bought.
+    [move] = result.transfers
+    assert (move.session, move.predecessor_id, move.successor_id) == (
+        RENAME_DAY,
+        PREDECESSOR,
+        SUCCESSOR,
+    )
+    assert move.shares_in == move.shares_out * RATIO
+    april = next(r for r in result.rebalances if r.decision_date == date(2023, 3, 31))
+    assert SUCCESSOR in april.selected
+    assert not any(
+        t.security_id == SUCCESSOR and t.side == "BUY" and t.order_date < RENAME_DAY
+        for t in result.trades
+    )

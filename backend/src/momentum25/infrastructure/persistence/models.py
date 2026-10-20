@@ -31,8 +31,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 from momentum25.infrastructure.persistence.history import (
+    ALL_VERSIONED,
     PROVENANCE,
-    VERSIONED,
     history_table,
     install_on_create,
 )
@@ -58,7 +58,8 @@ class Versioned:
     @declared_attr
     def provenance(cls) -> Mapped[str]:  # noqa: N805 - SQLAlchemy passes the class
         """How far the row can be trusted as point in time; set per table."""
-        return mapped_column(String, nullable=False, server_default=VERSIONED[_table_name(cls)][1])
+        default = ALL_VERSIONED[_table_name(cls)][1]
+        return mapped_column(String, nullable=False, server_default=default)
 
     @declared_attr.directive
     def __table_args__(cls) -> tuple[Any, ...]:  # noqa: N805
@@ -146,6 +147,31 @@ class HistoricalUniverseModel(Versioned, Base):
     security_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     eligible: Mapped[bool] = mapped_column(Boolean, nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
+
+
+class SecurityIdentityLinkModel(Versioned, Base):
+    """A verified rename (R3-B-31, IMPLEMENTATION_SPEC §4).
+
+    Written only by ``momentum25 identity-links import`` from an owner-supplied
+    file with authoritative exchange evidence. Nothing infers a row.
+    """
+
+    __tablename__ = "security_identity_links"
+    _extra_table_args = (
+        CheckConstraint("predecessor_id <> successor_id", name="ck_identity_links_distinct"),
+        CheckConstraint("ratio > 0", name="ck_identity_links_ratio"),
+    )
+
+    predecessor_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("securities.id"), primary_key=True
+    )
+    successor_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("securities.id"), nullable=False, unique=True
+    )
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    ratio: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False, server_default="1")
+    evidence_source: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_reference: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class LegacyOHLCVDailyModel(Base):
@@ -565,6 +591,6 @@ class StrategyEvaluationModel(Base):
 
 # History tables of the versioned inputs, and their triggers in test schemas.
 HISTORY_TABLES = {
-    name: history_table(Base.metadata.tables[name], Base.metadata) for name in VERSIONED
+    name: history_table(Base.metadata.tables[name], Base.metadata) for name in ALL_VERSIONED
 }
 install_on_create(Base.metadata)

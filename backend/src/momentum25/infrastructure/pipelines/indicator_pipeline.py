@@ -19,12 +19,15 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.domain.entities.market_data import OHLCVBar
+from momentum25.domain.identity import IdentityLinks, with_history
 from momentum25.domain.value_objects.indicators import IndicatorSeriesSet, IndicatorSet
 from momentum25.infrastructure.logging.setup import get_logger
 from momentum25.infrastructure.persistence.models import (
     LegacyOHLCVDailyModel,
     OHLCVDailyModel,
 )
+from momentum25.infrastructure.persistence.repositories.identity_links import load_identity_links
 
 _logger = get_logger("indicator_pipeline")
 
@@ -566,6 +569,7 @@ class IndicatorPipelineImpl:
     def __init__(self, session: AsyncSession) -> None:
         """Bind to an async DB session for historical bar retrieval."""
         self._session = session
+        self._links: IdentityLinks | None = None
 
     async def compute(
         self, symbol: str, reference_date: date, config: dict[str, Any]
@@ -786,30 +790,45 @@ class IndicatorPipelineImpl:
     async def _fetch_bars(
         self, symbol: str, reference_date: date, min_bars: int
     ) -> list[Any] | None:
-        """Retrieve historical bars for *symbol* up to *reference_date*."""
+        """Retrieve historical bars for *symbol* up to *reference_date*.
+
+        A verified rename continues the bars through its predecessor (R3-B-31).
+        """
         from momentum25.infrastructure.persistence.models import SecurityModel
 
-        model = self._model
-        sec_subq = (
+        security_id = await self._session.scalar(
             select(SecurityModel.id)
             .where(SecurityModel.symbol == symbol, SecurityModel.is_active.is_(True))
             .limit(1)
-            .scalar_subquery()
         )
-        stmt = (
-            select(model)
-            .where(
-                model.security_id == sec_subq,
-                model.date <= reference_date,
-            )
-            .order_by(model.date.desc())
-            .limit(min_bars)
-        )
-        result = await self._session.execute(stmt)
-        rows = list(result.scalars().all())
-        if not rows:
+        if security_id is None:
             return None
-        return list(reversed(rows))
+        rows: list[Any] = await self._rows(security_id, reference_date, min_bars)
+        if self._links is None:
+            self._links = await load_identity_links(self._session)
+        if len(rows) < min_bars and self._links.history(security_id, reference_date):
+            rows = await with_history(
+                [_bar(r) for r in rows],
+                self._links,
+                security_id,
+                reference_date,
+                min_bars,
+                self._bars,
+            )
+        return rows or None
+
+    async def _rows(self, security_id: int, as_of: date, limit: int) -> list[Any]:
+        model = self._model
+        result = await self._session.execute(
+            select(model)
+            .where(model.security_id == security_id, model.date <= as_of)
+            .order_by(model.date.desc())
+            .limit(limit)
+        )
+        return list(reversed(result.scalars().all()))
+
+    async def _bars(self, security_id: int, as_of: date, limit: int) -> list[OHLCVBar]:
+        return [_bar(r) for r in await self._rows(security_id, as_of, limit)]
 
     @staticmethod
     def _to_dataframe(bars: list[Any]) -> pd.DataFrame:
@@ -864,6 +883,19 @@ class IndicatorPipelineImpl:
         if avg_vol == 0:
             return None
         return float(df["volume"].iloc[-1]) / avg_vol
+
+
+def _bar(row: Any) -> OHLCVBar:
+    """A stored row as a domain bar (the legacy archive has no adjustment columns)."""
+    return OHLCVBar(
+        date=row.date,
+        open=row.open,
+        high=row.high,
+        low=row.low,
+        close=row.close,
+        volume=row.volume,
+        adj_factor=getattr(row, "adj_factor", None) or Decimal(1),
+    )
 
 
 class LegacyIndicatorPipelineImpl(IndicatorPipelineImpl):

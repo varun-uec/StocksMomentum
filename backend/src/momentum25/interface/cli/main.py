@@ -15,6 +15,7 @@ from momentum25.application.use_cases.import_market_data import (
 )
 from momentum25.application.use_cases.walk_forward import format_walk_forward_report
 from momentum25.domain.errors import Momentum25Error
+from momentum25.domain.identity import IdentityLink
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
@@ -25,6 +26,10 @@ from momentum25.infrastructure.persistence.repositories import (
     SqlCorporateActionRepository,
     SqlOHLCVRepository,
     SqlSecurityRepository,
+)
+from momentum25.infrastructure.persistence.repositories.identity_links import (
+    import_identity_links,
+    read_import_file,
 )
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
@@ -134,6 +139,32 @@ async def _run_walk_forward(start: str, end: str, initial_capital: str) -> None:
     result = runner.run(start_date, end_date, Decimal(initial_capital))
     typer.echo(format_walk_forward_report(result))
     typer.echo(f"Market data: {manifest.market_data_version} (revision {manifest.revision})")
+
+
+@app.command(name="import-identity-links")
+def import_identity_links_command(
+    file: Path = typer.Argument(..., exists=True, readable=True, dir_okay=False),  # noqa: B008
+) -> None:
+    """Import verified renames from an owner-supplied CSV (R3-B-31).
+
+    Each row needs authoritative exchange evidence: the source and a reference
+    that names the document and carries its SHA-256. Nothing is inferred. The
+    whole file is checked before anything is written.
+    """
+    try:
+        links = read_import_file(file)
+        count = asyncio.run(_import_identity_links(links))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Imported {count} identity links.")
+
+
+async def _import_identity_links(links: list[IdentityLink]) -> int:
+    database = get_database()
+    async with database.session() as session:
+        count = await import_identity_links(session, links)
+        await session.commit()
+        return count
 
 
 async def _import_eod(file: Path, actions: Path | None) -> dict[str, int]:

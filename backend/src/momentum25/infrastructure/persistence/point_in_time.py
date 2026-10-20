@@ -31,10 +31,12 @@ from momentum25.domain.entities.market_data import (
 )
 from momentum25.domain.entities.security import Security
 from momentum25.domain.errors import LookAheadError
+from momentum25.domain.identity import IdentityLinks, with_history
 from momentum25.domain.ports.market_data import RawCorporateAction
 from momentum25.domain.value_objects.types import Symbol
-from momentum25.infrastructure.persistence.history import VERSIONED
+from momentum25.infrastructure.persistence.history import ALL_VERSIONED
 from momentum25.infrastructure.persistence.models import HISTORY_TABLES, Base
+from momentum25.infrastructure.persistence.repositories.identity_links import load_identity_links
 from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 
@@ -48,9 +50,9 @@ async def current_revision(session: AsyncSession) -> int:
     ``superseded_revision`` in its history table represents the delete. The
     greatest visible value therefore changes only with committed data.
     """
-    parts = [f"SELECT MAX(revision_id) AS revision FROM {table}" for table in VERSIONED] + [
+    parts = [f"SELECT MAX(revision_id) AS revision FROM {table}" for table in ALL_VERSIONED] + [
         f"SELECT MAX(superseded_revision) AS revision FROM {HISTORY_TABLES[table].name}"
-        for table in VERSIONED
+        for table in ALL_VERSIONED
     ]
     query = "SELECT COALESCE(MAX(revision), 0) FROM (" + " UNION ALL ".join(parts) + ") r"
     return int((await session.execute(text(query))).scalar_one())
@@ -90,6 +92,7 @@ class PointInTimeSource:
         # RS rating) with different lookbacks. Keep the longest read per date.
         self._bars: dict[tuple[int, date], tuple[int, list[OHLCVBar]]] = {}
         self._action_cache: dict[int, list[RawCorporateAction]] = {}
+        self._links: IdentityLinks | None = None
 
     def guard(self, as_of: date) -> None:
         """Refuse any read dated after the decision session."""
@@ -138,9 +141,21 @@ class PointInTimeSource:
         cached = self._bars.get((security_id, as_of))
         if cached is None or (cached[0] < limit and len(cached[1]) == cached[0]):
             fetch = max(limit, _MIN_READ)
-            cached = (fetch, await self._read_bars(security_id, as_of, fetch))
+            cached = (fetch, await self._linked_bars(security_id, as_of, fetch))
             self._bars[(security_id, as_of)] = cached
         return cached[1][-limit:]
+
+    async def _linked_bars(self, security_id: int, as_of: date, limit: int) -> list[OHLCVBar]:
+        """Own bars, continued through verified renames known at the revision (R3-B-31)."""
+        if self._links is None:
+            self._links = await load_identity_links(
+                self._session,
+                visible("security_identity_links", self.revision),
+                visible("ohlcv_daily", self.revision),
+                as_of=self.decision,
+            )
+        own = await self._read_bars(security_id, as_of, limit)
+        return await with_history(own, self._links, security_id, as_of, limit, self._read_bars)
 
     async def _read_bars(self, security_id: int, as_of: date, limit: int) -> list[OHLCVBar]:
         b = visible("ohlcv_daily", self.revision)

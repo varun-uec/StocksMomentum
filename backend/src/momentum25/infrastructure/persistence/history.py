@@ -49,6 +49,12 @@ VERSIONED: dict[str, tuple[str | None, str]] = {
     "benchmark_index_daily": ("date", "published"),
     "historical_universe": ("as_of_date", "reconstructed"),
 }
+# Versioned by a later migration (``0022_security_identity_links``), with the
+# same trigger function. ``VERSIONED`` stays as migration 0016 created it.
+VERSIONED_V2: dict[str, tuple[str | None, str]] = {
+    "security_identity_links": ("effective_date", "published"),
+}
+ALL_VERSIONED = VERSIONED | VERSIONED_V2
 
 # Compared without these. The first four change on every write. ``adj_factor``
 # and ``adj_close`` are derived: every new corporate action rewrites them on all
@@ -117,7 +123,17 @@ BEGIN
 END
 $$""",
     ]
-    for table, (described, _) in VERSIONED.items():
+    return statements + _triggers(VERSIONED)
+
+
+def ddl_v2() -> list[str]:
+    """The version-1 trigger on the tables of ``VERSIONED_V2``."""
+    return _triggers(VERSIONED_V2)
+
+
+def _triggers(tables: dict[str, tuple[str | None, str]]) -> list[str]:
+    statements = []
+    for table, (described, _) in tables.items():
         statements.append(f"DROP TRIGGER IF EXISTS {table}_versioned ON {table}")
         statements.append(
             f"CREATE TRIGGER {table}_versioned BEFORE INSERT OR UPDATE OR DELETE ON {table} "
@@ -186,5 +202,7 @@ def install_on_create(metadata: MetaData) -> None:
 
     @event.listens_for(metadata, "after_create")
     def _install(target: MetaData, connection: Connection, **_: object) -> None:
-        for statement in ddl_v1() + append_only_ddl(APPEND_ONLY) + evaluation_guard_ddl():
+        for statement in (
+            ddl_v1() + ddl_v2() + append_only_ddl(APPEND_ONLY) + evaluation_guard_ddl()
+        ):
             connection.execute(text(statement))

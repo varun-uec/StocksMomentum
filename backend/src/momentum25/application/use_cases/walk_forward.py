@@ -13,8 +13,11 @@ being ``brief-addendum-execution-v2.md`` (2026-10-20):
   the first valid execution bar on or after F: buys within the buy window,
   sells until filled. Each fill is capped at a share of the session's traded
   value; the rest waits. A new plan supersedes every live order.
-- Holdings and cash change only through fills. NAV is valued every session at
-  the last adjusted close on or before it.
+- Holdings and cash change only through fills, and through a verified rename
+  (R3-B-31): on its effective date the holding and its live orders move to
+  the successor, shares × ratio. Price history continues through the
+  predecessor from that date. NAV is valued every session at the last
+  adjusted close on or before it.
 
 The runner re-checks the session date on every price it receives and refuses
 any dated after the session it asked about (brief §9).
@@ -23,6 +26,7 @@ any dated after the session it asked about (brief §9).
 from __future__ import annotations
 
 from bisect import bisect_right
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -37,6 +41,7 @@ from momentum25.domain.backtest.execution import (
     Fill,
     Ledger,
     Order,
+    Transfer,
 )
 from momentum25.domain.backtest.momentum_signal import (
     MomentumSignal,
@@ -45,6 +50,7 @@ from momentum25.domain.backtest.momentum_signal import (
 from momentum25.domain.backtest.portfolio_step import COST_BPS, plan_equal_weight_rebalance
 from momentum25.domain.backtest.rebalance import rank_signals, select_portfolio
 from momentum25.domain.errors import LookAheadError
+from momentum25.domain.identity import IdentityLinks
 from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.ports.walk_forward import (
     BenchmarkProvider,
@@ -143,6 +149,7 @@ class WalkForwardResult:
     lower_bound_nav: Decimal | None = None
     closed_orders: tuple[ClosedOrder, ...] = ()
     nontrading_holdings: tuple[NonTradingHolding, ...] = ()
+    transfers: tuple[Transfer, ...] = ()
 
 
 def format_walk_forward_report(result: WalkForwardResult) -> str:
@@ -196,13 +203,18 @@ class WalkForwardRunner:
         universe: EligibilityFactsProvider,
         benchmark: BenchmarkProvider | None = None,
         policy: ExecutionPolicy | None = None,
+        links: IdentityLinks | None = None,
     ) -> None:
-        """Bind the runner to a calendar, its point-in-time data providers and the policy."""
+        """Bind the runner to a calendar, its point-in-time data providers and the policy.
+
+        ``links`` are the applicable verified renames (``domain/identity.py``).
+        """
         self._calendar = calendar
         self._prices = prices
         self._universe = universe
         self._benchmark = benchmark
         self._policy = policy or ExecutionPolicy()
+        self._links = links or IdentityLinks()
 
     def run(self, start: date, end: date, initial_capital: Decimal) -> WalkForwardResult:
         """Execute the backtest over ``[start, end]``.
@@ -224,6 +236,7 @@ class WalkForwardRunner:
         for index, session in enumerate(sessions):
             if not rebalance_dates or session < rebalance_dates[0]:
                 continue
+            self._carry_over(session, ledger, executor)
             if session in rebalance_set and index > 0:
                 plans.append(self._rebalance(sessions, index, executor, ledger))
             elif executor.pending:
@@ -234,7 +247,9 @@ class WalkForwardRunner:
         if rebalance_dates:
             executor.close_all_at_end(end)
         trades = tuple(_to_trade(f) for f in ledger.fills)
-        final_nav = _reconstruct_nav_from_trades(list(trades), initial_capital, self._prices, end)
+        final_nav = _reconstruct_nav_from_trades(
+            list(trades), ledger.transfers, initial_capital, self._price_point, end
+        )
         ledger_nav = self._valuation(ledger, end)
         if final_nav != ledger_nav:  # the two paths are independent by construction
             raise AssertionError(f"trade-log NAV {final_nav} differs from ledger NAV {ledger_nav}")
@@ -257,7 +272,21 @@ class WalkForwardRunner:
             lower_bound_nav=lower,
             closed_orders=tuple(executor.closed),
             nontrading_holdings=nontrading,
+            transfers=tuple(ledger.transfers),
         )
+
+    def _carry_over(self, session: date, ledger: Ledger, executor: Executor) -> None:
+        """Apply every verified rename effective by ``session``, chains to their end."""
+        moved = True
+        while moved:
+            moved = False
+            for link in self._links:
+                if link.effective_date > session:
+                    continue
+                if link.predecessor_id in ledger.holdings:
+                    ledger.transfer(link, session)
+                    moved = True
+                executor.retarget(link)
 
     # ── One rebalance ─────────────────────────────────────────────────────
 
@@ -403,13 +432,25 @@ class WalkForwardRunner:
         this with a deliberately leaky provider.
         """
         point = self._prices.price_on_or_before(security_id, target, as_of)
-        if point is None:
-            return None
-        if point.session_date > as_of:
+        if point is not None and point.session_date > as_of:
             raise LookAheadError(
                 f"price for security {security_id} dated {point.session_date} "
                 f"is after decision date {as_of}"
             )
+        link = self._links.predecessor_of(security_id)
+        if point is None and link is not None and link.effective_date <= as_of:
+            # Before its first bar, a successor's history is its predecessor's,
+            # restated per successor share.
+            older = self._price_point(
+                link.predecessor_id, min(target, link.last_predecessor_day), as_of
+            )
+            if older is not None:
+                return PricePoint(
+                    security_id,
+                    older.session_date,
+                    older.adj_close / link.ratio,
+                    older.adj_open / link.ratio,
+                )
         return point
 
     def _execution_bar(self, security_id: int, session: date) -> ExecutionBar | None:
@@ -534,27 +575,39 @@ def _cagr(initial: Decimal, final: Decimal, first: date, end: date) -> Decimal |
 
 def _reconstruct_nav_from_trades(
     trades: list[TradeRecord],
+    transfers: list[Transfer],
     initial_capital: Decimal,
-    prices: PriceHistoryProvider,
+    price: Callable[[int, date, date], PricePoint | None],
     end: date,
 ) -> Decimal:
     """Recompute terminal NAV purely from the trade log (addendum §3, item 14).
 
     This deliberately ignores the runner's ledger. It replays cash and share
-    quantities from the recorded fills, then marks the surviving positions at
+    quantities from the recorded fills and rename transfers (a transfer comes
+    before the fills of its session), then marks the surviving positions at
     ``end``'s adjusted close. The runner raises if the two disagree.
     """
     cash = initial_capital
     qty: dict[int, Decimal] = {}
+    pending = list(transfers)
+
+    def carry(until: date | None) -> None:
+        while pending and (until is None or pending[0].session <= until):
+            move = pending.pop(0)
+            held = qty.pop(move.predecessor_id, _ZERO)
+            qty[move.successor_id] = qty.get(move.successor_id, _ZERO) + held * move.ratio
+
     for t in trades:  # in fill order
+        carry(t.fill_date)
         cash -= t.notional
         cash -= t.cost
         qty[t.security_id] = qty.get(t.security_id, _ZERO) + t.quantity
+    carry(None)
     nav = cash
     for sid, held in sorted(qty.items()):
         if held == 0:
             continue
-        point = prices.price_on_or_before(sid, end, end)
+        point = price(sid, end, end)
         if point is not None:
             nav += held * point.adj_close
     return nav

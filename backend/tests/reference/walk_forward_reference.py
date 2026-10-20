@@ -9,6 +9,10 @@ Inputs are plain data:
                ascending by date
     universe:  [(security_id, exchange, isin, listing_date, delisting_date), ...] in id order
     sessions:  every exchange session from 13 months before ``start`` to ``end``
+    links:     [(predecessor_id, successor_id, effective_date, ratio), ...], verified
+               renames (IMPLEMENTATION_SPEC §4): from the effective date the holding
+               moves to the successor (shares × ratio) and the successor's history
+               before its first bar is the predecessor's, price ÷ ratio
 """
 
 from __future__ import annotations
@@ -92,10 +96,41 @@ class Outcome:
     selected: list[tuple[int, ...]] = field(default_factory=list)
     final_nav: Decimal = ZERO
     holdings: dict[int, Decimal] = field(default_factory=dict)
+    transfers: list[tuple] = field(default_factory=list)  # (day, pred, succ, out, in)
 
 
-def run(bars, universe, sessions, start: date, end: date, capital: Decimal) -> Outcome:
+def run(bars, universe, sessions, start: date, end: date, capital: Decimal, links=()) -> Outcome:
     mkt = Market(bars)
+    into = {succ: (pred, eff, ratio) for pred, succ, eff, ratio in links}
+
+    def close_back(sid: int, target: date, as_of: date) -> Decimal | None:
+        """Last close on or before ``target``; before a successor's first bar, its
+        predecessor's close ÷ ratio once ``as_of`` reaches the effective date."""
+        bar = mkt.last(sid, target)
+        if bar is not None:
+            return bar.close
+        if sid in into and into[sid][1] <= as_of:
+            pred, eff, ratio = into[sid]
+            older = close_back(pred, min(target, eff - timedelta(days=1)), as_of)
+            return None if older is None else older / ratio
+        return None
+
+    def carry(day: date) -> None:
+        changed = True
+        while changed:
+            changed = False
+            for pred, succ, eff, ratio in sorted(links):
+                if eff > day:
+                    continue
+                if pred in held:
+                    out_ = held.pop(pred)
+                    held[succ] = held.get(succ, ZERO) + out_ * ratio
+                    out.transfers.append((day, pred, succ, out_, out_ * ratio))
+                    changed = True
+                for o in pending:
+                    if o.sid == pred:
+                        o.sid = succ
+                        o.shares *= ratio
     out = Outcome()
     cash, held = capital, {}
     pending: list[LiveOrder] = []
@@ -144,6 +179,7 @@ def run(bars, universe, sessions, start: date, end: date, capital: Decimal) -> O
     for idx, day in enumerate(sessions):
         if day < first_fill or day > end:
             continue
+        carry(day)
         if day in fill_days:
             decision = sessions[idx - 1]
             for o in pending:
@@ -165,10 +201,10 @@ def run(bars, universe, sessions, start: date, end: date, capital: Decimal) -> O
                 today = mkt.on(sid, decision)
                 if today is None or not today.tradable:
                     continue
-                past = [mkt.last(sid, months_before(decision, m)) for m in (3, 6, 12)]
+                past = [close_back(sid, months_before(decision, m), decision) for m in (3, 6, 12)]
                 if any(p is None for p in past):
                     continue
-                r3, r6, r12 = (today.close / p.close - 1 for p in past)  # type: ignore[union-attr]
+                r3, r6, r12 = (today.close / p - 1 for p in past)  # type: ignore[operator]
                 signals.append((THIRD * r3 + THIRD * r6 + THIRD * r12, r12, r6, r3, sid))
             ranked = sorted(signals, key=lambda s: (-s[0], -s[1], -s[2], -s[3]))
             rank = {s[4]: i for i, s in enumerate(ranked, 1)}
@@ -183,8 +219,8 @@ def run(bars, universe, sessions, start: date, end: date, capital: Decimal) -> O
                 if bar is not None and bar.tradable:
                     price[sid] = bar.open
                 else:
-                    last = mkt.last(sid, decision)
-                    price[sid] = last.close if last is not None else ZERO
+                    last = close_back(sid, decision, decision)
+                    price[sid] = last if last is not None else ZERO
                 value[sid] = q * price[sid]
             nav = cash + sum((value[sid] for sid in sorted(value)), ZERO)
             per_name = nav / Decimal(len(target)) if target else ZERO
@@ -223,17 +259,17 @@ def run(bars, universe, sessions, start: date, end: date, capital: Decimal) -> O
             pending = keep
         navs = cash
         for sid, q in sorted(held.items()):
-            bar = mkt.last(sid, day)
-            if bar is not None:
-                navs += q * bar.close
+            close = close_back(sid, day, day)
+            if close is not None:
+                navs += q * close
         out.navs.append(navs)
     for o in pending:
         out.closed.append((o.sid, o.side, o.order_date, "open_at_end"))
     nav = cash
     for sid, q in sorted(held.items()):
-        bar = mkt.last(sid, end)
-        if bar is not None:
-            nav += q * bar.close
+        close = close_back(sid, end, end)
+        if close is not None:
+            nav += q * close
     out.final_nav = nav
     out.holdings = dict(held)
     return out

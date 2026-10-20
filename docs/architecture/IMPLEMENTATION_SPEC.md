@@ -307,6 +307,8 @@ CREATE TABLE security_identity_links (
 
 A link applies only when the predecessor's last bar is dated before `effective_date`, and the successor has no bar before it. A chain is followed to its end, and a cycle is rejected. Without a link, a security whose bars stop is a non-trading holding, never a guessed rename.
 
+Links are written only by `momentum25 import-identity-links FILE.csv`. The file is checked whole before anything is written: every `evidence_reference` must carry the document's SHA-256, ids must exist, and the combined set must have one successor per predecessor, one predecessor per successor and no cycle. A link the bars contradict is logged and not applied. A bar read for a successor on or after `effective_date` continues through the predecessor's bars, restated per successor share (`adj_factor ÷ ratio`), up to the lookback asked for. This holds on the live paths (`get_series`, the indicator pipeline) and point in time (links visible at the revision). Before `effective_date` the predecessor is the live identity and nothing is stitched.
+
 ## 5. API Contracts
 
 Base: `/api/v1`. All errors are RFC-7807 `application/problem+json`.

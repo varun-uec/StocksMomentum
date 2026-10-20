@@ -304,7 +304,11 @@ def test_reconstruct_helper_ignores_engine_bookkeeping():
     runner, start, end = _build_runner()
     result = runner.run(start, end, Decimal(1_000_000))
     independent = _reconstruct_nav_from_trades(
-        list(result.trades), Decimal(1_000_000), runner._prices, end
+        list(result.trades),
+        list(result.transfers),
+        Decimal(1_000_000),
+        runner._prices.price_on_or_before,
+        end,
     )
     assert independent == result.final_nav
 

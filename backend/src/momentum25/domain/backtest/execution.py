@@ -14,6 +14,7 @@ from datetime import date
 from decimal import Decimal
 
 from momentum25.domain.backtest.portfolio_step import COST_BPS
+from momentum25.domain.identity import IdentityLink
 
 BACKTEST_METHOD_VERSION = 2
 
@@ -108,13 +109,49 @@ class ClosedOrder:
     remaining_shares: Decimal
 
 
+@dataclass(frozen=True, slots=True)
+class Transfer:
+    """A holding carried to its successor under a verified rename (R3-B-31).
+
+    No cash moves and no cost is charged: the shares are the same claim.
+    """
+
+    session: date
+    predecessor_id: int
+    successor_id: int
+    shares_out: Decimal
+    shares_in: Decimal
+    ratio: Decimal
+    evidence_reference: str
+
+
 @dataclass(slots=True)
 class Ledger:
-    """Cash and holdings, changed only by :meth:`apply`."""
+    """Cash and holdings, changed only by :meth:`apply` and :meth:`transfer`."""
 
     cash: Decimal
     holdings: dict[int, Decimal] = field(default_factory=dict)
     fills: list[Fill] = field(default_factory=list)
+    transfers: list[Transfer] = field(default_factory=list)
+
+    def transfer(self, link: IdentityLink, session: date) -> None:
+        """Move the predecessor holding to the successor: shares × ratio."""
+        shares_out = self.holdings.pop(link.predecessor_id)
+        shares_in = shares_out * link.ratio
+        self.holdings[link.successor_id] = (
+            self.holdings.get(link.successor_id, _ZERO) + shares_in
+        )
+        self.transfers.append(
+            Transfer(
+                session=session,
+                predecessor_id=link.predecessor_id,
+                successor_id=link.successor_id,
+                shares_out=shares_out,
+                shares_in=shares_in,
+                ratio=link.ratio,
+                evidence_reference=link.evidence_reference,
+            )
+        )
 
     def apply(self, fill: Fill) -> None:
         """Book one fill: cash moves by notional, then cost; shares by quantity.
@@ -153,6 +190,13 @@ class Executor:
         for order in self.pending:
             self._close(order, on, "superseded")
         self.pending = []
+
+    def retarget(self, link: IdentityLink) -> None:
+        """Point the predecessor's live orders at the successor (a sell's shares × ratio)."""
+        for order in self.pending:
+            if order.security_id == link.predecessor_id:
+                order.security_id = link.successor_id
+                order.shares *= link.ratio
 
     def close_all_at_end(self, on: date) -> None:
         """Close every live order at the end of the window."""

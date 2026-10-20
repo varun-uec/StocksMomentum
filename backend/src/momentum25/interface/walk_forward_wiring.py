@@ -18,6 +18,7 @@ from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories.data_manifests import (
     SqlDataManifestRepository,
 )
+from momentum25.infrastructure.persistence.repositories.identity_links import load_identity_links
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SqlBenchmarkProvider,
     SqlPriceHistoryProvider,
@@ -46,10 +47,12 @@ async def build_walk_forward_runner(
             session, BENCHMARK_SYMBOL, start, end
         )
         universe = await SqlSurvivorshipEligibilityProvider.load(session)
+        links = await load_identity_links(session)
     runner = WalkForwardRunner(
         calendar=get_nse_trading_calendar(),
         prices=prices,
         universe=universe,
         benchmark=benchmark,
+        links=links,
     )
     return runner, manifest
