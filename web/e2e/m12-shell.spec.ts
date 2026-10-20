@@ -87,7 +87,7 @@ test('the panel is saved with the workspace: closed stays closed after a reload'
   await expect
     .poll(async () => {
       const res = await request.get('/api/v1/workspaces/default');
-      return res.ok() ? (await res.json()).body.right_panel : 'missing';
+      return res.ok() ? (await res.json()).body?.right_panel : 'missing';
     })
     .toBeNull();
   await page.reload();

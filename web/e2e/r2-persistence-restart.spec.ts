@@ -18,7 +18,7 @@ test('R2 phase 1 writes chart, drawing and alert state before the isolated datab
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4);
   await expect.poll(async () => {
     const response = await request.get('/api/v1/drawings/TCS');
-    return response.ok() ? (await response.json()).body.drawings.length : -1;
+    return response.ok() ? (await response.json()).body?.drawings.length ?? -1 : -1;
   }).toBe(1);
 
   await openPanelTab(page, /^Alerts/);

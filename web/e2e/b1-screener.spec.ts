@@ -101,7 +101,7 @@ test('a saved screen persists, reopens after a reload, marks edits and is shared
   const saved = page.waitForResponse((r) => r.url().endsWith('/api/v1/screens/default') && r.request().method() === 'PUT');
   await page.getByRole('button', { name: 'Save changes to “Leaders”' }).click();
   expect((await saved).status()).toBe(200);
-  const stored = (await (await request.get('/api/v1/screens/default')).json()).body.screens;
+  const stored = ((await (await request.get('/api/v1/screens/default')).json()).body?.screens ?? []);
   expect(stored).toHaveLength(1);
   expect(stored[0]).toMatchObject({ name: 'Leaders', column_set: 'Scores', filters: { qualified: true, trend: true, ranges: { rs_rating: { min: 50, max: null } } } });
 
@@ -119,5 +119,5 @@ test('a saved screen persists, reopens after a reload, marks edits and is shared
   await expect(page.getByRole('button', { name: 'Save screen' })).toBeDisabled();
   await page.getByRole('button', { name: 'Delete “Leaders”' }).click();
   await expect(bottom.getByRole('button', { name: 'Screen: Unsaved screen' })).toBeVisible();
-  await expect.poll(async () => (await (await request.get('/api/v1/screens/default')).json()).body.screens.length).toBe(0);
+  await expect.poll(async () => ((await (await request.get('/api/v1/screens/default')).json()).body?.screens.length ?? 0)).toBe(0);
 });

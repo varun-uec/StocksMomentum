@@ -12,7 +12,7 @@ async function ready(page: Page): Promise<void> {
 
 async function mainChart(request: APIRequestContext): Promise<Record<string, unknown> | null> {
   const res = await request.get('/api/v1/workspaces/default');
-  return res.ok() ? (await res.json()).body.charts.main ?? null : null;
+  return res.ok() ? (await res.json()).body?.charts.main ?? null : null;
 }
 
 test('every chart type and price scale draws, and the choice is saved with the chart', async ({ page, request }) => {
@@ -42,7 +42,7 @@ type Drawing = { id: string; kind: string; color: string; width: number; text: s
 
 async function drawings(request: APIRequestContext, symbol: string): Promise<Drawing[]> {
   const res = await request.get(`/api/v1/drawings/${symbol}`);
-  return res.ok() ? (await res.json()).body.drawings : [];
+  return res.ok() ? ((await res.json()).body?.drawings ?? []) : [];
 }
 
 async function clickAt(page: Page, fx: number, fy: number): Promise<void> {

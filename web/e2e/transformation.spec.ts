@@ -12,7 +12,7 @@ async function ready(page: Page) {
 }
 async function savedDrawings(request: APIRequestContext, symbol = 'RELIANCE') {
   const response = await request.get(`/api/v1/drawings/${symbol}`);
-  return response.ok() ? (await response.json()).body.drawings : [];
+  return response.ok() ? ((await response.json()).body?.drawings ?? []) : [];
 }
 test.beforeEach(() => resetDocuments());
 test.afterAll(() => resetDocuments());
@@ -383,7 +383,7 @@ test('the overlay legend names the chart, follows the crosshair and removes a st
   await expect
     .poll(async () => {
       const res = await request.get('/api/v1/workspaces/default');
-      return res.ok() ? (await res.json()).body.charts.main?.mas : null;
+      return res.ok() ? (await res.json()).body?.charts.main?.mas : null;
     })
     .toEqual([200]);
 });

@@ -44,7 +44,7 @@ async function ready(page: Page): Promise<void> {
 interface Saved { id: string; kind: string; color: string; locked: boolean; hidden: boolean; text: string | null; points: { date: string; price: number }[] }
 async function saved(request: APIRequestContext, symbol: string): Promise<Saved[]> {
   const res = await request.get(`/api/v1/drawings/${symbol}`);
-  return res.ok() ? (await res.json()).body.drawings : [];
+  return res.ok() ? ((await res.json()).body?.drawings ?? []) : [];
 }
 
 async function draw(page: Page, tool: Tool, anchors = tool.anchors): Promise<void> {

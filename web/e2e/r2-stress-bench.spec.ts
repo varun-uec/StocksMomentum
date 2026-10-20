@@ -172,13 +172,13 @@ test('R2 bounded endurance: navigate symbols, change layouts, add and delete dra
     await page.mouse.click(bounds.x + bounds.width * 0.42, bounds.y + bounds.height * 0.4);
     await expect.poll(async () => {
       const response = await request.get(`/api/v1/drawings/${symbol}`);
-      return response.ok() ? (await response.json()).body.drawings.length : 0;
+      return response.ok() ? (await response.json()).body?.drawings.length ?? 0 : 0;
     }).toBe(1);
     await page.keyboard.press('Shift+F10');
     await page.getByRole('menu', { name: 'Drawing' }).getByRole('menuitem', { name: 'Delete' }).click();
     await expect.poll(async () => {
       const response = await request.get(`/api/v1/drawings/${symbol}`);
-      return response.ok() ? (await response.json()).body.drawings.length : 0;
+      return response.ok() ? (await response.json()).body?.drawings.length ?? 0 : 0;
     }).toBe(0);
 
     await chooseLayout(page, '2x2');

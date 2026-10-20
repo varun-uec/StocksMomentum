@@ -16,7 +16,7 @@ async function drawings(request: APIRequestContext, symbol: string): Promise<Rec
   const response = await request.get(`/api/v1/drawings/${symbol}`);
   if (response.status() === 404) return [];
   expect(response.ok()).toBe(true);
-  return (await response.json()).body.drawings;
+  return (await response.json()).body?.drawings ?? [];
 }
 
 async function clickChart(page: Page, x: number, y: number): Promise<void> {

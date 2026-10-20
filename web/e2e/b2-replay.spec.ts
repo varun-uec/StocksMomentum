@@ -108,7 +108,7 @@ test('replay hides drawings anchored after its date, keeps them when another is 
   const box = (await chart(page).boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(tree.getByRole('button', { name: /^Hide / })).toHaveCount(2);
-  await expect.poll(async () => (await (await request.get('/api/v1/drawings/TCS')).json()).body.drawings.length).toBe(3);
+  await expect.poll(async () => ((await (await request.get('/api/v1/drawings/TCS')).json()).body?.drawings.length ?? 0)).toBe(3);
   const stored = (await (await request.get('/api/v1/drawings/TCS')).json()).body.drawings;
   expect(stored).toHaveLength(3);
   expect(stored.find((d: { id: string }) => d.id === 'late').points.map((p: { date: string }) => p.date)).toEqual([early, late]);

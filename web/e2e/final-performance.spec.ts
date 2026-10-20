@@ -287,7 +287,7 @@ test('24-cycle 1×1 ↔ 4×4 chart endurance releases mounted chart DOM and canv
     await expect
       .poll(async () => {
         const response = await request.get(`/api/v1/drawings/${symbol}`);
-        return response.ok() ? (await response.json()).body.drawings.length : 0;
+        return response.ok() ? (await response.json()).body?.drawings.length ?? 0 : 0;
       })
       .toBe(1);
     drawingCounts.push(1);
@@ -296,7 +296,7 @@ test('24-cycle 1×1 ↔ 4×4 chart endurance releases mounted chart DOM and canv
     await expect
       .poll(async () => {
         const response = await request.get(`/api/v1/drawings/${symbol}`);
-        return response.ok() ? (await response.json()).body.drawings.length : 0;
+        return response.ok() ? (await response.json()).body?.drawings.length ?? 0 : 0;
       })
       .toBe(0);
 

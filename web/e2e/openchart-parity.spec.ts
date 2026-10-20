@@ -18,7 +18,7 @@ async function ready(page: Page): Promise<void> {
 
 async function drawings(request: APIRequestContext, symbol: string): Promise<{ kind: string; points: { date: string }[] }[]> {
   const res = await request.get(`/api/v1/drawings/${symbol}`);
-  return res.ok() ? (await res.json()).body.drawings : [];
+  return res.ok() ? ((await res.json()).body?.drawings ?? []) : [];
 }
 
 test('D1, D2: a short range counts back from the last bar, and MA200 has a value on it', async ({ page }) => {

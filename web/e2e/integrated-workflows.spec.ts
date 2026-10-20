@@ -24,7 +24,7 @@ async function latestRun(request: APIRequestContext, strategy = STRATEGY) {
 
 const savedDrawings = async (request: APIRequestContext, symbol: string) => {
   const res = await request.get(`/api/v1/drawings/${symbol}`);
-  return res.ok() ? (await res.json()).body.drawings : [];
+  return res.ok() ? ((await res.json()).body?.drawings ?? []) : [];
 };
 
 const cell = (page: Page, id: string) => page.getByRole('region', { name: new RegExp(`^Chart ${id}: `) });

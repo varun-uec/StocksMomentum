@@ -53,7 +53,7 @@ type Drawing = { id: string; kind: string; points: { date: string; price: number
 
 async function serverDrawings(request: APIRequestContext, symbol: string): Promise<Drawing[]> {
   const res = await request.get(`/api/v1/drawings/${symbol}`);
-  return res.status() === 404 ? [] : (await res.json()).body.drawings;
+  return res.status() === 404 ? [] : ((await res.json()).body?.drawings ?? []);
 }
 
 const drawingCount = (request: APIRequestContext, symbol: string) => () =>
@@ -61,7 +61,7 @@ const drawingCount = (request: APIRequestContext, symbol: string) => () =>
 
 async function serverChart(request: APIRequestContext): Promise<{ range: string; mas: number[]; panes: string[] } | null> {
   const res = await request.get('/api/v1/workspaces/default');
-  return res.ok() ? (await res.json()).body.charts.main ?? null : null;
+  return res.ok() ? (await res.json()).body?.charts.main ?? null : null;
 }
 
 const checkbox = (page: Page, label: string): Locator => page.getByLabel(label, { exact: true });
@@ -70,7 +70,10 @@ test('the app under test and the cleanup use the same E2E database', async ({ re
   const res = await request.put('/api/v1/workspaces/default', { data: { charts: {} }, headers: { 'If-None-Match': '*' } });
   expect(res.status()).toBe(201);
   resetDocuments();
-  expect((await request.get('/api/v1/workspaces/default')).status()).toBe(404);
+  // After the cleanup the document was never saved: it reads as revision 0 with no body (ADR-013 §5).
+  const after = await request.get('/api/v1/workspaces/default');
+  expect(after.status()).toBe(200);
+  expect(await after.json()).toMatchObject({ revision: 0, body: null });
 });
 
 test('Find: typing on the chart opens search and Enter opens the symbol', async ({ page }) => {
@@ -278,7 +281,7 @@ test('chart settings saved in this browser before M11 are imported once; a serve
 
   const saved = async () => {
     const res = await request.get('/api/v1/workspaces/default');
-    return res.ok() ? (await res.json()).body.charts : null;
+    return res.ok() ? (await res.json()).body?.charts ?? null : null;
   };
   await expect.poll(saved).toMatchObject({
     main: { symbol: 'ITC', range: 'MAX', mas: [20, 50], panes: ['rsi'] },

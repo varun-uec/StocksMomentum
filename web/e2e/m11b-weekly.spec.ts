@@ -37,7 +37,7 @@ test('the interval switch shows weekly bars and indicators, and is saved with th
   await expect
     .poll(async () => {
       const res = await request.get('/api/v1/workspaces/default');
-      return res.ok() ? (await res.json()).body.charts.main?.interval : null;
+      return res.ok() ? (await res.json()).body?.charts.main?.interval : null;
     })
     .toBe('1W');
   await page.reload();
@@ -56,7 +56,7 @@ test('a drawing made on weekly bars stays on the daily chart', async ({ page, re
   await expect
     .poll(async () => {
       const res = await request.get('/api/v1/drawings/INFY');
-      return res.ok() ? (await res.json()).body.drawings.length : 0;
+      return res.ok() ? (await res.json()).body?.drawings.length ?? 0 : 0;
     })
     .toBe(1);
 
