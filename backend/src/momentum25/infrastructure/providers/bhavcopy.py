@@ -1,9 +1,9 @@
 """NSE Bhavcopy market-data provider (MVP primary adapter, ADR-003).
 
-Implements the :class:`MarketDataProvider` port against the official NSE EOD
-Bhavcopy archive, via the ``nsemine`` scraping library (synchronous, run in a
-worker thread per call). Handles holiday-aware error handling; persistence is
-delegated to :class:`SqlOHLCVRepository`.
+Implements the :class:`MarketDataProvider` port against NSE's official daily
+archives. UDiFF dates are fetched from their dated archive directly; the older
+current-format window and legacy dates retain their existing routes. Persistence
+is delegated to :class:`SqlOHLCVRepository`.
 """
 
 from __future__ import annotations
@@ -71,6 +71,86 @@ def _udiff_bhavcopy_url(for_date: date) -> str:
 
 
 _UDIFF_START: date = date(2024, 1, 2)
+
+_UDIFF_REQUIRED_COLUMNS: frozenset[str] = frozenset(
+    {
+        "TradDt", "FinInstrmTp", "ISIN", "TckrSymb", "SctySrs", "OpnPric",
+        "HghPric", "LwPric", "ClsPric", "PrvsClsgPric", "TtlTradgVol", "TtlTrfVal",
+    }
+)
+
+
+def _parse_udiff_bhavcopy(
+    content: bytes, for_date: date, *, include_extended: bool
+) -> list[RawBar]:
+    """Parse one official NSE UDiFF equity-session archive (pure).
+
+    Only cash-market equity-series rows are returned. This matches the prior
+    ``nsemine`` request's ``series='EQ'`` scope while preserving the printed
+    ISIN and, for the full variant, previous close and turnover.
+    """
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(content))
+    except zipfile.BadZipFile:
+        _logger.warning("udiff_bhavcopy_bad_zip", date=for_date.isoformat())
+        return []
+    names = archive.namelist()
+    if not names:
+        _logger.warning("udiff_bhavcopy_empty_archive", date=for_date.isoformat())
+        return []
+
+    reader = csv.DictReader(io.StringIO(archive.read(names[0]).decode("latin1")))
+    columns = {column.strip() for column in (reader.fieldnames or [])}
+    if not _UDIFF_REQUIRED_COLUMNS.issubset(columns):
+        _logger.warning(
+            "udiff_bhavcopy_unexpected_columns",
+            date=for_date.isoformat(),
+            columns=sorted(columns),
+        )
+        return []
+
+    bars: list[RawBar] = []
+    for row in reader:
+        cell = {(key or "").strip(): (value or "").strip() for key, value in row.items()}
+        if (
+            cell.get("TradDt") != for_date.isoformat()
+            or cell.get("FinInstrmTp") != "STK"
+            or cell.get("SctySrs") != "EQ"
+        ):
+            continue
+        symbol = cell.get("TckrSymb", "").upper()
+        if not symbol:
+            continue
+        close = _decimal_or_none(cell.get("ClsPric"))
+        if close is None:
+            continue
+        try:
+            bars.append(
+                RawBar(
+                    symbol=symbol,
+                    date=for_date,
+                    open=_decimal_or_none(cell.get("OpnPric")) or Decimal("0"),
+                    high=_decimal_or_none(cell.get("HghPric")) or Decimal("0"),
+                    low=_decimal_or_none(cell.get("LwPric")) or Decimal("0"),
+                    close=close,
+                    volume=int(_decimal_or_none(cell.get("TtlTradgVol")) or Decimal("0")),
+                    prev_close=(
+                        _decimal_or_none(cell.get("PrvsClsgPric")) if include_extended else None
+                    ),
+                    turnover_value=(
+                        _decimal_or_none(cell.get("TtlTrfVal")) if include_extended else None
+                    ),
+                    isin=cell.get("ISIN", "").upper() or None,
+                )
+            )
+        except (ValueError, TypeError) as exc:
+            _logger.warning(
+                "udiff_bhavcopy_row_skipped",
+                date=for_date.isoformat(),
+                symbol=symbol,
+                error=str(exc),
+            )
+    return bars
 
 
 def _parse_udiff_isins(content: bytes, for_date: date) -> dict[str, str]:
@@ -276,11 +356,39 @@ class BhavcopyProvider:
         """Bind the provider to an HTTP client.
 
         Args:
-            client: Unused; retained for backward-compatible construction
-                (``BhavcopyProvider(httpx.AsyncClient())``). All network access
-                is performed by ``nsemine``, which manages its own HTTP session.
+            client: Optional shared client for direct UDiFF archive requests.
         """
         self._client = client
+
+    async def _fetch_eod_udiff(self, for_date: date, *, include_extended: bool) -> list[RawBar]:
+        """Fetch a dated UDiFF archive and parse only the requested session."""
+        headers = {**_NSE_HEADERS, "Referer": "https://www.nseindia.com/"}
+        try:
+            if self._client is not None:
+                response = await self._client.get(
+                    _udiff_bhavcopy_url(for_date), headers=headers
+                )
+            else:
+                async with httpx.AsyncClient(
+                    headers=headers, timeout=30, follow_redirects=True
+                ) as client:
+                    response = await client.get(_udiff_bhavcopy_url(for_date))
+        except httpx.HTTPError as exc:
+            _logger.warning(
+                "udiff_bhavcopy_fetch_failed", date=for_date.isoformat(), error=str(exc)
+            )
+            return []
+
+        if response.status_code != 200:
+            _logger.info(
+                "udiff_bhavcopy_unavailable",
+                date=for_date.isoformat(),
+                status=response.status_code,
+            )
+            return []
+        return _parse_udiff_bhavcopy(
+            response.content, for_date, include_extended=include_extended
+        )
 
     @retry(
         stop=stop_after_attempt(3),
@@ -292,13 +400,14 @@ class BhavcopyProvider:
 
         Routes by date (RP-012 D1): requests before ``_CURRENT_PROVIDER_START``
         are served from the legacy NSE archive; on/after it, from the current
-        ``sec_bhavdata_full`` provider via nsemine. On weekends/holidays nsemine
-        silently returns the most recent prior trading session instead of an
-        empty frame, so rows are filtered to ``for_date`` explicitly; a holiday
-        therefore yields an empty list rather than misdated data.
+        current-format provider. UDiFF sessions use the dated NSE archive, which
+        also prevents a provider's latest-session fallback from misdating a
+        historical request.
         """
         if for_date < _CURRENT_PROVIDER_START:
             return await self._fetch_eod_legacy(for_date)
+        if for_date >= _UDIFF_START:
+            return await self._fetch_eod_udiff(for_date, include_extended=False)
         try:
             df = await asyncio.to_thread(
                 archives.get_daily_bhavcopy_and_deliverables_data,
@@ -360,6 +469,8 @@ class BhavcopyProvider:
         """
         if for_date < _CURRENT_PROVIDER_START:
             return await self._fetch_eod_legacy(for_date)
+        if for_date >= _UDIFF_START:
+            return await self._fetch_eod_udiff(for_date, include_extended=True)
         try:
             df = await asyncio.to_thread(
                 archives.get_daily_bhavcopy_and_deliverables_data,

@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from typing import cast
 
-from sqlalchemy import Table, bindparam, func, select, update
+from sqlalchemy import Numeric, Table, bindparam, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -226,6 +226,7 @@ class SqlOHLCVRepository:
         # bulk-by-primary-key semantics (which require dict keys to match
         # column names exactly and reject additional WHERE criteria).
         table = cast(Table, OHLCVDailyModel.__table__)
+        factor_param = bindparam("factor", type_=Numeric(18, 8))
         stmt = (
             update(table)
             .where(
@@ -233,8 +234,12 @@ class SqlOHLCVRepository:
                 table.c.date == bindparam("bar_date"),
             )
             .values(
-                adj_factor=bindparam("factor"),
-                adj_close=table.c.close * bindparam("factor"),
+                adj_factor=factor_param,
+                # Type the shared parameter explicitly. Without this, SQLAlchemy
+                # infers Numeric(18, 4) from ``close`` for the multiplication and
+                # rounds repeating factors (e.g. 1/3) before computing adj_close,
+                # while ``adj_factor`` receives its full eight-decimal value.
+                adj_close=table.c.close * factor_param,
             )
         )
         params = [

@@ -1,8 +1,8 @@
 """Integration tests for NSE Bhavcopy data ingestion.
 
-Validates bhavcopy row parsing, holiday handling, and bulk idempotent persistence
-via SQLAlchemy Core's upsert path. The ``nsemine`` scraping calls are mocked at
-the module boundary (no live NSE access).
+Validates the legacy/current-format routes, holiday handling, and bulk idempotent
+persistence via SQLAlchemy Core's upsert path. Network calls are mocked at the
+provider boundary (no live NSE access).
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ async def _seed_security_id(session: AsyncSession, symbol: str) -> int:
 @pytest.mark.asyncio
 async def test_bhavcopy_stream_parses_equity_rows(monkeypatch: pytest.MonkeyPatch) -> None:
     """A bhavcopy response for the requested date must yield matching RawBars."""
-    trade_date = date(2024, 6, 28)
+    trade_date = date(2023, 6, 28)
     df = _bhavcopy_df(
         trade_date,
         [
@@ -82,9 +82,9 @@ async def test_bhavcopy_stream_parses_equity_rows(monkeypatch: pytest.MonkeyPatc
 @pytest.mark.asyncio
 async def test_bhavcopy_holiday_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     """A prior-session fallback (nsemine's holiday behaviour) must yield []."""
-    requested = date(2024, 7, 15)
+    requested = date(2023, 7, 17)
     stale = _bhavcopy_df(
-        date(2024, 7, 12),  # nsemine silently returns the last trading session
+        date(2023, 7, 14),  # nsemine silently returns the last trading session
         [("RELIANCE", "2500", "2520", "2490", "2510", 1234567)],
     )
     monkeypatch.setattr(
@@ -108,7 +108,7 @@ async def test_bhavcopy_fetch_error_returns_empty(monkeypatch: pytest.MonkeyPatc
         _raise,
     )
     provider = BhavcopyProvider()
-    bars = await provider.fetch_eod(date(2024, 7, 15))
+    bars = await provider.fetch_eod(date(2023, 7, 17))
     assert bars == []
 
 
@@ -143,15 +143,28 @@ async def test_update_adjustment_factors_persists_and_recomputes_adj_close(
             close=Decimal("200"),
             volume=2000,
         ),
+        OHLCVBar(
+            date=date(2026, 1, 3),
+            open=Decimal("1479.60"),
+            high=Decimal("1480.00"),
+            low=Decimal("1470.00"),
+            close=Decimal("1479.60"),
+            volume=2000,
+        ),
     ]
     await repo.upsert_bars(security_id, bars)
     await db_session.commit()
 
     updated = await repo.update_adjustment_factors(
-        security_id, {date(2026, 1, 1): Decimal("0.5"), date(2026, 1, 2): Decimal("1")}
+        security_id,
+        {
+            date(2026, 1, 1): Decimal("0.5"),
+            date(2026, 1, 2): Decimal("1"),
+            date(2026, 1, 3): Decimal("0.33333333"),
+        },
     )
     await db_session.commit()
-    assert updated == 2
+    assert updated == 3
 
     result = await db_session.execute(
         select(OHLCVDailyModel)
@@ -163,6 +176,8 @@ async def test_update_adjustment_factors_persists_and_recomputes_adj_close(
     assert rows[0].adj_close == Decimal("50.0000")  # 100 * 0.5
     assert rows[1].adj_factor == Decimal("1")
     assert rows[1].adj_close == Decimal("200.0000")
+    assert rows[2].adj_factor == Decimal("0.33333333")
+    assert rows[2].adj_close == Decimal("493.2000")  # 1479.60 * 1/3, rounded to 4dp
 
 
 @pytest.mark.asyncio
