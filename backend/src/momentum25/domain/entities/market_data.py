@@ -100,8 +100,8 @@ class OHLCVSeries:
         return self.bars[-1] if self.bars else None
 
     def closes(self) -> list[Decimal]:
-        """Return adjusted closes (falling back to raw close)."""
-        return [b.adj_close if b.adj_close is not None else b.close for b in self.bars]
+        """Return adjusted closes, ``close × adj_factor`` (IMPLEMENTATION_SPEC §8)."""
+        return [b.close * b.adj_factor for b in self.bars]
 
     def volumes(self) -> list[int]:
         """Return the volume series."""
