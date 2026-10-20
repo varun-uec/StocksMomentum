@@ -37,3 +37,19 @@ The full-screen set for A9.1 (four screens × four widths × two themes, with `g
 The 6 skips are the opt-in layout benchmark (`M13_BENCH=1`). It ran on its own on the same commit; `m13-bench.json` holds its output. The E2E totals come from the run log. The backend and web totals come from the sign-off run; their logs were not kept.
 
 Hardware: Apple M4 Pro, 48 GB, headless Chromium 153, 1280 × 720 for the benchmarks. The numbers hold only for this machine and the synthetic histories.
+
+## Candle anatomy
+
+On visual review, every candle in the screenshots above had near-identical wicks. The cause is the synthetic data, not the chart. The seed in [`web/e2e/db.py`](../../web/e2e/db.py) sets each bar's high to open × 1.01 and its low to open × 0.99, and its close within 0.2% of the open. On 2,610 TCS bars the upper and lower wicks measured 0.80–1.00% of the open, and no body exceeded 0.20%. The API, the corporate-action adjustment, weekly and monthly aggregation and the chart all pass each bar's own open, high, low and close.
+
+Screening goldens depend on those fixtures, so they stay as they are. A new chart-only fixture, `E2ECANDLE`, has 525 deterministic sessions from 2024-08-05 to 2026-08-07, with a 1:2 split on 2026-06-22. Its wicks run from 0 to 5.6% of the open and its bodies from 0 to 6.3%. It has doji, hammers, shooting stars, strong-bodied bars, gaps of up to 5% and volatility that changes every 60 sessions. It is inactive and has a fund-unit ISIN, so no screening, breadth, RS or point-in-time universe reads it. The screening seed still evaluates 22 names and qualifies 7.
+
+[`web/e2e/candle-anatomy.spec.ts`](../../web/e2e/candle-anatomy.spec.ts) reads the price pane's pixels. It requires every drawn wick and body edge to lie within 1 px of one linear price scale fitted to the bars' high, low, open and close. It covers daily bars on both sides of the split, weekly and monthly bars, and replay before the split. A deliberate change that drew fixed ±1% wicks failed all 4 tests by 56–94 px.
+
+| File | View |
+| --- | --- |
+| [`candles/01`–`05`](candles/) | Light, 1440 × 900: daily 6M, daily 3M, weekly 1Y, monthly MAX, replay on 2026-06-12 |
+| [`candles/06`–`07`](candles/) | Dark, 1440 × 900: daily 3M, weekly 1Y |
+| [`candles/08`–`09`](candles/) | Phone, 390 × 844: daily 3M, light and dark |
+
+The replay view shows prices near 2,376. That is correct: on 2026-06-12 the split had not happened, so replay shows the prices as they stood then. With this fixture, the full serial E2E run gave 212 passed, 0 failed and 6 skipped. The web unit tests gave 141 passed.

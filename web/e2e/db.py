@@ -3,7 +3,8 @@
 ``seed``  Sixteen synthetic symbols, E2E10Y0..15, with 10 years of daily bars.
           NFR-11 times a chart opening 10 years of bars, and the real dataset
           starts in 2019 (about 6.9 years). The M13 benchmark fills a 4 × 4
-          layout with them. They exist only in the marked E2E database. Idempotent.
+          layout with them. They exist only in the marked E2E database. Also the
+          chart fixture E2ECANDLE (see ``chart_fixture_bars``). Idempotent.
 ``reset`` Delete every saved workspace, drawing and alert, so each test starts clean.
 ``age-alerts`` Move every alert's ``armed_after`` 30 days back, so an E2E test can
           watch one fire on bars already stored (the synthetic fixture gets no new bars).
@@ -18,11 +19,80 @@ Destructive test data lives in a separately provisioned ``*_e2e`` database.
 """
 
 import asyncio
+import math
 import os
+import random
 import sys
+from datetime import date, timedelta
+from decimal import Decimal
 from urllib.parse import unquote, urlsplit
 
 import asyncpg
+
+# A chart-only fixture. Its 1:2 split leaves factor 0.5 on every earlier bar.
+CHART_FIXTURE = "E2ECANDLE"
+CHART_FIXTURE_SPLIT = date(2026, 6, 22)
+
+
+def chart_fixture_bars() -> list[tuple[date, int, int, int, int, int]]:
+    """Return E2ECANDLE's adjusted daily bars as (date, open, high, low, close, volume).
+
+    Prices are counts of the 0.05 tick. The bars vary like a traded stock:
+    volatility changes every 60 sessions, some sessions gap, and about one bar
+    in five is a doji, hammer, shooting star or strong-bodied bar. The other
+    fixtures' high and low sit at a fixed 1% around the open, so their wicks all
+    look alike; screening goldens depend on them, so they stay as they are.
+    ``random.Random.random`` is the one generator Python keeps stable across
+    versions, and only plain arithmetic follows it, so the bars are deterministic.
+    """
+    rng = random.Random(20261020)
+
+    def shock() -> float:
+        return (rng.random() + rng.random() + rng.random() - 1.5) * 2  # about N(0, 1)
+
+    close_ticks, bars, day, i = 16_000, [], date(2024, 8, 5), 0
+    while day <= date(2026, 8, 7):
+        if day.weekday() < 5:
+            sigma = (0.008, 0.016, 0.026, 0.012)[(i // 60) % 4]
+            drift = (0.0010, -0.0006, 0.0012, 0.0002)[(i // 45) % 4]
+            o = close_ticks / 20 * (1 + shock() * sigma * (1.6 if rng.random() < 0.07 else 0.12))
+            kind = rng.random()
+            if kind < 0.05:  # doji
+                body = shock() * sigma * 0.03
+                upper, lower = (0.3 + rng.random()) * sigma, (0.3 + rng.random()) * sigma
+            elif kind < 0.09:  # hammer
+                body = abs(shock()) * sigma * 0.25
+                upper, lower = rng.random() * sigma * 0.1, (1.2 + rng.random()) * sigma
+            elif kind < 0.13:  # shooting star
+                body = -abs(shock()) * sigma * 0.25
+                upper, lower = (1.2 + rng.random()) * sigma, rng.random() * sigma * 0.1
+            elif kind < 0.18:  # strong body
+                body = (1 if rng.random() < 0.5 else -1) * (1.6 + rng.random()) * sigma
+                upper, lower = rng.random() * sigma * 0.08, rng.random() * sigma * 0.08
+            else:
+                body = drift + shock() * sigma
+                upper, lower = abs(shock()) * sigma * 0.45, abs(shock()) * sigma * 0.45
+            c = o * (1 + body)
+            open_ticks, close_ticks = round(o * 20), round(c * 20)
+            high_ticks = max(math.ceil(max(o, c) * (1 + upper) * 20), open_ticks, close_ticks)
+            low_ticks = min(math.floor(min(o, c) * (1 - lower) * 20), open_ticks, close_ticks)
+            activity = (sigma / 0.008) ** 0.5 * (1.8 if kind < 0.18 else 1)
+            volume = 2 * round(200_000 * activity * (0.6 + 0.8 * rng.random()))
+            bars.append((day, open_ticks, high_ticks, low_ticks, close_ticks, volume))
+            i += 1
+        day += timedelta(days=1)
+    return bars
+
+
+def chart_fixture_rows(security_id: int) -> list[tuple[object, ...]]:
+    """Return E2ECANDLE's stored rows: raw prints, so bars before the split trade at double."""
+    rows: list[tuple[object, ...]] = []
+    for day, *ticks, volume in chart_fixture_bars():
+        factor = Decimal("0.5") if day < CHART_FIXTURE_SPLIT else Decimal(1)
+        o, h, low, c = (Decimal(t) / 20 / factor for t in ticks)
+        raw_volume = int(volume * factor)
+        rows.append((security_id, day, o, h, low, c, raw_volume, c * raw_volume, factor))
+    return rows
 
 SQL = """
 INSERT INTO securities (symbol, name, exchange, is_active)
@@ -255,6 +325,24 @@ async def main(command: str, url: str, *arguments: str) -> None:
             print(f"updated isolated E2E hold-out provenance: {updated}")
             return
         await conn.execute(SQL)
+        # Inactive, with a fund-unit ISIN: live screening, market breadth and
+        # point-in-time research all skip it, so no screening golden changes.
+        security_id = await conn.fetchval(
+            "INSERT INTO securities (symbol, name, exchange, isin, is_active) "
+            "VALUES ($1, 'Synthetic E2E chart fixture', 'NSE', 'INFE2ECANDL1', false) "
+            "ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, "
+            "exchange = EXCLUDED.exchange, isin = EXCLUDED.isin, is_active = false RETURNING id",
+            CHART_FIXTURE,
+        )
+        await conn.executemany(
+            "INSERT INTO ohlcv_daily (security_id, date, open, high, low, close, volume, "
+            "turnover_value, adj_factor) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+            "ON CONFLICT (security_id, date) DO UPDATE SET open = EXCLUDED.open, "
+            "high = EXCLUDED.high, low = EXCLUDED.low, close = EXCLUDED.close, "
+            "volume = EXCLUDED.volume, turnover_value = EXCLUDED.turnover_value, "
+            "adj_factor = EXCLUDED.adj_factor",
+            chart_fixture_rows(security_id),
+        )
         count = await conn.fetchval(
             "SELECT min(c) FROM (SELECT count(*) c FROM ohlcv_daily o JOIN securities s"
             " ON s.id = o.security_id WHERE s.symbol LIKE 'E2E10Y%' GROUP BY s.id) t"
