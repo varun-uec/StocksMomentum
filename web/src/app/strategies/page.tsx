@@ -113,7 +113,7 @@ export default function StrategyResearchPage() {
             </Card>
 
             <Card title="Recent Runs" subtitle={`${evaluation?.run_summaries.length ?? 0} runs`}>
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
+              <div tabIndex={0} role="region" aria-label="Recent runs table, scrollable" className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">

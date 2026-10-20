@@ -180,7 +180,7 @@ export default function DataPage() {
           >
             <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
               <p>From the backend directory, load the project settings and import normalized end-of-day bars and benchmark closes:</p>
-              <pre className="overflow-x-auto rounded-md bg-slate-100 dark:bg-slate-800 p-3 text-xs">{`set -a
+              <pre tabIndex={0} aria-label="Import commands" className="overflow-x-auto rounded-md bg-slate-100 dark:bg-slate-800 p-3 text-xs">{`set -a
 source ../.env
 set +a
 uv run momentum25 import-eod bars.csv --actions corporate-actions.csv

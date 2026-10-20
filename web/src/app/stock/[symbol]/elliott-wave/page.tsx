@@ -359,7 +359,7 @@ export default function ElliottWavePage() {
               </li>
             ))}
           </ul>
-          <div className="max-h-64 overflow-y-auto">
+          <div tabIndex={0} role="region" aria-label="Wave list, scrollable" className="max-h-64 overflow-y-auto">
             <table className="w-full text-xs tabular-nums">
               <thead className="text-slate-500">
                 <tr>
