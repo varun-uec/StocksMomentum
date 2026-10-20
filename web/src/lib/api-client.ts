@@ -23,20 +23,33 @@ import type {
 /** Same origin as the page (ADR-013). The API serves the app, so no URL setting exists. */
 const API_BASE = '/api/v1';
 
+/** A rate-limited read waits for the server's Retry-After and tries again, at most twice. */
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_RETRY_WAIT_MS = 10_000;
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${text}`);
+  const isRead = (options?.method ?? 'GET').toUpperCase() === 'GET';
+  for (let attempt = 0; ; attempt += 1) {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
+    if (res.status === 429 && isRead && attempt < MAX_RATE_LIMIT_RETRIES) {
+      const seconds = Number(res.headers.get('Retry-After'));
+      const wait = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 2000;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(wait, MAX_RETRY_WAIT_MS)));
+      continue;
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => 'Unknown error');
+      throw new Error(`API ${res.status}: ${text}`);
+    }
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
   }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
 }
 
 // ── Runs ──────────────────────────────────────────────────────────────

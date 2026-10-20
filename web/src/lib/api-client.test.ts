@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getAllRankings } from '@/lib/api-client';
+import { getAllRankings, getRun } from '@/lib/api-client';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -19,5 +19,36 @@ describe('getAllRankings', () => {
     expect(urls.every((u) => u.includes('/rankings/runs/7?limit=200'))).toBe(true);
     expect(all.items.map((i) => i.symbol)).toEqual(Array.from({ length: total }, (_, i) => `S${i}`));
     expect(all.total).toBe(total);
+  });
+});
+
+describe('rate limiting', () => {
+  it('waits for Retry-After and retries a read, then returns the data', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    vi.stubGlobal('fetch', async () => {
+      calls += 1;
+      if (calls < 3) return new Response('{}', { status: 429, headers: { 'Retry-After': '1' } });
+      return new Response(JSON.stringify({ id: 5, status: 'completed' }), { status: 200 });
+    });
+    const pending = getRun(5);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect((await pending).id).toBe(5);
+    expect(calls).toBe(3);
+    vi.useRealTimers();
+  });
+
+  it('gives up after two retries with the 429 error', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    vi.stubGlobal('fetch', async () => {
+      calls += 1;
+      return new Response('slow down', { status: 429, headers: { 'Retry-After': '1' } });
+    });
+    const pending = getRun(5).catch((e: Error) => e.message);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await pending).toContain('API 429');
+    expect(calls).toBe(3);
+    vi.useRealTimers();
   });
 });
