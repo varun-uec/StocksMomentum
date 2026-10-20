@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -19,6 +20,7 @@ from momentum25.app.services.screening_job import run_screening_pipeline
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.value_objects.types import RunTrigger
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import Settings, get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.logging.setup import configure_logging, get_logger
@@ -98,6 +100,12 @@ async def _run_daily_screening_job() -> None:
             _logger.error("daily_alerts_failed", error=str(exc))
 
 
+async def _latest_live_start() -> datetime | None:
+    """When the most recent live screening run started (scheduler catch-up)."""
+    async with get_database().session() as session:
+        return await SqlScreeningRunRepository(session).latest_live_start()
+
+
 async def _sync_strategies(settings: Settings) -> int:
     """Load strategy JSON files from disk into the database (idempotent upsert).
 
@@ -172,6 +180,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     scheduler.register_daily_job(_run_daily_screening_job)
     app.state.scheduler = scheduler
     scheduler.start()  # no-op unless scheduler_enabled
+    try:
+        # The job store is in memory: run a slot missed while the process was down.
+        await scheduler.catch_up(_latest_live_start, get_nse_trading_calendar().is_session)
+    except Exception as exc:  # noqa: BLE001 - startup must surface but not crash wiring
+        _logger.error("scheduler_catch_up_failed", error=str(exc))
 
     # Record database pool metrics
     db_connection_pool_size.set(settings.db_pool_size)

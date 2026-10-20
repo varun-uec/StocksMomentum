@@ -46,7 +46,7 @@ observability, reliability, security, performance, and DevOps dimensions.
 | Timeout handling | ✅ | `with_timeout` for all external calls |
 | Circuit breakers | ✅ | `CircuitBreaker` with half-open recovery |
 | Failure isolation | ✅ | Per-service circuit breakers |
-| Scheduler recovery | ✅ | `misfire_grace_time` + `coalesce` |
+| Scheduler recovery | ✅ | `misfire_grace_time` + `coalesce` cover a late slot in a live process. The job store is in memory, so at startup `SchedulerService.catch_up` runs the job once if the latest slot on an NSE session has no screening run started at or after it. A slot whose run reused an unchanged snapshot writes no run row, so a restart after it repeats that cheap reuse. |
 | Distributed locking | ✅ | Redis-backed lock factory |
 | Idempotency | ✅ | Strategy upsert, scheduler coalesce |
 

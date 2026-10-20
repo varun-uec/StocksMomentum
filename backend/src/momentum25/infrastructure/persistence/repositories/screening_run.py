@@ -159,6 +159,16 @@ class SqlScreeningRunRepository:
         )
         return [_to_domain(r) for r in result.scalars().all()], int(total or 0)
 
+    async def latest_live_start(self) -> datetime | None:
+        """Return when the most recent live run started, of any strategy or status.
+
+        The scheduler's startup catch-up compares this with its latest slot.
+        """
+        started = await self._session.scalar(
+            select(func.max(ScreeningRunModel.started_at)).where(*_LIVE_RUN_PREDICATES)
+        )
+        return started
+
     async def latest_completed(self, strategy_id: int) -> ScreeningRun | None:
         """Return the most recent completed *live* run for a strategy, or ``None``.
 

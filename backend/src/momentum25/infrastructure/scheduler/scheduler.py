@@ -1,18 +1,25 @@
-"""In-process scheduler service (APScheduler).
+"""In-process scheduler service (APScheduler, ADR-007).
 
-Owns the daily post-close trigger lifecycle (ADR-007). The job *callable* that runs a
-screening pipeline is registered in milestone M7; this phase wires the lifecycle so
-startup/shutdown and configuration are in place and observable.
+Owns the daily post-close screening job.
 
-Includes recovery logic: on restart, missed jobs are detected and caught up
-to prevent data gaps. Idempotency is enforced via distributed locking so the
-daily job never runs twice for the same date when workers are scaled out.
+- **Cron.** ``schedule_cron`` is a standard 5-field crontab. Its day-of-week
+  numbers follow cron (0 or 7 = Sunday, 1 = Monday). APScheduler 3 reads
+  numbers as 0 = Monday, so :func:`crontab_trigger` converts them to day names.
+- **In-process stall.** ``misfire_grace_time`` (24 h) and ``coalesce`` run a
+  slot that fired late while the process was alive, once.
+- **Downtime.** The job store is in memory, so a restart forgets missed slots.
+  :meth:`SchedulerService.catch_up` closes that gap at startup: if the latest
+  slot on an exchange session has no screening run started at or after it, the
+  job runs once now.
+- **Duplicates.** The job takes a Redis lock per day, so scaled-out workers do
+  not run it twice.
 """
 
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -23,15 +30,57 @@ from momentum25.infrastructure.logging.setup import get_logger
 
 _logger = get_logger("scheduler")
 
+_CRON_DAYS = ("sun", "mon", "tue", "wed", "thu", "fri", "sat", "sun")
+# How far back to look for the latest slot on a session: covers a long
+# holiday run (e.g. Diwali plus a weekend).
+_LOOKBACK_DAYS = 14
+
+
+def _cron_day(token: str) -> str:
+    return _CRON_DAYS[int(token)] if token.isdigit() else token
+
+
+def crontab_trigger(expr: str, timezone: str) -> CronTrigger:
+    """Build a trigger from a 5-field crontab with cron's day-of-week numbering.
+
+    ``CronTrigger.from_crontab`` keeps the numbers, and APScheduler 3 counts
+    0 = Monday, so ``1-5`` fired Tuesday to Saturday. Numbers become day names
+    here (``1-5`` -> ``mon-fri``). Step values (``*/2``) are passed through.
+    """
+    minute, hour, day, month, dow = expr.split()
+    if "/" not in dow:
+        dow = ",".join("-".join(_cron_day(p) for p in part.split("-")) for part in dow.split(","))
+    return CronTrigger(
+        minute=minute, hour=hour, day=day, month=month, day_of_week=dow, timezone=timezone
+    )
+
+
+def missed_slot(
+    trigger: CronTrigger,
+    now: datetime,
+    last_run_started: datetime | None,
+    is_session: Callable[[date], bool],
+) -> datetime | None:
+    """Return the latest slot on a session day if no run started at or after it.
+
+    Slots on weekends and exchange holidays do not count: their data is the
+    previous session's, which that session's slot already covered.
+    """
+    latest: datetime | None = None
+    fire = trigger.get_next_fire_time(None, now - timedelta(days=_LOOKBACK_DAYS))
+    while fire is not None and fire <= now:
+        if is_session(fire.date()):
+            latest = fire
+        fire = trigger.get_next_fire_time(fire, fire + timedelta(seconds=1))
+    if latest is None:
+        return None
+    if last_run_started is not None and last_run_started >= latest:
+        return None
+    return latest
+
 
 class SchedulerService:
-    """Manages the APScheduler lifecycle and the daily screening job.
-
-    Recovery: On startup, if the scheduler was down during a scheduled job
-    window, the missed run is detected and executed once. This is handled
-    by setting ``misfire_grace_time`` to a large enough value and using
-    ``coalesce=True`` to ensure only one catch-up run per missed window.
-    """
+    """Manages the APScheduler lifecycle and the daily screening job."""
 
     def __init__(self, settings: Settings) -> None:
         """Create the scheduler from settings (not started until :meth:`start`)."""
@@ -41,24 +90,20 @@ class SchedulerService:
             timezone=settings.timezone,
             jobstores={"default": self._job_store},
         )
+        self._trigger = crontab_trigger(settings.schedule_cron, settings.timezone)
+        self._job: Callable[[], Awaitable[None]] | None = None
 
     def register_daily_job(self, job: Callable[[], Awaitable[None]]) -> None:
-        """Register the daily post-close screening job with recovery.
+        """Register the daily post-close screening job.
 
-        Args:
-            job: An async, no-argument callable that runs the ingest+screen pipeline.
-
-        Features:
-        - ``misfire_grace_time``: Allows missed jobs to be caught up within 24 hours.
-        - ``coalesce``: Merges multiple missed runs into one catch-up execution.
-        - ``replace_existing``: Idempotent registration on restart.
+        ``misfire_grace_time`` runs a slot that fired up to 24 h late in a live
+        process; ``coalesce`` merges several such slots into one run;
+        ``replace_existing`` keeps registration idempotent.
         """
-        trigger = CronTrigger.from_crontab(
-            self._settings.schedule_cron, timezone=self._settings.timezone
-        )
+        self._job = job
         self._scheduler.add_job(
             job,
-            trigger=trigger,
+            trigger=self._trigger,
             id="daily_screening",
             replace_existing=True,
             misfire_grace_time=86400,  # 24 hours
@@ -79,9 +124,7 @@ class SchedulerService:
         self._scheduler.start()
         _logger.info("scheduler_started", timezone=self._settings.timezone)
 
-        # Log scheduler state for observability
-        jobs = self._scheduler.get_jobs()
-        for job in jobs:
+        for job in self._scheduler.get_jobs():
             next_run = job.next_run_time
             _logger.info(
                 "scheduler_job_state",
@@ -89,6 +132,29 @@ class SchedulerService:
                 next_run=next_run.isoformat() if next_run else None,
                 pending=job.pending,
             )
+
+    async def catch_up(
+        self,
+        last_run_started: Callable[[], Awaitable[datetime | None]],
+        is_session: Callable[[date], bool],
+        now: datetime | None = None,
+    ) -> datetime | None:
+        """Run the daily job once now if the process was down for its latest slot.
+
+        Returns the missed slot, or ``None`` when nothing was missed or the
+        scheduler is disabled.
+        """
+        if not self._settings.scheduler_enabled or self._job is None:
+            return None
+        current = now or datetime.now(ZoneInfo(self._settings.timezone))
+        slot = missed_slot(self._trigger, current, await last_run_started(), is_session)
+        if slot is None:
+            return None
+        _logger.warning("scheduler_catch_up", missed_slot=slot.isoformat())
+        self._scheduler.add_job(
+            self._job, id="daily_screening_catch_up", replace_existing=True, coalesce=True
+        )
+        return slot
 
     def shutdown(self) -> None:
         """Stop the scheduler gracefully."""
