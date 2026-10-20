@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
@@ -129,9 +130,12 @@ async def execute_screening(
 async def get_latest_run_for_strategy(
     use_case: Annotated[GetLatestRunForStrategy, Depends(get_get_latest_run_for_strategy)],
     strategy: Annotated[str, Query()] = "minervini_trend_template",
+    on_or_before: Annotated[
+        date | None, Query(description="Bar replay: runs to this date.")
+    ] = None,
 ) -> RunDTO | None:
     """Return the latest completed run for a strategy (e.g. a Momentum Horizon)."""
-    return await use_case.execute(strategy)
+    return await use_case.execute(strategy, on_or_before)
 
 
 @router.get("/{run_id}", response_model=RunDTO)

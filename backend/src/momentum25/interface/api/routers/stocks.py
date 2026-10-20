@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -60,6 +61,7 @@ async def read_stock_indicator_series(
     use_case: Annotated[GetIndicatorSeries, Depends(get_indicator_series)],
     strategy: Annotated[str, Query()] = "minervini_trend_template",
     interval: Annotated[Interval, Query()] = "1D",
+    as_of: Annotated[date | None, Query(description="Bar replay: the series on this date.")] = None,
 ) -> SecurityIndicatorSeriesDTO:
     """Return a stock's per-bar indicator series for the chart sub-panes.
 
@@ -69,7 +71,7 @@ async def read_stock_indicator_series(
     exist on the snapshot. With ``interval=1W`` or ``1M`` the same functions
     run on weekly or monthly bars.
     """
-    return await use_case.execute(symbol, strategy, interval)
+    return await use_case.execute(symbol, strategy, interval, as_of)
 
 
 @router.get("/{symbol}/live", response_model=LiveStockAnalysis)

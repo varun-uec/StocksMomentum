@@ -8,6 +8,7 @@ and run lifecycle without computing scores.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from momentum25.application.dto.runs import RunDTO
@@ -80,12 +81,20 @@ class GetLatestRunForStrategy:
         self._runs = runs
         self._strategies = strategies
 
-    async def execute(self, strategy_name: str) -> RunDTO | None:
-        """Return the latest completed run for ``strategy_name``, or ``None``."""
+    async def execute(self, strategy_name: str, on_or_before: date | None = None) -> RunDTO | None:
+        """Return the latest completed run for ``strategy_name``, or ``None``.
+
+        With ``on_or_before`` (bar replay), the newest live or historical run dated
+        that day or earlier, so a replayed chart never shows a later run.
+        """
         strategy = await self._strategies.get_active(strategy_name)
         if strategy is None or strategy.id is None:
             raise StrategyNotFoundError(f"Strategy not found: {strategy_name}")
-        run = await self._runs.latest_completed(strategy.id)
+        run = (
+            await self._runs.latest_completed(strategy.id)
+            if on_or_before is None
+            else await self._runs.latest_completed_on_or_before(strategy.id, on_or_before)
+        )
         if run is None:
             return None
         return _to_dto(run, strategy_name)

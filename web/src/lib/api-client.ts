@@ -67,9 +67,10 @@ export async function getLatestCompletedRun(): Promise<RunDTO | null> {
   return data.items.length > 0 ? normalizeRun(data.items[0]) : null;
 }
 
-export async function getLatestRunForStrategy(strategy: string): Promise<RunDTO | null> {
+/** The latest completed run; with `onOrBefore` (bar replay), the newest live or historical run to that date. */
+export async function getLatestRunForStrategy(strategy: string, onOrBefore?: string): Promise<RunDTO | null> {
   const run = await fetchJson<RunDTO | null>(
-    `${API_BASE}/runs/latest?strategy=${encodeURIComponent(strategy)}`,
+    `${API_BASE}/runs/latest?strategy=${encodeURIComponent(strategy)}${onOrBefore ? `&on_or_before=${onOrBefore}` : ''}`,
     { cache: 'no-store' }
   );
   return run ? normalizeRun(run) : null;
@@ -365,12 +366,15 @@ export async function getOhlcv(
   symbol: string,
   from?: string,
   to?: string,
-  interval: import('./types').ChartInterval = '1D'
+  interval: import('./types').ChartInterval = '1D',
+  /** Bar replay: no later bar, no later corporate action (see the API). */
+  asOf?: string
 ): Promise<import('./types').SecurityOHLCVDTO> {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   if (interval !== '1D') params.set('interval', interval);
+  if (asOf) params.set('as_of', asOf);
   return fetchJson(`${API_BASE}/securities/${symbol}/ohlcv?${params}`, { cache: 'no-store' });
 }
 
@@ -461,10 +465,13 @@ export async function getElliottWave(
 export async function getIndicatorSeries(
   symbol: string,
   strategy = 'minervini_trend_template',
-  interval: import('./types').ChartInterval = '1D'
+  interval: import('./types').ChartInterval = '1D',
+  /** Bar replay: the series as it stood on this date. */
+  asOf?: string
 ): Promise<import('./types').SecurityIndicatorSeriesDTO> {
   const params = new URLSearchParams({ strategy });
   if (interval !== '1D') params.set('interval', interval);
+  if (asOf) params.set('as_of', asOf);
   return fetchJson(`${API_BASE}/stocks/${symbol}/indicators/series?${params}`, {
     cache: 'no-store',
   });

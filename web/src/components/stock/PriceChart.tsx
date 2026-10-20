@@ -42,6 +42,7 @@ import {
   type ISeriesMarkersPluginApi,
   type LineWidth,
   type MouseEventParams,
+  type IRange,
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
@@ -555,6 +556,7 @@ export function PriceChart({
   onScaleChange,
   onOpenIndicators,
   onAlertAtPrice,
+  replayDate,
   chrome,
   legendTitle,
   legendChip,
@@ -608,6 +610,11 @@ export function PriceChart({
   onOpenIndicators?: () => void;
   /** Adds "Alert at this price…" to the chart's context menu (M15). */
   onAlertAtPrice?: (price: number) => void;
+  /**
+   * Bar replay (plan B2): the bars already stop at this date. While it is set the
+   * newest bar stays in view; clearing it restores the viewport from before replay.
+   */
+  replayDate?: string;
   /** Render the chrome into page slots instead of inline (the active workspace chart). */
   chrome?: ChartChrome;
   /** No controls of its own: the workspace toolbar acts on it when it is active (grid cells). */
@@ -959,6 +966,13 @@ export function PriceChart({
     chartRef.current = chart;
     const rememberRange = (range: { from: number; to: number } | null) => { navigationRangeRef.current = range; };
     chart.timeScale().subscribeVisibleLogicalRangeChange(rememberRange);
+    // The visible dates, on the element, for tests and tools that cannot read the canvas.
+    const dateOf = (time: Time) => new Date((time as number) * 1000).toISOString().slice(0, 10);
+    const showDates = (range: IRange<Time> | null) => {
+      container.dataset.visibleFrom = range ? dateOf(range.from) : '';
+      container.dataset.visibleTo = range ? dateOf(range.to) : '';
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(showDates);
     // The drawing primitive belongs to pane 0 for its entire lifetime.
     chart.panes()[0]?.setPreserveEmptyPane(true);
     const maSeries = maSeriesRef.current;
@@ -975,6 +989,7 @@ export function PriceChart({
     return () => {
       resizer.disconnect();
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(rememberRange);
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(showDates);
       drawingsLayerRef.current = null;
       drawingsLayer.detach();
       // `chart.remove()` tears down every series/pane on it in one call. The
@@ -1313,6 +1328,17 @@ export function PriceChart({
     chartRef.current?.priceScale('right').applyOptions({ mode });
   }, [scale]);
 
+  // Bar replay: keep the viewport from before replay, and restore it on exit.
+  // This runs before the price series effect, which applies it.
+  const replaying = !!replayDate;
+  const replayViewport = useRef<{ saved: IRange<Time> | null; restore: boolean }>({ saved: null, restore: false });
+  useEffect(() => {
+    const timeScale = chartRef.current?.timeScale();
+    if (!timeScale) return;
+    if (replaying) replayViewport.current = { saved: timeScale.getVisibleRange(), restore: false };
+    else if (replayViewport.current.saved) replayViewport.current.restore = true;
+  }, [replaying]);
+
   const previousPriceContext = useRef<string>();
   const priceContext = `${drawingsKey ?? bars[0]?.date ?? ''}:${interval}`;
   // Price series (candlestick or close line).
@@ -1320,6 +1346,7 @@ export function PriceChart({
     const chart = chartRef.current;
     if (!chart) return;
     const viewport = previousPriceContext.current === priceContext ? chart.timeScale().getVisibleRange() : null;
+    const logical = chart.timeScale().getVisibleLogicalRange();
     previousPriceContext.current = priceContext;
     if (priceSeriesRef.current) {
       chart.removeSeries(priceSeriesRef.current);
@@ -1351,11 +1378,21 @@ export function PriceChart({
       series.setData(closes);
       priceSeriesRef.current = series;
     }
-    if (viewport) chart.timeScale().setVisibleRange(viewport); else chart.timeScale().fitContent();
+    const restore = replayViewport.current.restore && !replaying ? replayViewport.current.saved : null;
+    if (restore) {
+      replayViewport.current = { saved: null, restore: false };
+      chart.timeScale().setVisibleRange(restore);
+    } else if (replaying && logical && parsed.length) {
+      // Replay keeps the zoom and scrolls so the newest bar sits near the right edge.
+      const width = logical.to - logical.from;
+      const end = parsed.length - 1 + 3;
+      chart.timeScale().setVisibleLogicalRange({ from: end - width, to: end });
+    } else if (viewport) chart.timeScale().setVisibleRange(viewport);
+    else chart.timeScale().fitContent();
     // NFR-11 measures chart open time to this mark: the first frame after the
     // price series holds its bars.
     if (parsed.length > 0) requestAnimationFrame(() => performance.mark('wickstreet:chart-painted'));
-  }, [chartType, parsed, priceContext, resolvedTheme]);
+  }, [chartType, parsed, priceContext, resolvedTheme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // MA overlays.
   useEffect(() => {

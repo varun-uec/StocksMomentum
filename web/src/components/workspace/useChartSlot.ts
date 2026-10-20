@@ -12,6 +12,7 @@ import { useChartShell } from '@/components/stock/useChartShell';
 import { needsBenchmark, useBenchmarkCloses, useCatalogueIndicators } from '@/components/stock/useCatalogueIndicators';
 import { useCompare } from '@/components/workspace/useCompare';
 import { toBars } from '@/lib/indicators/overlays';
+import { upTo } from '@/lib/replay';
 import { useOverlayPreferences } from '@/lib/overlay-preferences';
 import type { ChartInterval } from '@/lib/types';
 import { useWorkspaceChart } from '@/lib/workspace';
@@ -24,20 +25,27 @@ export function useChartSlot(
   strategyName: string,
   /** A layout that syncs intervals shows the active chart's, and changes it there. */
   syncedInterval?: { interval: ChartInterval; onChange: (next: ChartInterval) => void },
+  /** Bar replay: every series this slot draws stops at this date. */
+  replayDate?: string,
 ) {
-  const shell = useChartShell(symbol, DEFAULT_STRATEGY, chartId, { intervals: true, interval: syncedInterval?.interval });
+  const shell = useChartShell(symbol, DEFAULT_STRATEGY, chartId, { intervals: true, interval: syncedInterval?.interval, asOf: replayDate });
   const chart = useWorkspaceChart(chartId);
   const { overlays, update: updateOverlays } = useOverlayPreferences(chartId);
   const bars = useMemo(() => toBars(shell.bars), [shell.bars]);
-  const benchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
+  const allBenchmark = useBenchmarkCloses(symbol, strategyName, needsBenchmark(overlays.indicators));
+  const benchmark = useMemo(() => upTo(allBenchmark, replayDate), [allBenchmark, replayDate]);
   const catalogue = useCatalogueIndicators(bars, overlays.indicators, shell.chartProps, benchmark, (indicators) =>
     updateOverlays({ indicators, presetEdited: true }),
     shell.chartProps.initialWindow?.from,
   );
   const alerts = useAlerts();
-  const alertLevels = useMemo(() => alertPriceLevels(alerts.data?.alerts ?? [], symbol, shell.adjustments ?? []), [alerts.data, symbol, shell.adjustments]);
+  // Replay neither evaluates nor shows alerts: their levels were set later.
+  const alertLevels = useMemo(
+    () => (replayDate ? [] : alertPriceLevels(alerts.data?.alerts ?? [], symbol, shell.adjustments ?? [])),
+    [alerts.data, symbol, shell.adjustments, replayDate],
+  );
   const compareSymbols = chart.chart.compare ?? NO_SYMBOLS;
-  const compare = useCompare(compareSymbols, bars, shell.chartProps.interval, shell.chartProps.initialWindow?.from);
+  const compare = useCompare(compareSymbols, bars, shell.chartProps.interval, shell.chartProps.initialWindow?.from, replayDate);
   const overlayLines = useMemo(
     () => [...catalogue.lines, ...compare.flatMap((c) => (c.line ? [c.line] : []))],
     [catalogue.lines, compare],
@@ -58,6 +66,7 @@ export function useChartSlot(
       overlayLines,
       studyLegend: catalogue.legend,
       alertLevels,
+      replayDate,
       ...(syncedInterval ? { onIntervalChange: syncedInterval.onChange } : {}),
     },
   };

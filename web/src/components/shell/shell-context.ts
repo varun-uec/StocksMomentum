@@ -7,6 +7,7 @@
 import { createContext, useContext, useEffect } from 'react';
 import type { PanelTab } from '@/components/workspace/SidePanel';
 import type { EvidenceControl } from '@/components/momentum25/evidence';
+import type { ReplayState } from '@/lib/replay';
 
 /** What the right panel is about on the current route. */
 export interface PanelContext {
@@ -24,6 +25,8 @@ export interface PanelContext {
   evidence?: EvidenceControl;
   /** Show the Object tree tab: the active chart fills `objectsSlot` (/chart). */
   objects?: boolean;
+  /** Bar replay on /chart: the panel shows nothing dated after it (plan B2). */
+  replay?: ReplayState;
 }
 
 export interface ShellApi {
@@ -43,10 +46,10 @@ export function useShell(): ShellApi {
 }
 
 /** Declare the route's panel context while the route is mounted. */
-export function useShellPanel({ symbol, assessment, saved, inline, objects, runId, evidence }: PanelContext): void {
+export function useShellPanel({ symbol, assessment, saved, inline, objects, runId, evidence, replay }: PanelContext): void {
   const { setPanelContext } = useShell();
   useEffect(() => {
-    setPanelContext({ symbol, assessment, saved, inline, objects, runId, evidence });
+    setPanelContext({ symbol, assessment, saved, inline, objects, runId, evidence, replay });
     return () => setPanelContext({});
-  }, [setPanelContext, symbol, assessment, saved, inline, objects, runId, evidence]);
+  }, [setPanelContext, symbol, assessment, saved, inline, objects, runId, evidence, replay]);
 }

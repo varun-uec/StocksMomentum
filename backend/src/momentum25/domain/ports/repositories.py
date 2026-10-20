@@ -202,6 +202,12 @@ class ScreeningRunRepository(Protocol):
         """Return the most recent completed run for a strategy, or ``None``."""
         ...
 
+    async def latest_completed_on_or_before(
+        self, strategy_id: int, day: date
+    ) -> ScreeningRun | None:
+        """Return the newest completed live or historical run dated ``day`` or earlier."""
+        ...
+
     async def get_completed_by_identity(
         self, strategy_id: int, run_date: date, data_version: str, config_hash: str
     ) -> ScreeningRun | None:

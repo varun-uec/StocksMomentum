@@ -94,17 +94,26 @@ class GetSecurityOHLCV:
         from_: date | None = None,
         to: date | None = None,
         interval: Interval = "1D",
+        as_of: date | None = None,
     ) -> SecurityOHLCVDTO:
-        """Return bars in ``[from_, to]`` and the adjustment schedule of the whole history."""
+        """Return bars in ``[from_, to]`` and the adjustment schedule of the whole history.
+
+        With ``as_of`` (bar replay), the series is as it stood on that date: no later
+        bar, no later corporate action, and a period bar holds only its sessions up
+        to that date (see :meth:`OHLCVSeries.as_of`).
+        """
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
             raise NotFoundError(f"Security not found: {symbol}")
 
         # The whole history, even for a short range: the adjustment schedule
         # must cover every date a saved drawing can sit on.
+        end = min(d for d in (to, as_of, date.today()) if d is not None)
         series = await self._ohlcv.get_series(
-            security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=to or date.today()
+            security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=end
         )
+        if as_of is not None:
+            series = series.as_of(as_of)
         bars = [
             OHLCVBarDTO(
                 date=b.date,

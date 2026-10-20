@@ -7,17 +7,20 @@ Every expected value below is worked out by hand.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 
+from momentum25.application.dto.market_data import Interval
 from momentum25.application.use_cases.securities import GetSecurityOHLCV, interval_bars
 from momentum25.application.use_cases.stocks import GetIndicatorSeries
 from momentum25.domain.entities.market_data import (
     OHLCVBar,
     OHLCVSeries,
+    compute_adjustment_factors,
     period_bars,
     series_data_version,
 )
@@ -233,3 +236,67 @@ async def test_monthly_indicators_are_computed_on_monthly_bars() -> None:
     assert expected_bars[0] == _bar(date(2025, 1, 31), "100", "120", "99", "105", 20000)
     assert [b.date for b in monthly.bars] == [b.date for b in expected_bars]
     assert [b.atr14 for b in monthly.bars] == list(expected.atr14)
+
+
+# ── bar replay: the series as of a date (plan B2) ─────────────────────────
+
+
+def test_as_of_drops_later_bars_and_later_corporate_actions() -> None:
+    days = [date(2026, 3, d) for d in (2, 3, 4, 5, 6)]
+    actions = [
+        SimpleNamespace(ex_date=days[2], ratio=Decimal("0.5")),
+        SimpleNamespace(ex_date=days[4], ratio=Decimal("0.5")),
+    ]
+    stored = compute_adjustment_factors(days, actions)  # type: ignore[arg-type]
+    series = OHLCVSeries(
+        1,
+        tuple(
+            replace(_bar(d, "100", "110", "90", "100", 1000, str(stored[d])), adj_close=Decimal(1))
+            for d in days
+        ),
+    )
+    for cut in days:
+        known = compute_adjustment_factors(days, [a for a in actions if a.ex_date <= cut])  # type: ignore[arg-type]
+        replayed = series.as_of(cut)
+        assert [b.date for b in replayed.bars] == [d for d in days if d <= cut]
+        assert [b.adj_factor for b in replayed.bars] == [known[b.date] for b in replayed.bars]
+        assert all(b.adj_close is None for b in replayed.bars)
+    # A Saturday keeps Friday's bar; a date before the first bar keeps nothing.
+    assert series.as_of(date(2026, 3, 7)).bars[-1].date == days[-1]
+    assert series.as_of(date(2026, 3, 1)).bars == ()
+
+
+async def test_a_replayed_week_holds_only_its_sessions_up_to_the_replay_date() -> None:
+    wednesday = date(2025, 6, 4)
+    prices = await GetSecurityOHLCV(_Securities(), _Ohlcv(), _Calendar()).execute(  # type: ignore[arg-type]
+        "TEST", interval="1W", as_of=wednesday
+    )
+    daily = {b.date: b for b in _DAILY}
+    week = [daily[wednesday - timedelta(days=n)] for n in (2, 1, 0)]
+    assert prices.bars[-1].date == wednesday
+    assert prices.bars[-1].partial is True
+    assert prices.bars[-1].open == week[0].open
+    assert prices.bars[-1].high == max(b.high for b in week)
+    assert prices.bars[-1].close == week[-1].close
+    assert prices.bars[-1].volume == sum(b.volume for b in week)
+    assert all(b.date <= wednesday for b in prices.bars)
+
+
+@pytest.mark.parametrize("interval", ["1D", "1W", "1M"])
+async def test_replayed_indicators_never_use_a_later_bar(interval: Interval) -> None:
+    """A value is the same whether replay stops on its date or later: no look-ahead."""
+    use_case = GetIndicatorSeries(
+        _Securities(),
+        _Strategies(),
+        IndicatorPipelineImpl,
+        _Ohlcv(),
+        _Calendar(),  # type: ignore[arg-type]
+    )
+    early, late = date(2025, 9, 30), date(2025, 12, 31)
+    a = await use_case.execute("TEST", interval=interval, as_of=early)
+    b = await use_case.execute("TEST", interval=interval, as_of=late)
+    assert a.bars and all(bar.date <= early for bar in a.bars)
+    # Daily bars are final when printed. A period bar is final once its period has closed.
+    final = a.bars if interval == "1D" else a.bars[:-1]
+    later = {bar.date: bar for bar in b.bars}
+    assert final and all(later[bar.date] == bar for bar in final)

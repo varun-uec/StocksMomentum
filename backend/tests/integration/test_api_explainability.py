@@ -266,7 +266,7 @@ async def test_rankings_pages_never_overlap_on_tied_ranks(db_session: AsyncSessi
         data_version="v",
         config_hash="h",
         status="COMPLETED",
-        trigger="manual",
+        trigger="MANUAL",
     )
     db_session.add(run)
     securities = [await _seed_security(db_session, f"TIE{i}", f"Tie {i}") for i in range(7)]
@@ -290,3 +290,50 @@ async def test_rankings_pages_never_overlap_on_tied_ranks(db_session: AsyncSessi
     assert [r.security_id for r in paged] == [r.security_id for r in whole]
     unranked = [r.security_id for r in whole if r.rank is None]
     assert unranked == sorted(unranked) and len(unranked) == 5
+
+
+@pytest.mark.asyncio
+async def test_latest_run_on_or_before_a_replay_date(db_session: AsyncSession) -> None:
+    """Replay sees the newest live or historical run up to its date, never a research run."""
+    from momentum25.infrastructure.persistence.models import ScreeningRunModel, StrategyModel
+
+    config = {
+        "name": "replay_runs",
+        "version": 1,
+        "engines": [{"id": "trend_template", "enabled": True, "weight": "1"}],
+    }
+    strategy = StrategyModel(name="replay_runs", version=1, config=config, config_hash="h")
+    db_session.add(strategy)
+    await db_session.flush()
+    runs = {
+        "live_old": (date(2026, 1, 2), "v1"),
+        "historical": (date(2026, 1, 5), "historical:v1"),
+        "research": (date(2026, 1, 6), "v1:research:7"),
+        "live_new": (date(2026, 1, 8), "v2"),
+    }
+    ids = {}
+    for name, (run_date, version) in runs.items():
+        model = ScreeningRunModel(
+            strategy_id=strategy.id,
+            run_date=run_date,
+            data_version=version,
+            config_hash="h",
+            status="COMPLETED",
+            trigger="MANUAL",
+        )
+        db_session.add(model)
+        await db_session.flush()
+        ids[name] = model.id
+    await db_session.commit()
+
+    def latest(on_or_before: str | None) -> int | None:
+        query = f"&on_or_before={on_or_before}" if on_or_before else ""
+        with TestClient(create_app()) as client:
+            body = client.get(f"/api/v1/runs/latest?strategy=replay_runs{query}").json()
+        return body["id"] if body else None
+
+    assert latest(None) == ids["live_new"]
+    assert latest("2026-01-07") == ids["historical"]
+    assert latest("2026-01-05") == ids["historical"]
+    assert latest("2026-01-04") == ids["live_old"]
+    assert latest("2026-01-01") is None

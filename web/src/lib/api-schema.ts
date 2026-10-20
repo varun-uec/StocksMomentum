@@ -4772,6 +4772,8 @@ export interface operations {
             query?: {
                 strategy?: string;
                 interval?: "1D" | "1W" | "1M";
+                /** @description Bar replay: the series on this date. */
+                as_of?: string | null;
             };
             header?: never;
             path: {
@@ -4938,6 +4940,8 @@ export interface operations {
         parameters: {
             query?: {
                 strategy?: string;
+                /** @description Bar replay: runs to this date. */
+                on_or_before?: string | null;
             };
             header?: never;
             path?: never;
@@ -5332,6 +5336,8 @@ export interface operations {
                 from?: string | null;
                 to?: string | null;
                 interval?: "1D" | "1W" | "1M";
+                /** @description Bar replay: the series on this date. */
+                as_of?: string | null;
             };
             header?: never;
             path: {

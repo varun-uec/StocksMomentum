@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertsTab, useAlerts } from '@/components/workspace/AlertsTab';
 import { AssessmentPanel } from '@/components/momentum25/AssessmentPanel';
 import type { EvidenceControl } from '@/components/momentum25/evidence';
+import type { ReplayState } from '@/lib/replay';
 import { addToWatchlist, getWatchlistDetail, removeFromWatchlist } from '@/lib/api-client';
 import { StatusDot } from '@/components/shared/Card';
 import { num } from '@/lib/format';
@@ -115,6 +116,7 @@ export function SidePanel({
   objectsRef,
   runId,
   evidence,
+  replay,
   onOpenChart,
   onCreateAlert,
 }: {
@@ -134,6 +136,8 @@ export function SidePanel({
   runId?: number;
   /** "Show on chart" for the active chart (/chart only). */
   evidence?: EvidenceControl;
+  /** Bar replay: no tab shows anything dated after its date. */
+  replay?: ReplayState;
   /** Assessment's "Open in chart"; absent on /chart. */
   onOpenChart?: (symbol: string) => void;
   onCreateAlert?: () => void;
@@ -148,19 +152,31 @@ export function SidePanel({
         </button>
       </div>
       <div id="workspace-panel-content" role="tabpanel" aria-labelledby={`workspace-tab-${panel}`} aria-label={label} className="flex-1 min-h-0 overflow-y-auto">
-        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} runId={runId} onOpenSymbol={onOpenSymbol} />}
+        {panel === 'watchlist' && <WatchlistTab symbol={symbol} strategy={strategy} runId={runId} replay={replay} onOpenSymbol={onOpenSymbol} />}
         {panel === 'details' && symbol && (
-          <AssessmentPanel key={`${symbol}:${strategy}:${runId}`} symbol={symbol} strategy={strategy} runId={runId} evidence={evidence} onOpenChart={onOpenChart && (() => onOpenChart(symbol))} onCreateAlert={onCreateAlert} />
+          <AssessmentPanel key={`${symbol}:${strategy}:${runId}:${replay ? `replay-${replay.runId}` : ''}`} symbol={symbol} strategy={strategy} runId={runId} replay={replay} evidence={evidence} onOpenChart={onOpenChart && (() => onOpenChart(symbol))} onCreateAlert={onCreateAlert} />
         )}
-        {panel === 'alerts' && <AlertsTab symbol={symbol} price={alertPrice} />}
+        {panel === 'alerts' && (replay ? <ReplayPaused date={replay.date} /> : <AlertsTab symbol={symbol} price={alertPrice} />)}
         {panel === 'objects' && <div ref={objectsRef} className="p-2" />}
       </div>
     </aside>
   );
 }
 
-/** Dense rows: Symbol, Last, Chg%, Rank, Qualified. Ranks come from the strategy's latest run, which the header names. */
-function WatchlistTab({ symbol, strategy, runId, onOpenSymbol }: { symbol?: string; strategy: string; runId?: number; onOpenSymbol: (symbol: string) => void }) {
+/** Alerts in bar replay: not evaluated, not created, and their history is from later sessions. */
+function ReplayPaused({ date }: { date: string }) {
+  return (
+    <p role="note" className="px-3 py-3 text-xs text-slate-600 dark:text-slate-400">
+      Alerts are paused during bar replay. Replay does not evaluate or create alerts, and it hides their history, which comes from sessions after {date}.
+    </p>
+  );
+}
+
+/**
+ * Dense rows: Symbol, Last, Chg%, Rank, Qualified. Ranks come from the strategy's latest run, which the header names.
+ * In bar replay the rows keep only the symbols: today's prices and ranks come from after the replay date.
+ */
+function WatchlistTab({ symbol, strategy, runId, replay, onOpenSymbol }: { symbol?: string; strategy: string; runId?: number; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
   const { data, isLoading } = useWatchlistDetail(strategy);
   const toggle = useWatchlistToggle();
   const [sort, setSort] = useState('symbol');
@@ -182,15 +198,20 @@ function WatchlistTab({ symbol, strategy, runId, onOpenSymbol }: { symbol?: stri
           </button>
         </div>
       )}
-      <label className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wide text-slate-500">Sort watchlist <select aria-label="Sort watchlist" className="bg-transparent text-xs" value={sort} onChange={(e) => setSort(e.target.value)}><option value="symbol">Symbol</option><option value="change">Daily change</option><option value="rank">Momentum rank</option></select></label>
+      {replay && items.length > 0 && (
+        <p data-testid="watchlist-run" role="note" className="px-3 pb-1 text-[11px] text-slate-500">
+          Bar replay to {replay.date}: prices and ranks are hidden, because they come from later sessions.
+        </p>
+      )}
+      {!replay && <label className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wide text-slate-500">Sort watchlist <select aria-label="Sort watchlist" className="bg-transparent text-xs" value={sort} onChange={(e) => setSort(e.target.value)}><option value="symbol">Symbol</option><option value="change">Daily change</option><option value="rank">Momentum rank</option></select></label>}
       {isLoading && <p className="px-3 py-2 text-xs text-slate-500">Loading watchlist…</p>}
       {!isLoading && items.length === 0 && <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No symbols yet. Add the open symbol with Alt+W.</p>}
-      {data && items.length > 0 && (
+      {!replay && data && items.length > 0 && (
         <p data-testid="watchlist-run" className={`px-3 pb-1 text-[11px] ${runId !== undefined && data.run_id !== runId ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
           {data.run_id === null ? `${strategy} · no completed run` : runId !== undefined && data.run_id !== runId ? `Watchlist ranks: run #${data.run_id} (latest), not this view's run #${runId}` : `Ranks: ${strategy} · run #${data.run_id}`}
         </p>
       )}
-      {items.length > 0 && (
+      {!replay && items.length > 0 && (
         <div aria-hidden="true" className="flex gap-2 px-3 py-1 text-[10px] uppercase tracking-wide text-slate-500 border-b border-[var(--ws-line)]">
           <span className="flex-1">Symbol</span>
           <span className="w-16 text-right">Last</span>
@@ -213,6 +234,7 @@ function WatchlistTab({ symbol, strategy, runId, onOpenSymbol }: { symbol?: stri
                 }`}
               >
                 <span className="flex-1 font-semibold truncate">{item.symbol}</span>
+                {!replay && <>
                 <span className="tabular-nums w-16 text-right">{item.close === null ? '—' : num(item.close)}</span>
                 <span className={`tabular-nums w-14 text-right ${change === null ? 'text-slate-600 dark:text-slate-400' : change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                   {change === null ? '—' : `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`}
@@ -222,6 +244,7 @@ function WatchlistTab({ symbol, strategy, runId, onOpenSymbol }: { symbol?: stri
                   {item.in_latest_run ? <StatusDot passed={item.rank !== null} /> : <span aria-hidden="true">—</span>}
                   <span className="sr-only">{!item.in_latest_run ? 'not in the run' : item.rank !== null ? 'qualified' : 'not qualified'}</span>
                 </span>
+                </>}
               </button>
             </li>
           );

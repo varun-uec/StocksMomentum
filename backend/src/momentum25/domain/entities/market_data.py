@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, Literal
@@ -106,6 +106,21 @@ class OHLCVSeries:
     def volumes(self) -> list[int]:
         """Return the volume series."""
         return [b.volume for b in self.bars]
+
+    def as_of(self, day: date) -> OHLCVSeries:
+        """Return the series as it stood on ``day``: no later bar, no later corporate action.
+
+        A stored ``adj_factor`` folds in every action up to today. Dividing by the
+        factor of the last bar on or before ``day`` leaves the product of the actions
+        with an ex-date in ``(bar date, day]``: exactly what was known on ``day``.
+        ``adj_close`` is dropped, because it carries today's factor.
+        """
+        kept = [b for b in self.bars if b.date <= day]
+        base = kept[-1].adj_factor if kept else Decimal(1)
+        return OHLCVSeries(
+            security_id=self.security_id,
+            bars=tuple(replace(b, adj_factor=b.adj_factor / base, adj_close=None) for b in kept),
+        )
 
     def adjustment_schedule(self) -> tuple[AdjustmentStep, ...]:
         """Return the factor of every date, as runs of equal ``adj_factor``.

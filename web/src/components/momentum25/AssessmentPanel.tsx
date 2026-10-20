@@ -18,6 +18,7 @@ import { num } from '@/lib/format';
 import { focusRing } from '@/lib/theme';
 import type { RuleExplanation } from '@/lib/types';
 import { evidenceLayer, type EvidenceControl } from '@/components/momentum25/evidence';
+import type { ReplayState } from '@/lib/replay';
 
 const link = `text-indigo-600 dark:text-indigo-400 hover:underline ${focusRing}`;
 
@@ -30,7 +31,8 @@ export function useFromParam(): string {
 export function AssessmentPanel({
   symbol,
   strategy,
-  runId,
+  runId: viewRunId,
+  replay,
   evidence,
   onOpenChart,
   onCreateAlert,
@@ -39,6 +41,11 @@ export function AssessmentPanel({
   strategy: string;
   /** The view's run; the strategy's latest run when absent. */
   runId?: number;
+  /**
+   * Bar replay: the newest run on or before the replay date, with no live
+   * fallback and no later bars; "Not available in replay" when there is none.
+   */
+  replay?: ReplayState;
   /** "Show on chart" for criteria whose evidence the chart can draw (/chart only). */
   evidence?: EvidenceControl;
   /** "Open in chart"; absent on /chart, where the chart is already open. */
@@ -47,8 +54,9 @@ export function AssessmentPanel({
 }) {
   const from = useFromParam();
   const latest = useLatestRun(strategy);
+  const runId = replay ? (replay.runId ?? undefined) : viewRunId;
   const pinned = useQuery({ queryKey: ['run', runId], queryFn: () => getRun(runId!), enabled: runId !== undefined });
-  const run = runId !== undefined ? pinned.data : latest.data;
+  const run = replay?.runId === null ? null : runId !== undefined ? pinned.data : replay ? undefined : latest.data;
   const runInView = run?.id;
   const ranked = useQuery({
     queryKey: ['stock-explanation', symbol, strategy, runInView],
@@ -60,17 +68,24 @@ export function AssessmentPanel({
   const live = useQuery({
     queryKey: ['stock-live', symbol, strategy],
     queryFn: () => getLiveStockAnalysis(symbol, false, strategy),
-    enabled: run === null || ranked.isError,
+    enabled: !replay && (run === null || ranked.isError),
   });
 
   // The symbol's own last stored bar: when it is newer than the run, the numbers below predate it.
   const asOf = run?.run_date.slice(0, 10);
-  const lastBar = useQuery({ queryKey: ['assessment-last-bar', symbol, asOf], queryFn: () => getOhlcv(symbol, asOf), enabled: !!asOf }).data?.bars.at(-1)?.date;
+  const lastBar = useQuery({ queryKey: ['assessment-last-bar', symbol, asOf], queryFn: () => getOhlcv(symbol, asOf), enabled: !!asOf && !replay }).data?.bars.at(-1)?.date;
   const stale = !!asOf && !!lastBar && lastBar > asOf;
 
   const explanation = ranked.data ?? live.data?.explanation ?? undefined;
   const isLive = !ranked.data && !!live.data;
-  const loading = (run === undefined && (latest.isLoading || pinned.isLoading)) || ranked.isLoading || (live.isLoading && live.fetchStatus !== 'idle');
+  const loading = (run === undefined && (latest.isLoading || pinned.isLoading || replay?.runId === undefined)) || ranked.isLoading || (live.isLoading && live.fetchStatus !== 'idle');
+  const label = isLive
+    ? 'Live analysis, not a ranking'
+    : replay
+      ? `Replay — newest run on or before ${replay.date}`
+      : viewRunId !== undefined && latest.data && viewRunId !== latest.data.id
+        ? `Historical — as of ${asOf}`
+        : undefined;
 
   return (
     <div className="px-3 py-2 space-y-3 text-xs" data-testid="assessment">
@@ -88,7 +103,12 @@ export function AssessmentPanel({
         {isLive ? (
           <p className="text-slate-500">Live analysis of the stored daily bars: {symbol} is not in this run, so it has no rank.</p>
         ) : null}
-        <ProvenanceLine strategy={strategy} run={run} label={isLive ? 'Live analysis, not a ranking' : runId !== undefined && latest.data && runId !== latest.data.id ? `Historical — as of ${asOf}` : undefined} />
+        <ProvenanceLine strategy={strategy} run={run} label={label} />
+        {replay?.runId === null && (
+          <p role="note" data-testid="assessment-replay" className="text-slate-600 dark:text-slate-400">
+            Not available in replay: no {strategy} run is dated on or before {replay.date}.
+          </p>
+        )}
         {stale && !isLive && (
           <p role="note" className="text-amber-700 dark:text-amber-400">
             Run #{run!.id} is as of {asOf}; {symbol}&apos;s stored bars run to {lastBar}. This assessment does not include the later bars.
@@ -98,7 +118,11 @@ export function AssessmentPanel({
 
       {onOpenChart && <YearCloses symbol={symbol} />}
       {loading && <p className="text-slate-500">Loading the assessment of {symbol}…</p>}
-      {!loading && !explanation && <p className="text-slate-500">No Momentum25 evaluation for {symbol}: not enough stored history.</p>}
+      {!loading && !explanation && run !== null && (
+        <p className="text-slate-500">
+          {replay ? `${symbol} is not in run #${run?.id}, the newest run on or before ${replay.date}.` : `No Momentum25 evaluation for ${symbol}: not enough stored history.`}
+        </p>
+      )}
 
       {explanation && (
         <>
@@ -123,10 +147,13 @@ export function AssessmentPanel({
             Open in chart
           </button>
         )}
-        <Link to={`/stock/${encodeURIComponent(symbol)}?strategy=${encodeURIComponent(strategy)}&from=${from}`} className={link}>
-          Full analysis →
-        </Link>
-        {onCreateAlert && (
+        {/* Both lead to today's data and alerts, which replay hides. */}
+        {!replay && (
+          <Link to={`/stock/${encodeURIComponent(symbol)}?strategy=${encodeURIComponent(strategy)}&from=${from}`} className={link}>
+            Full analysis →
+          </Link>
+        )}
+        {onCreateAlert && !replay && (
           <button type="button" onClick={onCreateAlert} className={link}>
             Create alert
           </button>

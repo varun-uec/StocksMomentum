@@ -24,10 +24,13 @@ from momentum25.infrastructure.persistence.models import ScreeningRunModel
 # backfill or ad-hoc research tags. Historical and research runs are real,
 # permanent rows under ADR-006, but they are not the live production run and
 # must not appear in live history, rank-change, or "latest run" queries.
-_LIVE_RUN_PREDICATES = (
-    ~ScreeningRunModel.data_version.like("historical:%"),
+_NOT_RESEARCH_PREDICATES = (
     ~ScreeningRunModel.data_version.like("%:research:%"),
     ~ScreeningRunModel.data_version.like("%:icv2:%"),
+)
+_LIVE_RUN_PREDICATES = (
+    ~ScreeningRunModel.data_version.like("historical:%"),
+    *_NOT_RESEARCH_PREDICATES,
 )
 
 
@@ -154,6 +157,28 @@ class SqlScreeningRunRepository:
                 ScreeningRunModel.strategy_id == strategy_id,
                 ScreeningRunModel.status == RunStatus.COMPLETED.value,
                 *_LIVE_RUN_PREDICATES,
+            )
+            .order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
+        )
+        row = result.scalars().first()
+        return _to_domain(row) if row else None
+
+    async def latest_completed_on_or_before(
+        self, strategy_id: int, day: date
+    ) -> ScreeningRun | None:
+        """Return the newest completed run dated ``day`` or earlier, for bar replay.
+
+        Unlike :meth:`latest_completed`, a historical backfill run counts: it is the
+        point-in-time snapshot of its date (M16), which is what replay must show.
+        Research and walk-forward runs never count.
+        """
+        result = await self._session.execute(
+            select(ScreeningRunModel)
+            .where(
+                ScreeningRunModel.strategy_id == strategy_id,
+                ScreeningRunModel.status == RunStatus.COMPLETED.value,
+                ScreeningRunModel.run_date <= day,
+                *_NOT_RESEARCH_PREDICATES,
             )
             .order_by(ScreeningRunModel.run_date.desc(), ScreeningRunModel.id.desc())
         )

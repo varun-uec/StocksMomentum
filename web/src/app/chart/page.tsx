@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
 import { PriceChart, type ChartChrome, type EvidenceLayer } from '@/components/stock/PriceChart';
@@ -25,6 +26,7 @@ import { useLatestRun } from '@/components/momentum25/run';
 import { ScreenerPanel } from '@/components/momentum25/ScreenerPanel';
 import { MAX_PANES } from '@/components/stock/useCatalogueIndicators';
 import { IndicatorDialog } from '@/components/workspace/IndicatorDialog';
+import { ReplayBar, type Replay } from '@/components/workspace/ReplayBar';
 import { SaveState } from '@/components/workspace/SaveState';
 import { Popover } from '@/components/shell/Popover';
 import { useShell, useShellPanel } from '@/components/shell/shell-context';
@@ -34,6 +36,8 @@ import { MAX_COMPARE, type CompareLine } from '@/components/workspace/useCompare
 import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
+import { getLatestRunForStrategy, getOhlcv } from '@/lib/api-client';
+import type { ReplayState } from '@/lib/replay';
 import { isTyping, opensSearch } from '@/lib/shortcuts';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { focusRing } from '@/lib/theme';
@@ -132,7 +136,7 @@ const BOTTOM_KEY = 'wickstreet.bottomPanel';
  * Strategy Studio and Research as shell navigation that remembers the chart.
  * Open or closed is a per-viewer convenience, so it lives in localStorage.
  */
-function BottomPanel({ symbol, strategy, onOpenSymbol }: { symbol: string; strategy: string; onOpenSymbol: (symbol: string) => void }) {
+function BottomPanel({ symbol, strategy, replay, onOpenSymbol }: { symbol: string; strategy: string; replay?: ReplayState; onOpenSymbol: (symbol: string) => void }) {
   const [state, setState] = useState<BottomState>(() => {
     try {
       const saved = localStorage.getItem(BOTTOM_KEY);
@@ -169,7 +173,7 @@ function BottomPanel({ symbol, strategy, onOpenSymbol }: { symbol: string; strat
       </div>
       {state !== 'closed' && (
         <div id="chart-bottom-body" className="chart-bottom-body">
-          <ScreenerPanel strategy={strategy} symbol={symbol} onOpenSymbol={onOpenSymbol} />
+          <ScreenerPanel strategy={strategy} symbol={symbol} replay={replay} onOpenSymbol={onOpenSymbol} />
         </div>
       )}
     </section>
@@ -201,7 +205,8 @@ function CellFrame({
   onActivate: () => void;
   onSearch: () => void;
   onIndicators: () => void;
-  onAlert: (price: number) => void;
+  /** Absent in replay: alerts are paused. */
+  onAlert?: (price: number) => void;
   evidenceLayers?: EvidenceLayer[];
   onRemoveEvidence?: (id: string) => void;
 }) {
@@ -233,9 +238,10 @@ function GridCell(
   props: Omit<Parameters<typeof CellFrame>[0], 'slot'> & {
     strategyName: string;
     syncedInterval?: { interval: ChartInterval; onChange: (next: ChartInterval) => void };
+    replayDate?: string;
   },
 ) {
-  const slot = useChartSlot(props.chartId, props.symbol, props.strategyName, props.syncedInterval);
+  const slot = useChartSlot(props.chartId, props.symbol, props.strategyName, props.syncedInterval, props.replayDate);
   return <CellFrame {...props} slot={slot} />;
 }
 
@@ -245,7 +251,10 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const grid = useLayout();
   const activeId = grid.active;
   const multi = grid.slots.length > 1;
-  const slot = useChartSlot(activeId, symbol, strategyName);
+  // Bar replay (plan B2): page state, never saved; every chart on the page replays the same date.
+  const [replay, setReplay] = useState<Replay | null>(null);
+  const replayDate = replay?.date;
+  const slot = useChartSlot(activeId, symbol, strategyName, undefined, replayDate);
   const { shell, chart: workspace, overlays, updateOverlays, catalogue, compare, compareSymbols, setCompare } = slot;
   const drawings = useSymbolDrawings(symbol);
   const crosshair = useMemo(createCrosshairSync, []);
@@ -268,7 +277,24 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   const { openPanel, routeSlot, objectsSlot } = useShell();
   const latestRun = useLatestRun(strategyName).data;
 
-  const alertAt = (price: number) => openPanel('alerts', price);
+  const alertAt = replay ? undefined : (price: number) => openPanel('alerts', price);
+  // Step targets: the active symbol's stored daily sessions (the shell's own cached key).
+  const daily = useQuery({ queryKey: ['stock-ohlcv', symbol, '1D'], queryFn: () => getOhlcv(symbol, undefined, undefined, '1D'), enabled: !!replay });
+  const sessions = useMemo(() => daily.data?.bars.map((b) => b.date) ?? [], [daily.data]);
+  // Momentum25 context in replay: the newest run on or before the date, never a later one.
+  const replayRun = useQuery({
+    queryKey: ['replay-run', strategyName, replayDate],
+    queryFn: () => getLatestRunForStrategy(strategyName, replayDate),
+    enabled: !!replayDate,
+    // An earlier step's run is still on or before this date, so it may stay while the next loads.
+    placeholderData: keepPreviousData,
+  });
+  const replayRunId = replayDate ? (replayRun.data === undefined ? undefined : (replayRun.data?.id ?? null)) : undefined;
+  const replayState = useMemo<ReplayState | undefined>(() => (replayDate ? { date: replayDate, runId: replayRunId } : undefined), [replayDate, replayRunId]);
+  const startReplay = () => {
+    const dates = shell.bars.map((b) => b.date);
+    if (dates.length > 1) setReplay({ date: dates[Math.max(0, dates.length - 61)], playing: false, speed: '1×' });
+  };
   const watchlist = useWatchlistDetail(strategyName);
   const toggleWatchlist = useWatchlistToggle();
   const listed = watchlist.data?.items.some((i) => i.symbol === symbol) ?? false;
@@ -316,7 +342,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     [evidence, activeId, symbol, slotKey, grid.sync.symbol],
   );
   // Dense layouts release the panel's width; it then opens over the charts.
-  useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9, objects: true, evidence: evidenceControl });
+  useShellPanel({ symbol, assessment: true, saved: true, inline: grid.slots.length < 9, objects: true, evidence: evidenceControl, replay: replayState });
   const [railSlot, setRailSlot] = useState<HTMLElement | null>(null);
   const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
   const [chartTypeSlot, setChartTypeSlot] = useState<HTMLElement | null>(null);
@@ -403,6 +429,11 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
   // TradingView's priority order: what does not fit folds into the ⋯ menu.
   // Chart groups render into whichever slot is current, inline or in the menu.
   const folded = { compare: !lg, chartType: !lg, history: !xl, settings: !xl, indicators: !sm, save: !sm };
+  const replayButton = (done?: () => void) => (
+    <button type="button" onClick={() => { done?.(); if (replay) setReplay(null); else startReplay(); }} aria-pressed={!!replay} disabled={!replay && shell.bars.length < 2} title={replay ? 'Exit bar replay' : 'Bar replay: step through past sessions'} className={btn}>
+      <span aria-hidden="true" className="mr-1">⏮</span>Replay
+    </button>
+  );
   const toolbar = (
     <div className="chart-toolbar">
       <h1 className="text-[15px] font-bold tracking-tight">
@@ -441,10 +472,11 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
         </>
       )}
       {!folded.compare && (
-        <button type="button" onClick={() => openPanel('alerts')} title="Create an alert for this symbol" className={btn}>
+        <button type="button" onClick={() => openPanel('alerts')} disabled={!!replay} title={replay ? 'Alerts are paused in replay' : 'Create an alert for this symbol'} className={btn}>
           Alert
         </button>
       )}
+      {!folded.compare && replayButton()}
       {!folded.history && <span ref={setHistorySlot} className="contents" />}
       <span className="flex-1" />
       {!folded.compare && <LayoutPopover grid={grid} multi={multi} />}
@@ -454,7 +486,8 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
             <>
               {folded.compare && <button type="button" onClick={() => { close(); openSearch('', true); }} disabled={compareFull} title={compareTitle} className={`${btn} justify-start`}>Compare</button>}
               {folded.indicators && <button type="button" onClick={() => { close(); setIndicatorsOpen(true); }} className={`${btn} justify-start`}>{indicatorsLabel}</button>}
-              {folded.compare && <button type="button" onClick={() => { close(); openPanel('alerts'); }} className={`${btn} justify-start`}>Alert</button>}
+              {folded.compare && <button type="button" onClick={() => { close(); openPanel('alerts'); }} disabled={!!replay} className={`${btn} justify-start`}>Alert</button>}
+              {folded.compare && replayButton(close)}
               {folded.compare && <div className="flex items-center gap-2 px-2 py-1 text-xs">Layout <LayoutPopover grid={grid} multi={multi} /></div>}
               {folded.chartType && <div ref={setMenuChartTypeSlot} className="flex items-center gap-2 px-2 py-1 text-xs" />}
               <div ref={setMenuHistorySlot} className="flex items-center gap-1 px-1 py-1" />
@@ -477,7 +510,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
       {!multi ? (
         <div className="chart-stage" data-plot-cell>
           {shell.ready ? (
-            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} legendChip={<LegendChip symbol={symbol} strategy={strategyName} runId={latestRun?.id} onOpen={() => openPanel('details')} />} evidenceLayers={activeLayers} onRemoveEvidence={(id) => removeEvidence(activeId, id)} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
+            <PriceChart {...slot.chartProps} legendTitle={`${symbol} · ${slot.chartProps.interval ?? '1D'} · NSE`} legendChip={<LegendChip symbol={symbol} strategy={strategyName} runId={replayState ? (replayState.runId ?? undefined) : latestRun?.id} onOpen={() => openPanel('details')} />} evidenceLayers={activeLayers} onRemoveEvidence={(id) => removeEvidence(activeId, id)} onOpenIndicators={() => setIndicatorsOpen(true)} onAlertAtPrice={alertAt} autoHeight toolRail chrome={chrome} />
           ) : (
             <LoadingSpinner />
           )}
@@ -500,11 +533,12 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
               evidenceLayers: layersOf(chartId),
               onRemoveEvidence: (id: string) => removeEvidence(chartId, id),
             };
-            return <GridCell key={chartId} {...cell} chrome={chrome} strategyName={strategyName} syncedInterval={syncedInterval} />;
+            return <GridCell key={chartId} {...cell} chrome={chrome} strategyName={strategyName} syncedInterval={syncedInterval} replayDate={replayDate} />;
           })}
         </div>
       )}
       </div>
+      {replay && <ReplayBar replay={replay} sessions={sessions} loading={slot.shell.chartProps.isLoading || daily.isLoading} onChange={setReplay} onExit={() => setReplay(null)} />}
       <div className="chart-rangebar">
         <span ref={setRangeSlot} className="chart-slot contents" />
         <span className="hidden md:inline text-[10px] uppercase tracking-wider text-slate-500">EOD · NSE</span>
@@ -513,7 +547,7 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
           <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline">TradingView Lightweight Charts™</a>
         </span>
       </div>
-      {sm && <BottomPanel symbol={symbol} strategy={strategyName} onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)} />}
+      {sm && <BottomPanel symbol={symbol} strategy={strategyName} replay={replayState} onOpenSymbol={(next) => navigate(`/chart/${encodeURIComponent(next)}`)} />}
       <IndicatorDialog
         open={indicatorsOpen}
         onClose={() => setIndicatorsOpen(false)}

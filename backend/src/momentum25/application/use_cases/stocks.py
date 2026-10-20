@@ -217,13 +217,20 @@ class GetIndicatorSeries:
         self._calendar = calendar
 
     async def execute(
-        self, symbol: str, strategy_name: str = _DEFAULT_STRATEGY, interval: Interval = "1D"
+        self,
+        symbol: str,
+        strategy_name: str = _DEFAULT_STRATEGY,
+        interval: Interval = "1D",
+        as_of: date | None = None,
     ) -> SecurityIndicatorSeriesDTO:
         """Return the indicator series for *symbol* under *strategy_name*.
 
         Daily series keep the snapshot's own bar window, so the last value always
         equals ``/stocks/{symbol}/live``. Weekly and monthly series run the same
-        functions on period bars built from the whole adjusted history.
+        functions on period bars built from the whole adjusted history. With
+        ``as_of`` (bar replay), every interval runs the same functions on the
+        series as it stood on that date, so no value uses a later bar or a later
+        corporate action.
         """
         security = await self._securities.get_by_symbol(symbol)
         if security is None or security.id is None:
@@ -235,9 +242,17 @@ class GetIndicatorSeries:
 
         today = date.today()
         stored = await self._ohlcv.get_series(
-            security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=today
+            security.id, lookback_days=ALL_HISTORY_SESSIONS, as_of=min(as_of or today, today)
         )
-        if interval != "1D":
+        if as_of is not None:
+            stored = stored.as_of(as_of)
+            bars_at_interval = (
+                list(stored.bars)
+                if interval == "1D"
+                else [bar for bar, _ in interval_bars(stored, interval, self._calendar)]
+            )
+            series = self._indicator_pipeline.series_from_bars(bars_at_interval, as_of)
+        elif interval != "1D":
             period = [bar for bar, _ in interval_bars(stored, interval, self._calendar)]
             series = self._indicator_pipeline.series_from_bars(period, today)
         else:
