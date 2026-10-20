@@ -412,6 +412,11 @@ class ResearchDashboardRequest(BaseModel):
 
     strategy_name: str = "minervini_trend_template"
     window_years: int = Field(default=1, ge=1, le=10)
+    config_hash: str | None = Field(
+        default=None,
+        pattern="^[a-f0-9]{64}$",
+        description="Exact config version (ADR-014 §9). Omit for the strategy-file definition.",
+    )
 
 
 class ResearchDashboardResponse(BaseModel):
@@ -419,6 +424,12 @@ class ResearchDashboardResponse(BaseModel):
 
     strategy_name: str
     strategy_id: int
+    strategy_version: int | None = Field(
+        default=None, description="Version of the strategy row that produced the evidence."
+    )
+    config_hash: str | None = Field(
+        default=None, description="Config hash whose runs are the evidence; never mixed."
+    )
     scorecard: StrategyScorecardDTO | None = None
     alpha_analysis: AlphaAnalysisResponse | None = None
     rule_effectiveness: RuleEffectivenessResponse | None = None

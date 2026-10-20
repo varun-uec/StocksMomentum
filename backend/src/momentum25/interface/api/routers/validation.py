@@ -445,34 +445,26 @@ async def research_dashboard(
     engines_uc: Annotated[EngineEffectivenessUseCase, Depends(get_engine_effectiveness_use_case)],
 ) -> ResearchDashboardResponse:
     """Get complete research dashboard data."""
+    # Every sub-report resolves the same strategy row and reads only runs with
+    # its config hash, so one version's dashboard never mixes another's runs.
+    pin = body.config_hash
     scorecard = await scorecard_uc.execute(
-        strategy_name=body.strategy_name,
-        max_runs=252,
+        strategy_name=body.strategy_name, max_runs=252, config_hash=pin
     )
-
-    alpha = await alpha_uc.execute(
-        strategy_name=body.strategy_name,
-        max_runs=252,
-    )
-
-    rules = await rules_uc.execute(
-        strategy_name=body.strategy_name,
-        max_runs=100,
-    )
-
+    alpha = await alpha_uc.execute(strategy_name=body.strategy_name, max_runs=252, config_hash=pin)
+    rules = await rules_uc.execute(strategy_name=body.strategy_name, max_runs=100, config_hash=pin)
     engines = await engines_uc.execute(
-        strategy_name=body.strategy_name,
-        max_runs=100,
+        strategy_name=body.strategy_name, max_runs=100, config_hash=pin
     )
-
     validation = await historical_validation_uc.execute(
-        strategy_name=body.strategy_name,
-        window_years=body.window_years,
+        strategy_name=body.strategy_name, window_years=body.window_years, config_hash=pin
     )
 
     return ResearchDashboardResponse(
         strategy_name=body.strategy_name,
         strategy_id=scorecard.strategy_id,
+        strategy_version=scorecard.strategy_version,
+        config_hash=scorecard.config_hash,
         scorecard=_scorecard_dto(scorecard),
         alpha_analysis=_alpha_dto(alpha),
         rule_effectiveness=_rules_dto(rules),
@@ -480,6 +472,8 @@ async def research_dashboard(
         historical_validation=HistoricalValidationResponse(
             strategy_name=validation.strategy_name,
             strategy_id=validation.strategy_id,
+            strategy_version=validation.strategy_version,
+            config_hash=validation.config_hash,
             windows=[
                 HistoricalValidationResultDTO(
                     strategy_name=w.strategy_name,

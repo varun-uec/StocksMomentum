@@ -185,3 +185,35 @@ async def test_user_versions_need_a_config_hash_and_bad_hashes_are_rejected(
     assert (
         await client.get("/api/v1/validation/rules/my_rs", params={"config_hash": "XYZ"})
     ).status_code == 422
+
+
+async def test_the_dashboard_reports_one_version_only(client: httpx.AsyncClient) -> None:
+    # The /validation page calls only POST /validation/dashboard.
+    url = "/api/v1/validation/dashboard"
+    v1 = await client.post(url, json={"strategy_name": "my_rs", "config_hash": HASHES[1]})
+    assert v1.status_code == 200, v1.text
+    body = v1.json()
+    assert (body["strategy_version"], body["config_hash"]) == (1, HASHES[1])
+    # v2's run must not leak in: v1 has exactly its own two runs everywhere.
+    assert body["rule_effectiveness"]["total_runs_analyzed"] == 2
+    assert body["engine_effectiveness"]["total_runs_analyzed"] == 2
+    for section in ("scorecard", "alpha_analysis", "rule_effectiveness", "historical_validation"):
+        assert body[section]["config_hash"] == HASHES[1]
+        assert body[section]["strategy_version"] == 1
+
+    # v3 has no completed runs: an empty report, not an error.
+    v3 = await client.post(url, json={"strategy_name": "my_rs", "config_hash": HASHES[3]})
+    assert v3.status_code == 200, v3.text
+    assert v3.json()["config_hash"] == HASHES[3]
+    assert v3.json()["rule_effectiveness"]["total_runs_analyzed"] == 0
+    assert v3.json()["scorecard"]["total_runs"] == 0
+
+
+async def test_the_dashboard_rejects_bad_and_unknown_hashes(client: httpx.AsyncClient) -> None:
+    url = "/api/v1/validation/dashboard"
+    bad = await client.post(url, json={"strategy_name": "my_rs", "config_hash": "XYZ"})
+    assert bad.status_code == 422
+    unknown = await client.post(url, json={"strategy_name": "my_rs", "config_hash": "d" * 64})
+    assert unknown.status_code == 404
+    # A user strategy is never resolved without its hash.
+    assert (await client.post(url, json={"strategy_name": "my_rs"})).status_code == 404
