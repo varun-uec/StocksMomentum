@@ -1,6 +1,8 @@
 # Wickstreet product transformation
 
-Local implementation, 2026-10-19. No push or publication. Financial scoring, screening, immutable research results, EOD data architecture, traded-price drawing anchors and conflict-safe document persistence remain intact.
+Local implementation, 2026-10-19 to 2026-10-20. No push or publication. Financial scoring, screening, immutable research results, EOD data architecture, traded-price drawing anchors and conflict-safe document persistence remain intact.
+
+Current delivery: Phase A and B1–B4 are implemented. Phase B visual sign-off evidence and final verification are in [the evidence index](audit-evidence/phase-b/README.md). B5 Volume Profile remains deferred by the owner; Phase C has not started. The local progress dashboard is maintained at `.dashboard/index.html`.
 
 ## Working experience
 
@@ -48,18 +50,18 @@ No measured superiority over TradingView or OpenChart is claimed. No competitor 
 
 ## Validation
 
-Final production-build results and performance measurements are recorded after the serial validation run. Commands use dedicated `*_e2e` PostgreSQL databases and a disposable Redis service, with scheduler and direct exchange downloads disabled. Existing production database records were not changed.
+Final production-build results and performance measurements are recorded in [Phase B evidence](audit-evidence/phase-b/README.md). Commands use dedicated `*_e2e` PostgreSQL databases and a disposable Redis service, with scheduler and direct exchange downloads disabled. Existing production database records were not changed.
 
-Backend: 874 tests, strict mypy on 263 files, Ruff and layer-import contracts passed. Web: 110 unit tests, zero-warning ESLint and TypeScript passed. Browser results are pending final serial verification.
+Latest continuation on `1ed0dd8`: 921 backend tests, strict mypy on 263 source files, Ruff and both layer-import contracts passed. Web: 141 unit tests, zero-warning ESLint and TypeScript passed. The full serial browser run passed all 227 cases, including all six opt-in grid benchmark cases. NFR-11 warm P95 was 166 ms and cold P95 was 505 ms. Both meet their 1 s / 3 s limits. Raw logs and measurements are retained under `audit-evidence/phase-b/final/`.
 
 Automated axe checks cover dashboard, chart and Studio in both themes. Keyboard, native modal focus, reduced motion, 200% equivalent reflow, touch drawing/panels and viewport overflow have explicit regression coverage. Native zoom was manually inspected. This is not a complete screen-reader or WCAG-conformance certification.
 
 ## Intentional limits
 
 - Daily completed-bar alert evaluation, not continuous intraday monitoring. No external delivery.
-- Drawing alerts snapshot a saved horizontal line or the rectangle's inclusive **price band**; the rectangle's date extent does not terminate the future condition. Close-to-close entries/exits are deterministic; no assumption about intraday paths or gaps through an entire band. Edits refresh a snapshot only explicitly. Sloped/path alerts remain excluded.
+- Drawing alerts snapshot a saved horizontal line or the rectangle's inclusive **price band**; the rectangle's date extent does not terminate the future condition. Close-to-close entries/exits are deterministic; no assumption about intraday paths or gaps through an entire band. Edits refresh a snapshot only explicitly. Phase B subsequently added trendline, ray and extended-line EOD snapshots under the accepted line-alert ADR; arbitrary paths remain excluded.
 - Configurable display studies never feed screening, ranking or alerts. Price studies are hidden on percentage axes; comparisons remain available.
-- Volume Profile, extra advanced drawing types, scripting, AI agents, brokerage execution, intraday feeds and hosted tenancy were not introduced. Named workspaces/resizable docking remain optional follow-up capabilities; the existing default workspace and independent chart settings persist.
+- Volume Profile remains deferred. Phase B added nine drawing tools. Scripting, AI agents, brokerage execution, intraday feeds and hosted tenancy were not introduced. Named workspaces/resizable docking remain optional follow-up capabilities; the existing default workspace and independent chart settings persist.
 - Touch drawing uses the established date/price anchors; dense desktop grids remain a desktop workflow. Production-scale data/performance will vary from synthetic fixtures.
 
 ## Local commits
@@ -71,7 +73,7 @@ Automated axe checks cover dashboard, chart and Studio in both themes. Keyboard,
 - `a62822c` — cumulative keyboard navigation between frames.
 - `c275f2b` — context-menu keyboard focus and stale-alert recovery.
 
-Final verification/evidence commit and repository state follow validation. [Concise progress record](TRANSFORMATION_PROGRESS.md).
+Later verification and delivery commits are recorded in the Phase B evidence index. [Concise progress record](TRANSFORMATION_PROGRESS.md).
 
 ## Workstation plan, Phase A (2026-10-19 to 2026-10-20)
 
@@ -86,4 +88,4 @@ Evidence: [`audit-evidence/tradingview-clone/`](audit-evidence/tradingview-clone
 
 Final serial run on a fresh synthetic `*_e2e` database: see [TRANSFORMATION_PROGRESS.md](TRANSFORMATION_PROGRESS.md). NFR-11 chart open: warm P95 166 ms, cold P95 474 ms. 16-chart grid: warm P95 1,288 ms (Codex 1,348 ms), pan P5 61 fps.
 
-Limits: the Screener's picker lists production strategies only. The Assessment does not mark passing gates, because the API lists only failing gate rules. Data has one settings section, so it has no left nav. Markets has no symbol rows to open an Assessment from. Phase B (filters and saved screens, Replay, more drawings, line alerts, Volume Profile) waits for owner acceptance of Phase A. No pixel-level or superiority claim is made.
+Limits: the Screener's picker lists production strategies only. The Assessment does not mark passing gates, because the API lists only failing gate rules. Data has one settings section, so it has no left nav. Markets has no symbol rows to open an Assessment from. Phase B1–B4 subsequently delivered filters and saved screens, Replay, more drawings and line alerts. B5 Volume Profile remains deferred; Phase C has not started. No pixel-level or superiority claim is made.

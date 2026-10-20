@@ -52,3 +52,15 @@ Local commits on `wickstreet/m10-m11`, none pushed: `b3baee1` phase breakdown; `
 - NFR-11: warm P95 166 ms, cold P95 474 ms (limits 1 s, 3 s). `M13_BENCH`: 16 charts warm P95 1,288 ms, pan P5 61 fps; the A3.1 portal gate measured 1,338 ms.
 - Backend: one additive enum value (`right_panel: "objects"`); user-documents API tests 34/34; Ruff and strict mypy clean on the touched files. Web: 124 unit tests, zero-warning lint, typecheck and build pass.
 - Screenshots under `audit-evidence/` stay uncommitted, as for every earlier run.
+
+## Phase B visual sign-off continuation — 2026-10-20
+
+Resumed from Claude's `a5cb551` and `.dashboard/index.html`, steps 3–8 of `phase-b-signoff`. B5 remains deferred by the owner; Phase C is not started.
+
+- `fea198b`: exact E2ECANDLE fixture-isolation regression; importing the fixture generator no longer invokes its CLI. Daily screening/ranks, live RS, breadth and point-in-time equity outputs are identical before/after insertion. No production calculations changed.
+- `1ed0dd8`: screenshot review found a real interval-loading viewport race. Displayed bars now retain their actual interval until the requested data arrives. A delayed weekly response regression checks the full visible year. Same-interval refresh behavior is retained.
+- Focused browser checks:16/16. Backend:921 tests; strict mypy263 source files; both import contracts; touched-test Ruff. Web:141 unit tests; lint and TypeScript clean.
+- Final full production-build run on `1ed0dd8`:227 passed,0 failed,0 skipped in20.5minutes, including all six opt-in benchmarks and two representative capture journeys. All26routes×2themes×4viewports, 200% equivalent reflow, axe, touch, keyboard, persistence and recovery checks pass.
+- NFR-11:30warm/30fresh-API-cold runs, P95 166ms/505ms. Isolated6/6 benchmark repeat:16charts warm1361ms/cold1383ms, pan P5 61fps, heapmax85MB. The standalone warm result is +5.7% versus Phase A1288ms, within10%; the full-suite1483ms sample is retained too.
+- Refreshed standalone sign-off HTML and PDF:28 embedded synthetic screenshots,26 inspected PDF pages, no missing glyphs or clipped text. General test-generated PNG changes are restored. Local preview:127.0.0.1:8772, synthetic database only, scheduler/downloads disabled.
+- The local `.dashboard/index.html` is updated at each gate. Evidence and sign-off documents are committed separately. B5 remains deferred, Phase C not started, nothing pushed.

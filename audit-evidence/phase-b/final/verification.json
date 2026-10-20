@@ -1,0 +1,20 @@
+{
+  "source_commit": "1ed0dd8",
+  "date": "2026-10-20",
+  "backend_passed": 921,
+  "web_unit_passed": 141,
+  "e2e_passed": 227,
+  "e2e_failed": 0,
+  "e2e_skipped": 0,
+  "nfr11_path": "nfr11.json",
+  "m13_bench_path": "m13-bench.json",
+  "m13_comparison_note": "Layout table: isolated benchmark repeat after the full suite. The 16-chart warm P95 is 1,361 ms, 5.7% above the Phase A standalone baseline of 1,288 ms (within the 10% comparison target). The full-suite sample was 1,483 ms; both raw runs are retained. This variation does not establish a cause or a measured improvement from the interval fix.",
+  "isolated_benchmark_passed": 6,
+  "mypy_source_files": 263,
+  "import_contracts_passed": 2,
+  "financial_calculation_changes": false,
+  "synthetic_data_only": true,
+  "screenshots_restored": true,
+  "full_suite_minutes": 20.5,
+  "isolated_benchmark_minutes": 4.1
+}

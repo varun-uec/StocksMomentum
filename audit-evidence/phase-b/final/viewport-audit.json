@@ -1,0 +1,1903 @@
+{
+  "audited_at": "2026-10-20T07:14:58.368Z",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "requested_viewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "routes": 26,
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "total_render_states": 208,
+  "measurements": [
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1069
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1069
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1213
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1213
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1374
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1374
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1563
+    },
+    {
+      "route": "dashboard",
+      "path": "/",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1563
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 900
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 900
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1080
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1080
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1024
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1024
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 844
+    },
+    {
+      "route": "chart-entry",
+      "path": "/chart",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 844
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 900
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 900
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1080
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1080
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1024
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1024
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 844
+    },
+    {
+      "route": "chart",
+      "path": "/chart/RELIANCE",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 844
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 7660
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 7660
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 7660
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 7660
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 9548
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 9548
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 11653
+    },
+    {
+      "route": "stock-detail",
+      "path": "/stock/RELIANCE",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 11653
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 3624
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 3624
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 3624
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 3624
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 6421
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 6421
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 7992
+    },
+    {
+      "route": "stock-analysis",
+      "path": "/stock/RELIANCE/analysis",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 7992
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1314
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1314
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1314
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1314
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1577
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1577
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1670
+    },
+    {
+      "route": "elliott-wave",
+      "path": "/stock/RELIANCE/elliott-wave",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1670
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "watchlist",
+      "path": "/watchlist",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 983
+    },
+    {
+      "route": "market",
+      "path": "/market",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 983
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2476
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2476
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2414
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2414
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 3340
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 3340
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 4157
+    },
+    {
+      "route": "strategies",
+      "path": "/strategies",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 4157
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1046
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1046
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1294
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1294
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1506
+    },
+    {
+      "route": "studio",
+      "path": "/studio",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1506
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2030
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2030
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2030
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2030
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 2498
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 2498
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 3511
+    },
+    {
+      "route": "validation",
+      "path": "/validation",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 3511
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1001
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1001
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1197
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1197
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1017
+    },
+    {
+      "route": "backtest",
+      "path": "/backtest",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1017
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1001
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1001
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1197
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1197
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1017
+    },
+    {
+      "route": "historical",
+      "path": "/historical",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1017
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1001
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1001
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1181
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1197
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1197
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1017
+    },
+    {
+      "route": "experiment",
+      "path": "/experiment",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1017
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1670
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1670
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1670
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1670
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 2884
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 2884
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 3092
+    },
+    {
+      "route": "analytics",
+      "path": "/analytics",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 3092
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "data",
+      "path": "/data",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1597
+    },
+    {
+      "route": "learn",
+      "path": "/learn",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 1597
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1369
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1369
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1369
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1369
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1781
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1781
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 2663
+    },
+    {
+      "route": "learn-momentum-investing",
+      "path": "/learn/momentum-investing",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 2663
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2458
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2458
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2458
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2458
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 3058
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 3058
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 4628
+    },
+    {
+      "route": "learn-minervini-methodology",
+      "path": "/learn/minervini-methodology",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 4628
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1163
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1163
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1163
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1163
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1674
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1674
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 2278
+    },
+    {
+      "route": "learn-momentum25-methodology",
+      "path": "/learn/momentum25-methodology",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 2278
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2208
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 2208
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2208
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 2208
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 2928
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 2928
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 3944
+    },
+    {
+      "route": "learn-scoring-guide",
+      "path": "/learn/scoring-guide",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 3944
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 3384
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 3384
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 3384
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 3384
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 4760
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 4760
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 6069
+    },
+    {
+      "route": "learn-rule-guide",
+      "path": "/learn/rule-guide",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 6069
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1020
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 1020
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1669
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1669
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 2437
+    },
+    {
+      "route": "learn-faq",
+      "path": "/learn/faq",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 2437
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "about",
+      "path": "/about",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 900
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 900
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1080
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1080
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1024
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1024
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 935
+    },
+    {
+      "route": "chart-grid-diagnostic",
+      "path": "/lab/chart-grid?n=4&symbol=RELIANCE",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 935
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "light",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "dark",
+      "viewport": "1440x900",
+      "document_width": 1440,
+      "body_width": 1440,
+      "scroll_height": 962
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "light",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "document_width": 1920,
+      "body_width": 1920,
+      "scroll_height": 1142
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "light",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "dark",
+      "viewport": "768x1024",
+      "document_width": 768,
+      "body_width": 768,
+      "scroll_height": 1158
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "light",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    },
+    {
+      "route": "not-found",
+      "path": "/audit-missing-route",
+      "theme": "dark",
+      "viewport": "390x844",
+      "document_width": 390,
+      "body_width": 390,
+      "scroll_height": 978
+    }
+  ]
+}

@@ -2,6 +2,55 @@
 
 Evidence for B1–B4 of the [TradingView-workstation plan](../../docs/history/plans/2026-10-19-tradingview-workstation-plan.md), captured on 2026-10-20. B5 Volume Profile is deferred. Phase C has not started.
 
+## Final visual sign-off continuation (2026-10-20)
+
+Resumed from `a5cb551`. Application verification source: `1ed0dd8`. The results below supersede the earlier run totals later in this historical evidence index.
+
+- [Refreshed sign-off PDF](wickstreet-phase-b-signoff.pdf): 26 rendered and inspected pages, with 28 screenshots.
+- [Standalone sign-off page](signoff.html): the same reviewed workflows and figures, with embedded images and no external resources.
+- [Final verification record](final/verification.json), [raw logs](final/logs/), [document QA](final/document-qa.json).
+
+| Check | Final result |
+| --- | --- |
+| Full serial production-build browser suite | **227 passed, 0 failed, 0 skipped**; includes all six opt-in benchmarks and two sign-off capture journeys |
+| Backend | **921 passed**; strict mypy on 263 source files; both import contracts; touched-test Ruff |
+| Web | **141 unit tests passed**; zero-warning lint, typecheck and production build |
+| NFR-11, 30 warm / 30 fresh-API cold runs | P95 **166 ms / 505 ms**, within 1 s / 3 s |
+| Isolated 16-chart repeat | Warm P95 **1,361 ms**, cold P95 **1,383 ms**, pan P5 **61 fps**, heap max **85 MB** |
+| Phase A standalone comparison | 1,361 ms is **5.7%** above 1,288 ms, within the 10% comparison target |
+| Responsive and accessibility | All 26 routes × 2 themes × 4 viewport sizes; 200% equivalent reflow; axe, keyboard, touch and save/recovery checks passed |
+
+The full-suite 16-chart warm P95 was **1,483 ms**. The isolated repeat above followed on a fresh synthetic database without the preceding research workload. Both [full-suite](final/m13-bench-full-run.json) and [isolated](final/m13-bench.json) raw samples are retained. This variation does not prove a cause or a speed improvement from the interval fix. NFR-11 cold restarts the API process and excludes its boot time; M13 cold starts a fresh browser context with the API already running. Measurements are specific to the recorded machine and fixture data.
+
+Additional safeguards completed:
+
+- `fea198b`: an integration test inserts the exact E2ECANDLE fixture and proves unchanged daily screening/rankings, live RS, market breadth and point-in-time equity results. The raw point-in-time repository intentionally retains inactive identities; equity screening excludes this fund-unit fixture.
+- `1ed0dd8`: fixing the representative screenshots exposed an interval-loading viewport race. The chart now uses the interval of its actual displayed bars until the requested series arrives. A deliberately delayed weekly response verifies that a range chosen during loading still shows the full year.
+- The nine representative candle views and light/dark drawing examples were recaptured after both the axis-label and interval fixes. E2ECANDLE is synthetic. Retained screener, TCS replay, alert and flyout images are also synthetic fixtures; they demonstrate the established B1–B4 workflows.
+- The refreshed PDF was rasterized and every page reviewed. Text bounds and missing-glyph checks passed; the standalone page contains 28 valid embedded PNGs and no external image/font dependencies.
+- General regression PNG changes were restored. No PNG changes remain in the working tree. The report's reviewed images are embedded in the HTML/PDF.
+
+The application preview runs locally at `http://127.0.0.1:8772/chart/E2ECANDLE`, against the synthetic verification database only. Scheduler and exchange downloads are disabled. No real financial data was changed and nothing was pushed. B5 remains deferred by the owner; Phase C has not started. Product visual acceptance remains the owner's decision.
+
+### Reproduce the sign-off artifacts
+
+Use a fresh, marked `*_e2e` database. Capture PNGs outside the working tree:
+
+```sh
+cd web
+SIGNOFF_EVIDENCE_DIR=/tmp/wickstreet-phase-b-final/shots E2E_DATABASE_URL=<isolated-database-url> npx playwright test e2e/phase-b-visual-signoff.spec.ts
+```
+
+Then run from the repository root with ReportLab installed in a temporary environment:
+
+```sh
+uv run --with reportlab python scripts/build_phase_b_signoff.py --verification audit-evidence/phase-b/final/verification.json --captures /tmp/wickstreet-phase-b-final/shots --output-dir audit-evidence/phase-b
+```
+
+The verification JSON points to committed benchmark records. The generator refuses mismatched source commits and missing captures. `.dashboard/index.html` tracks this continuation locally; it remains ignored by the repository as before.
+
+## Earlier Phase B evidence
+
 ## Data
 
 Every capture and benchmark ran against the synthetic, marked `*_e2e` database. Prices, scores and runs are fixture data, not market data. Symbols such as `TCS`, `INFY` and `RELIANCE` are fixture rows with synthetic prices. The screenshots show no credentials, paths or personal data.

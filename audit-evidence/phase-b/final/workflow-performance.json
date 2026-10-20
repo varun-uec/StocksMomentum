@@ -1,0 +1,128 @@
+{
+  "measured_at": "2026-10-20T07:02:19.398Z",
+  "hardware": "Apple M4 Pro × 14, 48 GB RAM",
+  "os": "Darwin 27.0.0 arm64",
+  "browser": "Chromium 153.0.8010.12 (headless)",
+  "database": "wickstreet_signoff_final_e2e; loopback-only isolated PostgreSQL; synthetic fixtures only",
+  "results": {
+    "api_latency": {
+      "synthetic_dataset": "22 symbols, 2,610 daily bars each, 2016-08-08 through 2026-08-07",
+      "search": {
+        "runs": 30,
+        "p50_ms": 4,
+        "p95_ms": 7,
+        "max_ms": 8
+      },
+      "workspace_save": {
+        "runs": 30,
+        "p50_ms": 4,
+        "p95_ms": 5,
+        "max_ms": 5
+      },
+      "live_screening_after_same_session_correction": {
+        "runs": 10,
+        "p50_ms": 337,
+        "p95_ms": 418,
+        "max_ms": 418
+      },
+      "screening_run_ids": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "screening_data_versions": [
+        "42e5f61ea90a",
+        "c7618ba9cfb5",
+        "e41ad03c6da2",
+        "bae0889e1797",
+        "ea7404a14c8d",
+        "30e65d7054fb",
+        "648c7ec57690",
+        "b47e14961c65",
+        "372fe1d159fe",
+        "9417d3c87591"
+      ],
+      "alert_evaluation_20_active_alerts": {
+        "runs": 20,
+        "p50_ms": 811,
+        "p95_ms": 831,
+        "max_ms": 843
+      }
+    },
+    "strategy_studio": {
+      "synthetic_dataset": "same isolated 22-symbol, 10-year fixture",
+      "screening_result": {
+        "runs": 10,
+        "p50_ms": 906,
+        "p95_ms": 927,
+        "max_ms": 927
+      },
+      "in_sample_research": {
+        "runs": 3,
+        "p50_ms": 66589,
+        "p95_ms": 67339,
+        "max_ms": 67339
+      },
+      "in_sample_research_decisions": [
+        237,
+        237,
+        237
+      ],
+      "research_p95_note": "3 observations; empirical P95 is the observed maximum, not a stable production percentile."
+    },
+    "chart_endurance": {
+      "cycles": 24,
+      "layouts_per_cycle": [
+        "1x1",
+        "4x4",
+        "1x1"
+      ],
+      "long_history_bars_per_chart": 2610,
+      "drawings_created_and_deleted": 24,
+      "starting_heap_mb_after_gc": 16.977596282958984,
+      "ending_heap_mb_after_gc": 20.287792205810547,
+      "heap_delta_mb_after_gc": 3.3101959228515625,
+      "initial_canvas_count": 7,
+      "final_canvas_count": 7,
+      "samples": [
+        {
+          "cycle": 4,
+          "heap_mb": 19.365863800048828,
+          "canvases": 7
+        },
+        {
+          "cycle": 8,
+          "heap_mb": 19.93553924560547,
+          "canvases": 7
+        },
+        {
+          "cycle": 12,
+          "heap_mb": 20.541107177734375,
+          "canvases": 7
+        },
+        {
+          "cycle": 16,
+          "heap_mb": 20.734603881835938,
+          "canvases": 7
+        },
+        {
+          "cycle": 20,
+          "heap_mb": 20.83844757080078,
+          "canvases": 7
+        },
+        {
+          "cycle": 24,
+          "heap_mb": 20.975479125976562,
+          "canvases": 7
+        }
+      ]
+    }
+  }
+}

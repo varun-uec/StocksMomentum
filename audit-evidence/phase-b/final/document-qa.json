@@ -1,0 +1,20 @@
+{
+  "pdf_pages": 26,
+  "pdf_images": 28,
+  "html_embedded_images": 28,
+  "html_external_resources": [],
+  "missing_glyphs": 0,
+  "text_outside_page": 0,
+  "visual_review": "All26 renderedpages reviewed; workflow guide, table, charts, phones, flyouts and final limits checked in detail.",
+  "source_commit": "1ed0dd8",
+  "files": {
+    "wickstreet-phase-b-signoff.pdf": {
+      "bytes": 2907899,
+      "sha256": "318866c932292b4a362be8922e3fe6d86453a3b37bef81227887c3acfaf5d241"
+    },
+    "signoff.html": {
+      "bytes": 4106555,
+      "sha256": "421e5ee2e5ed812e298b421bd95fe281e9f0be6beb823c8b04a79839b75b10a6"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+[WebServer] (node:65846) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+[WebServer] INFO  [alembic.runtime.migration] Will assume transactional DDL.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial schema — all tables from IMPLEMENTATION_SPEC §4.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_forward_returns, Forward-return feature store (Objective 4, Research Feature Store).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0002_forward_returns -> 0003_forward_returns_extended, Extend forward_returns with MFE/MAE and benchmark-relative return (Alpha Discovery Program).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0003_forward_returns_extended -> 0004_historical_data_foundation, Historical Data Foundation (RP-012 D3) — legacy bhavcopy fields, delisting
+[WebServer] metadata, and the immutable historical_universe table.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0004_historical_data_foundation -> 0005_overlap_backfill, Overlap-window backfill staging + validation-gap logs (RP-012 Phase 2).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0005_overlap_backfill -> 0006_exchange_dimension, Cross-listing support: index the ISIN reconciliation key (Phase 5.1).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0006_exchange_dimension -> 0007_watchlist, Watchlist: a single global list of tracked securities (Phase 6.9).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0007_watchlist -> 0008_security_search_trgm, Trigram indexes for security symbol/name search (Objective 4).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0008_security_search_trgm -> 0009_strategy_kind, Strategy ``kind`` field: production vs research (strategy lifecycle).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0009_strategy_kind -> 0010_bse_legacy_foundation, BSE legacy staging tables (RP-014): pre-UDiFF bars + SC_CODE identity junction.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0010_bse_legacy_foundation -> 0011_legacy_adjustment_columns, Adjustment columns on both legacy staging tables (RP-014 follow-up).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0011_legacy_adjustment_columns -> 0012_drop_legacy_ohlcv_bak, Drop the superseded ``legacy_ohlcv_daily_bak`` snapshot.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0012_drop_legacy_ohlcv_bak -> 0013_filter_column_indexes, Index the filter/join columns that composite primary keys do not lead with.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0013_filter_column_indexes -> 0014_user_documents, User documents: the saved workspace and per-symbol drawings (ADR-013 §5).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0014_user_documents -> 0015_alerts, Daily alerts (FR-22, M15): a condition on one value of a symbol's chart series.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0015_alerts -> 0016_history_tables, History tables for the evaluation inputs (ADR-014 §7, M14).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0016_history_tables -> 0017_data_manifests, Data-version manifests (ADR-014 §7, M14): the inputs and code behind an evaluation.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0017_data_manifests -> 0018_strategy_families, Strategy families and user strategies (ADR-014 §3–4, M14).
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0018_strategy_families -> 0019_strategy_evaluations, Strategy evaluations (ADR-014 §5–7, M14): the research namespace for the Studio.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0019_strategy_evaluations -> 0020_committed_revision_indexes, Index committed market-data revisions for deterministic manifest capture.
+[WebServer] INFO  [alembic.runtime.migration] Running upgrade 0020_committed_revision_indexes -> 0021_alert_drawing_snapshots, Version armed rules and capture bounded drawing-linked EOD alerts.
+[WebServer] INFO:     Started server process [66021]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+
+Running 16 tests using 1 worker
+
+(node:66043) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓   1 [chromium] › e2e/candle-anatomy.spec.ts:160:1 › daily candles match their adjusted bars on both sides of a split (1.3s)
+
+  ✓   2 [chromium] › e2e/candle-anatomy.spec.ts:175:3 › weekly bars match their aggregated daily highs and lows (643ms)
+
+  ✓   3 [chromium] › e2e/candle-anatomy.spec.ts:175:3 › monthly bars match their aggregated daily highs and lows (539ms)
+
+  ✓   4 [chromium] › e2e/candle-anatomy.spec.ts:220:5 › no tick label shows under the last-price label: light, 1440 px (611ms)
+
+  ✓   5 [chromium] › e2e/candle-anatomy.spec.ts:220:5 › no tick label shows under the last-price label: light, 768 px (591ms)
+
+  ✓   6 [chromium] › e2e/candle-anatomy.spec.ts:220:5 › no tick label shows under the last-price label: light, 390 px (556ms)
+
+  ✓   7 [chromium] › e2e/candle-anatomy.spec.ts:220:5 › no tick label shows under the last-price label: dark, 1440 px (587ms)
+
+  ✓   8 [chromium] › e2e/candle-anatomy.spec.ts:220:5 › no tick label shows under the last-price label: dark, 768 px (623ms)
+
+  ✓   9 [chromium] › e2e/candle-anatomy.spec.ts:220:5 › no tick label shows under the last-price label: dark, 390 px (561ms)
+
+  ✓  10 [chromium] › e2e/candle-anatomy.spec.ts:237:1 › replay candles match the series as it stood on the replay date, before the split (533ms)
+
+  ✓  11 [chromium] › e2e/m11b-weekly.spec.ts:16:1 › the interval switch shows weekly bars and indicators, and is saved with the chart (1.1s)
+
+  ✓  12 [chromium] › e2e/m11b-weekly.spec.ts:47:1 › a drawing made on weekly bars stays on the daily chart (1.4s)
+
+  ✓  13 [chromium] › e2e/m11b-weekly.spec.ts:68:1 › research screens keep daily bars and offer no interval switch (406ms)
+
+  ✓  14 [chromium] › e2e/m11b-weekly.spec.ts:74:1 › a range chosen while weekly bars load applies to the weekly series (414ms)
+
+  ✓  15 [chromium] › e2e/phase-b-visual-signoff.spec.ts:27:1 › representative synthetic candles after the axis fix: intervals, themes, phone and replay (1.9s)
+
+  ✓  16 [chromium] › e2e/phase-b-visual-signoff.spec.ts:73:1 › all nine new drawing tools use the representative synthetic chart in both themes (3.1s)
+
+  16 passed (26.5s)
