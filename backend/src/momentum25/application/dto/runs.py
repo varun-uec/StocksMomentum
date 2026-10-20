@@ -14,6 +14,8 @@ class ScreeningRunSummary:
     """Structured execution summary returned by the orchestrator (mutated in place)."""
 
     run_date: date
+    # The screening run this execution wrote, set once the run row exists.
+    run_id: int | None = None
     total_evaluated: int = 0
     total_passed: int = 0
     total_skipped_insufficient_data: int = 0

@@ -176,6 +176,7 @@ class ScreeningOrchestrator:
             )
             run_id = await self._screening_run_repo.create(run)
             run.id = run_id
+        summary.run_id = run_id
         await self._commit()
 
         try:

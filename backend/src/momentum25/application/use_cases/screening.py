@@ -431,21 +431,17 @@ class ExecuteScreening:
             strategy_repo=None,
         )
 
-        await orchestrator.run_daily_screening(
+        summary = await orchestrator.run_daily_screening(
             trading_date,
             existing_run_id=existing_run_id,
             data_manifest=data_manifest,
         )
-
-        if existing_run_id is not None:
-            return existing_run_id
-
-        # Return the id of the newly completed run
-        runs, _ = await self._screening_run_repo.list_runs("completed", 1, 0)
-        if runs and runs[0].id is not None:
-            return int(runs[0].id)
-        msg = "No completed runs found after screening"
-        raise RuntimeError(msg)
+        # Return the run this execution wrote. Reading "the latest completed run"
+        # instead returned another run whenever one had a later run_date.
+        run_id = existing_run_id if existing_run_id is not None else summary.run_id
+        if run_id is None:
+            raise RuntimeError("Screening finished without a run id")
+        return int(run_id)
 
     async def _commit(self) -> None:
         """Commit the current unit of work."""

@@ -41,10 +41,7 @@ class _CapturingOrchestrator:
     ) -> object:
         _CapturingOrchestrator.last_trading_date = trading_date
 
-        class _Summary:
-            pass
-
-        return _Summary()
+        return SimpleNamespace(run_id=7)
 
 
 class _FakeScreeningRunRepo:
@@ -57,7 +54,7 @@ class _FakeScreeningRunRepo:
 
     async def list_runs(self, status: str, limit: int, offset: int) -> tuple[list, int]:
         class _Row:
-            id = 1
+            id = 99  # an older-session run with a later run_date, not this one
 
         return [_Row()], 1
 
@@ -87,11 +84,14 @@ async def test_run_via_orchestrator_screens_latest_bar_date_not_reference_date(
     # latest_bar_date or reference_date.
     latest = await use_case._ohlcv_repo.latest_date()
     screening_date = latest or reference_date
-    await use_case._run_via_orchestrator(
+    run_id = await use_case._run_via_orchestrator(
         strategy=SimpleNamespace(id=1, name="test", config_hash="test-config"),
         trading_date=screening_date,
         existing_run_id=None,
     )
 
+    # Regression R3-B: the id of the run this execution wrote, not "the latest
+    # completed run" (which is another run when one has a later run_date).
+    assert run_id == 7
     assert _CapturingOrchestrator.last_trading_date == latest_bar_date
     assert _CapturingOrchestrator.last_trading_date != reference_date
