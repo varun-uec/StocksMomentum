@@ -321,7 +321,7 @@ test('the exact custom run follows the selected chart cell and watchlist, and re
   expect(inSample.result.label).toBe('Historical Research — In-Sample');
   expect(inSample.result.decisions).toBeGreaterThan(0);
   expect(inSample.result.window.end).toBe(inSample.window_end);
-  expect(inSample.window_end).toBeLessThan('2024-07-01');
+  expect(Date.parse(inSample.window_end)).toBeLessThan(Date.parse('2024-07-01'));
   const liveRunsAfterResearch = await request.get('/api/v1/runs?limit=200').then((response) => response.json());
   expect(liveRunsAfterResearch.total).toBe(liveRunsBeforeResearch.total);
   const inSampleRecord = page.getByRole('region', { name: `Historical Research — In-Sample ${inSample.id}` });
