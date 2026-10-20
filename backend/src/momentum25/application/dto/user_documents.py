@@ -168,14 +168,14 @@ class SavedScreensV1(_Strict):
 class _DocumentMeta(BaseModel):
     key: str
     schema_version: int
-    revision: int
-    updated_at: datetime
+    revision: int = Field(description="0 when the document was never saved.")
+    updated_at: datetime | None = Field(description="null when the document was never saved.")
 
 
 class WorkspaceDocument(_DocumentMeta):
     """A stored workspace and its revision."""
 
-    body: WorkspaceV1
+    body: WorkspaceV1 | None
 
     @classmethod
     def of(cls, doc: UserDocument) -> WorkspaceDocument:
@@ -192,7 +192,7 @@ class WorkspaceDocument(_DocumentMeta):
 class SymbolDrawingsDocument(_DocumentMeta):
     """A symbol's stored drawings and their revision."""
 
-    body: SymbolDrawingsV1
+    body: SymbolDrawingsV1 | None
 
     @classmethod
     def of(cls, doc: UserDocument) -> SymbolDrawingsDocument:
@@ -209,7 +209,7 @@ class SymbolDrawingsDocument(_DocumentMeta):
 class SavedScreensDocument(_DocumentMeta):
     """The stored screens and their revision."""
 
-    body: SavedScreensV1
+    body: SavedScreensV1 | None
 
     @classmethod
     def of(cls, doc: UserDocument) -> SavedScreensDocument:

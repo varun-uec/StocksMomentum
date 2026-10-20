@@ -14,7 +14,11 @@ SCHEMA_VERSION: dict[DocumentKind, int] = {"workspace": 1, "symbol_drawings": 1,
 
 
 class GetUserDocument:
-    """Return a stored document."""
+    """Return a stored document.
+
+    A document that was never saved is not an error to the client: it reads
+    as revision 0 with no body (ADR-013 §5), so a first page load is a 200.
+    """
 
     def __init__(self, documents: UserDocumentRepository) -> None:
         """Wire the use case with its repository."""
@@ -28,7 +32,7 @@ class GetUserDocument:
         return document
 
     async def find(self, kind: DocumentKind, key: str) -> UserDocument | None:
-        """Return the document, or ``None``. Used to report the current state on a mismatch."""
+        """Return the document, or ``None`` if it was never saved (revision 0)."""
         return await self._documents.get(kind, key)
 
 
@@ -52,9 +56,11 @@ class SaveUserDocument:
 
         A save that names neither precondition is refused: the caller must say
         whether it creates a new document or edits a revision it has seen.
+        ``If-Match`` revision 0 names the never-saved state, so it creates the
+        document, and conflicts if another client created it first.
         """
         version = SCHEMA_VERSION[kind]
-        if create_only:
+        if create_only or expected_revision == 0:
             return await self._documents.create(kind, key, body, version)
         if expected_revision is None:
             raise PreconditionRequiredError(

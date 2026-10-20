@@ -19,6 +19,7 @@ from momentum25.main import create_app
 
 DRAWINGS = "/api/v1/drawings/RELIANCE"
 WORKSPACE = "/api/v1/workspaces/default"
+SCREENS = "/api/v1/screens/default"
 
 
 def _drawing(drawing_id: str = "d1", price: float = 101.5) -> dict[str, Any]:
@@ -71,8 +72,41 @@ async def _create(client: httpx.AsyncClient) -> httpx.Response:
     )
 
 
-async def test_get_missing_document_is_404(client: httpx.AsyncClient) -> None:
-    assert (await client.get(DRAWINGS)).status_code == 404
+@pytest.mark.parametrize(
+    ("path", "key"),
+    [(DRAWINGS, DRAWINGS.rsplit("/", 1)[1]), (WORKSPACE, "default"), (SCREENS, "default")],
+)
+async def test_a_never_saved_document_reads_as_revision_0(
+    client: httpx.AsyncClient, path: str, key: str
+) -> None:
+    # R3-U-06: a 404 here logged a console error on every first page load.
+    response = await client.get(path)
+    assert response.status_code == 200
+    assert response.headers["ETag"] == '"0"'
+    assert response.json() == {
+        "key": key,
+        "schema_version": 1,
+        "revision": 0,
+        "updated_at": None,
+        "body": None,
+    }
+
+
+async def test_if_match_0_creates_a_never_saved_document_once(
+    client: httpx.AsyncClient,
+) -> None:
+    first = await client.put(DRAWINGS, json={"drawings": [_drawing()]}, headers={"If-Match": '"0"'})
+    assert first.status_code == 201
+    assert first.headers["ETag"] == '"1"'
+    # A second client that also read revision 0 now gets 412 and the winner's document.
+    second = await client.put(DRAWINGS, json={"drawings": []}, headers={"If-Match": '"0"'})
+    assert second.status_code == 412
+    assert second.json()["current"]["revision"] == 1
+
+
+async def test_invalid_document_ids_are_still_rejected(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/api/v1/workspaces/bad%20id")).status_code == 422
+    assert (await client.get("/api/v1/drawings/x%3Cy")).status_code == 422
 
 
 async def test_create_then_read_round_trips_with_etag(client: httpx.AsyncClient) -> None:
@@ -137,12 +171,21 @@ async def test_malformed_or_impossible_if_match_never_matches(
     ).status_code == 412
 
 
-async def test_if_match_on_a_missing_document_is_412_with_no_current(
+async def test_if_match_on_a_missing_document_is_412_with_revision_0(
     client: httpx.AsyncClient,
 ) -> None:
     response = await client.put(DRAWINGS, json={"drawings": []}, headers={"If-Match": '"1"'})
     assert response.status_code == 412
-    assert response.json()["current"] is None
+    assert response.headers["ETag"] == '"0"'
+    assert response.json()["current"]["revision"] == 0
+    assert response.json()["current"]["body"] is None
+
+
+@pytest.mark.parametrize("if_match", ['"x"', "garbage"])
+async def test_a_malformed_if_match_never_creates(client: httpx.AsyncClient, if_match: str) -> None:
+    response = await client.put(DRAWINGS, json={"drawings": []}, headers={"If-Match": if_match})
+    assert response.status_code == 412
+    assert (await client.get(DRAWINGS)).json()["revision"] == 0
 
 
 async def test_save_without_any_precondition_is_428(client: httpx.AsyncClient) -> None:
@@ -319,7 +362,6 @@ async def test_the_layout_and_its_sync_flags_default_and_validate(
         assert res.status_code == 422
 
 
-SCREENS = "/api/v1/screens/default"
 
 
 def _screen(screen_id: str = "s1", name: str = "Leaders") -> dict[str, Any]:

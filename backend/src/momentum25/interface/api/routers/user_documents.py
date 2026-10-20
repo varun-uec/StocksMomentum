@@ -2,8 +2,10 @@
 
 | Request                                   | Response                                   |
 |-------------------------------------------|--------------------------------------------|
-| GET                                       | 200 + ``ETag: "<revision>"``, or 404        |
+| GET                                       | 200 + ``ETag: "<revision>"``                |
+| GET, never saved                          | 200, revision 0, body null, ``ETag: "0"``   |
 | PUT + ``If-Match`` that matches           | 200, revision + 1, new ``ETag``             |
+| PUT + ``If-Match: "0"``, never saved      | 200, revision 1 (creates it)                |
 | PUT + stale ``If-Match``                  | 412; the body holds the current document    |
 | PUT with neither precondition             | 428                                         |
 | PUT + ``If-None-Match: *``                | 201, or 412 if the document already exists  |
@@ -26,7 +28,11 @@ from momentum25.application.dto.user_documents import (
     WorkspaceDocument,
     WorkspaceV1,
 )
-from momentum25.application.use_cases.user_documents import GetUserDocument, SaveUserDocument
+from momentum25.application.use_cases.user_documents import (
+    SCHEMA_VERSION,
+    GetUserDocument,
+    SaveUserDocument,
+)
 from momentum25.domain.entities.user_document import DocumentKind, UserDocument
 from momentum25.domain.errors import RevisionMismatchError
 from momentum25.interface.api.dependencies import get_get_user_document, get_save_user_document
@@ -51,11 +57,14 @@ def _etag(revision: int) -> str:
 
 
 def _parse_if_match(value: str | None) -> int | None:
-    """Return the revision an ``If-Match`` names. A malformed value can never match."""
+    """Return the revision an ``If-Match`` names. A malformed value can never match.
+
+    It maps to -1, not 0: revision 0 means "never saved" and would create.
+    """
     if value is None:
         return None
     tag = value.strip().removeprefix("W/").strip('"')
-    return int(tag) if tag.isdigit() else 0
+    return int(tag) if tag.isdigit() else -1
 
 
 Document = WorkspaceDocument | SymbolDrawingsDocument | SavedScreensDocument
@@ -65,9 +74,19 @@ Presenter = type[WorkspaceDocument] | type[SymbolDrawingsDocument] | type[SavedS
 async def _read(
     kind: DocumentKind, key: str, response: Response, read: GetUserDocument, present: Presenter
 ) -> Document:
-    document = await read.execute(kind, key)
+    document = await read.find(kind, key)
+    if document is None:
+        response.headers["ETag"] = _etag(0)
+        return _never_saved(kind, key, present)
     response.headers["ETag"] = _etag(document.revision)
     return present.of(document)
+
+
+def _never_saved(kind: DocumentKind, key: str, present: Presenter) -> Document:
+    """Revision 0: the document was never saved. Not an error (ADR-013 §5)."""
+    return present(
+        key=key, schema_version=SCHEMA_VERSION[kind], revision=0, updated_at=None, body=None
+    )
 
 
 async def _save(
@@ -93,7 +112,8 @@ async def _save(
         )
     except RevisionMismatchError as exc:
         return await _mismatch(kind, key, str(exc), request, read, present)
-    response.status_code = 201 if create_only else 200
+    created = create_only or _parse_if_match(if_match) == 0
+    response.status_code = 201 if created else 200
     response.headers["ETag"] = _etag(document.revision)
     return present.of(document)
 
@@ -108,17 +128,18 @@ async def _mismatch(
 ) -> JSONResponse:
     """412 with the current document, so the client can recover without another request."""
     current = await read.find(kind, key)
+    shown = present.of(current) if current else _never_saved(kind, key, present)
     return JSONResponse(
         status_code=412,
         media_type="application/problem+json",
-        headers={"ETag": _etag(current.revision)} if current else {},
+        headers={"ETag": _etag(current.revision if current else 0)},
         content={
             "type": "urn:momentum25:error:revision_mismatch",
             "title": "revision_mismatch",
             "status": 412,
             "detail": detail,
             "instance": request.url.path,
-            "current": present.of(current).model_dump(mode="json") if current else None,
+            "current": shown.model_dump(mode="json"),
         },
     )
 

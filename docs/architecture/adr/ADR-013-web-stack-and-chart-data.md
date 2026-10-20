@@ -96,11 +96,15 @@ If S1 to S6 fail and cannot be fixed cheaply, take option B below.
 
 | Request | Server response |
 |---|---|
-| `GET /workspaces/{id}`, `GET /drawings/{symbol}` | `200` with `ETag: "<revision>"` |
+| `GET /workspaces/{id}`, `GET /drawings/{symbol}`, `GET /screens/{id}` | `200` with `ETag: "<revision>"` |
+| The same `GET` for a document never saved | `200` with `ETag: "0"` and `{key, schema_version, revision: 0, updated_at: null, body: null}` *(amended 2026-10-20)* |
 | `PUT` with a matching `If-Match` | `200`, revision + 1, new `ETag` |
-| `PUT` with a stale `If-Match` | `412 Precondition Failed`. The body holds the current document and its `ETag`. |
+| `PUT` with `If-Match: "0"` on a document never saved | `201`, revision 1. If another client created it first, `412`. *(amended 2026-10-20)* |
+| `PUT` with a stale or malformed `If-Match` | `412 Precondition Failed`. The body holds the current document and its `ETag`; for a document never saved that is the revision-0 document. |
 | `PUT` with neither `If-Match` nor `If-None-Match` | `428 Precondition Required` *(M11: for a missing document too, so every save states its intent)* |
 | `PUT` with `If-None-Match: *` (create only) | `201`, or `412` if the document exists |
+
+*(Amended 2026-10-20, R3-U-06.)* A document that was never saved is an expected state, not an error. Its `GET` used to answer `404`, which the browser logs as a console error on every first page load. It now answers `200` at revision 0 with a null body, so the client can treat "not saved yet" and "saved" alike: it reads a revision and saves with `If-Match`. `If-None-Match: *` still works for the one-time import. A malformed `If-Match` never matches, and never creates. Invalid ids are still rejected with `422`.
 
 **Conflict recovery (client).** *(M11: as built in `web/src/lib/server-document.ts` and `merge.ts`)*
 - One store per document, shared by every component that shows it. Saves are debounced (400 ms), one is in flight at a time, and unsaved edits are sent with `keepalive` when the page is left.
