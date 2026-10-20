@@ -1,4 +1,4 @@
-"""The data-version manifest (ADR-014 §7): market data + engine identity, build excluded."""
+"""The data-version manifest (ADR-014 §7, §11): market and engine identities, build excluded."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ MANIFEST = DataManifest(
     rule_registry_version=registry_version(),
     calendar_version="exchange_calendars 4.13.2 XBOM",
     build_id="abc1234",
+    engine_version=1,
+    reference_universe_version=1,
 )
 
 
@@ -41,6 +43,8 @@ def test_data_revision_engine_versions_and_calendar_change_the_data_version() ->
         replace(MANIFEST, indicator_version=3),
         replace(MANIFEST, rule_registry_version="0" * 12),
         replace(MANIFEST, calendar_version="exchange_calendars 4.14.0 XBOM"),
+        replace(MANIFEST, engine_version=2),
+        replace(MANIFEST, reference_universe_version=2),
     ]
     versions = {m.data_version for m in changed} | {MANIFEST.data_version}
     assert len(versions) == len(changed) + 1
@@ -61,6 +65,56 @@ def test_a_stored_legacy_body_keeps_its_stored_key() -> None:
     assert legacy.revision == 133621
     # The same inputs under schema 2 hash differently: a new identity, never a rewrite.
     assert replace(legacy, identity_schema=2).data_version != "8790a000bd4f"
+    assert legacy.market_data_version is None and legacy.engine_identity is None
+
+
+def test_a_stored_schema_2_body_keeps_its_stored_key() -> None:
+    # Pinned under the schema-2 code (commit f6ce742) before schema 3 existed.
+    body = {
+        "identity_schema": 2,
+        "revision": 133621,
+        "indicator_version": 2,
+        "rule_registry_version": "41cc5e4529c8",
+        "calendar_version": "exchange_calendars 4.13.2 XBOM",
+        "build_id": "5961b9c",
+    }
+    flat = DataManifest.from_body(body)
+    assert flat.data_version == "a925ee3c70ee"
+    assert flat.body() == body
+    assert flat.market_data_version is None and flat.engine_identity is None
+
+
+def test_schema_3_keeps_market_and_engine_identities_apart() -> None:
+    assert MANIFEST.identity_schema == 3
+    assert len(MANIFEST.market_data_version or "") == 12
+    assert len(MANIFEST.engine_identity or "") == 12
+    new_engine = replace(MANIFEST, engine_version=2)
+    new_data = replace(MANIFEST, revision=43)
+    # An analytical change is traceable on unchanged market data ...
+    assert new_engine.market_data_version == MANIFEST.market_data_version
+    assert new_engine.engine_identity != MANIFEST.engine_identity
+    assert new_engine.data_version != MANIFEST.data_version
+    # ... and new market data never moves the engine identity.
+    assert new_data.engine_identity == MANIFEST.engine_identity
+    assert new_data.market_data_version != MANIFEST.market_data_version
+    assert new_data.data_version != MANIFEST.data_version
+    # The build never moves any identity.
+    rebuilt = replace(MANIFEST, build_id="zzz")
+    assert (rebuilt.data_version, rebuilt.market_data_version, rebuilt.engine_identity) == (
+        MANIFEST.data_version,
+        MANIFEST.market_data_version,
+        MANIFEST.engine_identity,
+    )
+
+
+def test_a_schema_3_manifest_must_name_its_engine() -> None:
+    with pytest.raises(ValueError, match="engine_version"):
+        DataManifest(
+            revision=1,
+            indicator_version=2,
+            rule_registry_version="x",
+            calendar_version="c",
+        )
 
 
 def test_the_rule_registry_fingerprint_is_stable() -> None:

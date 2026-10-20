@@ -29,7 +29,8 @@ async def test_capture_under_two_builds_gives_one_data_version(
 
     assert first.data_version == second.data_version
     stored = await repo.get(first.data_version)
-    assert stored is not None and stored.identity_schema == 2
+    assert stored is not None and stored.identity_schema == 3
+    assert stored.engine_version is not None and stored.market_data_version is not None
     assert stored.build_id == "commit-a"  # the first build to record it
 
 

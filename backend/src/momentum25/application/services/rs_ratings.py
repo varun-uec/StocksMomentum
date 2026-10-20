@@ -9,23 +9,39 @@ to production rankings.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date
 from typing import Any, Protocol
 
+from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
 from momentum25.domain.entities.security import Security
 from momentum25.domain.value_objects.instrument import is_equity
 
 
 class RsRatingCache(Protocol):
-    """Cache for one day's universe RS ratings, keyed by (date, strategy)."""
+    """Cache for one day's universe RS ratings, keyed by (date, computation basis)."""
 
-    async def get(self, as_of: date, strategy_name: str) -> dict[str, int] | None:
+    async def get(self, as_of: date, basis: str) -> dict[str, int] | None:
         """Return the cached ratings, or ``None`` on a miss."""
         ...
 
-    async def set(self, as_of: date, strategy_name: str, ratings: dict[str, int]) -> None:
-        """Cache *ratings* for the given trading date and strategy."""
+    async def set(self, as_of: date, basis: str, ratings: dict[str, int]) -> None:
+        """Cache *ratings* for the given trading date and basis."""
         ...
+
+
+def rs_cache_basis(rs_return_weights: dict[str, Any] | None) -> str:
+    """The cache basis: the engine and universe versions plus the RS weights.
+
+    Two strategies with the same weights share ratings; a strategy edited to new
+    weights, or a new engine version, never reads another's (ADR-014 §11).
+    """
+    weights = json.dumps(
+        {str(k): str(v) for k, v in (rs_return_weights or {}).items()}, sort_keys=True
+    )
+    digest = hashlib.sha256(weights.encode()).hexdigest()[:12]
+    return f"e{ENGINE_VERSION}u{REFERENCE_UNIVERSE_VERSION}w{digest}"
 
 
 async def resolve_universe_rs_ratings(
@@ -44,20 +60,20 @@ async def resolve_universe_rs_ratings(
     rather than recomputed per request. A missing cache is not an error: the
     ratings are simply computed, which is what the daily orchestrator does.
     """
+    weights = strategy.config.indicators.get("rs_return_weights")
+    basis = rs_cache_basis(weights)
     if cache is not None:
-        cached = await cache.get(as_of, strategy.name)
+        cached = await cache.get(as_of, basis)
         if cached is not None:
             return cached
 
     # The same universe the screening run ranks: equities only. Ranking fund
     # and ETF units too gave this read path different ratings from the run.
     universe = [s for s in await securities_repo.list_active() if is_equity(s.isin)]
-    ratings = await compute_universe_rs_ratings(
-        universe, ohlcv_repo, as_of, strategy.config.indicators.get("rs_return_weights")
-    )
+    ratings = await compute_universe_rs_ratings(universe, ohlcv_repo, as_of, weights)
 
     if cache is not None:
-        await cache.set(as_of, strategy.name, ratings)
+        await cache.set(as_of, basis, ratings)
     return ratings
 
 

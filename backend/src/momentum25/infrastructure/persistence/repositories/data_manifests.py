@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
 from momentum25.domain.strategy.rule_schemas import registry_version
 from momentum25.domain.value_objects.manifest import DataManifest
 from momentum25.infrastructure.calendar.nse_calendar import calendar_version
@@ -29,6 +30,8 @@ class SqlDataManifestRepository:
             rule_registry_version=registry_version(),
             calendar_version=calendar_version(),
             build_id=build_identity(),
+            engine_version=ENGINE_VERSION,
+            reference_universe_version=REFERENCE_UNIVERSE_VERSION,
         )
         await self._session.execute(
             insert(DataManifestModel)

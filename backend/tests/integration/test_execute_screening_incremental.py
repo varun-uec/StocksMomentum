@@ -406,8 +406,8 @@ async def test_same_session_correction_creates_traceable_immutable_run(
     assert corrected.data_version != latest.isoformat()
     assert corrected.config_hash == strategy.config_hash
     manifest_body = corrected.stats["data_manifest"]
-    assert manifest_body["revision"] > 0
-    assert corrected_bar.revision_id <= manifest_body["revision"]
+    assert manifest_body["market"]["revision"] > 0
+    assert corrected_bar.revision_id <= manifest_body["market"]["revision"]
     assert (
         corrected.data_version
         == (await SqlDataManifestRepository(db_session).get(corrected.data_version)).data_version
