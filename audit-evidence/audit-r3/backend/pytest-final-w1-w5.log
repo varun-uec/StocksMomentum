@@ -1,0 +1,66 @@
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 22%]
+........................................................................ [ 29%]
+........................................................................ [ 36%]
+........................................................................ [ 44%]
+........................................................................ [ 51%]
+........................................................................ [ 58%]
+........................................................................ [ 66%]
+........................................................................ [ 73%]
+........................................................................ [ 80%]
+........................................................................ [ 88%]
+........................................................................ [ 95%]
+...........................................                              [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/integration/test_alerts_api.py::test_unsupported_drawing_rules_are_rejected[overrides1]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e506a50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_alerts_api.py::test_the_alert_reads_the_charts_own_values[1W]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e60af50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_alerts_api.py::test_rearm_rescales_only_price_scaled_studies[macd_signal]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e1e7150>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_alerts_api.py::test_rearm_rescales_only_price_scaled_studies[macd_signal]
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e507d50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_api_explainability.py::test_latest_run_on_or_before_a_replay_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e608350>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_api_explainability.py::test_latest_run_on_or_before_a_replay_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e506650>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_latest_completed_excludes_historical.py::test_score_history_returns_one_live_point_per_run_date
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/src/momentum25/infrastructure/persistence/repositories/screening_run.py:594: SADeprecationWarning: Passing expression to ``distinct`` to generate a DISTINCT ON clause is deprecated. Use instead the ``postgresql.distinct_on`` function as an extension.
+    .distinct(ScreeningRunModel.run_date)
+
+tests/integration/test_studio_api.py::test_a_name_is_held_by_one_family_and_never_by_a_file
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10e608f50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/integration/test_studio_api.py::test_a_name_is_held_by_one_family_and_never_by_a_file
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10ecacb50>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/unit/test_chart_patterns.py::test_rising_wedge_has_both_boundaries_rising_and_converging
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10ec71950>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+tests/unit/test_chart_patterns.py::test_rising_wedge_has_both_boundaries_rising_and_converging
+  /Users/varunagarwal/Downloads/Applications/StocksMomentum/backend/.venv/lib/python3.12/site-packages/asyncpg/connection.py:137: ResourceWarning: unclosed connection <asyncpg.connection.Connection object at 0x10ecaf850>; run in asyncio debug mode to show the traceback of connection origin
+    warnings.warn(msg, ResourceWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+979 passed, 12 warnings in 50.56s
+exit=0
