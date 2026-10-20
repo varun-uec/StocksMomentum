@@ -79,9 +79,16 @@ class SqlSecurityRepository:
         await self._session.execute(stmt)
 
     async def list_active(self) -> list[Security]:
-        """Return all active securities."""
+        """Return all active securities, ordered by id.
+
+        The order is fixed because callers depend on it: universe RS ratings
+        rank equal returns in input order. Without ORDER BY, PostgreSQL returns
+        heap order, which an UPDATE or a restore can change.
+        """
         result = await self._session.execute(
-            select(SecurityModel).where(SecurityModel.is_active.is_(True))
+            select(SecurityModel)
+            .where(SecurityModel.is_active.is_(True))
+            .order_by(SecurityModel.id)
         )
         return [_to_domain(row) for row in result.scalars().all()]
 
