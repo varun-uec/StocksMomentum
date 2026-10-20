@@ -192,7 +192,7 @@ def run(px, universe_rows, sessions, start, end, cap0, *, require_decision_bar=T
             pending = []
             sigs = []
             for sid, listed, gone in universe_rows:
-                if listed > D or (gone is not None and D > gone) or (D - listed).days < 252:
+                if listed > D or (gone is not None and D >= gone) or (D - listed).days < 252:
                     continue
                 if require_decision_bar and not px.has(sid, D):
                     continue

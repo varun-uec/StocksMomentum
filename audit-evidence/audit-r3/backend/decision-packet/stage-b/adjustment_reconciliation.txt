@@ -1,0 +1,31 @@
+== Bars and adjusted closes ==
+  bars   | adj_close_null | adj_close_null_factor_not_1 | adj_close_not_close_x_factor 
+---------+----------------+-----------------------------+------------------------------
+ 3206035 |         553534 |                           0 |                        55271
+
+== Actions ==
+ type  | actions | unpriced | securities 
+-------+---------+----------+------------
+ bonus |     448 |        0 |        358
+ other |   25624 |    25624 |       2341
+ split |     490 |        0 |        467
+
+== Stored adj_factor against the factor the actions imply ==
+ bars_compared | factor_mismatch | securities_with_mismatch 
+---------------+-----------------+--------------------------
+       3206035 |               0 |                        0
+
+== Largest mismatches (up to 15 securities) ==
+ symbol | security_id | bars | first | last | stored_min | stored_max | want_min | want_max 
+--------+-------------+------+-------+------+------------+------------+----------+----------
+
+== Adjustment dates: stored factor steps against action ex-dates ==
+ factor_steps | steps_without_action 
+--------------+----------------------
+          580 |                    0
+
+== Priced actions inside the bar history with no factor step at their ex-date ==
+ priced_actions_in_history | actions_without_step 
+---------------------------+----------------------
+                       611 |                    0
+
