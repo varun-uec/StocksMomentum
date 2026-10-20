@@ -178,7 +178,9 @@ class _Ohlcv:
 
 
 class _Strategies:
-    async def get_active(self, name: str) -> SimpleNamespace:
+    async def get_for_workspace(
+        self, name: str, config_hash: str | None = None
+    ) -> SimpleNamespace:
         return SimpleNamespace(id=1, config=SimpleNamespace(indicators={}))
 
 
