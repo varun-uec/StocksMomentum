@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pytest
 
 from momentum25.application.use_cases.import_market_data import (
+    check_bar_dates,
     parse_actions_csv,
     parse_benchmark_csv,
     parse_eod_csv,
@@ -96,3 +98,42 @@ def test_parse_benchmark_csv_requires_one_code_and_unique_dates(tmp_path: Path) 
     )
     with pytest.raises(ValueError, match="duplicate benchmark date"):
         parse_benchmark_csv(duplicate)
+
+
+class _Calendar:
+    """Weekdays are sessions except one listed holiday."""
+
+    def is_session(self, day: date) -> bool:
+        return day.weekday() < 5 and day != date(2026, 10, 20)
+
+
+@pytest.mark.parametrize(
+    ("bar_date", "message"),
+    [
+        ("2026-10-20", "not an exchange trading session"),  # holiday
+        ("2026-10-17", "not an exchange trading session"),  # Saturday
+        ("2026-10-21", "dated after today"),  # a session, but in the future
+    ],
+)
+def test_check_bar_dates_rejects_non_session_and_future_rows(
+    tmp_path: Path, bar_date: str, message: str
+) -> None:
+    # Regression R3-B: one such row became the latest stored date, and the next
+    # screen dropped every other security as no_bar_on_trading_date.
+    path = _csv(
+        tmp_path / "bars.csv",
+        f"symbol,date,open,high,low,close,volume\nX,2026-10-19,1,1,1,1,1\nX,{bar_date},1,1,1,1,1\n",
+    )
+    _, bars = parse_eod_csv(path)
+    with pytest.raises(ValueError, match=message):
+        check_bar_dates(bars, date(2026, 10, 20), _Calendar())
+
+
+def test_check_bar_dates_accepts_sessions_up_to_today(tmp_path: Path) -> None:
+    path = _csv(
+        tmp_path / "bars.csv",
+        "symbol,date,open,high,low,close,volume\nX,2026-10-16,1,1,1,1,1\nX,2026-10-19,1,1,1,1,1\n",
+    )
+    _, bars = parse_eod_csv(path)
+    check_bar_dates(bars, date(2026, 10, 19), _Calendar())
+    check_bar_dates(bars, date(2026, 10, 19))  # without a calendar only the future is checked

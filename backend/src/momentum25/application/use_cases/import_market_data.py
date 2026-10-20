@@ -15,6 +15,7 @@ from momentum25.domain.entities.market_data import (
 )
 from momentum25.domain.entities.security import Security
 from momentum25.domain.ports.market_data import RawCorporateAction, RawIndexBar
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.value_objects.types import Symbol
 
 
@@ -172,6 +173,25 @@ def parse_actions_csv(path: Path) -> dict[str, list[RawCorporateAction]]:
     return dict(actions)
 
 
+def check_bar_dates(
+    bars_by_symbol: dict[str, list[OHLCVBar]],
+    today: date,
+    calendar: TradingCalendar | None = None,
+) -> None:
+    """Reject bars dated after ``today`` or, given a calendar, on a non-session.
+
+    Screening runs on the latest stored date. One stray holiday, weekend or
+    future row would become that date, and every other security would then
+    drop out as ``no_bar_on_trading_date``.
+    """
+    for symbol, bars in bars_by_symbol.items():
+        for bar in bars:
+            if bar.date > today:
+                raise ValueError(f"{symbol} {bar.date}: bar is dated after today ({today})")
+            if calendar is not None and not calendar.is_session(bar.date):
+                raise ValueError(f"{symbol} {bar.date}: not an exchange trading session")
+
+
 def parse_benchmark_csv(path: Path) -> tuple[str, list[RawIndexBar]]:
     """Parse one benchmark series from an index_code/date/close CSV."""
     rows = _rows(path, {"index_code", "date", "close"})
@@ -204,15 +224,18 @@ class ImportEodCsv:
         security_repo: Any,
         ohlcv_repo: Any,
         corporate_action_repo: Any,
+        calendar: TradingCalendar | None = None,
     ) -> None:
-        """Bind the security, daily-bar and action repositories."""
+        """Bind the repositories and, optionally, the exchange calendar for date checks."""
         self._security_repo = security_repo
         self._ohlcv_repo = ohlcv_repo
         self._actions_repo = corporate_action_repo
+        self._calendar = calendar
 
     async def execute(self, bars_path: Path, actions_path: Path | None = None) -> dict[str, int]:
         """Validate and import files as one database transaction."""
         securities, bars_by_symbol = parse_eod_csv(bars_path)
+        check_bar_dates(bars_by_symbol, date.today(), self._calendar)
         actions = parse_actions_csv(actions_path) if actions_path is not None else {}
         unknown_actions = set(actions) - set(bars_by_symbol)
         if unknown_actions:

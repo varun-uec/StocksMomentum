@@ -15,6 +15,7 @@ from momentum25.application.use_cases.import_market_data import (
 )
 from momentum25.application.use_cases.walk_forward import format_walk_forward_report
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.config.strategy_loader import load_strategies_dir
 from momentum25.infrastructure.persistence.database import get_database
@@ -140,6 +141,7 @@ async def _import_eod(file: Path, actions: Path | None) -> dict[str, int]:
             SqlSecurityRepository(session),
             SqlOHLCVRepository(session),
             SqlCorporateActionRepository(session),
+            get_nse_trading_calendar(),
         )
         return await importer.execute(file, actions)
 
