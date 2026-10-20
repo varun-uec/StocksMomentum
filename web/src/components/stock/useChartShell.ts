@@ -158,6 +158,7 @@ export function useChartShell(
       timeframe,
       onTimeframeChange: setTimeframe,
       interval,
+      dataInterval: ohlcv?.interval,
       onIntervalChange: intervals ? (next: ChartInterval) => update({ interval: next }) : undefined,
       dataVersion: ohlcv?.data_version,
       chartType: preferences.chartType,

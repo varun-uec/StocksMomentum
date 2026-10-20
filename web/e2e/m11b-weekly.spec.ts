@@ -70,3 +70,27 @@ test('research screens keep daily bars and offer no interval switch', async ({ p
   await expect(page.getByTestId('price-chart').locator('canvas').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Weekly bars' })).toHaveCount(0);
 });
+
+test('a range chosen while weekly bars load applies to the weekly series', async ({ page }) => {
+  await page.goto('/chart/E2ECANDLE');
+  await ready(page, 'daily');
+  await page.getByRole('button', { name: '3M', exact: true }).click();
+  let release!: () => void;
+  const gate = new Promise<void>((done) => { release = done; });
+  await page.route((url) => url.pathname.endsWith('/E2ECANDLE/ohlcv') && url.searchParams.get('interval') === '1W', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.getByRole('button', { name: 'Weekly bars', exact: true }).click();
+  await expect(page.getByText('Loading stored history…', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '1Y', exact: true }).click();
+  release();
+  await expect(page.getByText('Loading stored history…', { exact: true })).toHaveCount(0);
+  const chart = page.getByTestId('price-chart');
+  await expect(chart).toHaveAttribute('aria-label', /105 weekly bars/);
+  await expect(chart).toHaveAttribute('data-visible-to', '2026-08-07');
+  await expect.poll(async () => {
+    const from = await chart.getAttribute('data-visible-from');
+    return from ? (Date.parse('2026-08-07') - Date.parse(from)) / 86_400_000 : 0;
+  }, { message: 'the visible weekly window spans about one year, not a few candles' }).toBeGreaterThan(330);
+});

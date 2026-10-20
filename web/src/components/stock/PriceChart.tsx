@@ -589,6 +589,7 @@ export function PriceChart({
   timeframe,
   onTimeframeChange,
   interval = '1D',
+  dataInterval,
   onIntervalChange,
   dataVersion,
   chartType: chartTypeProp,
@@ -639,6 +640,8 @@ export function PriceChart({
   onTimeframeChange: (id: TimeframeId) => void;
   /** Daily, weekly or monthly bars. The switch shows only when `onIntervalChange` is given. */
   interval?: ChartInterval;
+  /** Interval of the bars actually on screen, while a requested interval loads. */
+  dataInterval?: ChartInterval;
   onIntervalChange?: (interval: ChartInterval) => void;
   /** The series' data version, shown in the footnote (ADR-013 §4). */
   dataVersion?: string;
@@ -748,7 +751,8 @@ export function PriceChart({
   const setScale = (next: PriceScale) => (onScaleChange ? onScaleChange(next) : setInternalScale(next));
   const [internalMas, setInternalMas] = useState<number[]>([50, 200]);
   const activeMas = activeMasProp ?? internalMas;
-  const barWord = { '1D': 'daily', '1W': 'weekly', '1M': 'monthly' }[interval];
+  const renderedInterval = dataInterval ?? interval;
+  const barWord = { '1D': 'daily', '1W': 'weekly', '1M': 'monthly' }[renderedInterval];
   const { resolvedTheme } = useTheme();
   const maColors = useMemo(() => resolvedTheme === 'dark' ? { 10: '#fbbf24', 20: '#34d399', 50: '#a5b4fc', 100: '#f9a8d4', 200: '#b6c5d0' } as Record<number, string> : MA_COLORS, [resolvedTheme]);
   const [fittedHeight, setFittedHeight] = useState(requestedHeight);
@@ -1384,7 +1388,9 @@ export function PriceChart({
   }, [replaying]);
 
   const previousPriceContext = useRef<string>();
-  const priceContext = `${drawingsKey ?? bars[0]?.date ?? ''}:${interval}`;
+  // Placeholder bars retain their own interval. Consume a new interval's
+  // viewport only when its data arrives, rather than against the old series.
+  const priceContext = `${drawingsKey ?? bars[0]?.date ?? ''}:${renderedInterval}`;
   // Price series (candlestick or close line).
   useEffect(() => {
     const chart = chartRef.current;
@@ -1932,7 +1938,7 @@ export function PriceChart({
     ? 'Loading price series…'
     : (footnote ??
       `${bars.length} ${barWord} bars from the stored NSE series. Moving averages are simple rolling means of the stored closes.${
-        bars.at(-1)?.partial ? ` The last ${interval === '1M' ? 'month' : 'week'} is not complete.` : ''
+        bars.at(-1)?.partial ? ` The last ${renderedInterval === '1M' ? 'month' : 'week'} is not complete.` : ''
       }${dataVersion ? ` Data version ${dataVersion}.` : ''}`);
   const lastBar = parsed.at(-1);
   const previousClose = parsed.at(-2)?.close;
