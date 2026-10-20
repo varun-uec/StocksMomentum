@@ -37,7 +37,7 @@ All configuration is via environment variables prefixed with `M25_`.
 | `M25_SCHEDULE_CRON` | `30 18 * * 1-5` | Cron expression for daily run |
 | `M25_DB_POOL_SIZE` | `10` | Database connection pool size |
 | `M25_DB_MAX_OVERFLOW` | `5` | Database connection pool overflow |
-| `M25_RATE_LIMIT_MAX_REQUESTS` | `200` | API rate limit per window |
+| `M25_RATE_LIMIT_MAX_REQUESTS` | `1200` | API requests per client IP per window. One page load makes 7–15 calls, and behind Docker every browser shares the gateway IP. A refused request gets `429` with `Retry-After` (seconds) and `retry_after_seconds` in the problem body. Health checks and static files are not counted. |
 | `M25_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window in seconds |
 | `M25_WEB_DIST_DIR` | `""` (image: `/app/web`) | Built web app to serve at `/`. Empty = API only. |
 | `APP_BIND` (Compose) | `127.0.0.1` | Interface the app port binds to. The app has no authentication and is intended for one local user. `0.0.0.0` exposes unauthenticated read/write access to the LAN; that instance is not secure. Use an authenticating proxy before any network exposure. |

@@ -49,3 +49,39 @@ def test_cleanup_uses_wall_clock_not_perf_counter() -> None:
 
     mw._cleanup("9.9.9.9", now + 11)  # now outside the window
     assert mw._requests["9.9.9.9"] == []
+
+
+def test_a_refused_request_gets_retry_after_and_a_problem_body() -> None:
+    # R3-U-08: the 429 had no Retry-After, so the client could not back off.
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    app = FastAPI()
+
+    @app.get("/api/v1/ping")
+    async def ping() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    app.add_middleware(RateLimitMiddleware, max_requests=3, window_seconds=60)
+    client = TestClient(app)
+    assert [client.get("/api/v1/ping").status_code for _ in range(3)] == [200, 200, 200]
+
+    refused = client.get("/api/v1/ping")
+
+    assert refused.status_code == 429
+    assert refused.headers["content-type"] == "application/problem+json"
+    seconds = int(refused.headers["Retry-After"])
+    assert 1 <= seconds <= 60
+    body = refused.json()
+    assert body["retry_after_seconds"] == seconds
+    assert body["title"] == "rate_limit_exceeded"
+    assert f"{seconds} s" in body["detail"]
+    # Health checks are never limited.
+    assert client.get("/api/v1/health").status_code == 404
+
+
+def test_the_default_allows_a_busy_page_behind_one_gateway_ip() -> None:
+    from momentum25.infrastructure.config.settings import Settings
+
+    assert Settings().rate_limit_max_requests == 1200
+    assert RateLimitMiddleware(app=object())._max_requests == 1200

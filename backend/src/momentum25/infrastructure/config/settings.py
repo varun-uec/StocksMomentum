@@ -84,7 +84,9 @@ class Settings(BaseSettings):
     log_json: bool = True
 
     # --- Rate limiting ---
-    rate_limit_max_requests: int = 200
+    # Per client IP and window. One page load makes 7-15 API calls, and behind
+    # Docker every browser shares the gateway IP (R3-U-08).
+    rate_limit_max_requests: int = 1200
     rate_limit_window_seconds: int = 60
 
     # --- Live single-symbol lookup (Phase 1.1/1.3) ---

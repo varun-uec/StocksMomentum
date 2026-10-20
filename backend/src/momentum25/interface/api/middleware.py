@@ -10,6 +10,7 @@ HTTP metrics, enforces rate limits, and sets security headers.
 
 from __future__ import annotations
 
+import math
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -111,14 +112,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Uses a sliding window counter stored in memory. For distributed rate limiting,
     swap for a Redis-backed implementation.
 
-    ``M25_RATE_LIMIT``: max requests per window (default 200).
-    ``M25_RATE_LIMIT_WINDOW``: window size in seconds (default 60).
+    ``M25_RATE_LIMIT_MAX_REQUESTS``: max requests per client IP and window
+    (default 1200). ``M25_RATE_LIMIT_WINDOW_SECONDS``: window in seconds
+    (default 60). A refused request gets ``429`` with ``Retry-After`` and a
+    problem body that states the same number of seconds.
     """
 
     def __init__(
         self,
         app: Any,
-        max_requests: int = 200,
+        max_requests: int = 1200,
         window_seconds: int = 60,
     ) -> None:
         """Create the rate limiter middleware.
@@ -176,16 +179,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._sweep_idle_clients(now)
         self._cleanup(client_ip, now)
 
-        if len(self._requests.get(client_ip, [])) >= self._max_requests:
-            _logger.warning("rate_limit_exceeded", client_ip=client_ip, path=request.url.path)
+        window = self._requests.get(client_ip, [])
+        if len(window) >= self._max_requests:
+            # The oldest request in the window leaves it first; then one fits.
+            retry_after = max(1, math.ceil(window[0] + self._window_seconds - now))
+            _logger.warning(
+                "rate_limit_exceeded",
+                client_ip=client_ip,
+                path=request.url.path,
+                retry_after_seconds=retry_after,
+            )
             from fastapi.responses import JSONResponse
 
             return JSONResponse(
                 status_code=429,
+                media_type="application/problem+json",
+                headers={"Retry-After": str(retry_after)},
                 content={
+                    "type": "urn:momentum25:error:rate_limit_exceeded",
                     "title": "rate_limit_exceeded",
                     "status": 429,
-                    "detail": "Too many requests. Please try again later.",
+                    "detail": f"Too many requests. Retry in {retry_after} s.",
+                    "instance": request.url.path,
+                    "retry_after_seconds": retry_after,
                 },
             )
 
