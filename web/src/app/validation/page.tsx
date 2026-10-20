@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getResearchDashboard } from '@/lib/api-client';
+import { getResearchDashboard, listStrategies } from '@/lib/api-client';
+import { useStrategy } from '@/app/strategy-context';
+import { strategyDisplayName } from '@/lib/format';
 import type {
   Measurability,
   StrategyScorecard,
@@ -475,12 +477,29 @@ function QualityMetrics({
 }
 
 export default function ValidationPage() {
-  const [strategy, setStrategy] = useState('minervini_trend_template');
+  const { strategyName, strategyHash } = useStrategy();
+  const [picked, setPicked] = useState<string | null>(null);
   const [windowYears, setWindowYears] = useState(1);
 
+  // The workspace's own strategies: production and saved user versions. One option per version.
+  const { data: strategies } = useQuery({
+    queryKey: ['strategies', 'workspace'],
+    queryFn: () => listStrategies(false, true),
+    staleTime: 30_000,
+  });
+  const selected = strategies?.find((s) => s.config_hash === (picked ?? strategyHash))
+    ?? strategies?.find((s) => s.name === strategyName)
+    ?? strategies?.[0];
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['research-dashboard', strategy, windowYears],
-    queryFn: () => getResearchDashboard({ strategy_name: strategy, window_years: windowYears }),
+    queryKey: ['research-dashboard', selected?.config_hash, windowYears],
+    queryFn: () =>
+      getResearchDashboard({
+        strategy_name: selected!.name,
+        config_hash: selected!.config_hash,
+        window_years: windowYears,
+      }),
+    enabled: selected !== undefined,
   });
 
   return (
@@ -492,11 +511,16 @@ export default function ValidationPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <select
             aria-label="Strategy"
-            value={strategy}
-            onChange={(e) => setStrategy(e.target.value)}
+            value={selected?.config_hash ?? ''}
+            onChange={(e) => setPicked(e.target.value)}
+            disabled={!strategies || strategies.length === 0}
             className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-700 dark:text-slate-300 ${focusRing}`}
           >
-            <option value="minervini_trend_template">Minervini Trend Template</option>
+            {(strategies ?? []).map((s) => (
+              <option key={s.config_hash} value={s.config_hash}>
+                {strategyDisplayName(s.name)}{s.kind === 'user' ? ` · v${s.version}` : ''}
+              </option>
+            ))}
           </select>
           <select
             aria-label="Window"
@@ -531,6 +555,11 @@ export default function ValidationPage() {
 
         {data && (
           <div className="space-y-6">
+            <p data-testid="validation-provenance" className="text-xs text-slate-600 dark:text-slate-400 tabular-nums">
+              Evidence for {data.strategy_name}
+              {data.strategy_version != null ? ` · v${data.strategy_version}` : ''}
+              {data.config_hash ? ` · cfg ${data.config_hash.slice(0, 8)}` : ''} · {windowYears}-year window
+            </p>
             <QualityMetrics stability={data.ranking_stability} fpr={data.false_positive_rate} fnr={data.false_negative_rate} />
             <ScorecardSection data={data.scorecard} />
             <AlphaSection data={data.alpha_analysis} />

@@ -41,8 +41,12 @@ export interface DocumentSpec<T> {
 
 interface ServerDocument<T> {
   revision: number;
-  body: T;
+  /** Null at revision 0: the document was never saved. That is a normal state, not an error. */
+  body: T | null;
 }
+
+/** A never-saved document, whether the server says 404 (older servers) or revision 0. */
+const neverSaved = <T>(doc: ServerDocument<T> | null): doc is null => doc === null || doc.body === null;
 
 const SAVE_DELAY_MS = 400;
 
@@ -77,7 +81,8 @@ export class DocumentStore<T> {
         return;
       }
       if (!res.ok) throw new Error(`${res.status}`);
-      this.loaded((await res.json()) as ServerDocument<T>);
+      const doc = (await res.json()) as ServerDocument<T>;
+      this.loaded(neverSaved(doc) ? null : doc);
     } catch {
       this.set({ status: 'error' });
     }
@@ -89,9 +94,9 @@ export class DocumentStore<T> {
    * placed the moment a chart appears is kept, and so is every saved one.
    */
   private loaded(doc: ServerDocument<T> | null): void {
-    const theirs = doc?.body ?? this.spec.defaults();
+    const theirs = (doc?.body as T | null | undefined) ?? this.spec.defaults();
     const revision = doc?.revision ?? null;
-    if (doc) this.base = doc.body;
+    if (doc) this.base = doc.body as T;
     if (!this.editedWhileLoading) {
       this.set({ status: 'saved', body: theirs, revision });
       return;
@@ -184,7 +189,7 @@ export class DocumentStore<T> {
       }
       if (!res.ok) throw new Error(`${res.status}`);
       const doc = (await res.json()) as ServerDocument<T>;
-      this.base = doc.body;
+      this.base = doc.body as T;
       const changedMeanwhile = this.state.body !== sent;
       this.set({ revision: doc.revision, savedAt: new Date(), status: changedMeanwhile ? 'unsaved' : 'saved' });
       if (changedMeanwhile) this.schedule();
@@ -197,14 +202,14 @@ export class DocumentStore<T> {
 
   /** Another window saved first: merge onto its version, then save or ask. */
   private rebase(current: ServerDocument<T> | null): void {
-    if (current === null) {
+    if (neverSaved(current)) {
       this.base = null;
       this.set({ revision: null, status: 'unsaved' });
       this.schedule();
       return;
     }
-    const merged = this.spec.merge(this.base, this.state.body, current.body);
-    this.base = current.body;
+    const merged = this.spec.merge(this.base, this.state.body, current.body as T);
+    this.base = current.body as T;
     if (merged.conflicted) {
       this.set({ revision: current.revision, status: 'conflict', conflict: { mine: merged.mine, theirs: merged.theirs } });
       return;

@@ -619,12 +619,16 @@ export interface ParameterExperimentResponse {
 
 export interface ResearchDashboardRequest {
   strategy_name: string;
+  /** Pins one saved version. Without it the newest version of the name is used. */
+  config_hash?: string;
   window_years: number;
 }
 
 export interface ResearchDashboardResponse {
   strategy_name: string;
   strategy_id: number;
+  strategy_version?: number | null;
+  config_hash?: string | null;
   scorecard: StrategyScorecard | null;
   alpha_analysis: AlphaAnalysisResponse | null;
   rule_effectiveness: RuleEffectivenessResponse | null;

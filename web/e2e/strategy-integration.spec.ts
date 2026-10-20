@@ -432,6 +432,33 @@ test('point-in-time research results keep their original config hash when a late
   expect(evaluations.some((item: any) => item.config_hash === newVersion.config_hash)).toBe(false);
 });
 
+test('the Validation page validates a saved strategy version with its own configuration and evidence', async ({ page }) => {
+  test.skip(!saved, 'The preceding authoring workflow must create the saved test config.');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const bodies: Record<string, unknown>[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/v1/validation/dashboard')) bodies.push(request.postDataJSON());
+  });
+  await page.goto('/validation');
+  const picker = page.getByLabel('Strategy', { exact: true });
+  // One option per version: the production strategy and both saved versions.
+  await expect(picker.locator('option')).toContainText([/Minervini/, /v1/, /v2/]);
+
+  await picker.selectOption(saved!.hash);
+  await expect(page.getByTestId('validation-provenance')).toContainText(`cfg ${saved!.hash.slice(0, 8)}`);
+  await expect(page.getByTestId('validation-provenance')).toContainText('v2');
+  expect(bodies.at(-1)).toMatchObject({ strategy_name: saved!.name, config_hash: saved!.hash });
+
+  // The earlier version has no run: it must read as empty, not borrow the later version's evidence.
+  await picker.selectOption(saved!.unrunHash);
+  await expect(page.getByTestId('validation-provenance')).toContainText(`cfg ${saved!.unrunHash.slice(0, 8)}`);
+  await expect(page.getByTestId('validation-provenance')).toContainText('v1');
+  expect(bodies.at(-1)).toMatchObject({ config_hash: saved!.unrunHash });
+
+  await picker.selectOption({ label: 'Minervini Trend Template' });
+  await expect(page.getByTestId('validation-provenance')).toContainText(BUILTIN);
+});
+
 test('mobile screener keeps the first result row above the fixed navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

@@ -20,7 +20,7 @@ const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 /** A fake server holding one document; requests are recorded. */
-function fakeServer(initial: { revision: number; body: Body } | null) {
+function fakeServer(initial: { revision: number; body: Body } | null, neverSavedAs: 404 | 'revision-0' = 404) {
   let doc = initial;
   const calls: { method: string; headers: Record<string, string>; body?: Body }[] = [];
   const http = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
@@ -28,11 +28,14 @@ function fakeServer(initial: { revision: number; body: Body } | null) {
     const headers = (init?.headers ?? {}) as Record<string, string>;
     const body = init?.body ? (JSON.parse(String(init.body)) as Body) : undefined;
     calls.push({ method, headers, body });
-    if (method === 'GET') return doc ? json(200, doc) : json(404, {});
+    if (method === 'GET') {
+      if (doc) return json(200, doc);
+      return neverSavedAs === 404 ? json(404, {}) : json(200, { key: 'k', schema_version: 1, revision: 0, updated_at: null, body: null });
+    }
     const ifMatch = headers['If-Match'];
     const create = headers['If-None-Match'] === '*';
     const ok = create ? doc === null : doc !== null && ifMatch === `"${doc.revision}"`;
-    if (!ok) return json(412, { current: doc });
+    if (!ok) return json(412, { current: doc ?? (neverSavedAs === 404 ? null : { revision: 0, body: null }) });
     doc = { revision: (doc?.revision ?? 0) + 1, body: body! };
     return json(create ? 201 : 200, doc);
   });
@@ -41,6 +44,10 @@ function fakeServer(initial: { revision: number; body: Body } | null) {
     calls,
     get doc() {
       return doc;
+    },
+    /** The stored document disappears (a restored backup, a cleared database). */
+    loseDocument() {
+      doc = null;
     },
     /** Another window saves directly. */
     otherWindowSaves(body: Body) {
@@ -67,6 +74,26 @@ describe('DocumentStore', () => {
     await settle();
     expect(server.calls.at(-1)?.headers['If-None-Match']).toBe('*');
     expect(store.getState()).toMatchObject({ status: 'saved', revision: 1 });
+  });
+
+  test('a never-saved document read as revision 0 loads as defaults, with no error, and is created', async () => {
+    const server = fakeServer(null, 'revision-0');
+    const store = new DocumentStore(spec, server.http);
+    await store.load();
+    expect(store.getState()).toMatchObject({ status: 'saved', revision: null, body: { drawings: [] } });
+    store.update(() => ({ drawings: [{ id: 'a', price: 1 }] }));
+    await settle();
+    expect(store.getState()).toMatchObject({ status: 'saved', revision: 1 });
+  });
+
+  test('a 412 that names a revision-0 document is treated as never saved, then the save is retried', async () => {
+    const server = fakeServer({ revision: 3, body: { drawings: [] } }, 'revision-0');
+    const store = new DocumentStore(spec, server.http);
+    await store.load();
+    server.loseDocument();
+    store.update(() => ({ drawings: [{ id: 'a', price: 1 }] }));
+    await settle();
+    expect(store.getState()).toMatchObject({ status: 'saved', revision: 1, body: { drawings: [{ id: 'a', price: 1 }] } });
   });
 
   test('an edit made while a missing document loads is kept and creates it', async () => {
