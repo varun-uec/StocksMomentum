@@ -43,6 +43,8 @@ import {
   type LineWidth,
   type MouseEventParams,
   type IRange,
+  type BarPrice,
+  type SeriesType,
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
@@ -445,6 +447,35 @@ const VOLUME_PANE: PaneDef = {
 /** The colour a pane is identified by (its first line series). */
 export function paneColor(def: PaneDef): string {
   return def.series.find((s) => s.type === 'line')?.color ?? '#94a3b8';
+}
+
+/** Half the 17 px last-price label, half the 12 px tick font and a 2.5 px gap: tick label centres nearer than this are hidden. */
+const LAST_PRICE_LABEL_CLEARANCE = 17;
+
+/**
+ * Blank the price-axis tick labels the last-price label would cover, as
+ * TradingView does. The library draws every tick label and paints the label
+ * over them, so a near tick showed half its digits. Tick positions and every
+ * other label keep the library's own formatting.
+ */
+function hideTicksUnderLastPrice(series: ISeriesApi<SeriesType>): void {
+  const base = series.priceFormatter();
+  series.applyOptions({
+    priceFormat: {
+      type: 'custom',
+      minMove: 0.01,
+      formatter: (price: BarPrice) => base.format(price),
+      tickmarksFormatter: (prices: BarPrice[]) => {
+        const last = series.lastValueData(true);
+        const labelY = last.noData ? null : series.priceToCoordinate(last.price);
+        return prices.map((price) => {
+          const y = series.priceToCoordinate(price);
+          const covered = labelY !== null && y !== null && Math.abs(y - labelY) < LAST_PRICE_LABEL_CLEARANCE;
+          return covered ? '' : base.format(price);
+        });
+      },
+    },
+  });
 }
 
 /** The field whose value the crosshair readout shows for a pane. */
@@ -1391,6 +1422,7 @@ export function PriceChart({
       series.setData(closes);
       priceSeriesRef.current = series;
     }
+    hideTicksUnderLastPrice(priceSeriesRef.current);
     const restore = replayViewport.current.restore && !replaying ? replayViewport.current.saved : null;
     if (restore) {
       replayViewport.current = { saved: null, restore: false };

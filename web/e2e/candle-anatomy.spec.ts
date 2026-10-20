@@ -188,6 +188,52 @@ for (const [interval, name, range] of [['1W', 'Weekly bars', '1Y'], ['1M', 'Mont
   });
 }
 
+/**
+ * The right price axis of the price pane: the rows of the last-price label (the
+ * opaque band across the axis), whether any tick text touches it, and how many
+ * rows carry tick text at all. The chart background is transparent, so ink is alpha.
+ */
+async function readAxis(page: Page): Promise<{ label: [number, number] | null; touching: number; textRows: number }> {
+  return page.getByTestId('price-chart').evaluate((el) => {
+    const canvases = [...el.querySelectorAll('canvas')];
+    const area = (c: HTMLCanvasElement) => c.width * c.height;
+    const pane = canvases.find((c) => area(c) === Math.max(...canvases.map(area)))!;
+    const right = pane.getBoundingClientRect().right;
+    const axis = canvases.find((c) => c.height === pane.height && c.getBoundingClientRect().left >= right - 1)!;
+    const { width, height } = axis;
+    const px = axis.getContext('2d')!.getImageData(0, 0, width, height).data;
+    const alpha = (x: number, y: number) => px[(y * width + x) * 4 + 3];
+    const opaque = (y: number) => { let n = 0; for (let x = 0; x < width; x++) if (alpha(x, y) === 255) n++; return n; };
+    // Skip the axis border and tick-mark columns at the left edge.
+    const ink = (y: number) => { for (let x = 4; x < width; x++) if (alpha(x, y) > 40) return true; return false; };
+    const rows = [...Array(height).keys()].filter((y) => opaque(y) >= width / 2);
+    if (!rows.length) return { label: null, touching: 0, textRows: 0 };
+    const [top, bottom] = [rows[0], rows.at(-1)!];
+    const near = [top - 2, top - 1, bottom + 1, bottom + 2].filter((y) => y >= 0 && y < height);
+    const textRows = [...Array(height).keys()].filter((y) => (y < top - 2 || y > bottom + 2) && ink(y)).length;
+    return { label: [top, bottom] as [number, number], touching: near.filter(ink).length, textRows };
+  });
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  for (const [width, height] of [[1440, 900], [768, 1024], [390, 844]] as const) {
+    test(`no tick label shows under the last-price label: ${theme}, ${width} px`, async ({ page, request }) => {
+      await page.addInitScript((t) => localStorage.setItem('m25-theme', t), theme);
+      await page.setViewportSize({ width, height });
+      await openChart(page);
+      const weekly = await series(request, 'interval=1W');
+      for (const [interval, name, range, word] of [['1W', 'Weekly bars', '1Y', 'weekly'], ['1D', 'Daily bars', '3M', 'daily']] as const) {
+        await page.getByRole('button', { name }).click();
+        await showRange(page, range, word, interval === '1W' ? weekly.at(-1)!.date : '2026-08-07');
+        const axis = await readAxis(page);
+        expect(axis.label, `${interval}: the last-price label is drawn`).not.toBeNull();
+        expect(axis.textRows, `${interval}: the other tick labels stay`).toBeGreaterThan(20);
+        expect(axis.touching, `${interval}: rows of tick text touching the label`).toBe(0);
+      }
+    });
+  }
+}
+
 test('replay candles match the series as it stood on the replay date, before the split', async ({ page, request }) => {
   const date = '2026-06-12';
   const asOf = await series(request, `interval=1D&as_of=${date}`);
