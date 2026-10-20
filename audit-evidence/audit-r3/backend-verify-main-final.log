@@ -1,0 +1,6 @@
+All checks passed!
+Success: no issues found in 265 source files
+
+Contracts: 2 kept, 0 broken.
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+981 passed, 2 warnings in 44.91s

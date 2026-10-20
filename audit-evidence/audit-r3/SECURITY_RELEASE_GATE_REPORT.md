@@ -26,7 +26,7 @@ Date: 2026-10-20. Code defects are separated from legal and contractual question
 | Request body size | 15 MB body returned 422 in 0.15 s. **No explicit body-size cap** (R3-B-23, P3). | probe |
 | Secrets | Only `.env.example` is tracked. No key patterns in git history. Only dev-default and synthetic E2E passwords appear. | `security/secrets-scan.txt` |
 | Secrets in logs | **Defect R3-B-06 (P2): the settings log line printed the database and Redis URLs with passwords at every start.** Fixed in `e3b67dd` (masked, regression test). The running container is not rebuilt and still logs them. | worker; `git show e3b67dd` |
-| Rate limit | 200 requests per minute per client. A page load costs 7 to 15 requests. About 13 fast page loads in a minute give HTTP 429. This is availability for the owner, not a security gap (R3-U-08, P3). | `settings.py:82`; real-app sweep |
+| Rate limit | Was 200 requests per minute per client; now 1,200 with a `Retry-After` header and a JSON problem body (`1cd25eb`). The client retries a read twice. Availability, not a security gap (R3-U-08, fixed in source). | `settings.py`; unit and API tests |
 
 **Result: no P0 or P1 security defect.** One P2 (password in logs) fixed in source, not deployed.
 
@@ -63,7 +63,7 @@ Intended release: the owner's local, single-user, loopback workstation first; pu
 | G2 Financial correctness of the live screener | PASS | Independently recomputed (Financial Correctness Report). |
 | G3 Financial correctness of the walk-forward backtest | **FAIL — release blocker for any backtest claim** | R3-B-09 (27% of notional at stale fills). |
 | G4 Spec conformance | **OPEN — owner decision** | R3-B-10 (four deviations). |
-| G5 Operational reliability of the EOD job | **FAIL for unattended use** | No catch-up (R3-B-11), restart policy `no` (R3-O-02), scheduled run never observed, no automated authorised data source. |
+| G5 Operational reliability of the EOD job | **FAIL for unattended use until deployed and repeated** | The scheduler fired once unattended at 18:30 IST (run 150). In source: weekday fix, catch-up, restart policy and memory caps. In the running container: Tuesday to Saturday, no catch-up, restart `no`, trigger MANUAL. No authorised automated data source (BLOCKED). |
 | G6 Deployment currency | **FAIL** | The container runs the old image. The R3-B-02 import guard, run-id fix, 409 conflicts, SCHEDULED trigger, log masking, RS read-path fix and all web fixes are not deployed. |
 | G7 Security (code) | PASS for the loopback model | One fixed P2, not deployed. |
 | G8 Dependency audit | NOT VERIFIED | Owner approval needed. |

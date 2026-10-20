@@ -17,7 +17,7 @@ The single-user app has no authentication and must remain loopback-only. An unau
 | `lint-imports` | 2 contracts kept, 0 broken |
 | `ruff check src tests` | clean |
 | `mypy src` (strict) | clean, 234 files |
-| `pytest` (full suite, PostgreSQL up) | 684 passed (638 before M10; +21 in M10, +25 in M11) |
+| `pytest` (full suite, PostgreSQL up) | 684 passed (638 before M10; +21 in M10, +25 in M11). Superseded: 981 on 2026-10-20. |
 | Web `npm test` (Vitest) | 49 passed |
 | Web `npm run lint` / `npm run build` | clean |
 | Web `npm run e2e` (Playwright, against a database clone) | 37 passed, stable over repeated runs |
@@ -34,6 +34,24 @@ The single-user app has no authentication and must remain loopback-only. An unau
 | M13 workspaces, 30 samples each | 1 chart warm/cold P95 185/201 ms; 4 charts 495/528 ms; 16 charts 1,772/1,785 ms. |
 | Test data | Marked synthetic fixtures in a disposable tmpfs `*_e2e` database; no NSE automated downloads. |
 | Evidence and limits | See [audit report](../../E2E_AUDIT_REPORT.md), [coverage](../../E2E_COVERAGE_MATRIX.md), [UX audit](../../UX_USABILITY_AUDIT.md), and [defect register](../../E2E_DEFECT_REGISTER.md). |
+
+## Round 3 audit, 2026-10-20
+
+Full record: [audit-evidence/audit-r3/AUDIT_REPORT.md](../../audit-evidence/audit-r3/AUDIT_REPORT.md). Verdict: **not ready for release.** The live screener is correct and deterministic. The walk-forward backtest fills 27% of notional at stale prices (R3-B-09, open, needs an owner decision). None of the Round 3 fixes is deployed: the running container still has the old image.
+
+| Check | Result |
+|---|---|
+| Backend `ruff`, `mypy --strict` (265 files), `lint-imports` | Clean; 2 contracts kept |
+| Backend `pytest` (isolated `_test` database) | **981 passed**, 2 warnings (6 failed at the start of the audit) |
+| Web ESLint, Vitest | Clean; **148 passed**, 21 files |
+| Web build, main chunk | 654 kB raw, 209 kB gzip (was 1,010 / 316 before R3-U-01) |
+| Playwright, full serial suite at HEAD | See the audit report, section 4 |
+| NFR-11, 30 samples each | Warm P95 and cold P95 in `audit-evidence/audit-r3/ui/nfr11-r3.json` (both inside the limits) |
+| EOD scheduler | Fired unattended at 18:30:00 IST on 2026-10-20 (run 150, results identical to run 149). Old image: Tuesday to Saturday, no catch-up, trigger recorded as MANUAL. |
+
+Fixed in source in Round 3: import date guard (R3-B-02), run identity and conflict handling (R3-B-03, R3-B-04), scheduler trigger, weekday numbering and catch-up (R3-B-05, R3-B-11, R3-B-26), log masking (R3-B-06), read-path RS universe (R3-B-08, owner to confirm), `data_version` no longer hashes the git commit (R3-U-09, ADR-014 §10), never-saved documents read as revision 0 (R3-U-06, ADR-013 §5), rate limit 1,200 a minute with `Retry-After` (R3-U-08), WCAG 2.x A and AA on every route in both themes (R3-U-02 to R3-U-05, R3-U-12), stale stored strategy (R3-U-10), `/validation` strategy picker and `config_hash` (R3-U-07), bundle size (R3-U-01), improved-rank arrow (R3-U-11), compose memory caps and `restart: unless-stopped` with isolated test databases (R3-O-01, R3-O-02).
+
+Open: R3-B-09 and R3-B-10 (methodology, owner), R3-B-13 to R3-B-16, R3-B-18, R3-B-22 (ADR-056 does not exist), dependency audits, licence, data rights, name.
 
 ## Delivery record
 

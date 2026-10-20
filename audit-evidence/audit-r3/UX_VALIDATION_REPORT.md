@@ -47,7 +47,7 @@ axe-core on the real app before the fixes: 70 of 150 route states had a violatio
 | R3-U-03 | P2 | No `main` landmark on 14 of 25 routes; duplicate banner on stock pages. | Fixed. Shell renders the one `main`. Verified. |
 | R3-U-04 | P2 | Text contrast below 4.5:1. Light: emerald-600 3.76, amber-600 3.18, slate-400 2.53, emerald-400 1.92. Dark: slate-500 3.05, slate-600 2.17. 84 nodes on the home screen alone. | Fixed, verified in both themes |
 | R3-U-05 | P3 | 25 screener buttons "Checklist for SBC" showing "8/8" (WCAG 2.5.3 label in name). | Fixed ("8/8 checks passed for SBC") |
-| R3-U-12 | P3 | `scrollable-region-focusable` on `/strategies` and `/data` at 390 px, and on the Elliott Wave page. | Open. Not in the automated sweep's scope (best-practice rules off). Owner: web. |
+| R3-U-12 | P3 | `scrollable-region-focusable` on `/strategies` (runs table), `/data` (command block) and the Elliott Wave list. | Fixed `fa5d000`. The regions take keyboard focus and have names. `r3-axe-routes.spec.ts` checks it at 390 and 1440 px. |
 
 Regression guard: `web/e2e/r3-axe-routes.spec.ts` — 23 routes × 2 themes, zero WCAG 2.x A/AA violations, exactly one `main` landmark each. It passes.
 
@@ -58,10 +58,10 @@ R2 limit R2-LIMIT-03 (accessibility evidence gap) is **partly closed**: automate
 | ID | Severity | Finding | Evidence | Status |
 |---|---|---|---|---|
 | R3-U-10 | P2 | A stored strategy the workspace no longer offers left the chart Assessment on "loading run…" and caused 404s on `runs/latest`, `watchlist/detail`, `indicators/series`. Only the Screener page reset it. | `integrated-workflows` journey 4 (failed, then fixed) | Fixed in `StrategyProvider`, commit `db6cfc3` |
-| R3-U-06 | P3 | Expected-empty GETs (`/screens/default`, `/drawings/{symbol}`) answer 404, so every first page load logs a console error. The E2E fixture whitelists them. | Real-app console log | Open. Prefer 200 with `null`, or 204. |
-| R3-U-08 | P3 | The API caps each client at 200 requests a minute. A page load makes 7 to 15 requests. About 13 fast navigations a minute return 429. The pages degrade without a clear message. The E2E harness raises the cap to 100,000, so no test reaches it. | Real-app sweep; `settings.py:82` | Open. Raise the cap for loopback, or show a "slow down" notice. |
-| R3-U-11 | P3 | "Δ Rank" shows a green ↓ for an improved rank (rank 144 → 1 reads "↓ 143"). It is consistent but opposite to the usual TradingView arrow reading. | Real screener, SBC | Open. Owner decision on convention. |
-| R3-U-07 | P2 | `/validation` offers one hard-coded strategy. Saved user strategies cannot be validated there. | `validation/page.tsx:500` | Open |
+| R3-U-06 | P3 | Expected-empty GETs (`/screens/default`, `/drawings/{symbol}`) answered 404, so every first page load logged a console error. | Real-app console log | Fixed `333f80c` + `57a37b4`: 200 at revision 0 with a null body. The E2E fixture no longer allows a 404 on these reads. |
+| R3-U-08 | P3 | The API capped each client at 200 requests a minute. A page load makes 7 to 15 requests, so about 13 fast navigations a minute returned 429 and pages degraded without a message. | Real-app sweep | Fixed `1cd25eb` (1,200 a minute, `Retry-After`, problem body) and `51645b7` (the client retries a read twice, with unit tests). |
+| R3-U-11 | P3 | "Δ Rank" drew a green ↓ for an improved rank (rank 144 → 1 read "↓ 143"). The two arrow icons were swapped. | Real screener, SBC | Fixed `c6a65cd`: improvement points up, with a title ("Rank improved by 143 places since the previous run"). The screener API uses `rank − previous` and the watchlist API `previous − rank`; the UI shows each correctly (accepted limitation). |
+| R3-U-07 | P2 | `/validation` offered one hard-coded strategy. Saved user strategies could not be validated there. | `validation/page.tsx` | Fixed `4c8962a` + `57a37b4`. One option per workspace strategy version. The page sends `config_hash` and names strategy, version, config hash and window above the evidence. The version with no run reads as an empty report and never borrows another version's evidence. Spec: `strategy-integration.spec.ts`. |
 | R3-U-13 | P3 | Phone chart cuts the data-source line ("261…"). | `chart-dark-390.png` | Open |
 
 ## Visual and information-architecture assessment

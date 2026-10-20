@@ -1,0 +1,25 @@
+observed at Tue Oct 20 13:10:26 UTC 2026 UTC
+--- container state
+status=running started=2026-10-20T10:59:53.547758292Z
+--- scheduler / pipeline log lines after 13:00 UTC
+Running job "_run_daily_screening_job (trigger: cron[month='*', day='*', day_of_week='1-5', hour='18', minute='30'], next run at: 2026-10-21 18:30:00 IST)" (scheduled at 2026-10-20 18:30:00+05:30)
+{"strategies": ["minervini_trend_template"], "event": "daily_screening_job_started", "level": "info", "timestamp": "2026-10-20T13:00:00.047168Z"}
+{"strategy": "minervini_trend_template", "target_symbols": null, "force": false, "event": "execute_screening_started", "level": "info", "timestamp": "2026-10-20T13:00:00.052631Z"}
+{"start_date": "2026-10-20", "event": "execute_screening_no_new_bars", "level": "info", "timestamp": "2026-10-20T13:00:00.234633Z"}
+{"date": "2026-10-19", "run_id": 150, "passed": 155, "skipped": 714, "failed": 1183, "duration": 36.953, "event": "screening_completed", "level": "info", "timestamp": "2026-10-20T13:00:37.290214Z"}
+{"run_id": 150, "event": "execute_screening_completed", "level": "info", "timestamp": "2026-10-20T13:00:37.298477Z"}
+{"run_id": 150, "strategy": "minervini_trend_template", "event": "screening_job_completed", "level": "info", "timestamp": "2026-10-20T13:00:37.298948Z"}
+{"strategy_count": 1, "event": "daily_screening_job_completed", "level": "info", "timestamp": "2026-10-20T13:00:37.299113Z"}
+{"evaluated": 0, "fired": 0, "failed": 0, "event": "alerts_evaluated", "level": "info", "timestamp": "2026-10-20T13:00:37.301378Z"}
+Job "_run_daily_screening_job (trigger: cron[month='*', day='*', day_of_week='1-5', hour='18', minute='30'], next run at: 2026-10-21 18:30:00 IST)" executed successfully
+--- screening_runs (read-only)
+ id  | strategy_id |  run_date  |             data_version             |  status   | trigger |          started_at           |          finished_at          
+-----+-------------+------------+--------------------------------------+-----------+---------+-------------------------------+-------------------------------
+ 150 |           8 | 2026-10-19 | 9c90de3657fc                         | COMPLETED | MANUAL  | 2026-10-20 13:00:00.285218+00 | 2026-10-20 13:00:37.209559+00
+ 149 |           8 | 2026-10-19 | 8790a000bd4f                         | COMPLETED | MANUAL  | 2026-10-20 10:26:44.329542+00 | 2026-10-20 10:27:17.335921+00
+ 148 |           8 | 2026-10-19 | c55fb397e5af                         | COMPLETED | MANUAL  | 2026-10-20 10:21:40.388248+00 | 2026-10-20 10:22:40.882757+00
+ 147 |           8 | 2026-08-09 | historical:2026-08-09:equity-only    | COMPLETED | MANUAL  |                               | 
+ 146 |           8 | 2026-08-07 | 2026-08-07                           | COMPLETED | MANUAL  | 2026-08-10 04:22:11.504681+00 | 2026-08-10 04:22:42.948653+00
+ 143 |           8 | 2026-08-09 | historical:2026-08-09:adjfix-recheck | COMPLETED | MANUAL  |                               | 
+(6 rows)
+

@@ -2,7 +2,7 @@
 
 Date: 2026-10-20. Reviewed: `docs/architecture/adr/` (18 files: ADR-001 to ADR-015, with three files numbered ADR-013), the ADD, ADD amendment A1, and `docs/current/*.md`.
 
-**ADR-056 does not exist.** The audit brief names it. The ADR folder holds ADR-001 to ADR-015 and no other numbering scheme (R3-B-22, P3, owner: say which document is meant). The nearest candidates are ADR-013 (web stack, with two amendments), ADR-014 (Strategy Studio) and ADR-015 (licence). This audit reviewed all of them.
+**ADR-056 does not exist, and no other planning or governance document supplies it.** The audit brief names it. I searched the working tree (any case and spacing), all git history (`git log --all -S`), `docs/`, the plans in `docs/history/plans/`, the ADD and its amendment, the implementation spec, the design record (its numbered items are D-numbers up to D26, not ADRs), the README and contributing notes, the owner's saved memory notes and the sibling project folders. The only hits are in this audit's own reports. No ADR above 015 is mentioned anywhere. Nothing was invented and no record was renumbered. **Owner (Q5): name the document or project that holds it.** All 18 ADR files (001–015, with three ADR-013 files) were reviewed.
 
 | ADR | Decision | Status | Deviations and gaps |
 |---|---|---|---|
@@ -18,10 +18,10 @@ Date: 2026-10-20. Reviewed: `docs/architecture/adr/` (18 files: ADR-001 to ADR-0
 | 010 No auth in MVP | Seams prebuilt | Implemented | `get_current_user` exists but no router uses it. Loopback only. |
 | 011 Chart engine | Keep lightweight-charts, build the workspace around it | **Implemented** | `lightweight-charts` ^5.2.0; attribution on every page. |
 | 012 Open-source, self-hosted | Local by default | Implemented in code | ADR status **Proposed**. Request table covered by Host/Origin tests. No LICENSE/NOTICE file (owner). |
-| 013 Web stack and chart data | S1–S7 spike criteria; weekly and monthly semantics; §5 document preconditions | **Verified** | S1 deep link, S3 same-origin, S4 query cache, S7 16-chart smoke: all pass in `m10-stack`. §4 weekly and monthly verified against independent aggregation. §5 verified: 10 parallel PUTs gave one 200 and nine 412; 428 without a precondition. |
+| 013 Web stack and chart data | S1–S7 spike criteria; weekly and monthly semantics; §5 document preconditions | **Verified; §5 amended 2026-10-20 (R3-U-06)** | S1 deep link, S3 same-origin, S4 query cache, S7 16-chart smoke: all pass in `m10-stack`. §4 weekly and monthly verified against independent aggregation. §5 verified: 10 parallel PUTs gave one 200 and nine 412; 428 without a precondition. §5 amendment: a never-saved document reads `200` with `ETag: "0"` and `{revision: 0, body: null}`; `PUT` with `If-Match: "0"` creates it (201); `If-None-Match: *` still works; malformed `If-Match` never creates. |
 | 013 alert amendment | Editable armed alerts, drawing snapshots | Accepted; **verified by E2E** | `m15-alerts`, `b4-line-alerts` pass. |
 | 013 line-alert amendment | Sloped drawing alerts, per-anchor factors | Accepted 2026-10-20; **verified by E2E** | `b4-line-alerts` passes (ray). Trendline and extended-line variants share the code path; only the ray case ran end to end. |
-| 014 Strategy Studio | Three result classes, sealed hold-out | **Verified** | Hold-out grid and In-Sample gap equal an independent calculation. §9 hash-pinned runs: integration tests pass. The ADR lists `universe_membership` where history covers `securities`, and names `strategy_id=30` (the database id is 8). Manifest content is the subject of R3-U-09 and R3-B-12. |
+| 014 Strategy Studio | Three result classes, sealed hold-out | **Verified** | Hold-out grid and In-Sample gap equal an independent calculation. §9 hash-pinned runs: integration tests pass. The ADR lists `universe_membership` where history covers `securities`, and names `strategy_id=30` (the database id is 8). **§10 added 2026-10-20 (R3-U-09, R3-B-12):** `data_version` hashes market data and engine versions; the build id is stored, not hashed; stored manifests keep their keys. Decision pending (Q4): an `ENGINE_VERSION` constant. |
 | 015 Licence | | **Proposed, not accepted** | Blocks publication. |
 | README index | | **Stale** | Does not list all files (R3-B-21). |
 

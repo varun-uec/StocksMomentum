@@ -22,7 +22,7 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | 14 | Market-data import from authorized CSV; optional direct NSE/BSE refresh when explicitly enabled | Shipped | `/data` |
 | 15 | Health, data freshness, Prometheus metrics | Shipped | — |
 | 16 | Learn hub (methodology, scoring, rules, FAQ) | Shipped | `/learn/*` |
-| 17 | Chart workspace: search, 12 drawing tools, indicators (Alt+I), chart types and scales, 1D/1W/1M bars, compare, layouts up to 4 × 4 with sync, saved on the server (M11–M13) | Shipped on branch `wickstreet/m10-m11` | `/chart`, `/chart/[symbol]` |
+| 17 | Chart workspace: search, 21 drawing tools, indicators (Alt+I), chart types and scales, 1D/1W/1M bars, compare, layouts up to 4 × 4 with sync, saved on the server (M11–M13) | Shipped on branch `wickstreet/m10-m11` | `/chart`, `/chart/[symbol]` |
 | 18 | Daily alerts on a chart series: close, RSI, ADX, ATR, MACD; fire once, re-arm (M15) | Shipped on branch `wickstreet/m10-m11` | chart side panel |
 | 19 | Strategy Studio: families with a hypothesis and lineage, registry-bounded configs, Screening Result / Historical Research — In-Sample / Out-of-Sample Evaluation, point in time (M14) | Shipped on branch `wickstreet/m10-m11` | `/studio` |
 | — | Fundamentals screening | Not built. Port and disabled engine only. | — |

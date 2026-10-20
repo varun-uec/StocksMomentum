@@ -89,7 +89,7 @@ Status key: **PASS** (exercised, expected outcome observed), **FAIL** (observed 
 | D11 | Research navigation: tab row, selected strategy, way back to the chart | PASS | `momentum25` |
 | D12 | Studio: In-Sample, sealed Out-of-Sample once per family, insufficient-data refusal | PASS | `m14-studio` |
 | D13 | Backtest page and run | PASS (page); results **FAIL for fill prices** | R3-B-09 |
-| D14 | Validation page offers saved strategies | **FAIL (P2)** | R3-U-07: one hard-coded strategy |
+| D14 | Validation page offers saved strategies and shows their own evidence | **PASS after fix** (was FAIL, R3-U-07) | `strategy-integration.spec.ts` (picker lists each version; `config_hash` sent; unrun version reads empty); backend tests with three versions of one user strategy |
 | D15 | Experiments, determinism check, contribution, comparison APIs | PASS (worker determinism and API probes); UI render PASS | backend report |
 
 ## E. Backend services and data (68 operations)
@@ -106,7 +106,7 @@ Status key: **PASS** (exercised, expected outcome observed), **FAIL** (observed 
 | E8 | Health, freshness, metrics endpoints | PASS | probes; real app `FRESH` |
 | E9 | Migrations upgrade and downgrade | PASS; schema drift FAIL (R3-B-15) | worker |
 | E10 | Backup and restore | PASS | worker, row counts and checksums on 14 tables |
-| E11 | Scheduler, EOD job | See EOD Automation Report: implemented PASS; enabled PASS; observed NOT VERIFIED; catch-up FAIL | |
+| E11 | Scheduler, EOD job | Implemented PASS; enabled PASS; **observed PASS (one run, 18:30 IST, run 150)**; catch-up and weekday numbering **FAIL in the deployed image, fixed in source**; automated authorised source BLOCKED | `EOD_AUTOMATION_REPORT.md` |
 | E12 | Direct exchange downloads | Off, answers 409 | BLOCKED by rights (not enabled) |
 | E13 | Authentication, multi-tenancy, intraday, broker trading, fundamentals | Not built (documented) | — |
 
@@ -125,7 +125,7 @@ Status key: **PASS** (exercised, expected outcome observed), **FAIL** (observed 
 | F9 | Studio Screening Result and In-Sample research | Reported | screening P50 315 / P95 831 ms (n=10); In-Sample research P50 62.6 s (n=3, P95 = max 65.1 s) | none set |
 | F10 | Full-universe screening, 3.2 M bars, 3,096 universe, 5 runs (real-data copy) | Reported | pipeline P50 32.6 s, P95 33.5 s | none set |
 | F11 | Real-data API latency (n=30) | Reported | OHLCV P95 62 ms; rankings P95 76 ms; workspace PUT P95 5 ms | none set |
-| F12 | Main web bundle | **Regressed (P2)** | 1,009.9 kB raw, 315.6 kB gzip (R2: 565.8 / 182.1) | warning at 500 kB |
+| F12 | Main web bundle | **Improved after fix** (R3-U-01) | 654.3 kB raw, 208.8 kB gzip (was 1,009.9 / 315.6; R2: 565.8 / 182.1). `recharts` entered the shell via the Assessment panel and now loads on demand. | warning at 500 kB (still above; accepted) |
 | F13 | Multi-hour memory stability | NOT VERIFIED | only a 24-cycle soak | — |
 
 Raw data: `ui/nfr11-r3.json`, `ui/m13-bench-r3.json`, `ui/performance-r3.json`, backend `determinism/timings.txt`, `api-probe/`.

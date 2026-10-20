@@ -41,7 +41,7 @@ Both pass today (2 kept, 0 broken). The contracts do not cover `infrastructure` 
 
 ## Data stores
 
-**PostgreSQL** (ADR-004). 27 tables, 19 Alembic migrations (`0001` → `0019`).
+**PostgreSQL** (ADR-004). 28 tables, 21 Alembic migrations (`0001` → `0021`). `alembic check` still reports drift between the ORM and the migrations (R3-B-15).
 
 | Group | Tables |
 |---|---|

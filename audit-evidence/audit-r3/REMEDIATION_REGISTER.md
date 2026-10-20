@@ -4,7 +4,7 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 
 "Fixed" means a regression test exists, it failed before the fix, and the suites pass. **None of the fixes is deployed.** The running container still has the old image (Release Gate G6). Commit hashes are on the local branch `wickstreet/m10-m11`. Nothing was pushed.
 
-**Totals: P0 0 · P1 3 (2 fixed, 1 open blocker) · P2 21 (11 fixed, 10 open) · P3 17 (3 fixed, 14 open).**
+**Totals: P0 0 · P1 3 (2 fixed, 1 open blocker) · P2 26 (17 fixed, 9 open, of which 3 are inherited from earlier rounds and 1 is fixed in part) · P3 17 (8 fixed, 9 open). 27 fixed in all. Every fix is in source and none is deployed.**
 
 ## P1
 
@@ -26,9 +26,9 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 | R3-B-04 | Screening | Two identical concurrent screens gave HTTP 500, not 409. | Fixed `45bbd83` |
 | R3-B-05 | Scheduler | Scheduled runs stored as `MANUAL`. | Fixed `dab5b56`, not deployed |
 | R3-B-06 | Logging | Database and Redis URLs with passwords logged at every start. | Fixed `e3b67dd`, not deployed |
-| R3-B-11 | Scheduler | No catch-up after downtime (`MemoryJobStore`); docs claim recovery. | OPEN. Owner: engineering. Persistent job store or catch-up on start; fix docs. |
-| R3-O-02 | Compose | Container restart policy `no`; the in-process scheduler stays down after any crash, OOM or reboot. | OPEN. Owner: engineering. `restart: unless-stopped`. |
-| R3-B-12 / R3-U-09 | Manifest | `git rev-parse HEAD` per capture: `null` in the container (tonight's job writes a duplicate snapshot of 2026-10-19), and a new `data_version` per commit on a host. One fix: a code version that does not move per commit. | OPEN. **Owner decision** (ADR-014 §7). |
+| R3-B-11 | Scheduler | No catch-up after downtime (`MemoryJobStore`); docs claim recovery. | **Fixed in source** `e9ba4ba`: catch-up on start (trading-day aware, fake-clock tests). **Not deployed.** |
+| R3-O-02 | Compose | Container restart policy `no`; the in-process scheduler stays down after any crash, OOM or reboot. | **Fixed in source** `8253e97`: `restart: unless-stopped`, memory and CPU caps for db, api, redis. Applies on the next `make up`. **Not deployed.** |
+| R3-B-12 / R3-U-09 | Manifest | `git rev-parse HEAD` per capture: `null` in the container (tonight's job writes a duplicate snapshot of 2026-10-19), and a new `data_version` per commit on a host. One fix: a code version that does not move per commit. | **Fixed in source** `8e5922d`, ADR-014 §10: `data_version` hashes market data and engine versions only; build id stored, not hashed; legacy keys preserved. Observed live before the fix: run 150 (13:00 UTC) = same results as run 149, new `data_version`, null commit. **Owner:** add an `ENGINE_VERSION` constant (Q4). Not deployed. |
 | R3-B-13 | `/live` | `data_as_of` = today and `data_sufficient` = true for stale stocks; the web reads it. | OPEN. Owner: contract decision. |
 | R3-B-14 | RS cache | Keyed by name and date, 6 h TTL; same-day corrections ignored on the read path. | OPEN. Owner: engineering. |
 | R3-B-15 | Schema | Migrations, ORM and dev database disagree (`alembic check` ~45 ops; nullable FKs on fresh install; missing `(run_id, rank)` index). Tests use `create_all`. | OPEN. Owner: engineering. Reconcile, add a CI `alembic check`. |
@@ -37,9 +37,11 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 | R3-U-03 | Web | No `main` landmark on 14 of 25 routes. | **Fixed** `db6cfc3`, verified |
 | R3-U-02 | Web | Unlabelled `select` and date input (axe critical). | **Fixed** `db6cfc3`, verified |
 | R3-U-10 | Web | A stored strategy the workspace no longer offers left the Assessment on "loading run…" with 404s. Root cause: only the Screener page reconciled the stored choice. | **Fixed** `db6cfc3`; journey 4 |
-| R3-U-07 | Web `/validation` | One hard-coded strategy; saved strategies cannot be validated. | OPEN. Owner: web. |
-| R3-U-01 | Web bundle | Main chunk 1,009.9 kB raw / 315.6 kB gzip (R2: 565.8 / 182.1). | OPEN. Owner: web. Route-level splitting of the chart libraries. |
-| R3-B-21 | Docs | Stale counts and claims (migrations, tables, tests, ADR index, readiness, ADR-003/007/009/012/014 text). | OPEN. Owner: engineering. |
+| R3-U-07 | Web `/validation` | One hard-coded strategy; saved strategies cannot be validated. | **Fixed** `4c8962a` (backend `config_hash` on the dashboard and five GETs) and `57a37b4` (web picker, provenance line). `/validation/experiment/run` and `/research/compare/strategies` still resolve by name: accepted limitation, not trivial. |
+| R3-U-01 | Web bundle | Main chunk 1,009.9 kB raw / 315.6 kB gzip (R2: 565.8 / 182.1). | **Fixed** `d062c16`: main chunk 1,010 → 654 kB raw, 316 → 209 kB gzip. The remainder (react-router, lightweight-charts, TanStack) is left whole: splitting it would not help the chart-open benchmarks. |
+| R3-B-21 | Docs | Stale counts and claims (migrations, tables, tests, ADR index, readiness, ADR-003/007/009/012/014 text). | **Fixed in part**: migration and table counts, drawing tools, test counts and the Round 3 record are corrected. Still stale: ADR-003, 007, 009, 012 text and the ADR README index. |
+| R3-U-15 | Web (introduced and fixed in this audit) | My first R3-U-10 fix set the strategy hash on every first visit. That flipped strategy-keyed query keys just after load; a fast Alt+W wrote to the old key and the watchlist panel never updated. Found by bisecting an order-dependent test failure. | **Fixed**, commit `Provider reset only when invalid`; `m12-shell` and `integrated-workflows` pass together |
+| R3-B-26 | Scheduler | **New, found by the worker.** APScheduler 3 counts crontab weekdays from Monday = 0, so `30 18 * * 1-5` fired **Tuesday to Saturday**: Monday's session was screened on Tuesday and Saturday re-screened Friday. Seen live: the job fired Tuesday 18:30 IST with `day_of_week='1-5'`. | **Fixed in source** `e9ba4ba`. **Not deployed.** The running container still fires Tuesday to Saturday. |
 | R3-O-03 | Test suite | The committed browser suite was red at HEAD: 4 specs still expected the pre-`cecb3e5` UI and one test asserted removed behaviour. | **Fixed** `2f311af` |
 | R3-R2-09 | Research harness | `apply_parameter_overrides` is never called (inherited R1-P2-09). | OPEN. Owner: engineering. Not re-tested. |
 | R3-R2-10 | Strategy catalogue | `rs_sector_relative`, `rs_industry_relative`, `rs_line_uptrend` still registered; v3 text names a detector that does not exist (inherited). | OPEN. Owner: engineering. |
@@ -52,17 +54,17 @@ Date: 2026-10-20. IDs: `R3-U-nn` found by the main session (UI, integration, per
 | R3-U-05 | 25 screener buttons "Checklist for X" with visible text "8/8" (label in name). | **Fixed** `db6cfc3` |
 | R3-B-07 | `list_active` had no ORDER BY; equal-return RS ratings depended on heap order. | **Fixed** `f9a7ad4` |
 | R3-B-25 | Audit tmpfs Postgres exhausted the Docker VM and the owner's API was OOM-killed at 10:59 UTC. | Closed (mitigated); API restarted, dev database untouched. Related: the API container has no memory limit. |
-| R3-U-06 | Expected-empty GETs (`/screens/default`, `/drawings/{symbol}`) answer 404, logging a console error on every first load. Whitelisted in the E2E fixture. | OPEN. Owner: web and API. Prefer 200 with `null`. |
-| R3-U-08 | 200 requests per minute per client; a page load costs 7 to 15; about 13 fast loads give 429, shown as partial data. E2E raises the cap to 100,000. | OPEN. Owner: engineering. Raise the cap for loopback or show a notice. |
-| R3-U-11 | "Δ Rank" shows a green ↓ for an improvement (rank 144 → 1 reads ↓ 143). | OPEN. Owner decision (convention). |
-| R3-U-12 | `scrollable-region-focusable` on `/strategies`, `/data` at 390 px and on Elliott Wave. | OPEN. Owner: web. |
+| R3-U-06 | Expected-empty GETs (`/screens/default`, `/drawings/{symbol}`) answer 404, logging a console error on every first load. Whitelisted in the E2E fixture. | **Fixed** `333f80c` (API: revision 0, `ETag: "0"`, ADR-013 §5) and `57a37b4` (client). The E2E fixture now fails on any 404 for a saved-document read. |
+| R3-U-08 | 200 requests per minute per client; a page load costs 7 to 15; about 13 fast loads give 429, shown as partial data. E2E raises the cap to 100,000. | **Fixed** `1cd25eb` (1,200 per minute, `Retry-After`, problem body) and `51645b7` (client retries reads twice). |
+| R3-U-11 | "Δ Rank" shows a green ↓ for an improvement (rank 144 → 1 reads ↓ 143). | **Fixed** `c6a65cd`: improved rank points up, with a title. The screener (`rank − previous`) and the watchlist (`previous − rank`) still use opposite signs in the API; the UI shows each correctly. Accepted limitation. |
+| R3-U-12 | `scrollable-region-focusable` on `/strategies`, `/data` at 390 px and on Elliott Wave. | **Fixed** `fa5d000`; axe test at 390 and 1440 px in `r3-axe-routes.spec.ts`. |
 | R3-U-13 | Phone chart cuts the data-source line. | OPEN. Owner: web. |
-| R3-U-14 | Docs say 12 drawing tools; source has 21. | OPEN. Owner: engineering. |
+| R3-U-14 | Docs say 12 drawing tools; source has 21. | **Fixed**: `capabilities.md` says 21 drawing tools. |
 | R3-B-17 | Historical `data_version` uses a wall-clock suffix. | OPEN |
 | R3-B-18 | 22,328 `adj_close` rows differ from `close × adj_factor` (max 0.25%); 925 in the current RS window. | OPEN. **Owner**: needs a real-data write. |
 | R3-B-19 | `/runs/<huge int>` gives 500. | OPEN |
 | R3-B-20 | CLI prints raw tracebacks on database errors; APScheduler lines are not JSON. | OPEN |
-| R3-B-22 | ADR-056 does not exist. | OPEN. **Owner**: name the intended document. |
+| R3-B-22 | ADR-056 does not exist. | **Unresolved after search.** ADR-056 appears nowhere: repo, git history, docs, plans, memory notes, sibling projects. No ADR above 015 exists. Nothing was invented or renumbered. **Owner:** name the intended document (Q5). |
 | R3-B-23 | Unclosed httpx client; 20 unclosed test connections; no body-size cap. | OPEN |
 | R3-B-24 | Ad hoc research tables and views in the application database. | OPEN |
 | R3-O-04 | `/strategies` hard load lost its `h1` once in the 234-case run; did not reproduce on four reruns. | NOT VERIFIED (root cause). Re-check in the final run. |
