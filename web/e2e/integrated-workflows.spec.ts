@@ -76,10 +76,14 @@ test('journey 1: screener → chart → ranking → evidence → research → ba
 
   await assessment.getByRole('link', { name: 'Full analysis →' }).click();
   await expect(page).toHaveURL(new RegExp(`/stock/${top!.symbol}\\?.*from=`));
+  // The live evaluation can replace the stored reasons after the page shows
+  // them, so read the link and click it in one retried step.
   const reason = page.locator('a[href^="#evidence-"]').first();
-  const target = (await reason.getAttribute('href'))!.slice(1);
-  await reason.click();
-  await expect(page.locator(`#${target}`)).toBeFocused();
+  await expect(async () => {
+    const target = (await reason.getAttribute('href'))!.slice(1);
+    await reason.click();
+    await expect(page.locator(`#${target}`)).toBeFocused({ timeout: 1000 });
+  }).toPass();
   await page.getByRole('link', { name: `Back to chart · ${top!.symbol}` }).click();
   await chartReady(page);
 
