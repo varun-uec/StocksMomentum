@@ -7,6 +7,10 @@ import {
   scratchConfig,
   setRule,
   toggleRule,
+  variantProblems,
+  variantRequest,
+  type VariantForm,
+  joinableFamilies,
   type Family,
   type RuleRegistry,
 } from './studio';
@@ -89,5 +93,44 @@ describe('lineage', () => {
       members: [member('r', null), member('x', 'r')],
     };
     expect(lineage(family).map(({ member: m, depth }) => `${m.config_hash}${depth}`)).toEqual(['r0', 'x1']);
+  });
+});
+
+describe('experiment-page handoff', () => {
+  const form: VariantForm = {
+    parentHash: 'a'.repeat(64),
+    name: ' rs-floor ',
+    overrides: [
+      { parameter_path: 'trend_template.tt_rs_rating_min.params.min', value: ' 60 ' },
+      { parameter_path: '', value: '' },
+    ],
+    mode: 'new',
+    hypothesis: ' A lower RS floor keeps more winners. ',
+    familyId: null,
+    confirmed: false,
+  };
+
+  it('sends only used overrides, trimmed, with a stated hypothesis', () => {
+    expect(variantProblems(form)).toEqual([]);
+    expect(variantRequest(form)).toEqual({
+      parent_config_hash: 'a'.repeat(64),
+      variant_name: 'rs-floor',
+      overrides: [{ parameter_path: 'trend_template.tt_rs_rating_min.params.min', value: '60' }],
+      hypothesis: 'A lower RS floor keeps more winners.',
+      hypothesis_confirmed: false,
+    });
+  });
+
+  it('blocks a vague hypothesis and an unconfirmed family', () => {
+    expect(variantProblems({ ...form, hypothesis: 'short' })).toEqual(['State the hypothesis in at least 10 characters.']);
+    const join: VariantForm = { ...form, mode: 'existing', familyId: 3 };
+    expect(variantProblems(join)).toEqual(["Confirm that the family's hypothesis covers this variant."]);
+    expect(variantRequest({ ...join, confirmed: true })).toMatchObject({ family_id: 3, hypothesis_confirmed: true });
+    expect(variantRequest({ ...join, confirmed: true })).not.toHaveProperty('hypothesis');
+  });
+
+  it('lists only families rooted at the base strategy', () => {
+    const fam = (id: number, root: string) => ({ id, root_config_hash: root }) as Family;
+    expect(joinableFamilies([fam(1, 'x'), fam(2, 'y')], 'y').map((f) => f.id)).toEqual([2]);
   });
 });

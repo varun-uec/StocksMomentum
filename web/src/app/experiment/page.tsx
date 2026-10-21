@@ -1,25 +1,45 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { listStrategies, runExperiment } from '@/lib/api-client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getFamilies, listStrategies, runExperiment, runVariant } from '@/lib/api-client';
 import { Card, MetricCard, Badge, StatusDot, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend } from 'recharts';
 import { useChartColors } from '@/lib/useChartColors';
 import type { ExperimentResponse, ParameterOverride } from '@/lib/types';
 import { focusRing, chartPalette } from '@/lib/theme';
+import { usedOverrides, variantProblems, variantRequest, type VariantForm as VariantFormState, type VariantRun } from '@/lib/studio';
+import { VariantForm, VariantResult } from './VariantHandoff';
 
 export default function ExperimentLaboratoryPage() {
   const chartColors = useChartColors();
+  const queryClient = useQueryClient();
   const [baseStrategy, setBaseStrategy] = useState('minervini_trend_template');
   const [overrides, setOverrides] = useState<ParameterOverride[]>([{ parameter_path: '', value: '' }]);
   const [runDates, setRunDates] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<ExperimentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [variantRun, setVariantRun] = useState<VariantRun | null>(null);
+  const [variant, setVariant] = useState<Omit<VariantFormState, 'parentHash' | 'overrides'>>({
+    name: '',
+    mode: 'new',
+    hypothesis: '',
+    familyId: null,
+    confirmed: false,
+  });
 
   const { data: strategies } = useQuery({
     queryKey: ['strategies'],
     queryFn: () => listStrategies(),
   });
+
+  const { data: families } = useQuery({
+    queryKey: ['studio-families'],
+    queryFn: () => getFamilies(),
+  });
+  const parentHash = (strategies ?? []).find((s) => s.name === baseStrategy)?.config_hash;
+  const isVariant = usedOverrides(overrides.map((o) => ({ parameter_path: o.parameter_path, value: o.value }))).length > 0;
+  const form: VariantFormState = { ...variant, parentHash, overrides };
+  const blockers = isVariant ? variantProblems(form) : [];
 
   const addOverride = () => {
     setOverrides([...overrides, { parameter_path: '', value: '' }]);
@@ -38,7 +58,13 @@ export default function ExperimentLaboratoryPage() {
     setIsRunning(true);
     setError(null);
     setResult(null);
+    setVariantRun(null);
     try {
+      if (isVariant) {
+        setVariantRun(await runVariant(variantRequest(form)));
+        await queryClient.invalidateQueries({ queryKey: ['studio-families'] });
+        return;
+      }
       const validOverrides = overrides.filter((o) => o.parameter_path && o.value);
       const dates = runDates ? runDates.split(',').map((d) => d.trim()).filter(Boolean) : null;
 
@@ -99,17 +125,26 @@ export default function ExperimentLaboratoryPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label htmlFor="experiment-run-dates" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Run Dates (comma-separated, optional — defaults to last 5)
               </label>
               <input
+                id="experiment-run-dates"
                 type="text"
+                disabled={isVariant}
+                aria-describedby={isVariant ? 'experiment-run-dates-note' : undefined}
                 value={runDates}
                 onChange={(e) => setRunDates(e.target.value)}
                 placeholder="2026-06-15, 2026-06-16, 2026-06-17"
                 className={`w-full max-w-lg px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm placeholder-slate-400 dark:placeholder-slate-500 ${focusRing}`}
               />
             </div>
+
+            {isVariant && (
+              <p id="experiment-run-dates-note" className="text-xs text-slate-500 -mt-2">
+                A variant runs on the research window that the system sets. Run Dates do not apply.
+              </p>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -154,18 +189,31 @@ export default function ExperimentLaboratoryPage() {
               </div>
             </div>
 
+            {isVariant && <VariantForm form={form} onChange={(next) => setVariant({ name: next.name, mode: next.mode, hypothesis: next.hypothesis, familyId: next.familyId, confirmed: next.confirmed })} families={families ?? []} />}
+
+            {blockers.length > 0 && (
+              <ul id="variant-blockers" className="text-xs text-amber-700 dark:text-amber-400 list-disc ml-4">
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
+
             <button
               type="button"
               onClick={handleRun}
-              disabled={isRunning}
-              className={`px-6 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${focusRing}`}
+              disabled={isRunning || blockers.length > 0}
+              aria-describedby={blockers.length > 0 ? 'variant-blockers' : undefined}
+              className={`px-6 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${focusRing}`}
             >
-              {isRunning ? 'Running Experiment…' : 'Run Experiment'}
+              {isRunning ? (isVariant ? 'Handing off…' : 'Running Experiment…') : isVariant ? 'Run Variant (In-Sample)' : 'Run Experiment'}
             </button>
           </div>
         </Card>
 
         {error && <ErrorMessage message={error} />}
+
+        {variantRun && <VariantResult run={variantRun} />}
 
         {result && (
           <>
@@ -248,7 +296,7 @@ export default function ExperimentLaboratoryPage() {
           </>
         )}
 
-        {!result && !isRunning && !error && (
+        {!result && !variantRun && !isRunning && !error && (
           <EmptyState message="Configure your experiment above and click 'Run Experiment' to see results." />
         )}
       </div>

@@ -596,3 +596,10 @@ export const submitEvaluation = (
 
 export const retryEvaluation = (id: number): Promise<StudioSchemas['EvaluationDTO']> =>
   fetchJson(`${API_BASE}/studio/evaluations/${id}/retry`, { method: 'POST' });
+
+export const getEvaluation = (id: number): Promise<StudioSchemas['EvaluationDTO']> =>
+  fetchJson(`${API_BASE}/studio/evaluations/${id}`, { cache: 'no-store' });
+
+/** Experiment-page handoff (ADR-014 section 12): save a variant in a family and queue its In-Sample run. */
+export const runVariant = (body: StudioSchemas['VariantRunRequest']): Promise<StudioSchemas['VariantRunDTO']> =>
+  fetchJson(`${API_BASE}/studio/variants`, { method: 'POST', body: JSON.stringify(body) });

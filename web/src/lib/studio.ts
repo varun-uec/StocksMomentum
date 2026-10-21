@@ -180,3 +180,56 @@ export function holdoutSpent(evaluations: Evaluation[]): boolean {
 export function labelOf(id: ResultClass): string {
   return RESULT_CLASSES.find((c) => c.id === id)?.label ?? id;
 }
+
+// ── Experiment-page handoff (ADR-014 section 12) ─────────────────────
+
+export type VariantRun = Schemas['VariantRunDTO'];
+export type VariantRunRequest = Schemas['VariantRunRequest'];
+
+export interface VariantForm {
+  parentHash: string | undefined;
+  name: string;
+  overrides: { parameter_path: string; value: string }[];
+  /** `new`: the user states a hypothesis. `existing`: the user joins a family and confirms its hypothesis. */
+  mode: 'new' | 'existing';
+  hypothesis: string;
+  familyId: number | null;
+  confirmed: boolean;
+}
+
+/** Overrides with both a path and a value; the rest are blank rows. */
+export const usedOverrides = (rows: VariantForm['overrides']) =>
+  rows.filter((o) => o.parameter_path.trim() && o.value.trim());
+
+/** What blocks a variant run, in plain words; an empty list means ready. */
+export function variantProblems(form: VariantForm): string[] {
+  const out: string[] = [];
+  if (!form.parentHash) out.push('Choose a base strategy that has a stored config.');
+  if (!form.name.trim()) out.push('Name the variant.');
+  if (form.mode === 'new') {
+    if (form.hypothesis.trim().length < 10) out.push('State the hypothesis in at least 10 characters.');
+  } else {
+    if (form.familyId === null) out.push('Choose a family.');
+    else if (!form.confirmed) out.push("Confirm that the family's hypothesis covers this variant.");
+  }
+  return out;
+}
+
+/** The request body. Call only when `variantProblems` is empty. */
+export function variantRequest(form: VariantForm): VariantRunRequest {
+  const base = {
+    parent_config_hash: form.parentHash ?? '',
+    variant_name: form.name.trim(),
+    overrides: usedOverrides(form.overrides).map((o) => ({
+      parameter_path: o.parameter_path.trim(),
+      value: o.value.trim(),
+    })),
+  };
+  return form.mode === 'new'
+    ? { ...base, hypothesis: form.hypothesis.trim(), hypothesis_confirmed: false }
+    : { ...base, family_id: form.familyId, hypothesis_confirmed: form.confirmed };
+}
+
+/** Families the variant can join: its parent must be the family's root. */
+export const joinableFamilies = (families: Family[], parentHash: string | undefined) =>
+  families.filter((f) => f.root_config_hash === parentHash);
