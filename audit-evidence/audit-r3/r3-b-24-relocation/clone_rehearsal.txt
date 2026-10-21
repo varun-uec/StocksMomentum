@@ -1,0 +1,16 @@
+== relocate (clone)
+NOTICE:  schema "research_archive" already exists, skipping
+COMMIT
+MOVED_CHECKSUMS_IDENTICAL
+public snapshot objects left: 0
+views readable (rows):
+2015
+64
+103848
+== rollback (clone)
+COMMIT
+ROLLBACK_CHECKSUMS_IDENTICAL
+== relocate again (clone, final state)
+NOTICE:  schema "research_archive" already exists, skipping
+COMMIT
+REMOVED_AGAIN_IDENTICAL

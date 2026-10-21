@@ -1,0 +1,13 @@
+ALTER TABLE
+COMMIT
+DEV_MOVED_CHECKSUMS_IDENTICAL
+public snapshot objects left: 0
+views readable:
+2015
+64
+103848
+alembic:
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 61] Connect call failed ('127.0.0.1', 5432)
+INFO  [alembic.ddl.postgresql] Detected sequence named 'corporate_actions_id_seq' as owned by integer column 'corporate_actions(id)', assuming SERIAL and omitting
+No new upgrade operations detected.
