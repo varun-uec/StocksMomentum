@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
+
+from structlog import get_logger
 
 from momentum25.application.dto.market_data import (
     IndicatorBarDTO,
@@ -24,6 +26,7 @@ from momentum25.domain.analytics.market_context import (
     RelativeStrengthPoint,
     relative_strength_vs_index,
 )
+from momentum25.domain.engine_version import INDICATOR_VERSION
 from momentum25.domain.entities.market_data import OHLCVBar, series_data_version
 from momentum25.domain.errors import NotFoundError, StrategyNotFoundError
 from momentum25.domain.ports.repositories import (
@@ -42,8 +45,6 @@ from momentum25.domain.research.stop_loss import (
 )
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
 from momentum25.domain.value_objects.indicators import IndicatorSet
-from momentum25.infrastructure.logging.setup import get_logger
-from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _DEFAULT_STRATEGY = "minervini_trend_template"
 _RS_INDETERMINATE_RULE_ID = "tt_rs_rating_min"
@@ -320,6 +321,10 @@ class RefreshGate:
         """Record that *symbol* was just refreshed."""
 
 
+# Calendar days searched for the latest session; covers the longest holiday run.
+_SESSION_LOOKBACK_DAYS = 10
+
+
 @dataclass(frozen=True, slots=True)
 class LiveStockAnalysis:
     """Result of an on-demand, freshly-evaluated single-symbol lookup."""
@@ -417,6 +422,13 @@ class GetLiveStockAnalysis:
             await self._refresh_gate.mark_refreshed(symbol)
             refreshed = bars_fetched > 0
 
+        # R3-B-13: report the stock's own last bar, not the request date. A
+        # stock whose last bar is older than the latest session is stale, so
+        # its figures are not "as of" the request and data_sufficient is false.
+        last_bar = await self._last_bar_date(security.id, reference_date)
+        stale = last_bar is None or last_bar < self._latest_session(reference_date)
+        data_as_of = last_bar or reference_date
+
         indicators = await self._indicator_pipeline.compute(
             symbol, reference_date, strategy.config.indicators
         )
@@ -425,7 +437,7 @@ class GetLiveStockAnalysis:
             return LiveStockAnalysis(
                 symbol=str(security.symbol),
                 verdict="INSUFFICIENT_DATA",
-                data_as_of=reference_date,
+                data_as_of=data_as_of,
                 refreshed=refreshed,
                 bars_fetched=bars_fetched,
                 data_sufficient=False,
@@ -493,10 +505,10 @@ class GetLiveStockAnalysis:
         return LiveStockAnalysis(
             symbol=str(security.symbol),
             verdict=verdict,
-            data_as_of=reference_date,
+            data_as_of=data_as_of,
             refreshed=refreshed,
             bars_fetched=bars_fetched,
-            data_sufficient=True,
+            data_sufficient=not stale,
             explanation=explanation,
             indeterminate_rules=indeterminate_rules,
             rs_basis=rs_basis,
@@ -506,6 +518,23 @@ class GetLiveStockAnalysis:
             relative_strength_vs_index=rs_vs_index,
             benchmark_index=benchmark_index,
         )
+
+    async def _last_bar_date(self, security_id: int, reference_date: date) -> date | None:
+        """Return the date of the security's last stored bar on or before *reference_date*.
+
+        ``lookback_days`` is a bar count in the repository, so 1 is the last bar.
+        """
+        series = await self._ohlcv_repo.get_series(
+            security_id, lookback_days=1, as_of=reference_date
+        )
+        return series.bars[-1].date if series.bars else None
+
+    def _latest_session(self, reference_date: date) -> date:
+        """Return the last exchange session on or before *reference_date*."""
+        sessions = self._calendar.sessions_between(
+            reference_date - timedelta(days=_SESSION_LOOKBACK_DAYS), reference_date
+        )
+        return sessions[-1] if sessions else reference_date
 
     async def _relative_strength_vs_index(
         self, security_id: int, benchmark_index: str | None, as_of: date
@@ -540,8 +569,6 @@ class GetLiveStockAnalysis:
 
     async def _refresh_bars(self, symbol: str, security_id: int, reference_date: date) -> int:
         """Fetch fresh bars from NSE and persist them. Returns bars upserted."""
-        from datetime import timedelta
-
         start_date = reference_date - timedelta(days=500)
         try:
             raw_bars = await self._nse_client.fetch_historical_bars(

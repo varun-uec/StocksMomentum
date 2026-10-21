@@ -84,6 +84,14 @@ class OHLCVRepository(Protocol):
         """Return a price series up to ``as_of`` covering ``lookback_days``."""
         ...
 
+    async def data_revision(self) -> int:
+        """Return the highest committed row-version revision of the stored market data.
+
+        It moves on every committed insert, update or delete, so a same-day
+        correction changes it. Cache keys for derived data include it.
+        """
+        ...
+
     async def latest_date(self) -> date | None:
         """Return the most recent stored bar date, or ``None``."""
         ...

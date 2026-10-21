@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import ValidationError as SchemaError
-
 from momentum25.application.dto.studio import (
     CreateFamilyRequest,
     FamilyDTO,
@@ -25,17 +23,14 @@ from momentum25.application.dto.studio import (
 from momentum25.domain.entities.strategy import Strategy, StrategyConfig, StrategyFamily
 from momentum25.domain.errors import ConflictError, NotFoundError, ValidationError
 from momentum25.domain.ports.repositories import StrategyRepository, StudioRepository
+from momentum25.domain.ports.strategy_config import StrategyConfigChecker
+from momentum25.domain.strategy.config_codec import compute_config_hash, raw_from_config
 from momentum25.domain.strategy.rule_schemas import (
     ENGINE_IDS,
     ENGINES_WITHOUT_RULES,
     MAX_WEIGHT,
     RULES,
     registry_version,
-)
-from momentum25.infrastructure.config.strategy_loader import (
-    checked_config,
-    compute_config_hash,
-    raw_from_config,
 )
 
 # Not in the rule registry, so not configurable in Studio v1 (ADR-014 §1).
@@ -140,6 +135,7 @@ async def _build(
     raw: dict[str, Any],
     reference: StrategyConfig,
     family_id: int | None,
+    checker: StrategyConfigChecker,
 ) -> tuple[str, StrategyConfig]:
     """Check the name, set the version and the fixed sections, enforce the schemas.
 
@@ -163,21 +159,23 @@ async def _build(
                 "the parent's value"
             )
         body[section] = fixed[section]
-    try:
-        config = checked_config(body)
-    except SchemaError as exc:
-        problems = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
-        raise ValidationError(f"Strategy {name!r} is invalid: {problems}") from exc
+    config = checker(body)
     return compute_config_hash(config), config
 
 
 class CreateFamily:
     """Start a family from a strategy file or from scratch."""
 
-    def __init__(self, studio: StudioRepository, strategies: StrategyRepository) -> None:
-        """Wire the use case with the Studio and strategy repositories."""
+    def __init__(
+        self,
+        studio: StudioRepository,
+        strategies: StrategyRepository,
+        checker: StrategyConfigChecker,
+    ) -> None:
+        """Wire the use case with the Studio and strategy repositories and the config checker."""
         self._studio = studio
         self._strategies = strategies
+        self._checker = checker
 
     async def _reference(self, parent_hash: str | None) -> Strategy:
         if parent_hash is None:
@@ -200,7 +198,9 @@ class CreateFamily:
         """Record the hypothesis and root, then store the first member."""
         hypothesis = " ".join(request.hypothesis.split())
         reference = await self._reference(request.parent_config_hash)
-        config_hash, config = await _build(self._studio, request.config, reference.config, None)
+        config_hash, config = await _build(
+            self._studio, request.config, reference.config, None, self._checker
+        )
         family = await self._studio.create_family(
             hypothesis,
             hypothesis_key(hypothesis),
@@ -213,9 +213,10 @@ class CreateFamily:
 class SaveStrategy:
     """Save a new config into a family, derived from its root or a member."""
 
-    def __init__(self, studio: StudioRepository) -> None:
-        """Wire the use case with the Studio repository."""
+    def __init__(self, studio: StudioRepository, checker: StrategyConfigChecker) -> None:
+        """Wire the use case with the Studio repository and the config checker."""
         self._studio = studio
+        self._checker = checker
 
     async def execute(self, family_id: int, request: SaveStrategyRequest) -> StudioStrategyDTO:
         """Store the config as a new version; the family is the parent's."""
@@ -231,7 +232,9 @@ class SaveStrategy:
                 f"{parent_hash[:12]} is not in family {family_id}: a config derives from "
                 "its family's root or one of its members"
             )
-        config_hash, config = await _build(self._studio, request.config, parent.config, family_id)
+        config_hash, config = await _build(
+            self._studio, request.config, parent.config, family_id, self._checker
+        )
         return _strategy_dto(
             await self._studio.add_strategy(
                 _user_strategy(config_hash, config, family_id, parent_hash)

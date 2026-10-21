@@ -20,8 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import ConflictError
+from momentum25.domain.strategy.config_codec import raw_from_config
 from momentum25.domain.strategy.rule_schemas import RULES, registry_version
-from momentum25.infrastructure.config.strategy_loader import load_strategy_file, raw_from_config
+from momentum25.infrastructure.config.strategy_loader import load_strategy_file
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
 from momentum25.main import create_app

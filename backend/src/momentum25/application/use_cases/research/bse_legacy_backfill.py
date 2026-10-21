@@ -40,13 +40,10 @@ from typing import Any
 
 from structlog import get_logger
 
+from momentum25.domain.bse_archive import BSE_LEGACY_START, UDIFF_START
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.ports.market_data import RawBar
 from momentum25.domain.research.symbol_resolution import normalize_isin
-from momentum25.infrastructure.providers.bse_bhavcopy import (
-    BSE_LEGACY_START,
-    UDIFF_START,
-)
 
 _logger = get_logger("bse_legacy_backfill")
 

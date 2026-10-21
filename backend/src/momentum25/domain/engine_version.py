@@ -23,5 +23,8 @@ History:
 
 from __future__ import annotations
 
+# Indicator pipeline version; its history lives beside the pipeline's change notes
+# in ``infrastructure/pipelines/indicator_pipeline.py``.
+INDICATOR_VERSION = 3
 ENGINE_VERSION = 2
 REFERENCE_UNIVERSE_VERSION = 2

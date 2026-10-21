@@ -16,6 +16,7 @@ import pytest
 
 from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.domain.errors import ConflictError
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 
 class _FakeOHLCVRepo:
@@ -74,6 +75,7 @@ async def test_run_via_orchestrator_screens_latest_bar_date_not_reference_date(
     )
 
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
         market_data_provider=None,
         security_repo=None,
         ohlcv_repo=_FakeOHLCVRepo(latest_bar_date),
@@ -113,6 +115,7 @@ async def test_identical_run_in_flight_is_a_conflict() -> None:
     # Regression R3-B: the loser of two concurrent POST /runs/execute raised a
     # bare RuntimeError, which the API answered with 500 instead of 409.
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
         market_data_provider=None,
         security_repo=None,
         ohlcv_repo=None,

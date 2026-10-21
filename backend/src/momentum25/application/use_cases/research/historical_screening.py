@@ -12,7 +12,11 @@ from typing import Any
 from structlog import get_logger
 
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
-from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
+from momentum25.domain.engine_version import (
+    ENGINE_VERSION,
+    INDICATOR_VERSION,
+    REFERENCE_UNIVERSE_VERSION,
+)
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
@@ -30,8 +34,6 @@ from momentum25.domain.value_objects.results import (
     UniverseMembership,
 )
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
-from momentum25.infrastructure.observability.research_metadata import build_identity
-from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _logger = get_logger("historical_screening")
 
@@ -229,7 +231,6 @@ class HistoricalScreeningUseCase:
                     "available). Results may still overstate historical "
                     "performance for older dates."
                 ),
-                "git_commit": build_identity(),
                 "indicator_version": INDICATOR_VERSION,
                 "engine_version": ENGINE_VERSION,
                 "reference_universe_version": REFERENCE_UNIVERSE_VERSION,

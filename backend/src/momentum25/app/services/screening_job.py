@@ -21,12 +21,14 @@ from momentum25.domain.strategy.bootstrap import register_builtin_engines
 from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import (
     SqlOHLCVRepository,
     SqlScreeningRunRepository,
     SqlSecurityRepository,
+    SqlStrategyRepository,
 )
 from momentum25.infrastructure.persistence.repositories.data_manifests import (
     SqlDataManifestRepository,
@@ -103,6 +105,8 @@ async def run_screening_pipeline(
             strategy_engine=strategy_engine,
             data_manifest_repo=SqlDataManifestRepository(session),
             ingest_enabled=ingest_enabled,
+            calendar=get_nse_trading_calendar(),
+            strategy_repo=SqlStrategyRepository(session),
         )
 
         try:

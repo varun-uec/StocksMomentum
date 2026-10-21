@@ -16,6 +16,7 @@ from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.domain.ports.market_data import RawInstrument
 from momentum25.domain.value_objects.instrument import is_equity
 from momentum25.domain.value_objects.types import Symbol
+from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 
 class _FakeMarketDataProvider:
@@ -53,6 +54,7 @@ class _FakeScreeningRunRepo:
 async def test_upsert_securities_enriches_from_instrument_master() -> None:
     security_repo = _FakeSecurityRepo()
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
         market_data_provider=_FakeMarketDataProvider(),
         security_repo=security_repo,
         ohlcv_repo=None,
@@ -88,6 +90,7 @@ async def test_etf_isin_is_captured_at_ingestion() -> None:
     """An EQ-series ETF must land with the ISIN that marks it a fund unit."""
     security_repo = _FakeSecurityRepo()
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
         market_data_provider=_FakeMarketDataProvider(),
         security_repo=security_repo,
         ohlcv_repo=None,

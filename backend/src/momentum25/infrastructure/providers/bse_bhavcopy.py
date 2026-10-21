@@ -56,6 +56,7 @@ from decimal import Decimal, InvalidOperation
 
 import httpx
 
+from momentum25.domain.bse_archive import BSE_LEGACY_START, UDIFF_START
 from momentum25.domain.ports.market_data import (
     RawBar,
     RawCorporateAction,
@@ -90,11 +91,6 @@ _REQUIRED_COLUMNS: frozenset[str] = frozenset(
 _EQUITY_INSTRUMENT_TYPE = "STK"
 _EQUITY_LEGACY_SCRIP_TYPE = "Q"
 
-# RP-014 measured archive boundaries (see module docstring): no public BSE
-# bhavcopy exists before 2006-03-01; the legacy EQ_CSV format ends 2023-12-29;
-# the UDiFF format begins 2024-01-02 (first trading day of 2024).
-BSE_LEGACY_START: date = date(2006, 3, 1)
-UDIFF_START: date = date(2024, 1, 2)
 
 # Legacy EQ_CSV required columns. Parsing by header name tolerates column
 # reordering; a 2006-era file must carry exactly these.

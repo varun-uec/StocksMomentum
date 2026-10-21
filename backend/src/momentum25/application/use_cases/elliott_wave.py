@@ -17,6 +17,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from structlog import get_logger
+
 from momentum25.domain.analytics.elliott_wave import (
     DEFAULT_ZIGZAG_THRESHOLD_PCT,
     ElliottWaveAnalysis,
@@ -30,7 +32,6 @@ from momentum25.domain.ports.repositories import (
     SecurityRepository,
     StrategyRepository,
 )
-from momentum25.infrastructure.logging.setup import get_logger
 
 _logger = get_logger("elliott_wave")
 

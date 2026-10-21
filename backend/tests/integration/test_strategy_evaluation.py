@@ -42,8 +42,9 @@ from momentum25.domain.research.strategy_evaluation import (
     EvaluationPolicy,
 )
 from momentum25.domain.strategy.bootstrap import register_builtin_engines
+from momentum25.domain.strategy.config_codec import raw_from_config
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
-from momentum25.infrastructure.config.strategy_loader import load_strategy_file, raw_from_config
+from momentum25.infrastructure.config.strategy_loader import checked_config, load_strategy_file
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.evaluation_market import PointInTimeMarket
 from momentum25.infrastructure.persistence.models import (
@@ -160,7 +161,9 @@ class _Studio:
         return PointInTimeMarket(self.session, revision, _Sessions(), POLICY.horizon)
 
     async def family(self, name: str, hypothesis: str) -> tuple[int, str]:
-        family = await CreateFamily(self.studio, SqlStrategyRepository(self.session)).execute(
+        family = await CreateFamily(
+            self.studio, SqlStrategyRepository(self.session), checked_config
+        ).execute(
             CreateFamilyRequest(
                 hypothesis=hypothesis,
                 config=_config(name),

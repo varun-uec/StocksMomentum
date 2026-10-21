@@ -5,14 +5,17 @@ from __future__ import annotations
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
+from momentum25.domain.engine_version import (
+    ENGINE_VERSION,
+    INDICATOR_VERSION,
+    REFERENCE_UNIVERSE_VERSION,
+)
 from momentum25.domain.strategy.rule_schemas import registry_version
 from momentum25.domain.value_objects.manifest import DataManifest
 from momentum25.infrastructure.calendar.nse_calendar import calendar_version
 from momentum25.infrastructure.observability.research_metadata import build_identity
 from momentum25.infrastructure.persistence.models import DataManifestModel
 from momentum25.infrastructure.persistence.point_in_time import current_revision
-from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 
 class SqlDataManifestRepository:

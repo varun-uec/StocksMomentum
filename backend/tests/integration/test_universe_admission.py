@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.application.use_cases.screening import ExecuteScreening
 from momentum25.application.use_cases.screening_orchestrator import ScreeningOrchestrator
-from momentum25.domain.engine_version import ENGINE_VERSION
+from momentum25.domain.engine_version import ENGINE_VERSION, INDICATOR_VERSION
 from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.strategy import EngineConfig, Strategy, StrategyConfig
 from momentum25.domain.ports.market_data import RawBar, RawInstrument
@@ -49,10 +49,7 @@ from momentum25.infrastructure.persistence.repositories import (
 from momentum25.infrastructure.persistence.repositories.data_manifests import (
     SqlDataManifestRepository,
 )
-from momentum25.infrastructure.pipelines.indicator_pipeline import (
-    INDICATOR_VERSION,
-    IndicatorPipelineImpl,
-)
+from momentum25.infrastructure.pipelines.indicator_pipeline import IndicatorPipelineImpl
 
 _START = date(2024, 1, 1)
 _DAYS = 300
@@ -196,6 +193,7 @@ async def test_run_stats_record_indicator_version(db_session: AsyncSession) -> N
 
     runs, _ = await SqlScreeningRunRepository(db_session).list_runs("completed", 1, 0)
     assert runs[0].stats["indicator_version"] == INDICATOR_VERSION
+    assert "git_commit" in runs[0].stats  # stamped by the run repository
     assert runs[0].stats["universe_source"] == "declared_liquidity_floor"
 
 
@@ -418,6 +416,7 @@ async def test_ingestion_does_not_truncate_universe_alphabetically(
     security_repo = SqlSecurityRepository(db_session)
 
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
         market_data_provider=provider,
         security_repo=security_repo,
         ohlcv_repo=SqlOHLCVRepository(db_session),
@@ -449,6 +448,7 @@ async def test_ingestion_uses_the_turnover_carrying_fetch(db_session: AsyncSessi
     """
     provider = _FakeProvider(3)
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
         market_data_provider=provider,
         security_repo=SqlSecurityRepository(db_session),
         ohlcv_repo=SqlOHLCVRepository(db_session),

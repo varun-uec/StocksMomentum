@@ -6,7 +6,7 @@ from momentum25.application.dto.strategies import StrategyDetailDTO, StrategySum
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import StrategyNotFoundError
 from momentum25.domain.ports.repositories import StrategyRepository
-from momentum25.infrastructure.config.strategy_loader import raw_from_config
+from momentum25.domain.strategy.config_codec import raw_from_config
 
 
 def _summary(s: Strategy) -> StrategySummaryDTO:

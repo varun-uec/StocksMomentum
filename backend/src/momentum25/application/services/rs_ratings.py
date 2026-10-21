@@ -56,8 +56,11 @@ class RsRatingCache(Protocol):
         ...
 
 
-def rs_cache_basis(rs_return_weights: dict[str, Any] | None) -> str:
-    """The cache basis: the engine and universe versions plus the RS weights.
+def rs_cache_basis(rs_return_weights: dict[str, Any] | None, data_revision: int) -> str:
+    """The cache basis: engine and universe versions, RS weights and data revision.
+
+    A same-day correction moves ``data_revision``, so it never reads ratings
+    computed before it (R3-B-14).
 
     Two strategies with the same weights share ratings; a strategy edited to new
     weights, or a new engine version, never reads another's (ADR-014 §11).
@@ -66,7 +69,7 @@ def rs_cache_basis(rs_return_weights: dict[str, Any] | None) -> str:
         {str(k): str(v) for k, v in (rs_return_weights or {}).items()}, sort_keys=True
     )
     digest = hashlib.sha256(weights.encode()).hexdigest()[:12]
-    return f"e{ENGINE_VERSION}u{REFERENCE_UNIVERSE_VERSION}w{digest}"
+    return f"e{ENGINE_VERSION}u{REFERENCE_UNIVERSE_VERSION}w{digest}r{data_revision}"
 
 
 async def resolve_universe_rs_ratings(
@@ -85,7 +88,7 @@ async def resolve_universe_rs_ratings(
     a trading date do not change intraday, so they are shared through the cache.
     """
     weights = strategy.config.indicators.get("rs_return_weights")
-    basis = rs_cache_basis(weights)
+    basis = rs_cache_basis(weights, await ohlcv_repo.data_revision()) if cache is not None else ""
     if cache is not None:
         cached = await cache.get(as_of, basis)
         if cached is not None:

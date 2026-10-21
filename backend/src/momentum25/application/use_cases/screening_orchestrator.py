@@ -17,7 +17,11 @@ from structlog import get_logger
 
 from momentum25.application.dto.runs import ScreeningRunSummary
 from momentum25.application.services.rs_ratings import compute_universe_rs_ratings
-from momentum25.domain.engine_version import ENGINE_VERSION, REFERENCE_UNIVERSE_VERSION
+from momentum25.domain.engine_version import (
+    ENGINE_VERSION,
+    INDICATOR_VERSION,
+    REFERENCE_UNIVERSE_VERSION,
+)
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.entities.market_data import OHLCVSeries
 from momentum25.domain.entities.run import ScreeningRun
@@ -35,9 +39,6 @@ from momentum25.domain.research.liquidity_floor import (
 from momentum25.domain.universe import reference_universe
 from momentum25.domain.value_objects.results import SectorStats, StockScore, UniverseMembership
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
-from momentum25.infrastructure.observability.research_metadata import build_identity
-from momentum25.infrastructure.persistence.point_in_time import current_revision
-from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 _logger = get_logger("screening_orchestrator")
 
@@ -213,7 +214,7 @@ class ScreeningOrchestrator:
             # otherwise a result could combine two revisions while claiming
             # the manifest captured before either was read.
             if data_manifest is not None:
-                observed_revision = await current_revision(self._screening_run_repo._session)
+                observed_revision = await self._ohlcv_repo.data_revision()
                 if observed_revision != data_manifest.revision:
                     raise RuntimeError(
                         "Market data changed during screening "
@@ -241,7 +242,6 @@ class ScreeningOrchestrator:
                 "total_failed": summary.total_failed,
                 "total_skipped_stale_data": summary.total_skipped_stale_data,
                 "duration_seconds": summary.duration_seconds,
-                "git_commit": build_identity(),
                 "indicator_version": INDICATOR_VERSION,
                 "engine_version": ENGINE_VERSION,
                 "reference_universe_version": REFERENCE_UNIVERSE_VERSION,
@@ -293,16 +293,9 @@ class ScreeningOrchestrator:
         if self._strategy.id is not None:
             return self._strategy.id
 
-        if self._strategy_repo is not None:
-            strategy_id = int(await self._strategy_repo.upsert(self._strategy))
-        else:
-            # Fallback: build a transient strategy repository from the same session.
-            from momentum25.infrastructure.persistence.repositories.strategy import (
-                SqlStrategyRepository,
-            )
-
-            strategy_repo = SqlStrategyRepository(self._screening_run_repo._session)
-            strategy_id = int(await strategy_repo.upsert(self._strategy))
+        if self._strategy_repo is None:
+            raise RuntimeError("A strategy without an id needs a strategy repository to persist it")
+        strategy_id = int(await self._strategy_repo.upsert(self._strategy))
 
         # Mutate the frozen Strategy in-place so external references see the id.
         object.__setattr__(self._strategy, "id", strategy_id)

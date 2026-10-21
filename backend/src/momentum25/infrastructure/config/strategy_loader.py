@@ -10,13 +10,13 @@ Pydantic is used here (infrastructure), keeping the domain free of framework dep
 
 from __future__ import annotations
 
-import hashlib
 import json
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ValidationError as SchemaError
 
 from momentum25.domain.entities.strategy import (
     EngineConfig,
@@ -25,6 +25,7 @@ from momentum25.domain.entities.strategy import (
     StrategyConfig,
 )
 from momentum25.domain.errors import ValidationError
+from momentum25.domain.strategy.config_codec import compute_config_hash
 from momentum25.domain.strategy.rule_schemas import validate_config
 
 
@@ -104,47 +105,16 @@ def checked_config(raw: dict[str, Any]) -> StrategyConfig:
 
     Raises :class:`ValidationError` listing every problem; nothing is clamped.
     """
-    config = config_from_raw(raw)
+    try:
+        config = config_from_raw(raw)
+    except SchemaError as exc:
+        name = raw.get("name")
+        problems = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
+        raise ValidationError(f"Strategy {name!r} is invalid: {problems}") from exc
     errors = validate_config(config)
     if errors:
         raise ValidationError(f"Strategy {config.name!r} is invalid: " + "; ".join(errors))
     return config
-
-
-def raw_from_config(config: StrategyConfig) -> dict[str, Any]:
-    """Serialize a :class:`StrategyConfig` back to a canonical JSON-able dict."""
-    return {
-        "name": config.name,
-        "version": config.version,
-        "description": config.description,
-        "benchmark_index": config.benchmark_index,
-        "universe": config.universe,
-        "indicators": config.indicators,
-        "ranking": config.ranking,
-        "engines": [
-            {
-                "id": e.id,
-                "enabled": e.enabled,
-                "weight": str(e.weight),
-                "gate": e.gate,
-                "rules": [
-                    {"id": r.id, "weight": str(r.weight), "params": r.params, "gate": r.gate}
-                    for r in e.rules
-                ],
-            }
-            for e in config.engines
-        ],
-        "scoring": {
-            "momentum_weights": {k: str(v) for k, v in config.momentum_weights.items()},
-            "buy_setup_weights": {k: str(v) for k, v in config.buy_setup_weights.items()},
-        },
-    }
-
-
-def compute_config_hash(config: StrategyConfig) -> str:
-    """Compute a stable SHA-256 hash of the canonical config (run identity, ADR-009)."""
-    canonical = json.dumps(raw_from_config(config), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def load_strategy_file(path: Path) -> Strategy:

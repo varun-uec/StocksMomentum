@@ -22,6 +22,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from structlog import get_logger
+
 from momentum25.domain.research.swing_targets import (
     DEFAULT_ATR_STOP_MULTIPLE,
     DEFAULT_ATR_TARGET_MULTIPLE,
@@ -31,7 +33,6 @@ from momentum25.domain.research.swing_targets import (
     simulate_trade,
 )
 from momentum25.domain.value_objects.indicators import IndicatorSet
-from momentum25.infrastructure.logging.setup import get_logger
 
 _logger = get_logger("swing_target_backtest")
 

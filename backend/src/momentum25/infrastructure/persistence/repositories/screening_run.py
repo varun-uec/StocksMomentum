@@ -20,6 +20,7 @@ from momentum25.domain.value_objects.results import (
     UniverseMembership,
 )
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
+from momentum25.infrastructure.observability.research_metadata import build_identity
 from momentum25.infrastructure.persistence.models import ScreeningRunModel
 
 _UNIQUE_VIOLATION = "23505"
@@ -108,7 +109,11 @@ class SqlScreeningRunRepository:
         model.started_at = run.started_at
         model.finished_at = run.finished_at
         model.error = run.error
-        model.stats = run.stats or None
+        stats = dict(run.stats or {})
+        if stats and run.status == RunStatus.COMPLETED:
+            # The build that wrote the result is a persistence-time fact.
+            stats["git_commit"] = build_identity()
+        model.stats = stats or None
 
     async def get(self, run_id: int) -> ScreeningRun | None:
         """Return a run by id, or ``None``."""

@@ -173,3 +173,40 @@ async def test_bars_on_non_sessions_do_not_cut_the_window_short() -> None:
         [_sec(1, "UP"), _sec(2, "FLAT")], _Lookback(series), T, weights, _Holidays()
     )
     assert ratings == {"FLAT": 1, "UP": 99}
+
+
+async def test_a_same_day_correction_is_not_served_from_the_cache() -> None:
+    """R3-B-14: the cache key carries the data revision, so a correction recomputes."""
+
+    class _Cache:
+        def __init__(self) -> None:
+            self.store: dict[tuple[date, str], dict[str, int]] = {}
+
+        async def get(self, as_of: date, basis: str) -> dict[str, int] | None:
+            return self.store.get((as_of, basis))
+
+        async def set(self, as_of: date, basis: str, ratings: dict[str, int]) -> None:
+            self.store[(as_of, basis)] = ratings
+
+    class _Securities:
+        async def list_all(self) -> list[Security]:
+            return [_sec(1, "UP"), _sec(2, "FLAT")]
+
+    class _Revisioned(_Repo):
+        revision = 1
+
+        async def data_revision(self) -> int:
+            return self.revision
+
+    repo = _Revisioned({1: _step("100", "130"), 2: _flat()})
+    cache = _Cache()
+    strategy = SimpleNamespace(config=SimpleNamespace(indicators={"rs_return_weights": WEIGHTS}))
+
+    async def read() -> dict[str, int]:
+        return await resolve_universe_rs_ratings(_Securities(), repo, strategy, T, cache, CAL)
+
+    assert await read() == {"FLAT": 1, "UP": 99}
+    repo.series[1] = _step("100", "70")  # same-day correction
+    assert await read() == {"FLAT": 1, "UP": 99}  # same revision: cached
+    repo.revision = 2
+    assert await read() == {"FLAT": 99, "UP": 1}

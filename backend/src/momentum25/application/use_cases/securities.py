@@ -13,6 +13,7 @@ from momentum25.application.dto.market_data import (
     SecurityOHLCVDTO,
     SecuritySearchResultDTO,
 )
+from momentum25.domain.engine_version import INDICATOR_VERSION
 from momentum25.domain.entities.market_data import (
     OHLCVBar,
     OHLCVSeries,
@@ -27,7 +28,6 @@ from momentum25.domain.ports.repositories import (
     SecurityRepository,
 )
 from momentum25.domain.ports.trading_calendar import TradingCalendar
-from momentum25.infrastructure.pipelines.indicator_pipeline import INDICATOR_VERSION
 
 # With no ``from`` date the chart asks for its whole history (the MAX range).
 # The repository caps by row count, so "everything" is a cap no stored series

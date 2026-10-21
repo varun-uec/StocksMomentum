@@ -332,8 +332,8 @@ export default function StockResearchPage() {
               <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
                 {!live.data_sufficient && (
                   <p className="text-amber-700 dark:text-amber-400">
-                    Insufficient price history to evaluate every rule — the figures below are
-                    partial.
+                    The last stored bar is {live.data_as_of}, or the price history is too short
+                    to evaluate every rule — the figures below are partial.
                   </p>
                 )}
                 {live.indeterminate_rules.length > 0 && (

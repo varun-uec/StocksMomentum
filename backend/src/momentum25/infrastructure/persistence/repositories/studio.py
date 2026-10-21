@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.strategy import Strategy, StrategyFamily
 from momentum25.domain.errors import ConflictError
-from momentum25.infrastructure.config.strategy_loader import raw_from_config
+from momentum25.domain.strategy.config_codec import raw_from_config
 from momentum25.infrastructure.persistence.models import StrategyFamilyModel, StrategyModel
 from momentum25.infrastructure.persistence.repositories.strategy import strategy_from_row
 

@@ -14,8 +14,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from momentum25.domain.entities.run import ScreeningRun
+from momentum25.domain.strategy.config_codec import raw_from_config
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger
-from momentum25.infrastructure.config.strategy_loader import load_strategy_file, raw_from_config
+from momentum25.infrastructure.config.strategy_loader import load_strategy_file
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import (
     RuleResultModel,

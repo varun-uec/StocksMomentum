@@ -22,8 +22,8 @@ from momentum25.domain.entities.market_data import OHLCVBar
 from momentum25.domain.entities.security import Security
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import ConflictError
+from momentum25.domain.ports.trading_calendar import TradingCalendar
 from momentum25.domain.value_objects.types import RunStatus, RunTrigger, Symbol
-from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 
 _logger = get_logger("execute_screening")
 
@@ -60,6 +60,9 @@ class ExecuteScreening:
         strategy_engine: Any,
         data_manifest_repo: Any | None = None,
         ingest_enabled: bool = True,
+        *,
+        calendar: TradingCalendar,
+        strategy_repo: Any | None = None,
     ) -> None:
         """Wire the use case with its collaborators."""
         self._market_data_provider = market_data_provider
@@ -70,6 +73,8 @@ class ExecuteScreening:
         self._strategy_engine = strategy_engine
         self._data_manifest_repo = data_manifest_repo
         self._ingest_enabled = ingest_enabled
+        self._calendar = calendar
+        self._strategy_repo = strategy_repo
 
     async def execute(
         self,
@@ -218,8 +223,7 @@ class ExecuteScreening:
         flat list of RawBar objects across all fetched trading days.
         """
         bars: list[Any] = []
-        calendar = get_nse_trading_calendar()
-        for session in calendar.sessions_between(start_date, end_date):
+        for session in self._calendar.sessions_between(start_date, end_date):
             # ``fetch_eod_full`` rather than ``fetch_eod``: identical bars plus the
             # ``turnover_value`` and ``prev_close`` columns the plain variant drops.
             # Real turnover is required by the strategy's declared liquidity floor
@@ -235,7 +239,9 @@ class ExecuteScreening:
         self, strategy_name: str, strategy_id: int | None, config_hash: str | None
     ) -> Strategy:
         """Load the selected immutable config, pinning queued runs by strategy ID."""
-        strategy_repo = await self._get_strategy_repo()
+        strategy_repo = self._strategy_repo
+        if strategy_repo is None:
+            raise RuntimeError("ExecuteScreening needs a strategy repository to resolve a strategy")
         strategy = (
             await strategy_repo.get_by_id(strategy_id)
             if strategy_id is not None
@@ -247,18 +253,6 @@ class ExecuteScreening:
             msg = f"Strategy not found: {strategy_name}"
             raise RuntimeError(msg)
         return cast(Strategy, strategy)
-
-    async def _get_strategy_repo(self) -> Any:
-        """Create a :class:`SqlStrategyRepository` sharing the same session."""
-        from momentum25.infrastructure.persistence.repositories.strategy import (
-            SqlStrategyRepository,
-        )
-
-        session = getattr(self._screening_run_repo, "_session", None)
-        if session is None:
-            msg = "No session available from screening_run_repo"
-            raise RuntimeError(msg)
-        return SqlStrategyRepository(session)
 
     async def _upsert_securities(self, symbols: list[str], as_of: date) -> list[Security]:
         """Upsert securities and return entities with database IDs.
@@ -432,8 +426,8 @@ class ExecuteScreening:
             indicator_pipeline=self._indicator_pipeline,
             strategy_engine=self._strategy_engine,
             strategy=strategy,
-            strategy_repo=None,
-            calendar=get_nse_trading_calendar(),
+            strategy_repo=self._strategy_repo,
+            calendar=self._calendar,
         )
 
         summary = await orchestrator.run_daily_screening(

@@ -75,7 +75,6 @@ _QUANT = Decimal("0.0001")
 #       same 50 bars as ``avg_volume50``, today included (was the 49 before
 #       today). Matches the browser golden fixture to 1e-9. Runs stamped 2 are
 #       NOT comparable to runs stamped 3.
-INDICATOR_VERSION = 3
 
 
 def _quantize(value: float | None) -> Decimal | None:

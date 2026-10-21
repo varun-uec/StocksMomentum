@@ -72,6 +72,7 @@ from momentum25.domain.strategy.engine_registry import engine_registry
 from momentum25.domain.strategy.strategy_engine import StrategyEngine
 from momentum25.infrastructure.calendar.nse_calendar import get_nse_trading_calendar
 from momentum25.infrastructure.config.settings import get_settings
+from momentum25.infrastructure.config.strategy_loader import checked_config
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.evaluation_market import PointInTimeMarket
 from momentum25.infrastructure.persistence.repositories import (
@@ -425,6 +426,8 @@ async def get_execute_screening() -> AsyncIterator[ExecuteScreening]:
             strategy_engine=strategy_engine,
             data_manifest_repo=SqlDataManifestRepository(session),
             ingest_enabled=settings.direct_exchange_downloads_enabled,
+            calendar=get_nse_trading_calendar(),
+            strategy_repo=SqlStrategyRepository(session),
         )
 
 
@@ -686,14 +689,14 @@ async def get_create_family(
     strategies: Annotated[SqlStrategyRepository, Depends(get_strategy_repo)],
 ) -> AsyncIterator[CreateFamily]:
     """Provide a CreateFamily use-case instance."""
-    yield CreateFamily(studio, strategies)
+    yield CreateFamily(studio, strategies, checked_config)
 
 
 async def get_save_strategy(
     studio: Annotated[SqlStudioRepository, Depends(get_studio_repo)],
 ) -> AsyncIterator[SaveStrategy]:
     """Provide a SaveStrategy use-case instance."""
-    yield SaveStrategy(studio)
+    yield SaveStrategy(studio, checked_config)
 
 
 def _evaluation_parts(

@@ -120,6 +120,13 @@ forbidden_modules = [
     "momentum25.application",
 ]
 
+# Ports live in the domain; infrastructure implements them and the interface wires them.
+[[tool.importlinter.contracts]]
+name = "Application depends on domain ports, never on infrastructure"
+type = "forbidden"
+source_modules = ["momentum25.application"]
+forbidden_modules = ["momentum25.infrastructure", "momentum25.interface"]
+
 [dependency-groups]
 dev = [
     "pytest-env>=1.6.0",

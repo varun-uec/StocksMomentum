@@ -149,6 +149,8 @@ async def test_incremental_rerun_only_fetches_sessions_since_latest_bar(
     provider = _RecordingProvider({d: [_bar("INCR", d, 100.0)] for d in first_new_sessions})
 
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
+        strategy_repo=SqlStrategyRepository(db_session),
         market_data_provider=provider,
         security_repo=security_repo,
         ohlcv_repo=ohlcv_repo,
@@ -295,6 +297,8 @@ async def test_repeated_screen_reuses_exact_completed_snapshot(
     await db_session.commit()
 
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
+        strategy_repo=SqlStrategyRepository(db_session),
         market_data_provider=_RecordingProvider({}),
         security_repo=security_repo,
         ohlcv_repo=ohlcv_repo,
@@ -381,6 +385,8 @@ async def test_same_session_correction_creates_traceable_immutable_run(
     await db_session.commit()
 
     use_case = ExecuteScreening(
+        calendar=get_nse_trading_calendar(),
+        strategy_repo=SqlStrategyRepository(db_session),
         market_data_provider=_RecordingProvider({}),
         security_repo=security_repo,
         ohlcv_repo=ohlcv_repo,

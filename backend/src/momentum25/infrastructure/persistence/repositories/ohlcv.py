@@ -24,6 +24,13 @@ class SqlOHLCVRepository:
         self._session = session
         self._links: IdentityLinks | None = None
 
+    async def data_revision(self) -> int:
+        """Return the highest committed row-version revision (see the port)."""
+        # Imported here: point_in_time imports this package at module load.
+        from momentum25.infrastructure.persistence.point_in_time import current_revision
+
+        return await current_revision(self._session)
+
     async def upsert_bars(self, security_id: int, bars: list[OHLCVBar]) -> int:
         """Insert or update bars; return the number written."""
         if not bars:

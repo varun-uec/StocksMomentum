@@ -11,6 +11,8 @@ from datetime import date
 from decimal import Decimal
 from typing import cast
 
+from structlog import get_logger
+
 from momentum25.application.dto.alerts import (
     AlertDTO,
     AlertEvaluationDTO,
@@ -45,7 +47,6 @@ from momentum25.domain.ports.repositories import (
     SecurityRepository,
     UserDocumentRepository,
 )
-from momentum25.infrastructure.logging.setup import get_logger
 
 _logger = get_logger("alerts")
 

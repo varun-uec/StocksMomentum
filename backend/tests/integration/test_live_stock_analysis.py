@@ -311,3 +311,39 @@ async def test_single_symbol_universe_reports_rs_indeterminate_not_failed(
     assert "tt_rs_rating_min" in live.indeterminate_rules
     assert "tt_rs_rating_min" not in live.explanation.hard_filter_failures
     assert live.rs_basis["universe_size"] == 0
+
+
+@pytest.mark.asyncio
+async def test_stale_stock_reports_its_last_bar_and_is_not_sufficient(
+    db_session: AsyncSession,
+) -> None:
+    """R3-B-13: a stock with no bar for the latest sessions is not "as of" today."""
+    start_date = date(2024, 1, 1)
+    last_bar = start_date + timedelta(days=299)  # 2024-10-26
+    request_date = last_bar + timedelta(days=30)
+
+    await _seed_bars(
+        db_session,
+        (await _seed_security(db_session, "STALE", "Stale Security")).id,
+        _make_uptrend_bars(300, start_date, 100.0),
+    )
+    strategy_repo = SqlStrategyRepository(db_session)
+    strategy = _real_engine_strategy()
+    await strategy_repo.upsert(strategy)
+    await db_session.commit()
+
+    use_case = GetLiveStockAnalysis(
+        securities=SqlSecurityRepository(db_session),
+        ohlcv_repo=SqlOHLCVRepository(db_session),
+        strategies=strategy_repo,
+        indicator_pipeline=IndicatorPipelineImpl(db_session),
+        strategy_engine=_make_engine(),
+        explainability_builder=ExplainabilityBuilderImpl(),
+        nse_client=_FakeNSEClient([]),
+        refresh_gate=_AlwaysRefresh(),
+        calendar=get_nse_trading_calendar(),
+    )
+    live = await use_case.execute("STALE", strategy.name, refresh=False, as_of=request_date)
+
+    assert live.data_as_of == last_bar
+    assert live.data_sufficient is False

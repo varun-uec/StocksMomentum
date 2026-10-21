@@ -9,8 +9,9 @@ from sqlalchemy.orm import aliased
 
 from momentum25.domain.entities.strategy import Strategy
 from momentum25.domain.errors import ConflictError
+from momentum25.domain.strategy.config_codec import raw_from_config
 from momentum25.domain.value_objects.types import RunStatus
-from momentum25.infrastructure.config.strategy_loader import config_from_raw, raw_from_config
+from momentum25.infrastructure.config.strategy_loader import config_from_raw
 from momentum25.infrastructure.persistence.models import ScreeningRunModel, StrategyModel
 
 _BuiltinList = list

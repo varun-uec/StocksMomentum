@@ -984,6 +984,13 @@ class ParameterResearchUseCase:
         strategy = await self._strategy_repo.get_active(base_strategy_name)
         if strategy is None:
             raise StrategyNotFoundError(f"Strategy not found: {base_strategy_name}")
+        if any(v.get("overrides") for v in variants):
+            # R3-R2-09: variant results were the base results under a variant
+            # name. Refuse rather than report a wrong number.
+            raise ValidationError(
+                "Parameter overrides are not applied by this harness yet: a variant run "
+                "would be the base strategy under another name"
+            )
 
         # Get run dates from existing completed runs
         if not run_dates:
@@ -1036,7 +1043,7 @@ class ParameterResearchUseCase:
         # Process each variant (using existing data since we can't modify configs)
         variant_result_list: list[ParameterExperimentReport] = []
         for variant in variants:
-            var_results = base_results  # Use base as proxy for variant
+            var_results = base_results  # no overrides: the variant is the base
             report = analyze_parameter_experiment(
                 experiment_name=experiment_name,
                 base_strategy_name=base_strategy_name,
