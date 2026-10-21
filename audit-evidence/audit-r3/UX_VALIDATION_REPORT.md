@@ -20,7 +20,7 @@ PASS means: renders with content, no document-level horizontal overflow, no axe 
 | # | Screen (route) | Desktop | Tablet | Phone | Light | Dark | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | Screener `/` | PASS | PASS | PASS | PASS | PASS | Stale-data banner shows "49 trading sessions behind" on the fixture. Table scrolls inside its own region on phone. |
-| 2 | Chart workspace `/chart/:symbol` | PASS | PASS | PASS | PASS | PASS | Phone moves the drawing rail and range bar into overflow controls. Data-source text truncates ("261…") on phone (P3). |
+| 2 | Chart workspace `/chart/:symbol` | PASS | PASS | PASS | PASS | PASS | Phone moves the drawing rail and range bar into overflow controls. Data-source text truncates ("261…") on phone; Round 7: a tap opens it (R3-U-13). |
 | 3 | Stock `/stock/:symbol` | PASS | PASS | PASS | PASS | PASS | |
 | 4 | Analysis `/stock/:symbol/analysis` | PASS | PASS | PASS | PASS | PASS | |
 | 5 | Elliott Wave | PASS | PASS | PASS | PASS | PASS | Fixed: scrollable region is keyboard-focusable (axe `scrollable-region-focusable`) was seen on phone for `/strategies` and `/data` before; see R3-U-12. |
@@ -62,7 +62,7 @@ R2 limit R2-LIMIT-03 (accessibility evidence gap) is **partly closed**: automate
 | R3-U-08 | P3 | The API capped each client at 200 requests a minute. A page load makes 7 to 15 requests, so about 13 fast navigations a minute returned 429 and pages degraded without a message. | Real-app sweep | Fixed `1cd25eb` (1,200 a minute, `Retry-After`, problem body) and `51645b7` (the client retries a read twice, with unit tests). |
 | R3-U-11 | P3 | "Δ Rank" drew a green ↓ for an improved rank (rank 144 → 1 read "↓ 143"). The two arrow icons were swapped. | Real screener, SBC | Fixed `c6a65cd`: improvement points up, with a title ("Rank improved by 143 places since the previous run"). The screener API uses `rank − previous` and the watchlist API `previous − rank`; the UI shows each correctly (accepted limitation). |
 | R3-U-07 | P2 | `/validation` offered one hard-coded strategy. Saved user strategies could not be validated there. | `validation/page.tsx` | Fixed `4c8962a` + `57a37b4`. One option per workspace strategy version. The page sends `config_hash` and names strategy, version, config hash and window above the evidence. The version with no run reads as an empty report and never borrows another version's evidence. Spec: `strategy-integration.spec.ts`. |
-| R3-U-13 | P3 | Phone chart cuts the data-source line ("261…"). | `chart-dark-390.png` | Open |
+| R3-U-13 | P3 | Phone chart cuts the data-source line ("261…"). | `chart-dark-390.png` | Fixed in Round 7: a tap on `ⓘ 2…` opens the full line; `r3-axe-routes.spec.ts` |
 
 ## Visual and information-architecture assessment
 

@@ -1,0 +1,43 @@
+pairs 151611; runs 20; dates 2020-11-27..2022-06-30
+
+== coverage by horizon
+     pairs  with_old  with_obc  comparable
+h                                         
+5    26962     26950     26940       26940
+10   26962     26930     26921       26921
+20   26962     26881     26865       26865
+60   26962     26710     26664       26664
+120  26962     26460     26082       26082
+252  16801     16228     15534       15534
+
+== all comparable pairs (returns are fractions; 0.01 = 1 point)
+         n  mean_new  mean_obc  mean_old  mean_old_minus_new  mean_defect  mean_basis  gap_gt_5pt  gap_gt_50pt  defect_rows  basis_rows
+h                                                                                                                                      
+5    26940    0.0291    0.0288    0.0288             -0.0003          0.0     -0.0003         647           70          0.0         747
+10   26921    0.0364    0.0367    0.0367              0.0003          0.0      0.0003         755          103          0.0         892
+20   26865    0.0337    0.0346    0.0346              0.0009          0.0      0.0009        1013          169          1.0        1173
+60   26664    0.0970    0.1039    0.1039              0.0069          0.0      0.0069        1706          427          7.0        1980
+120  26082    0.1794    0.1882    0.1882              0.0088          0.0      0.0088        2156          660         11.0        2538
+252  15534    0.3635    0.3610    0.3610             -0.0025          0.0     -0.0025        1610          493         16.0        1899
+
+== old equals the R3-B-33 raw-exit formula, or the corrected own_bars formula
+     eq_raw  eq_corr
+h                   
+5     22844    26932
+10    22843    26908
+20    22817    26848
+60    22705    26607
+120   22312    25973
+252   13323    15412
+
+== 120d, qualified set (rank not null) and Top 25 on the engine-2 runs
+qualified: n=3991 mean new 0.2018, corrected own_bars 0.2152, stored own_bars 0.2152; median new 0.1149, stored 0.1169
+top25: n=487 mean new 0.1751, corrected own_bars 0.1858, stored own_bars 0.1858; median new 0.0957, stored 0.1018
+
+== 120d rank correlation (Spearman) of rank with each return, per run, qualified set; mean over runs
+new_ret: mean Rank IC -0.0313 over 20 runs
+obc_ret: mean Rank IC -0.0255 over 20 runs
+old_ret: mean Rank IC -0.0254 over 20 runs
+
+== stale exits among the new 120d rows
+n=26962 stale_exit=1666
