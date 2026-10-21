@@ -1,0 +1,1 @@
+select 'rule_results', sum(n), md5(string_agg(h, '|' order by run_id)) from (select run_id, count(*) n, md5(string_agg(t::text, '|' order by security_id, rule_id)) h from rule_results t where run_id<=150 group by run_id) x;

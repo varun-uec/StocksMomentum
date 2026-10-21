@@ -127,6 +127,40 @@ async def test_backfill_computes_only_horizons_with_enough_forward_bars(
 
 
 @pytest.mark.asyncio
+async def test_forward_bars_carry_their_adjustment_factor(db_session: AsyncSession) -> None:
+    """A split after the exit must not change the return (entry and exit share one factor)."""
+    run_date = date(2024, 3, 1)
+    run_id, security_id = await _seed_run_with_result(db_session, run_date)
+    ohlcv_repo = SqlOHLCVRepository(db_session)
+    exit_day = _next_sessions(run_date, 5)[-1]
+    await ohlcv_repo.upsert_bars(
+        security_id,
+        [
+            OHLCVBar(
+                date=day, open=Decimal(p), high=Decimal(p), low=Decimal(p),
+                close=Decimal(p), volume=1000,
+            )
+            for day, p in ((run_date, "100"), (exit_day, "110"))
+        ],
+    )
+    # A 2:1 split after the exit halves every earlier price.
+    await ohlcv_repo.update_adjustment_factors(
+        security_id, {run_date: Decimal("0.5"), exit_day: Decimal("0.5")}
+    )
+    await db_session.commit()
+
+    await ForwardReturnsBackfill(
+        screening_run_repo=SqlScreeningRunRepository(db_session),
+        ohlcv_repo=ohlcv_repo,
+        horizons=(5,),
+        calendar=get_nse_trading_calendar(),
+    ).execute(run_id)
+
+    rows = await SqlScreeningRunRepository(db_session).get_forward_returns(run_id)
+    assert [r.forward_return for r in rows] == [Decimal("0.1")]  # 55/50 - 1, not 110/50 - 1
+
+
+@pytest.mark.asyncio
 async def test_backfill_is_idempotent_and_never_duplicates_rows(
     db_session: AsyncSession,
 ) -> None:

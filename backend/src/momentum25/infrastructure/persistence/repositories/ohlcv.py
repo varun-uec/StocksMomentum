@@ -227,6 +227,7 @@ class SqlOHLCVRepository:
                 close=r.close,
                 volume=r.volume,
                 adj_close=r.adj_close,
+                adj_factor=r.adj_factor,
                 prev_close=r.prev_close,
                 turnover_value=r.turnover_value,
             )
