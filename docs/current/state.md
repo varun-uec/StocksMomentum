@@ -66,6 +66,8 @@ Schema drift (R3-B-15) is fixed in source by migration 0024 and checked in CI; t
 
 **Round 4, 2026-10-21 (commits `7c1fcf5`, `7c008d9`).** Fixed in source: R3-B-13 (`/live` reports the stock's last bar and `data_sufficient` false when stale), R3-B-14 (the RS cache key carries the data revision), R3-B-16 (import-linter forbids application to infrastructure; 3 of 3 contracts kept), R3-B-19, R3-B-20 (in part). R3-R2-09 is mitigated: the experiment use cases refuse overrides they do not apply. R3-R2-10 is closed with the rules kept (stored strategies and the rule-registry fingerprint depend on them). R3-B-18 was investigated read-only: 56,134 rows (98 names) hold a 4-dp `adj_close`; the repair needs owner approval. The backtest page now shows symbols and a Trades table.
 
+Round 4 results: backend `pytest` 1,046 passed; `ruff`, `mypy` (276 files) and `lint-imports` (3 contracts) clean; `alembic check` clean on a fresh migrated database; Vitest 148 passed; ESLint and `tsc` clean; Playwright full serial suite 232 passed, 0 failed, 8 opt-in skipped (19.9 min, isolated `_e2e` database); NFR-11 30 samples each, warm P95 152 ms, cold P95 228 ms.
+
 Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-18 repair (owner approval), R3-B-22 (ADR-056 does not exist; no code or product document cites it), R3-U-13, R3-B-17, R3-B-23, R3-B-24, dependency audits, licence, data rights, name.
 
 ## Delivery record
