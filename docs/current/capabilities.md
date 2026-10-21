@@ -47,7 +47,7 @@ Verified against the routers, pages and use cases on branch `wickstreet/m10-m11`
 | Workspace | `GET`/`PUT /workspaces/{id}`, `GET`/`PUT /drawings/{symbol}` | Saved chart settings and drawings. `ETag`/`If-Match` concurrency: `412` with the current document, `428` without a precondition (ADR-013 §5). |
 | Strategies | `GET /strategies`, `GET /strategies/{name}` | User strategies never appear here. |
 | Alerts | `GET /alerts`, `POST /alerts`, `DELETE /alerts/{id}`, `POST /alerts/{id}/rearm`, `POST /alerts/seen`, `POST /alerts/evaluate` | The daily job evaluates after every strategy has synced. |
-| Studio | `GET /studio/rules`; `GET`/`POST /studio/families`; `POST /studio/families/{id}/strategies`; `GET`/`POST /studio/families/{id}/evaluations`; `GET /studio/evaluations/{id}`, `POST /studio/evaluations/{id}/retry` | Saves are checked against the rule registry (422). Evaluations run in the background and return `202`; poll for progress. A second Out-of-Sample Evaluation in a family returns `409`. |
+| Studio | `GET /studio/rules`; `GET`/`POST /studio/families`; `POST /studio/families/{id}/strategies`; `GET`/`POST /studio/families/{id}/evaluations`; `POST /studio/variants` (the experiment-page handoff); `GET /studio/evaluations/{id}`, `POST /studio/evaluations/{id}/retry` | Saves are checked against the rule registry (422). Evaluations run in the background and return `202`; poll for progress. A second Out-of-Sample Evaluation in a family returns `409`. |
 | Validation | `GET /validation/historical/{name}`, `/alpha/{name}`, `/scorecard/{name}`, `/rules/{name}`, `/engines/{name}`; `POST /validation/experiment/run`, `POST /validation/dashboard` | Return-derived metrics carry a `measurability` block. |
 | Research | `POST /research/historical/screen`, `/compare/runs`, `/verify/determinism`, `/experiment/run`, `/corporate-actions/refresh`; `GET /research/evaluate/{name}`, `/contribution/{name}`, `/compare/strategies` | Two experiment endpoints exist: `/research/experiment/run` and `/validation/experiment/run`. |
 | Backtest | `POST /backtest/walk-forward` | Every response carries `benchmark_label` and `survivorship_warning`. |
@@ -72,7 +72,7 @@ A Vite single-page app: React 18, React Router 7, TypeScript, Tailwind. The API 
 | `/validation` | Research dashboard: scorecard, alpha, rule and engine metrics |
 | `/analytics` | Contribution analysis across runs |
 | `/historical` | Browse past runs and their rankings |
-| `/experiment` | Run a strategy experiment |
+| `/experiment` | Run a strategy experiment. An override hands a variant to a Strategy Studio family and runs it as Historical Research — In-Sample (ADR-014 §12) |
 | `/backtest` | Walk-forward backtest with the data caveat shown first |
 | `/data` | Inspect stored data; import authorized CSV data by CLI. The direct refresh control appears only when the operator explicitly enables downloads. |
 | `/learn`, `/learn/{minervini-methodology, momentum25-methodology, momentum-investing, scoring-guide, rule-guide, faq}` | Methodology and education |

@@ -177,30 +177,30 @@ A change to scoring, ranking or engine code that alters results without either i
 
 **Not in this identity.** The walk-forward backtest is a separate method. Its response carries `market_data_version`, `BACKTEST_METHOD_VERSION` and its execution-policy constants (brief addendum "Execution method v2").
 
-### 12. Variant-run handoff amendment (2026-10-21) — PROPOSED, INCOMPLETE, NOT IMPLEMENTED
+### 12. Variant-run handoff amendment (2026-10-21) — ACCEPTED, IMPLEMENTED
 
-Status: **Proposed.** The owner chose a handoff over retirement (R3-R2-09). Nothing below is built. This section is not an accepted decision until the owner accepts it and the criteria below pass.
+Status: **Accepted by the owner on 2026-10-21** with the interpretation in the criteria below. It is implemented in source, with the evidence listed. It is not deployed.
 
-**Problem.** The generic experiment page takes a base strategy plus parameter overrides. No code applies the overrides, so a "variant" would run the base strategy. Both experiment use cases therefore refuse any override with HTTP 422. That refusal stays until this section is implemented.
+**Problem.** The generic experiment page takes a base strategy plus parameter overrides. No code applied the overrides, so a "variant" ran the base strategy.
 
-**Proposed ownership.** The Strategy Studio family owns every variant run.
+**Decision.** The Strategy Studio family owns every variant run.
 
 - A variant is a saved Studio config (§3) inside a family (§4). It has a `config_hash`, a parent and the family's hypothesis.
-- The generic experiment page does not run variants. It hands the user to Studio, where the user states or picks a family.
-- Variant runs are Historical Research — In-Sample (§5). They read only the research window. They never read the hold-out (§6).
-- A variant never gets a second hold-out evaluation. The family's single evaluation rule (§6) is unchanged.
-- `apply_parameter_overrides` stays a pure function. Studio calls it to build the child config, then saves the config as a new strategy version. The run then pins that stored strategy, as §9 requires.
+- The experiment page hands an override to Studio: `POST /api/v1/studio/variants` (`application/use_cases/variant_run.py`). The use case turns each dotted path into a structured override, calls `apply_parameter_overrides` on the parent's stored config, checks the result against the rule schemas (§2), and saves it as a new user strategy with a new `config_hash`. It then queues one run for that stored strategy, as §9 requires.
+- A variant run is Historical Research — In-Sample (§5). It reads the research window only. It never reads the hold-out, and it never queues an Out-of-Sample Evaluation. The family's single evaluation rule (§6) is unchanged.
+- Override paths: `<engine>.<weight|enabled|gate>`, `<engine>.<rule>.<weight|gate>`, `<engine>.<rule>.params.<name>`, `scoring.<momentum_weights|buy_setup_weights>.<key>`. An override that changes nothing, names an unknown engine or rule, or breaks a bound is refused with 422, and nothing is written.
+- The generic harness (`ExperimentUseCase`, `ParameterResearchUseCase`) still refuses overrides and now names the handoff. It cannot run a stored variant.
 
-**Acceptance criteria still open.** Each one needs an owner decision or a test before this section can move to Accepted.
+**Acceptance criteria and evidence.**
 
-1. The owner accepts the ownership above (Studio family owns variant runs).
-2. The hypothesis text for a handoff-created variant. The owner decides whether the user must state one, or the variant must join an existing family.
-3. Where the in-sample variant run counts toward the family's research-run count (§5).
-4. The experiment page copy for the handoff, in the fixed result-class labels.
-5. Tests: an override produces a stored child strategy with a new `config_hash`; the variant run pins that hash; the run never reads the hold-out; the report states the variant, not the base; the 422 test is replaced, not deleted, by a handoff test.
-6. The register row R3-R2-09 moves from Mitigated to Fixed only after items 1 to 5 pass.
+1. **Every variant belongs to an explicit family.** A request either starts a family or joins one. A variant has no other path. Evidence: `test_an_override_stores_a_child_strategy_with_a_new_hash`, `test_a_variant_needs_an_explicit_hypothesis`.
+2. **Every variant has an identifiable hypothesis.** The user states the hypothesis (10 to 300 characters) for a new family. To join a family, the user gives its `family_id` and sets `hypothesis_confirmed`. The system never assumes that a family's hypothesis covers the variant. The same hypothesis text on another root is refused. Evidence: the same test, and the 422 and 409 cases in it.
+3. **Each distinct In-Sample variant run counts once.** A run is identified by family, `config_hash`, window and `data_version`. A repeated request returns the stored variant and run. A retry re-queues the same row. `research_runs` counts distinct run identities, so a duplicate row from two simultaneous requests still counts once. A run counts once it is queued, even if it later fails: the budget is over trials, so it must not undercount. Evidence: `test_a_repeated_request_or_a_retry_counts_one_research_run`, `test_a_duplicate_row_from_a_race_still_counts_one_research_run`.
+4. **The handoff names the parent, the variant and the hypothesis.** The result panel shows the parent strategy, the variant with its hash, the overrides, the hypothesis with its family, the label "Historical Research — In-Sample", the research-run count and "Not evidence of future returns." Existing page language is unchanged, except the run button reads "Run Variant (In-Sample)" when overrides are present, and its hover colour now meets AA contrast. Evidence: `web/e2e/experiment-handoff.spec.ts` (keyboard, axe in light and dark, 390 and 1440 px).
+5. **Tests.** An override yields a stored child with a new hash (`test_an_override_stores_a_child_strategy_with_a_new_hash`). The run pins that hash (`test_the_run_pins_the_variant_and_the_report_states_it`). The run never reads the hold-out: a recording market shows every date it asked for lies before the hold-out start, and no Out-of-Sample row exists (`test_the_run_never_reads_or_spends_the_holdout`). The report states the variant: the result body carries `strategy` with the variant's name, hash and parent. A successful handoff test (`test_the_handoff_endpoint_queues_the_run_and_reports_the_variant`) replaces the old 422 contract at the API level. The use-case-level refusals stay in `test_generic_harness_refuses_overrides.py`, because the generic harness still cannot run a variant.
+6. **R3-R2-09 moves from Mitigated to Fixed** after 1 to 5 were verified one by one. See the register row.
 
-**Until then:** the 422 refusal in `test_experiment_refuses_overrides.py` is the contract.
+**Known limits.** Nothing ran on the development database or on real bars. The handoff is verified on synthetic fixtures and on the synthetic E2E database. Two simultaneous identical requests can insert two rows; the count is unaffected, but one row is redundant. A variant derives from a strategy file or from a family's root through the page. A family member as parent works through the API, in its own family only. Run Dates do not apply to a variant: the system sets the research window.
 
 ## Consequences
 - The Studio judges a strategy with the same code that screens it, on data it can reproduce exactly.

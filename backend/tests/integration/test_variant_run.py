@@ -211,6 +211,19 @@ async def test_a_repeated_request_or_a_retry_counts_one_research_run(studio: _St
     assert rows == 2
 
 
+async def test_a_duplicate_row_from_a_race_still_counts_one_research_run(
+    studio: _Studio,
+) -> None:
+    run = await _use_case(studio).execute(_request())
+    window = (run.evaluation.window_start, run.evaluation.window_end)
+    # Two requests that pass the lookup together would each insert a row. The count is
+    # over run identities, so the second row is redundant and the budget stays at one.
+    await studio.evaluations.create(
+        run.family.id, run.variant.config_hash, "in_sample", window, run.evaluation.data_version
+    )
+    assert await studio.evaluations.research_runs(run.family.id) == 1
+
+
 async def test_a_variant_needs_an_explicit_hypothesis(studio: _Studio) -> None:
     use_case = _use_case(studio)
     first = await use_case.execute(_request())

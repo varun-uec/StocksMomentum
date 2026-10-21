@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import type { APIRequestContext } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 /**
@@ -7,7 +8,24 @@ import { expect, test } from './fixtures';
  * hypothesis, and labels the run Historical Research - In-Sample.
  */
 
+/** Background runs outlive their test and would load the server for the next spec. Wait for them. */
+async function settleEvaluations(request: APIRequestContext): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const families = await (await request.get('/api/v1/studio/families')).json();
+        const lists = await Promise.all(
+          families.map(async (f: { id: number }) => (await request.get(`/api/v1/studio/families/${f.id}/evaluations`)).json()),
+        );
+        return lists.flat().filter((e: { status: string }) => ['queued', 'running'].includes(e.status)).length;
+      },
+      { timeout: 150_000, intervals: [500, 1000, 2000] },
+    )
+    .toBe(0);
+}
+
 test('an override becomes a stored variant in a family and runs In-Sample, by keyboard', async ({ page, request }) => {
+  test.setTimeout(240_000);
   const stamp = Date.now();
   const hypothesis = `A lower RS floor keeps more winners (${stamp}).`;
   await page.goto('/experiment');
@@ -69,6 +87,7 @@ test('an override becomes a stored variant in a family and runs In-Sample, by ke
   await run.click();
   await expect(result.getByText(`rs-floor-b-${stamp} v1`).first()).toBeVisible();
   await expect(result.getByText('2 research runs in this family')).toBeVisible();
+  await settleEvaluations(request);
 });
 
 test('a base experiment without overrides keeps the original controls', async ({ page }) => {
@@ -78,8 +97,8 @@ test('a base experiment without overrides keeps the original controls', async ({
   await expect(page.getByLabel(/^Run Dates/)).toBeEnabled();
 });
 
-test('the handoff form and result have no axe violation or overflow, light and dark, phone and desktop', async ({ page }) => {
-  test.setTimeout(120_000);
+test('the handoff form and result have no axe violation or overflow, light and dark, phone and desktop', async ({ page, request }) => {
+  test.setTimeout(240_000);
   await page.addInitScript({ path: resolve(process.cwd(), 'node_modules/axe-core/axe.min.js') });
   const found: string[] = [];
   const stamp = Date.now();
@@ -92,8 +111,9 @@ test('the handoff form and result have no axe violation or overflow, light and d
       await page.goto('/experiment');
       await page.getByPlaceholder('engines.trend_template.weight').fill('trend_template.tt_rs_rating_min.params.min');
       await page.getByPlaceholder('1.5').fill('61');
-      await page.getByLabel('Variant name').fill(`axe-${theme}-${size.width}-${stamp}`);
-      await page.getByLabel('Hypothesis, in one sentence').fill(`Axe check ${tag} ${stamp}: a lower floor keeps winners.`);
+      // The same variant every time: a repeated request returns the stored run, so only one executes.
+      await page.getByLabel('Variant name').fill(`axe-${stamp}`);
+      await page.getByLabel('Hypothesis, in one sentence').fill(`Axe check ${stamp}: a lower floor keeps winners.`);
       const measure = async (step: string) => {
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         if (overflow > 0) found.push(`${tag} ${step}: ${overflow}px horizontal overflow`);
@@ -115,5 +135,6 @@ test('the handoff form and result have no axe violation or overflow, light and d
       await measure('result');
     }
   }
+  await settleEvaluations(request);
   expect(found, 'axe findings and overflow').toEqual([]);
 });
