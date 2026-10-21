@@ -1,0 +1,70 @@
+# npm audit report
+
+braces  *
+Severity: high
+braces vulnerable to stack-exhaustion denial of service through deeply nested patterns - https://github.com/advisories/GHSA-vfj7-8cjw-p6xm
+fix available via `npm audit fix --force`
+Will install tailwindcss@4.3.3, which is a breaking change
+node_modules/braces
+  chokidar  2.0.0 - 3.6.0
+  Depends on vulnerable versions of braces
+  node_modules/chokidar
+    tailwindcss  <=0.0.0-oxide-insiders.ff2c25f || 0.5.0 - 3.4.19
+    Depends on vulnerable versions of chokidar
+    Depends on vulnerable versions of fast-glob
+    Depends on vulnerable versions of micromatch
+    Depends on vulnerable versions of postcss-nested
+    Depends on vulnerable versions of postcss-selector-parser
+    node_modules/tailwindcss
+  micromatch  >=0.2.0
+  Depends on vulnerable versions of braces
+  node_modules/micromatch
+    fast-glob  *
+    Depends on vulnerable versions of micromatch
+    node_modules/fast-glob
+      globby  >=8.0.0
+      Depends on vulnerable versions of fast-glob
+      node_modules/globby
+        @typescript-eslint/typescript-estree  3.10.2-alpha.0 - 8.2.1-alpha.25
+        Depends on vulnerable versions of globby
+        Depends on vulnerable versions of minimatch
+        node_modules/@typescript-eslint/typescript-estree
+          @typescript-eslint/parser  6.16.0 - 7.5.0
+          Depends on vulnerable versions of @typescript-eslint/typescript-estree
+          node_modules/@typescript-eslint/parser
+
+minimatch  9.0.0 - 9.0.6
+Severity: high
+minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern - https://github.com/advisories/GHSA-3ppc-4f35-3m26
+minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments - https://github.com/advisories/GHSA-7r86-cg39-jmmj
+minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions - https://github.com/advisories/GHSA-23c5-xmqv-rm74
+fix available via `npm audit fix --force`
+Will install @typescript-eslint/parser@7.18.0, which is outside the stated dependency range
+node_modules/minimatch
+
+postcss-selector-parser  <7.1.6
+Severity: moderate
+PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion - https://github.com/advisories/GHSA-rj75-hqrm-r3gf
+fix available via `npm audit fix --force`
+Will install tailwindcss@4.3.3, which is a breaking change
+node_modules/postcss-selector-parser
+  postcss-nested  2.0.3 - 6.2.0
+  Depends on vulnerable versions of postcss-selector-parser
+  node_modules/postcss-nested
+
+vite  7.0.0 - 7.3.6
+Severity: high
+launch-editor: escapeCmdArgs() omits % escaping on Windows - https://github.com/advisories/GHSA-698v-4r3x-3vcv
+launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors - https://github.com/advisories/GHSA-r825-w8mm-5pxw
+launch-editor: `fs.existsSync()` existence check can be bypassed on Windows - https://github.com/advisories/GHSA-587h-7wmj-h5pm
+fix available via `npm audit fix --force`
+Will install vite@7.3.7, which is outside the stated dependency range
+node_modules/vite
+
+12 vulnerabilities (2 moderate, 10 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force

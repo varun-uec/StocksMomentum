@@ -1,0 +1,11 @@
+BEGIN
+SELECT 56134
+pre_rows|56134
+DO
+UPDATE 56134
+updated_ok|56134
+revision_moved|0
+remaining_mismatch|0
+max_abs_change|0.5900
+DO
+ROLLBACK

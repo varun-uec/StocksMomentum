@@ -106,7 +106,9 @@ export interface paths {
          *     Distinguishes an expected gap (market closed for a weekend/holiday) from
          *     a real one (ingestion behind or stopped) using the real NSE trading
          *     calendar, rather than a bare "latest run" timestamp a client has to
-         *     interpret unaided.
+         *     interpret unaided. This is the data readiness/status contract;
+         *     ``/health/live`` answers process liveness only. ``latest_session`` and
+         *     ``data_revision`` name the exchange session and market-data revision.
          */
         get: operations["data_freshness_api_v1_health_data_freshness_get"];
         put?: never;
@@ -1796,6 +1798,13 @@ export interface components {
             classification: string;
             /** Next Session */
             next_session: string | null;
+            /**
+             * Latest Session
+             * Format: date
+             */
+            latest_session: string;
+            /** Data Revision */
+            data_revision: number;
             /**
              * Calendar Source
              * @default XBOM (NSE observes the same trading holidays)

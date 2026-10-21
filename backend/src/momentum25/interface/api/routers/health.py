@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import text
@@ -128,10 +128,14 @@ async def data_freshness() -> DataFreshnessDTO:
     Distinguishes an expected gap (market closed for a weekend/holiday) from
     a real one (ingestion behind or stopped) using the real NSE trading
     calendar, rather than a bare "latest run" timestamp a client has to
-    interpret unaided.
+    interpret unaided. This is the data readiness/status contract;
+    ``/health/live`` answers process liveness only. ``latest_session`` and
+    ``data_revision`` name the exchange session and market-data revision.
     """
     async with get_database().session() as session:
-        latest = await SqlOHLCVRepository(session).latest_date()
+        repo = SqlOHLCVRepository(session)
+        latest = await repo.latest_date()
+        revision = await repo.data_revision()
 
     today = datetime.now(UTC).date()
     calendar = get_nse_trading_calendar()
@@ -144,6 +148,8 @@ async def data_freshness() -> DataFreshnessDTO:
 
     assessment = assess_freshness(latest, today, sessions_since)
     next_session = calendar.next_session(today)
+    recent = calendar.sessions_between(today - timedelta(days=14), today)
+    latest_session = recent[-1] if recent else today
 
     return DataFreshnessDTO(
         latest_bar_date=latest,
@@ -151,6 +157,8 @@ async def data_freshness() -> DataFreshnessDTO:
         sessions_missed=assessment.sessions_missed,
         classification=assessment.classification.value,
         next_session=next_session,
+        latest_session=latest_session,
+        data_revision=revision,
     )
 
 

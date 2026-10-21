@@ -109,6 +109,22 @@ export default function DataPage() {
                 {freshness?.sessions_missed ?? '—'}
               </div>
             </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Latest exchange session
+              </div>
+              <div className="text-lg font-semibold tabular-nums">
+                {freshness?.latest_session ?? '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Data revision
+              </div>
+              <div className="text-lg font-semibold tabular-nums">
+                {freshness?.data_revision ?? '—'}
+              </div>
+            </div>
             {freshness && (
               <Badge color={freshness.classification === 'STALE' ? 'rose' : 'emerald'}>
                 {freshness.classification}

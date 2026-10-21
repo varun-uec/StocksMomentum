@@ -58,4 +58,6 @@ class DataFreshnessDTO(BaseModel):
     sessions_missed: int
     classification: str  # "FRESH" | "MARKET_CLOSED" | "STALE"
     next_session: date | None
+    latest_session: date  # last exchange session on or before as_of
+    data_revision: int  # highest committed market-data row revision
     calendar_source: str = "XBOM (NSE observes the same trading holidays)"

@@ -91,3 +91,18 @@ async def test_response_includes_next_session(db_session: AsyncSession) -> None:
     assert data["next_session"] is not None
     next_session = date.fromisoformat(data["next_session"])
     assert next_session > date.today()
+
+
+@pytest.mark.asyncio
+async def test_status_names_latest_session_and_data_revision(db_session: AsyncSession) -> None:
+    app = create_app()
+    with TestClient(app) as client:
+        data = client.get("/api/v1/health/data-freshness").json()
+        live = client.get("/api/v1/health/live").json()
+
+    latest_session = date.fromisoformat(data["latest_session"])
+    assert latest_session <= date.today()
+    assert get_nse_trading_calendar().is_session(latest_session)
+    assert isinstance(data["data_revision"], int)
+    # Liveness stays free of data fields.
+    assert "latest_session" not in live and "data_revision" not in live

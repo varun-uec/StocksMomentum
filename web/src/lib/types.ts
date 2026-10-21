@@ -355,6 +355,8 @@ export interface DataFreshnessDTO {
   sessions_missed: number;
   classification: 'FRESH' | 'MARKET_CLOSED' | 'STALE';
   next_session: string | null;
+  latest_session: string;
+  data_revision: number;
   calendar_source: string;
 }
 
