@@ -347,3 +347,39 @@ async def test_stale_stock_reports_its_last_bar_and_is_not_sufficient(
 
     assert live.data_as_of == last_bar
     assert live.data_sufficient is False
+
+
+@pytest.mark.asyncio
+async def test_request_day_session_not_yet_ingested_is_not_stale(
+    db_session: AsyncSession,
+) -> None:
+    """The same tolerance as /health/data-freshness: today's own bar is not yet a miss."""
+    start_date = date(2024, 1, 1)
+    last_bar = start_date + timedelta(days=299)  # 2024-10-26
+    request_date = last_bar + timedelta(days=2)  # Monday 2024-10-28, a session
+
+    await _seed_bars(
+        db_session,
+        (await _seed_security(db_session, "TODAY", "Today Security")).id,
+        _make_uptrend_bars(300, start_date, 100.0),
+    )
+    strategy_repo = SqlStrategyRepository(db_session)
+    strategy = _real_engine_strategy()
+    await strategy_repo.upsert(strategy)
+    await db_session.commit()
+
+    use_case = GetLiveStockAnalysis(
+        securities=SqlSecurityRepository(db_session),
+        ohlcv_repo=SqlOHLCVRepository(db_session),
+        strategies=strategy_repo,
+        indicator_pipeline=IndicatorPipelineImpl(db_session),
+        strategy_engine=_make_engine(),
+        explainability_builder=ExplainabilityBuilderImpl(),
+        nse_client=_FakeNSEClient([]),
+        refresh_gate=_AlwaysRefresh(),
+        calendar=get_nse_trading_calendar(),
+    )
+    live = await use_case.execute("TODAY", strategy.name, refresh=False, as_of=request_date)
+
+    assert live.data_as_of == last_bar
+    assert live.data_sufficient is True

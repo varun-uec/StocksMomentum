@@ -43,6 +43,7 @@ from momentum25.domain.research.stop_loss import (
     suggest_chandelier_stop,
     suggest_stop_loss,
 )
+from momentum25.domain.research.trading_calendar import DataFreshness, assess_freshness
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
 from momentum25.domain.value_objects.indicators import IndicatorSet
 
@@ -321,8 +322,6 @@ class RefreshGate:
         """Record that *symbol* was just refreshed."""
 
 
-# Calendar days searched for the latest session; covers the longest holiday run.
-_SESSION_LOOKBACK_DAYS = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -423,10 +422,12 @@ class GetLiveStockAnalysis:
             refreshed = bars_fetched > 0
 
         # R3-B-13: report the stock's own last bar, not the request date. A
-        # stock whose last bar is older than the latest session is stale, so
-        # its figures are not "as of" the request and data_sufficient is false.
+        # stock that missed a session is stale, so its figures are not "as of"
+        # the request and data_sufficient is false. The rule is the one
+        # /health/data-freshness uses: the request day's own session, not yet
+        # ingested, is not a miss.
         last_bar = await self._last_bar_date(security.id, reference_date)
-        stale = last_bar is None or last_bar < self._latest_session(reference_date)
+        stale = last_bar is None or self._missed_a_session(last_bar, reference_date)
         data_as_of = last_bar or reference_date
 
         indicators = await self._indicator_pipeline.compute(
@@ -529,12 +530,15 @@ class GetLiveStockAnalysis:
         )
         return series.bars[-1].date if series.bars else None
 
-    def _latest_session(self, reference_date: date) -> date:
-        """Return the last exchange session on or before *reference_date*."""
-        sessions = self._calendar.sessions_between(
-            reference_date - timedelta(days=_SESSION_LOOKBACK_DAYS), reference_date
-        )
-        return sessions[-1] if sessions else reference_date
+    def _missed_a_session(self, last_bar: date, reference_date: date) -> bool:
+        """Say whether a session before *reference_date* has no bar after *last_bar*."""
+        sessions_since = [
+            day
+            for day in self._calendar.sessions_between(last_bar, reference_date)
+            if day > last_bar
+        ]
+        freshness = assess_freshness(last_bar, reference_date, sessions_since)
+        return freshness.classification == DataFreshness.STALE
 
     async def _relative_strength_vs_index(
         self, security_id: int, benchmark_index: str | None, as_of: date
