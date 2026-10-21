@@ -68,7 +68,9 @@ Schema drift (R3-B-15) is fixed in source by migration 0024 and checked in CI; t
 
 Round 4 results: backend `pytest` 1,046 passed; `ruff`, `mypy` (276 files) and `lint-imports` (3 contracts) clean; `alembic check` clean on a fresh migrated database; Vitest 148 passed; ESLint and `tsc` clean; Playwright full serial suite 232 passed, 0 failed, 8 opt-in skipped (19.9 min, isolated `_e2e` database); NFR-11 30 samples each, warm P95 152 ms, cold P95 228 ms.
 
-Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-18 repair (owner approval), R3-B-22 (ADR-056 does not exist; no code or product document cites it), R3-U-13, R3-B-17, R3-B-23, R3-B-24, dependency audits, licence, data rights, name.
+Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (blocked: needs engine-v2 runs), R3-U-13, R3-B-17, R3-B-23, R3-B-24, dependency audits, licence, data rights, name.
+
+**Round 5, 2026-10-21 (commits `87cbe12`, `4e93f99`).** `/health/live` is liveness only; `/health/data-freshness` carries `latest_session` and `data_revision`; the stock lookup uses the same freshness rule (R3-B-13). R3-B-22 closed. Dev database: R3-B-18 repaired (56,134 `adj_close` rows; revision and `data_version` unchanged), migrations 0022 to 0024 applied, API image redeployed locally at `4e93f99` (backup and rollback in the register). Dependency audits recorded, nothing upgraded: certifi (backend) and 12 dev-tooling npm findings (0 in production dependencies). The forward-return backfill did not run: no dev run is stamped engine v2. Backend 1,048 passed.
 
 ## Delivery record
 
