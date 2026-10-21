@@ -11,6 +11,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from momentum25.domain.errors import ValidationError
 from momentum25.domain.research.models import (
     ContributionAnalysisReport,
     EngineContributionStats,
@@ -23,6 +24,7 @@ from momentum25.domain.research.models import (
     StrategyComparisonPoint,
     StrategyComparisonReport,
 )
+from momentum25.domain.strategy.rule_schemas import ENGINE_IDS, RULES
 
 _QUANT = Decimal("0.0001")
 
@@ -805,6 +807,65 @@ def apply_parameter_overrides(
                     break
 
     return config
+
+
+_ENGINE_FIELDS = ("weight", "enabled", "gate")
+_RULE_FIELDS = ("weight", "gate")
+_SCORE_TABLES = ("momentum_weights", "buy_setup_weights")
+OVERRIDE_PATH_GRAMMAR = (
+    "use <engine>.<weight|enabled|gate>, <engine>.<rule>.<weight|gate>, "
+    "<engine>.<rule>.params.<name>, or scoring.<momentum_weights|buy_setup_weights>.<key>"
+)
+
+
+def coerce_override_value(value: Any) -> Any:
+    """Read a typed value from form text: true/false, an integer, or a number.
+
+    Raises:
+        ValidationError: The text is none of these.
+    """
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if text.lower() in ("true", "false"):
+        return text.lower() == "true"
+    for kind in (int, float):
+        try:
+            return kind(text)
+        except ValueError:
+            continue
+    raise ValidationError(f"value {value!r}: give a number or true/false")
+
+
+def override_from_path(parameter_path: str, new_value: Any) -> dict[str, Any]:
+    """Turn a dotted path into the structured override ``apply_parameter_overrides`` takes.
+
+    Raises:
+        ValidationError: The path is not in the grammar, or names an unknown engine or rule.
+    """
+    parts = parameter_path.strip().split(".")
+    bad = ValidationError(f"parameter_path {parameter_path!r}: {OVERRIDE_PATH_GRAMMAR}")
+    head, rest = parts[0], parts[1:]
+    if head == "scoring":
+        if len(rest) != 2 or rest[0] not in _SCORE_TABLES:
+            raise bad
+        return {"parameter_path": ".".join(["scoring", *rest]), "new_value": new_value}
+    if head not in ENGINE_IDS or not rest:
+        raise bad
+    if len(rest) == 1 and rest[0] in _ENGINE_FIELDS:
+        return {"engine_id": head, "parameter_path": rest[0], "new_value": new_value}
+    schema = RULES.get(rest[0])
+    if schema is None or schema.engine_id != head:
+        raise ValidationError(f"parameter_path {parameter_path!r}: no rule {rest[0]!r} in {head}")
+    field = rest[1:]
+    if (len(field) == 1 and field[0] in _RULE_FIELDS) or (len(field) == 2 and field[0] == "params"):
+        return {
+            "engine_id": head,
+            "rule_id": rest[0],
+            "parameter_path": ".".join(field),
+            "new_value": new_value,
+        }
+    raise bad
 
 
 def _set_nested(obj: dict[str, Any], path: str, value: Any) -> None:

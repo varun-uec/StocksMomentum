@@ -58,6 +58,7 @@ from momentum25.application.use_cases.strategy_evaluation import (
 )
 from momentum25.application.use_cases.studio import CreateFamily, ListFamilies, SaveStrategy
 from momentum25.application.use_cases.user_documents import GetUserDocument, SaveUserDocument
+from momentum25.application.use_cases.variant_run import StartVariantRun
 from momentum25.application.use_cases.watchlist import (
     AddToWatchlist,
     GetWatchlist,
@@ -714,6 +715,21 @@ async def get_submit_evaluation() -> AsyncIterator[SubmitEvaluation]:
     """Provide a SubmitEvaluation use-case instance (one session: manifest and row)."""
     async with _shared_session() as session:
         yield SubmitEvaluation(*_evaluation_parts(session))
+
+
+async def get_start_variant_run() -> AsyncIterator[StartVariantRun]:
+    """Provide a StartVariantRun use-case instance (one session for family, strategy and run)."""
+    async with _shared_session() as session:
+        parts = _evaluation_parts(session)
+        studio, evaluations = parts[0], parts[1]
+        yield StartVariantRun(
+            studio,
+            evaluations,
+            CreateFamily(studio, SqlStrategyRepository(session), checked_config),
+            SaveStrategy(studio, checked_config),
+            SubmitEvaluation(*parts),
+            checked_config,
+        )
 
 
 async def get_evaluation_repo() -> AsyncIterator[SqlEvaluationRepository]:

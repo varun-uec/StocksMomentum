@@ -133,14 +133,38 @@ class SqlEvaluationRepository:
         )
         return int(count or 0)
 
-    async def research_runs(self, family_id: int) -> int:
-        """Historical Research — In-Sample evaluations submitted in a family."""
-        count = await self._session.scalar(
-            select(func.count()).where(
-                _Row.family_id == family_id, _Row.result_class == "in_sample"
+    async def find_in_sample(
+        self, family_id: int, config_hash: str, window: tuple[date, date], data_version: str
+    ) -> Evaluation | None:
+        """The In-Sample evaluation with this run identity, or ``None``."""
+        row = await self._session.scalar(
+            select(_Row)
+            .where(
+                _Row.family_id == family_id,
+                _Row.config_hash == config_hash,
+                _Row.result_class == "in_sample",
+                _Row.window_start == window[0],
+                _Row.window_end == window[1],
+                _Row.data_version == data_version,
             )
+            .order_by(_Row.id)
+            .limit(1)
         )
-        return int(count or 0)
+        return None if row is None else _entity(row)
+
+    async def research_runs(self, family_id: int) -> int:
+        """Distinct Historical Research — In-Sample run identities in a family.
+
+        A run is one config on one window at one data version. A retry reuses
+        its row, and a repeated submit finds it, so neither counts twice.
+        """
+        identities = (
+            select(_Row.config_hash, _Row.window_start, _Row.window_end, _Row.data_version)
+            .where(_Row.family_id == family_id, _Row.result_class == "in_sample")
+            .distinct()
+            .subquery()
+        )
+        return int(await self._session.scalar(select(func.count()).select_from(identities)) or 0)
 
     async def interrupt_unfinished(self) -> int:
         """Fail every queued or running evaluation (after a restart)."""

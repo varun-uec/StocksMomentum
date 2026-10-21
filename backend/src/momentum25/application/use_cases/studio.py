@@ -43,7 +43,8 @@ def hypothesis_key(hypothesis: str) -> str:
     return " ".join(hypothesis.split()).casefold()
 
 
-def _strategy_dto(strategy: Strategy) -> StudioStrategyDTO:
+def strategy_dto(strategy: Strategy) -> StudioStrategyDTO:
+    """Map a user strategy to its response."""
     assert strategy.family_id is not None  # only user strategies reach the Studio
     return StudioStrategyDTO(
         config_hash=strategy.config_hash,
@@ -65,7 +66,7 @@ async def _family_dto(studio: StudioRepository, family: StrategyFamily) -> Famil
         root_config_hash=family.root_config_hash,
         root="scratch" if scratch else "builtin",
         created_at=family.created_at,
-        members=[_strategy_dto(m) for m in members],
+        members=[strategy_dto(m) for m in members],
     )
 
 
@@ -235,7 +236,7 @@ class SaveStrategy:
         config_hash, config = await _build(
             self._studio, request.config, parent.config, family_id, self._checker
         )
-        return _strategy_dto(
+        return strategy_dto(
             await self._studio.add_strategy(
                 _user_strategy(config_hash, config, family_id, parent_hash)
             )

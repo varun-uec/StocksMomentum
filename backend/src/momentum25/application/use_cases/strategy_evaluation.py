@@ -102,14 +102,31 @@ class SubmitEvaluation:
 
     async def execute(self, family_id: int, request: SubmitEvaluationRequest) -> EvaluationDTO:
         """Queue one evaluation. The hold-out is spent once it is queued."""
+        return (await self.submit(family_id, request))[0]
+
+    async def submit(
+        self, family_id: int, request: SubmitEvaluationRequest
+    ) -> tuple[EvaluationDTO, bool]:
+        """Queue one evaluation; also say whether it is new.
+
+        An In-Sample run is identified by its family, config hash, window and
+        data version. Submitting the same identity again returns the stored run
+        and does not count a second research run (ADR-014 section 12).
+        """
         await _member(self._studio, family_id, request.config_hash)
         manifest = await self._manifests.capture()
         market = self._market_at(manifest.revision)
         window = await self._window(request.result_class, market)
+        if request.result_class == "in_sample":
+            known = await self._evaluations.find_in_sample(
+                family_id, request.config_hash, window, manifest.data_version
+            )
+            if known is not None:
+                return evaluation_dto(known), False
         evaluation = await self._evaluations.create(
             family_id, request.config_hash, request.result_class, window, manifest.data_version
         )
-        return evaluation_dto(evaluation)
+        return evaluation_dto(evaluation), True
 
     async def _window(
         self, result_class: ResultClass, market: EvaluationMarket
@@ -313,6 +330,12 @@ class RunEvaluation:
         incomplete = await market.incomplete_months(*window)
         result: dict[str, Any] = {
             "label": LABELS[evaluation.result_class],
+            "strategy": {
+                "name": strategy.name,
+                "version": strategy.version,
+                "config_hash": strategy.config_hash,
+                "parent_config_hash": strategy.parent_config_hash,
+            },
             "notice": ONE_TEST_IS_NOT_VALIDATION if out_of_sample else NOT_EVIDENCE,
             "window": {"start": window[0].isoformat(), "end": window[1].isoformat()},
             "horizon_sessions": policy.horizon,

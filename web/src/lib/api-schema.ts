@@ -690,6 +690,7 @@ export interface paths {
          * @description Queue an evaluation and run it after the response. Poll it for progress.
          *
          *     An Out-of-Sample Evaluation spends the family's hold-out when it is queued.
+         *     A repeated In-Sample submit of the same run returns the stored run.
          */
         post: operations["submit_evaluation_api_v1_studio_families__family_id__evaluations_post"];
         delete?: never;
@@ -732,6 +733,29 @@ export interface paths {
          * @description Run a failed evaluation again, on the same window and data revision.
          */
         post: operations["retry_evaluation_api_v1_studio_evaluations__evaluation_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Variant Run
+         * @description Save a parameter variant in a family and queue its In-Sample run.
+         *
+         *     The experiment page hands off here. The run reads the research window only.
+         *     Repeating a request returns the stored variant and run.
+         */
+        post: operations["start_variant_run_api_v1_studio_variants_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2274,6 +2298,18 @@ export interface components {
             members: components["schemas"]["StudioStrategyDTO"][];
         };
         /**
+         * FamilyRefDTO
+         * @description A family's identity and hypothesis, without its members.
+         */
+        FamilyRefDTO: {
+            /** Id */
+            id: number;
+            /** Hypothesis */
+            hypothesis: string;
+            /** Root Config Hash */
+            root_config_hash: string;
+        };
+        /**
          * FibonacciRelationship
          * @description One measured relationship between two waves of the same count.
          */
@@ -2829,6 +2865,18 @@ export interface components {
             name: string;
             /** Overrides */
             overrides: components["schemas"]["momentum25__application__dto__validation__ParameterOverrideDTO"][];
+        };
+        /**
+         * ParentStrategyDTO
+         * @description The strategy a variant was derived from.
+         */
+        ParentStrategyDTO: {
+            /** Config Hash */
+            config_hash: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: number;
         };
         /**
          * PatternCriterion
@@ -4192,6 +4240,61 @@ export interface components {
             end_date: string;
             /** Trading Days */
             trading_days: number;
+        };
+        /**
+         * VariantOverrideDTO
+         * @description One parameter change of a variant: a dotted path and the new value.
+         */
+        VariantOverrideDTO: {
+            /** Parameter Path */
+            parameter_path: string;
+            /** Value */
+            value: string | number | boolean;
+        };
+        /**
+         * VariantRunDTO
+         * @description A variant, its parent, its family and hypothesis, and its In-Sample run.
+         */
+        VariantRunDTO: {
+            parent: components["schemas"]["ParentStrategyDTO"];
+            variant: components["schemas"]["StudioStrategyDTO"];
+            family: components["schemas"]["FamilyRefDTO"];
+            /** Overrides */
+            overrides: components["schemas"]["VariantOverrideDTO"][];
+            evaluation: components["schemas"]["EvaluationDTO"];
+            /** Research Runs */
+            research_runs: number;
+            /** Reused Variant */
+            reused_variant: boolean;
+            /** Reused Run */
+            reused_run: boolean;
+            /** Notice */
+            notice: string;
+        };
+        /**
+         * VariantRunRequest
+         * @description Run a variant: the parent's config with overrides, in a family, In-Sample.
+         *
+         *     State the hypothesis in ``hypothesis`` to start a new family. To join an
+         *     existing family, give its ``family_id`` and set ``hypothesis_confirmed``:
+         *     the user confirms that the family's hypothesis covers this variant.
+         */
+        VariantRunRequest: {
+            /** Parent Config Hash */
+            parent_config_hash: string;
+            /** Variant Name */
+            variant_name: string;
+            /** Overrides */
+            overrides: components["schemas"]["VariantOverrideDTO"][];
+            /** Hypothesis */
+            hypothesis?: string | null;
+            /** Family Id */
+            family_id?: number | null;
+            /**
+             * Hypothesis Confirmed
+             * @default false
+             */
+            hypothesis_confirmed: boolean;
         };
         /**
          * WatchlistDetailResponseDTO
@@ -5564,6 +5667,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_variant_run_api_v1_studio_variants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VariantRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantRunDTO"];
                 };
             };
             /** @description Validation Error */

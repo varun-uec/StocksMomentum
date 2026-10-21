@@ -14,6 +14,8 @@ from momentum25.application.dto.studio import (
     SaveStrategyRequest,
     StudioStrategyDTO,
     SubmitEvaluationRequest,
+    VariantRunDTO,
+    VariantRunRequest,
 )
 from momentum25.application.use_cases.strategy_evaluation import (
     GetEvaluation,
@@ -27,6 +29,7 @@ from momentum25.application.use_cases.studio import (
     ListFamilies,
     SaveStrategy,
 )
+from momentum25.application.use_cases.variant_run import StartVariantRun
 from momentum25.interface.api.dependencies import (
     get_create_family,
     get_get_evaluation,
@@ -34,6 +37,7 @@ from momentum25.interface.api.dependencies import (
     get_list_families,
     get_retry_evaluation,
     get_save_strategy,
+    get_start_variant_run,
     get_submit_evaluation,
     run_evaluation_job,
 )
@@ -85,9 +89,11 @@ async def submit_evaluation(
     """Queue an evaluation and run it after the response. Poll it for progress.
 
     An Out-of-Sample Evaluation spends the family's hold-out when it is queued.
+    A repeated In-Sample submit of the same run returns the stored run.
     """
-    evaluation = await use_case.execute(family_id, request)
-    background_tasks.add_task(run_evaluation_job, evaluation.id)
+    evaluation, created = await use_case.submit(family_id, request)
+    if created:
+        background_tasks.add_task(run_evaluation_job, evaluation.id)
     return evaluation
 
 
@@ -119,3 +125,20 @@ async def retry_evaluation(
     evaluation = await use_case.execute(evaluation_id)
     background_tasks.add_task(run_evaluation_job, evaluation.id)
     return evaluation
+
+
+@router.post("/variants", response_model=VariantRunDTO, status_code=202)
+async def start_variant_run(
+    request: VariantRunRequest,
+    background_tasks: BackgroundTasks,
+    use_case: Annotated[StartVariantRun, Depends(get_start_variant_run)],
+) -> VariantRunDTO:
+    """Save a parameter variant in a family and queue its In-Sample run.
+
+    The experiment page hands off here. The run reads the research window only.
+    Repeating a request returns the stored variant and run.
+    """
+    run = await use_case.execute(request)
+    if not run.reused_run:
+        background_tasks.add_task(run_evaluation_job, run.evaluation.id)
+    return run

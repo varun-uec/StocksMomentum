@@ -67,12 +67,13 @@ class ExperimentUseCase:
             raise ValueError(f"Base strategy not found: {experiment_config.base_strategy_name}")
 
         if experiment_config.overrides:
-            # R3-R2-09: no caller applies ``apply_parameter_overrides`` to a
-            # stored strategy yet, so a "variant" ran the base strategy and was
-            # reported as a variant. Refuse rather than report a wrong number.
+            # R3-R2-09: this harness cannot run a stored variant, so it would run the
+            # base strategy and report it as a variant. Variants run in Strategy Studio
+            # (ADR-014 section 12). Refuse rather than report a wrong number.
             raise ValidationError(
-                "Parameter overrides are not applied by this harness yet: a variant run "
-                "would be the base strategy under another name"
+                "Parameter overrides are not applied by this harness: a variant run here "
+                "would be the base strategy under another name. Run variants through the "
+                "Strategy Studio handoff (POST /api/v1/studio/variants)"
             )
         # Run base strategy on all dates
         base_results = await self._run_on_dates(

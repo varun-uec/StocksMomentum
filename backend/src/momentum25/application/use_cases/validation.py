@@ -988,8 +988,9 @@ class ParameterResearchUseCase:
             # R3-R2-09: variant results were the base results under a variant
             # name. Refuse rather than report a wrong number.
             raise ValidationError(
-                "Parameter overrides are not applied by this harness yet: a variant run "
-                "would be the base strategy under another name"
+                "Parameter overrides are not applied by this harness: a variant run here "
+                "would be the base strategy under another name. Run variants through the "
+                "Strategy Studio handoff (POST /api/v1/studio/variants)"
             )
 
         # Get run dates from existing completed runs

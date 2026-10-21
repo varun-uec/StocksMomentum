@@ -94,8 +94,17 @@ class EvaluationRepository(Protocol):
         """Families that submitted an Out-of-Sample Evaluation on ``window`` by ``up_to_id``."""
         ...
 
+    async def find_in_sample(
+        self, family_id: int, config_hash: str, window: tuple[date, date], data_version: str
+    ) -> Evaluation | None:
+        """The In-Sample evaluation with this run identity, or ``None``.
+
+        The identity is the family, the config hash, the window and the data version.
+        """
+        ...
+
     async def research_runs(self, family_id: int) -> int:
-        """Historical Research — In-Sample evaluations submitted in a family."""
+        """Distinct Historical Research — In-Sample run identities in a family."""
         ...
 
     async def interrupt_unfinished(self) -> int:

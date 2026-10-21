@@ -1,4 +1,8 @@
-"""R3-R2-09: a variant with overrides must not run as the base strategy."""
+"""R3-R2-09: the generic harness never runs a variant as the base strategy.
+
+Variants run through the Strategy Studio handoff (ADR-014 section 12), covered in
+``tests/integration/test_variant_run.py``. This harness keeps refusing and says where to go.
+"""
 
 from __future__ import annotations
 
@@ -28,11 +32,11 @@ async def test_experiment_refuses_overrides() -> None:
         overrides=(ParameterOverride(parameter_path="x", new_value=1),),
         run_dates=(date(2025, 1, 1),),
     )
-    with pytest.raises(ValidationError, match="not applied"):
+    with pytest.raises(ValidationError, match="Strategy Studio handoff"):
         await use_case.run_experiment(config)
 
 
 async def test_parameter_research_refuses_overrides() -> None:
     use_case = ParameterResearchUseCase(None, _Strategies(), None, None, None, None)
-    with pytest.raises(ValidationError, match="not applied"):
+    with pytest.raises(ValidationError, match="Strategy Studio handoff"):
         await use_case.execute("e", "s", [{"name": "v", "overrides": [{"parameter_path": "x"}]}])
