@@ -76,9 +76,14 @@ class SecurityModel(Versioned, Base):
     """Instrument master row."""
 
     __tablename__ = "securities"
+    # Migration 0001 built a unique constraint and a plain index on ``symbol``.
+    _extra_table_args = (
+        UniqueConstraint("symbol", name="securities_symbol_key"),
+        Index("ix_securities_symbol", "symbol"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    symbol: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    symbol: Mapped[str] = mapped_column(String, nullable=False)
     isin: Mapped[str | None] = mapped_column(String, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     sector: Mapped[str | None] = mapped_column(String)
@@ -436,6 +441,7 @@ class ScreeningResultModel(Base):
     """Per-run, per-security scores and rank (append-only)."""
 
     __tablename__ = "screening_results"
+    __table_args__ = (Index("ix_screening_results_run_rank", "run_id", "rank"),)
 
     run_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("screening_runs.id"), primary_key=True
@@ -445,7 +451,7 @@ class ScreeningResultModel(Base):
     security_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("securities.id"), primary_key=True, index=True
     )
-    rank: Mapped[int | None] = mapped_column(Integer, index=True)
+    rank: Mapped[int | None] = mapped_column(Integer)
     momentum_score: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     buy_setup_score: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     hard_filters_passed: Mapped[bool] = mapped_column(Boolean, nullable=False)

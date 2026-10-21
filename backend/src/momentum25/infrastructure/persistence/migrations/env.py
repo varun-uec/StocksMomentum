@@ -21,12 +21,22 @@ config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
 target_metadata = Base.metadata
 
+# Built by migration 0008 with raw SQL: they need the pg_trgm extension, which
+# the test schema (``create_all``) does not install, so the models do not declare them.
+_RAW_SQL_INDEXES = {"ix_securities_symbol_trgm", "ix_securities_name_trgm"}
+
+
+def include_object(obj: object, name: str | None, type_: str, *_: object) -> bool:
+    """Leave the raw-SQL trigram indexes out of the comparison."""
+    return not (type_ == "index" and name in _RAW_SQL_INDEXES)
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode (emit SQL without a DB connection)."""
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -35,7 +45,11 @@ def run_migrations_offline() -> None:
 
 
 def _do_run_migrations(connection: object) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)  # type: ignore[arg-type]
+    context.configure(
+        connection=connection,  # type: ignore[arg-type]
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 

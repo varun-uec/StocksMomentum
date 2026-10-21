@@ -87,6 +87,43 @@ jobs:
           file: ./backend/coverage.xml
           fail_ci_if_error: false
 
+  migrations:
+    name: Migrations match the models (Backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: momentum25
+          POSTGRES_PASSWORD: momentum25
+          POSTGRES_DB: momentum25_migrations
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      M25_DATABASE_URL: postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_migrations
+      M25_ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv sync --all-extras --frozen
+      - name: Migrate an empty database to head
+        run: uv run alembic upgrade head
+      - name: Fail if the models differ from the migrations
+        run: uv run alembic check
+
   lint-web:
     name: Lint (Web)
     runs-on: ubuntu-latest

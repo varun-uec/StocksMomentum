@@ -71,12 +71,13 @@ def history_name(table: str) -> str:
 def history_table(current: Table, metadata: MetaData) -> Table:
     """Declare ``<table>_history``: every column of ``current``, then the supersession.
 
-    No keys or constraints: it holds many versions of one key.
+    No keys or constraints, but a column stays NOT NULL when the current table's is
+    (migrations build it with ``LIKE``): it holds many versions of one key.
     """
     return Table(
         history_name(current.name),
         metadata,
-        *(Column(c.name, c.type, nullable=True) for c in current.columns),
+        *(Column(c.name, c.type, nullable=c.nullable) for c in current.columns),
         Column("superseded_revision", BigInteger, nullable=False, index=True),
         Column("superseded_at", DateTime(timezone=True), nullable=False),
         Column("operation", String(1), nullable=False),

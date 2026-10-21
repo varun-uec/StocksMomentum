@@ -62,7 +62,9 @@ Fixed in source in Round 3: import date guard (R3-B-02), run identity and confli
 
 Records: [REMEDIATION_REGISTER.md](../../audit-evidence/audit-r3/REMEDIATION_REGISTER.md) and the Stage B section of [FINANCIAL_CORRECTNESS_REPORT.md](../../audit-evidence/audit-r3/FINANCIAL_CORRECTNESS_REPORT.md). Runs before engine v2 are not comparable with runs after it. Research reports dated before 2026-10-20 quote engine 1 results and own-bars forward returns (`horizon_basis = 'own_bars'`). They stay as written and are not comparable with engine v2 numbers.
 
-Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-13 to R3-B-16, R3-B-18, R3-B-22 (ADR-056 does not exist), dependency audits, licence, data rights, name.
+Schema drift (R3-B-15) is fixed in source by migration 0024 and checked in CI; the real database is not yet migrated.
+
+Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-13, R3-B-14, R3-B-16, R3-B-18, R3-B-22 (ADR-056 does not exist), dependency audits, licence, data rights, name.
 
 ## Delivery record
 
