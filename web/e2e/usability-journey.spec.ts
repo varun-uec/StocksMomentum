@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { chooseLayout, expect, listSynthetic, resetDocuments, test, unlistSynthetic } from './fixtures';
+import { chooseLayout, expect, resetDocuments, test } from './fixtures';
 
 /**
  * Usability journey (round 4): find a stock, open its chart, run the strategy,
@@ -8,8 +8,6 @@ import { chooseLayout, expect, listSynthetic, resetDocuments, test, unlistSynthe
  */
 
 test.beforeEach(() => resetDocuments());
-test.beforeAll(() => listSynthetic());
-test.afterAll(() => unlistSynthetic());
 
 async function chartReady(page: Page): Promise<void> {
   await page.waitForFunction(() => performance.getEntriesByName('wickstreet:chart-painted').length > 0);

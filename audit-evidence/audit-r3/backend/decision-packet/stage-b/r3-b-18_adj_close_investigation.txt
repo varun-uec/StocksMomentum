@@ -1,0 +1,26 @@
+R3-B-18 read-only investigation, 2026-10-21. Database: momentum25-db-1 (development), BEGIN READ ONLY.
+Nothing was written. Query: adj_close vs round(close * adj_factor, 4) on rows where adj_close is not null.
+
+ohlcv_daily rows                                   3,206,035
+adj_close NULL                                       553,534  (priced exactly by close x adj_factor; no engine reads adj_close)
+adj_close differs from round(close*adj_factor,4)      56,134  in 98 securities, dates 2019-10-01 to 2026-07-27
+  of which equal round(close * round(adj_factor,4), 4)  56,134  (all of them: a 4-dp factor was used)
+  of which neither                                           0
+  provenance 'published'                              56,134
+max relative gap                                       0.2659 %
+rows in the last 400 days                               1,355
+rows with adj_factor = 1 and adj_close <> close              0
+
+Root cause: an earlier writer multiplied close by the factor rounded to 4 dp. The current writer
+(SqlOHLCVRepository.update_adjustment_factors) multiplies by the 8-dp factor in one UPDATE, so the
+two columns agree. The 22,328 in the register was an earlier, narrower count.
+
+Impact: none on results. Backtest, RS and screening read close x adj_factor (R3-B-30). Only a reader of
+the stored adj_close column sees the gap (point-in-time bars derive their own adj_close).
+
+Repair (NOT run; needs owner approval for a development-database write):
+  UPDATE ohlcv_daily SET adj_close = round(close * adj_factor, 4)
+   WHERE adj_close IS NOT NULL AND adj_close <> round(close * adj_factor, 4);
+adj_close is listed as volatile in infrastructure/persistence/history.py (_VOLATILE). Before the write, check on a
+clone whether the trigger still bumps revision_id, because that moves the data revision and the data_version.
+Run it in one transaction and check the count is 56,134 first. Optionally fill the 553,534 NULLs the same way.

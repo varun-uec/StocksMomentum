@@ -37,7 +37,7 @@ The single-user app has no authentication and must remain loopback-only. An unau
 
 ## Round 3 audit, 2026-10-20
 
-Full record: [audit-evidence/audit-r3/AUDIT_REPORT.md](../../audit-evidence/audit-r3/AUDIT_REPORT.md). Verdict: **not ready for release.** The live screener is correct and deterministic. The walk-forward backtest fills 27% of notional at stale prices (R3-B-09, open, needs an owner decision). None of the Round 3 fixes is deployed: the running container still has the old image.
+Full record: [audit-evidence/audit-r3/AUDIT_REPORT.md](../../audit-evidence/audit-r3/AUDIT_REPORT.md). Verdict: **not ready for release.** The live screener is correct and deterministic. The audit found that the walk-forward backtest filled 27% of notional at stale prices (R3-B-09). That is fixed in source (backtest method v2, `371af70`). None of the Round 3 fixes is deployed: the running container still has the old image.
 
 | Check | Result |
 |---|---|
@@ -64,7 +64,9 @@ Records: [REMEDIATION_REGISTER.md](../../audit-evidence/audit-r3/REMEDIATION_REG
 
 Schema drift (R3-B-15) is fixed in source by migration 0024 and checked in CI; the real database is not yet migrated.
 
-Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-13, R3-B-14, R3-B-16, R3-B-18, R3-B-22 (ADR-056 does not exist), dependency audits, licence, data rights, name.
+**Round 4, 2026-10-21 (commits `7c1fcf5`, `7c008d9`).** Fixed in source: R3-B-13 (`/live` reports the stock's last bar and `data_sufficient` false when stale), R3-B-14 (the RS cache key carries the data revision), R3-B-16 (import-linter forbids application to infrastructure; 3 of 3 contracts kept), R3-B-19, R3-B-20 (in part). R3-R2-09 is mitigated: the experiment use cases refuse overrides they do not apply. R3-R2-10 is closed with the rules kept (stored strategies and the rule-registry fingerprint depend on them). R3-B-18 was investigated read-only: 56,134 rows (98 names) hold a 4-dp `adj_close`; the repair needs owner approval. The backtest page now shows symbols and a Trades table.
+
+Open: R3-B-31 data (no verified rename evidence; links empty, S-5), the session-basis forward-return backfill (needs owner approval), R3-B-18 repair (owner approval), R3-B-22 (ADR-056 does not exist; no code or product document cites it), R3-U-13, R3-B-17, R3-B-23, R3-B-24, dependency audits, licence, data rights, name.
 
 ## Delivery record
 
