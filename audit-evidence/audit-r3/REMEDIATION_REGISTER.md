@@ -170,5 +170,16 @@ Recalculated backtest returns are simulations, not validated investment performa
 **2026-10-21 Round 8 (owner decisions).**
 
 - **Backfill beyond 2022-12-30: NOT eligible, nothing written.** `research_end` (ADR-014 section 6, `strategy_evaluation.py`) ends the research window at the last decision whose 120-session window closes before the hold-out: 2022-07-06. The 6 dates 2022-07-29 to 2022-12-30 lie in the gap the ADR reserves before the hold-out. Short-horizon rows for them would use the gap as in-sample, they have no engine-v2 runs, and the 120d window needs bars from 2023-01-02. Policy-defined, so not an uncertain boundary. No bar at or after 2023-01-02 was read.
-- **Dashboard check** (served on 127.0.0.1, stopped): findings are in the Round 8 report to the owner; the dashboard was not edited.
+- **Round 8 status: 7 of 8 steps done, 1 blocked.** Step 6 (backfill beyond 2022-12-30) is BLOCKED. It depends on a hold-out and partition decision the owner has NOT approved. No eligible In-Sample observations exist: `research_end` is 2022-07-06 and the 6 later dates lie in the gap before the hold-out.
+- **Dashboard check** (served on 127.0.0.1 and stopped; Chromium at 390, 768 and 1440 px, all 21 task articles). Defects fixed in `.dashboard/index.html` (not tracked): (1) at 768 px the page scrolled sideways by 267 px, because the grid column grew to its widest table; (2) at 390 px the "What" column of deliverables tables wrapped one character per line; (3) scrolling cards were not keyboard-focusable or labelled; (4) a missing field showed "undefined", and a missing defect status gave a broken class. The renderer now tolerates these. The record data check found no malformed task records; history and evidence text are unchanged. The planning-drafts and docs tasks have no "doing" steps; both are marked historical. Screenshots: `audit-evidence/audit-r3/dashboard-r8/`. Wide tables now scroll inside their card (focusable, labelled region), with no clipping.
+- **ADR-014 section 12: six open acceptance criteria. None approved.**
+
+| # | Criterion | The owner must decide | Status |
+|---|---|---|---|
+| 1 | The Studio family owns variant runs | Accept or reject this ownership | Not approved |
+| 2 | Hypothesis text for a handoff-created variant | The user must state one, or the variant must join an existing family | Not approved |
+| 3 | Where the in-sample variant run counts toward the family's research-run count (section 5) | Choose the counting rule | Not approved |
+| 4 | Experiment page copy for the handoff, in the fixed result-class labels | Approve the copy | Not approved |
+| 5 | Tests: override gives a stored child strategy with a new `config_hash`; run pins that hash; run never reads the hold-out; report states the variant, not the base; the 422 test is replaced by a handoff test, not deleted | Nothing until 1 to 4 are decided; engineering then writes the tests | Not approved; tests not written |
+| 6 | R3-R2-09 moves from Mitigated to Fixed only after 1 to 5 pass | Nothing until 1 to 5 pass | Stays MITIGATED |
 - **R3-B-08, R3-B-29, R3-R2-09, R3-R2-12, R3-B-24, R3-B-31:** see the rows. Owner confirmations on R3-B-08 and R3-B-29 are now recorded.
