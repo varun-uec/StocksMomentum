@@ -137,6 +137,13 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .ws-shell[data-route='chart'] { --ws-status: 0px; }
 .chart-footnote { min-width: 0; flex-shrink: 1 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #5f7280; }
 .dark .chart-footnote { color: #95a5b0; }
+.chart-footnote-note { display: none; }
+.chart-footnote-content { top: auto; bottom: 34px; left: 0; right: auto; font-size: 12px; line-height: 1.4; white-space: normal; }
+@media (max-width: 599px) {
+  .chart-footnote { display: none; }
+  .chart-footnote-note { display: block; }
+  .chart-footnote-note .study-options-content { right: auto; }
+}
 .chart-cell-label { position: absolute; z-index: 10; top: 2px; left: 4px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-radius: 3px; background: color-mix(in srgb, var(--ws-surface) 85%, transparent); }
 /* The grouped drawing rail (A4.1): corner arrows, flyouts and the phone "Draw" sheet. */
 .chart-rail-arrow { position: absolute; right: -3px; bottom: 0; width: 10px; height: 10px; padding: 1px; color: #8a9aa5; opacity: .7; border-radius: 2px; }

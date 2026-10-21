@@ -2042,6 +2042,12 @@ export function PriceChart({
               {rangeButtons}
               <span className="flex-1" />
               <span className="chart-footnote" title={footText}>{footText}</span>
+              {/* Phones: a touch screen cannot show the title, so the full text opens on tap (R3-U-13). */}
+              <span className="chart-footnote-note">
+                <InspectorDisclosure label="Data" name="Data source and version">
+                  <p className="study-options-content chart-footnote-content" role="note">{footText}</p>
+                </InspectorDisclosure>
+              </span>
               {scaleGroup}
               {fitButton}
             </>,
