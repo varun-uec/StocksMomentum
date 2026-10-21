@@ -120,11 +120,13 @@ def build_validation_windows(
 
 def compute_validation_summary(
     results: list[HistoricalValidationResult],
+    generated_on: date,
 ) -> HistoricalValidationReport:
     """Aggregate individual validation window results into a report.
 
     Args:
         results: List of HistoricalValidationResult for each window.
+        generated_on: The report date. The caller reads the clock; the domain does not.
 
     Returns:
         A consolidated HistoricalValidationReport.
@@ -145,7 +147,7 @@ def compute_validation_summary(
         total_trading_days=total_trading_days,
         total_successful_runs=total_successful,
         overall_pass_rate=overall_pass_rate,
-        generated_at=date.today().isoformat(),
+        generated_at=generated_on.isoformat(),
     )
 
 

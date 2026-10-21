@@ -16,3 +16,6 @@ Use the official **NSE EOD Bhavcopy** as the MVP primary data source, accessed t
 ## Alternatives considered
 - **Broker API (Kite/Upstox/Angel/Dhan):** richer (intraday, some fundamentals) but adds auth/token complexity, rate limits, per-user/paid licensing. Deferred to a future adapter.
 - **Paid vendor (EOD + fundamentals):** cleanest data but recurring cost; revisit for SaaS scale.
+
+## Update, 2026-10-21 (R3-B-21)
+The decision stands as a port. The default data path is now an offline import of data the operator may use: `import-eod`, corporate actions and benchmark closes. Direct exchange downloads are off unless `M25_DIRECT_EXCHANGE_DOWNLOADS_ENABLED` is set. The Bhavcopy adapter is optional. The data-use review is in `docs/history/audits/2026-10-19-m16-nse-data-use.md`.

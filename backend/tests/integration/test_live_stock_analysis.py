@@ -383,3 +383,42 @@ async def test_request_day_session_not_yet_ingested_is_not_stale(
 
     assert live.data_as_of == last_bar
     assert live.data_sufficient is True
+
+
+@pytest.mark.asyncio
+async def test_a_fund_unit_says_why_it_is_outside_the_screening_universe(
+    db_session: AsyncSession,
+) -> None:
+    """A name the reference universe excludes carries the reason, so the page can state it."""
+    start_date = date(2024, 1, 1)
+    request_date = start_date + timedelta(days=299)
+    fund = await _seed_security(db_session, "FUNDX", "Some ETF")
+    fund.isin = "INF204KB14I2"
+    equity = await _seed_security(db_session, "EQUITYX", "Some Equity")
+    equity.isin = "INE002A01018"
+    for model in (fund, equity):
+        await _seed_bars(db_session, model.id, _make_uptrend_bars(300, start_date, 100.0))
+    strategy_repo = SqlStrategyRepository(db_session)
+    strategy = _real_engine_strategy()
+    await strategy_repo.upsert(strategy)
+    await db_session.commit()
+
+    use_case = GetLiveStockAnalysis(
+        securities=SqlSecurityRepository(db_session),
+        ohlcv_repo=SqlOHLCVRepository(db_session),
+        strategies=strategy_repo,
+        indicator_pipeline=IndicatorPipelineImpl(db_session),
+        strategy_engine=_make_engine(),
+        explainability_builder=ExplainabilityBuilderImpl(),
+        nse_client=_FakeNSEClient([]),
+        refresh_gate=_AlwaysRefresh(),
+        calendar=get_nse_trading_calendar(),
+    )
+    fund_live = await use_case.execute("FUNDX", strategy.name, refresh=False, as_of=request_date)
+    equity_live = await use_case.execute(
+        "EQUITYX", strategy.name, refresh=False, as_of=request_date
+    )
+
+    assert fund_live.universe_exclusion is not None
+    assert "fund or ETF unit" in fund_live.universe_exclusion
+    assert equity_live.universe_exclusion is None

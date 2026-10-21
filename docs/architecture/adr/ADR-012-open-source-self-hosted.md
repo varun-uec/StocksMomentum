@@ -69,3 +69,6 @@ ADR-010 has no login. That is safe only when the network limits who can reach th
 - **Keep publishing all ports on all interfaces:** rejected. A no-login app on an open port lets anyone on the network change its state.
 - **A shared-secret token instead of auth:** deferred. It adds setup friction for the local case and is still weaker than a real proxy for the remote case.
 - **Closed source:** rejected. It does not meet the goal of an open project.
+
+## Update, 2026-10-21 (R3-B-21)
+Status stays Proposed. Implemented in code: loopback binding, the Host and Origin guard (421 and 403, one test per row of the request table), a 5 MiB request body cap (413, or 411 for a chunked write), and the rate limit with `Retry-After`. Not done, and owner decisions: the LICENSE and NOTICE files, name clearance, NSE and BSE terms.

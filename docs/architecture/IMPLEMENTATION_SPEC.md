@@ -503,7 +503,14 @@ stocks failing gates: rank = NULL, still scored & explained
 ```
 All sums use Decimal in sorted order; quantize `momentum_score`/`buy_setup_score` to 4 dp.
 
-**Gate engines are left out of both weighted scores** (R3-B-29). Among qualifiers a gate engine scores 1.0 by construction, so it adds only a constant; leaving it out does not change any rank.
+**Gates decide membership. Scores decide order** (R3-B-29).
+
+- A gate is a rule or an engine flagged `gate: true`. A name that fails any gate gets `rank = NULL`. It is still scored and explained.
+- A gate engine is left out of both weighted scores. Its configured weight (for example `trend_template: 3.0` in `momentum_weights`) has no effect. The remaining weights are re-normalised, so the score is a percentage of the non-gate engines only. The ADD §21 text sums every engine. The code does not.
+- For the production strategy this changes no rank. The Trend Template score is `passed rules / all rules`, so it is exactly 1.0 for every qualifier. A constant added to every qualifier moves no order.
+- The proof does not hold for any gate engine whose score can be below 1.0 for a qualifier. For such a strategy the code ranks without that engine, and the ADD formula would rank differently. No stored strategy does this.
+- A rule-level gate (for example `vol_liquidity_min`) inside a scored engine still counts in that engine's score. Only an engine-level gate is left out.
+- With no gate at all, every enabled engine must pass its own gate, and all engines count in the scores.
 
 **Tie-break** (engine v2). `symbol` and `isin` are the values recorded for the security when the run is made. A later rename never reorders a stored run. A missing ISIN sorts as the empty string. `security_id` makes the key unique.
 

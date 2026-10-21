@@ -1,5 +1,7 @@
 # Research Program 1 — Evidence-Based Strategy Evolution
 
+> **Caveat added 2026-10-21 (R3-B-32, R3-B-33). The report below is unchanged.** Forward returns quoted here come from the stored `own_bars` series. There, horizon *h* means the security's own next *h* bars, not *h* exchange sessions. A name with trading gaps gets a longer calendar horizon. Read-only check on the 20 in-sample monthly runs re-screened under engine v2 (runs 151 to 170, 120d, 26,082 matched pairs): mean return is +18.8% on `own_bars` and +17.9% on sessions, and 2,156 pairs differ by more than 5 points. The R3-B-33 defect (a raw exit close) does **not** touch these stored rows: 25,973 of 26,082 rows equal an `own_bars` recomputation with the exit adjusted. The conclusions below were not re-derived, and runs before engine v2 are not comparable with engine v2 runs. Evidence: [r3-b-33-basis-comparison](../../audit-evidence/audit-r3/r3-b-33-basis-comparison/summary.txt).
+
 **Date:** 2026-07-01
 **Scope:** Momentum25 production strategy (`minervini_trend_template`) vs. 6 deterministic
 benchmarks, evaluated across the first genuinely multi-regime dataset this platform has had.

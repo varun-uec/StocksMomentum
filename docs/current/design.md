@@ -73,7 +73,7 @@ hard_filters_passed = every gate engine and gate rule passed
 ```
 
 - **Gates.** A stock that fails a gate is still scored and explained, but gets `rank = None`. It is not in the qualified set.
-- **Gate engines are left out of the weighted scores.** Among qualifiers a gate engine scores 1.0 by construction, so it adds only a constant. The ADD §21 formula includes it. The ranking is the same either way.
+- **Gates decide membership; scores decide order.** Gate engines are left out of the weighted scores, and their configured weight has no effect. For the production strategy the Trend Template scores 1.0 (passed rules over all rules) for every qualifier, so the ADD §21 formula, which includes it, gives the same ranking. For a gate engine that can score below 1.0 among qualifiers, the code and the ADD formula differ. Rule-level gates stay inside their engine's score. Full statement: IMPLEMENTATION_SPEC §10.
 - **Ranking.** Sort qualifiers by `momentum_score` descending, then `buy_setup_score`, then `rs_rating`, then `symbol`, `isin` and `security_id` (the symbol and ISIN recorded with the run). Top 25 = rank ≤ 25.
 - **Precision.** Prices 0.01, scores 0.0001, percentages 0.01 (ADR-009).
 

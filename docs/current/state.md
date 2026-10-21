@@ -68,7 +68,7 @@ Schema drift (R3-B-15) is fixed in source by migration 0024 and checked in CI; t
 
 Round 4 results: backend `pytest` 1,046 passed; `ruff`, `mypy` (276 files) and `lint-imports` (3 contracts) clean; `alembic check` clean on a fresh migrated database; Vitest 148 passed; ESLint and `tsc` clean; Playwright full serial suite 232 passed, 0 failed, 8 opt-in skipped (19.9 min, isolated `_e2e` database); NFR-11 30 samples each, warm P95 152 ms, cold P95 228 ms.
 
-Open: R3-B-31 data (no verified rename evidence; links empty, S-5), R3-U-13, R3-B-17, R3-B-23, R3-B-24, dependency audits, licence, data rights, name.
+Open at the end of Round 4 (see Round 7 for the current list): R3-B-31 data, R3-U-13, R3-B-17, R3-B-23, R3-B-24, dependency audits, licence, data rights, name.
 
 **Round 5, 2026-10-21 (commits `87cbe12`, `4e93f99`).** `/health/live` is liveness only; `/health/data-freshness` carries `latest_session` and `data_revision`; the stock lookup uses the same freshness rule (R3-B-13). R3-B-22 closed. Dev database: R3-B-18 repaired (56,134 `adj_close` rows; revision and `data_version` unchanged), migrations 0022 to 0024 applied, API image redeployed locally at `4e93f99` (backup and rollback in the register). Dependency audits recorded, nothing upgraded: certifi (backend) and 12 dev-tooling npm findings (0 in production dependencies). Backend 1,048 passed.
 
@@ -121,9 +121,9 @@ Found while writing these docs. Not fixed.
 
 | # | Defect | Where |
 |---|---|---|
-| 5 | The research harness cannot apply parameter overrides: `apply_parameter_overrides` is never called. Every variant test so far was a one-off script. | `domain/research/services.py` |
-| 6 | `rs_sector_relative`, `rs_industry_relative`, `rs_line_uptrend` are still registered after v3 removed them. The v3 description names a high-tight-flag detector that does not exist. | `domain/engines/relative_strength.py`, strategy JSON |
-| 10 | Eleven dev-only npm advisories (typescript-eslint 7, tailwindcss 3 tool chain). Fixing them needs major upgrades. No runtime package is affected. | `web/package.json` |
+| 5 | The research harness cannot apply parameter overrides: `apply_parameter_overrides` is never called. The experiment use cases now refuse any override (HTTP 422), so no variant is reported as a base run (R3-R2-09). Wiring needs an owner decision on ADR-014 §4, §6 and §9. | `domain/research/services.py` |
+| 6 | Closed on purpose (R3-R2-10): `rs_sector_relative`, `rs_industry_relative` and `rs_line_uptrend` stay registered because stored strategy versions name them and removing a rule moves every `data_version`. No strategy file uses them. | `domain/engines/relative_strength.py` |
+| 10 | Seven dev-only npm advisories remain, all in the Tailwind 3 chain (`braces` has no patched release). `vite` and the typescript-eslint parser are upgraded; `npm audit --omit=dev` finds 0; `pip-audit` finds 0 (R3-R2-12). Fixing the rest needs Tailwind 4. | `web/package.json` |
 
 Fixed in M14 and M16 (2026-10-19):
 

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 and 014 **Accepted**. 012 **Proposed**. 015 is a placeholder.
+Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 (with its two amendments) and 014 **Accepted**. 012 and 015 are **Proposed**. Each ADR may end with a dated update that records what changed after acceptance. The decision text above it is not rewritten.
 
 | ADR | Title |
 |---|---|
@@ -18,4 +18,6 @@ Each ADR follows: **Context · Decision · Consequences · Alternatives consider
 | [012](./ADR-012-open-source-self-hosted.md) | Open-source, self-hosted, local by default *(Proposed)* |
 | [013](./ADR-013-web-stack-and-chart-data.md) | Web stack, chart data semantics, workspace persistence *(Accepted)* |
 | [014](./ADR-014-strategy-studio.md) | Strategy Studio: configured rules, three result classes, sealed hold-out *(Accepted 2026-10-18)* |
-| 015 | Licence *(placeholder)* |
+| [013a](./ADR-013-alert-amendment.md) | Amendment to 013: editable armed alerts and drawing snapshots *(Accepted 2026-10-19)* |
+| [013b](./ADR-013-line-alert-amendment.md) | Amendment to 013: sloped drawing alerts *(Accepted 2026-10-20)* |
+| [015](./ADR-015-licence.md) | Licence *(Proposed)* |

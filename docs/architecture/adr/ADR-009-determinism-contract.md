@@ -20,3 +20,10 @@ Establish a binding determinism contract:
 ## Alternatives considered
 - **Float throughout:** rejected — order/precision non-determinism.
 - **Fixed-point integers only:** rejected — Decimal is clearer and sufficient.
+
+## Update, 2026-10-21 (R3-B-21)
+Checks against this contract in Round 3 to 7:
+- The domain reads no clock. The one exception, the validation report date, is now an input that the application passes.
+- Run identity includes `run_date`. `data_version` hashes market data and engine versions, not the code commit or build id (ADR-014 §10).
+- The historical run token counts stored runs instead of reading the wall clock (R3-B-17).
+- Ties in ranking break by symbol, ISIN, then `security_id` (engine v2).

@@ -41,6 +41,31 @@ def in_reference_universe(
     )
 
 
+def reference_universe_exclusion(
+    exchange: str,
+    isin: str | None,
+    listing_date: date | None,
+    delisting_date: date | None,
+    on: date,
+) -> str | None:
+    """Say in one sentence why a security is outside the reference universe, or ``None``.
+
+    The tests are the ones of :func:`in_reference_universe`, in the same order.
+    """
+    if str(exchange) not in REFERENCE_EXCHANGES:
+        return (
+            f"it is listed on {exchange} only; the screening universe holds NSE and "
+            "dual-listed equities"
+        )
+    if not is_equity(isin or None):
+        return "it is a fund or ETF unit; the screening universe holds equities only"
+    if listing_date is not None and listing_date > on:
+        return f"it lists on {listing_date.isoformat()}, after {on.isoformat()}"
+    if delisting_date is not None and delisting_date <= on:
+        return f"it was delisted on {delisting_date.isoformat()}"
+    return None
+
+
 def reference_universe(securities: Iterable[Security], on: date) -> list[Security]:
     """The securities of ``securities`` in the reference universe on ``on``, in input order."""
     return [

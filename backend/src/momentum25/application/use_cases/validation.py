@@ -145,7 +145,7 @@ class HistoricalValidationUseCase:
         if latest is None:
             # No bars, no windows: the same empty report as too short a history.
             return replace(
-                compute_validation_summary([]),
+                compute_validation_summary([], date.today()),
                 strategy_name=strategy_name,
                 strategy_id=strategy.id or 0,
                 strategy_version=strategy.version,
@@ -177,7 +177,7 @@ class HistoricalValidationUseCase:
             )
 
         return replace(
-            compute_validation_summary(results),
+            compute_validation_summary(results, date.today()),
             strategy_name=strategy_name,
             strategy_id=strategy.id or 0,
             strategy_version=strategy.version,

@@ -45,6 +45,7 @@ from momentum25.domain.research.stop_loss import (
 )
 from momentum25.domain.research.trading_calendar import DataFreshness, assess_freshness
 from momentum25.domain.scoring.explainability import ExplainabilityBuilderImpl, StockExplanation
+from momentum25.domain.universe import reference_universe_exclusion
 from momentum25.domain.value_objects.indicators import IndicatorSet
 
 _DEFAULT_STRATEGY = "minervini_trend_template"
@@ -347,6 +348,9 @@ class LiveStockAnalysis:
     # unmeasured excess return is reported as absent, never as zero.
     relative_strength_vs_index: tuple[RelativeStrengthPoint, ...] = field(default_factory=tuple)
     benchmark_index: str | None = None
+    # Why the name can never be in a screening run, when the reference universe
+    # excludes it. ``None`` does not mean it is in the latest run.
+    universe_exclusion: str | None = None
 
 
 class GetLiveStockAnalysis:
@@ -430,6 +434,13 @@ class GetLiveStockAnalysis:
         stale = last_bar is None or self._missed_a_session(last_bar, reference_date)
         data_as_of = last_bar or reference_date
 
+        universe_exclusion = reference_universe_exclusion(
+            str(security.exchange),
+            security.isin,
+            security.listing_date,
+            security.delisting_date,
+            reference_date,
+        )
         indicators = await self._indicator_pipeline.compute(
             symbol, reference_date, strategy.config.indicators
         )
@@ -443,6 +454,7 @@ class GetLiveStockAnalysis:
                 bars_fetched=bars_fetched,
                 data_sufficient=False,
                 indicators=_indicator_snapshot(indicators),
+                universe_exclusion=universe_exclusion,
             )
 
         rs_rating, rs_basis = await self._resolve_rs_rating(symbol, strategy, reference_date)
@@ -518,6 +530,7 @@ class GetLiveStockAnalysis:
             trailing_stop=trailing_stop,
             relative_strength_vs_index=rs_vs_index,
             benchmark_index=benchmark_index,
+            universe_exclusion=universe_exclusion,
         )
 
     async def _last_bar_date(self, security_id: int, reference_date: date) -> date | None:
