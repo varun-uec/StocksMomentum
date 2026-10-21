@@ -43,6 +43,7 @@ from momentum25.infrastructure.scheduler.scheduler import SchedulerService
 from momentum25.interface.api.dependencies import evaluate_alerts_with
 from momentum25.interface.api.errors import register_exception_handlers
 from momentum25.interface.api.middleware import (
+    BodySizeLimitMiddleware,
     HostOriginGuardMiddleware,
     RateLimitMiddleware,
     RequestContextMiddleware,
@@ -244,6 +245,7 @@ def create_app() -> FastAPI:
     )
     # Inside the request logger, so rejected requests are still logged.
     app.add_middleware(HostOriginGuardMiddleware, allowed_hosts=settings.allowed_hosts)
+    app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(RequestContextMiddleware)
 
     register_exception_handlers(app)

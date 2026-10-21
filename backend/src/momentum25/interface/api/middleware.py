@@ -209,6 +209,46 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+MAX_BODY_BYTES = 5 * 1024 * 1024
+
+
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Refuse a request body above ``MAX_BODY_BYTES`` (R3-B-23).
+
+    The largest saved document (a workspace with its drawings) is far below the
+    cap. A declared ``Content-Length`` above it gets ``413``. A body with no
+    declared length (chunked) on a write gets ``411``, so the size is always known
+    before the handler reads it.
+    """
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Check the declared body size."""
+        declared = request.headers.get("content-length")
+        if declared is not None:
+            if not declared.isdigit() or int(declared) > MAX_BODY_BYTES:
+                return problem_response(
+                    status=413,
+                    title="payload_too_large",
+                    detail=f"Request body exceeds {MAX_BODY_BYTES} bytes.",
+                    type_="urn:momentum25:error:payload_too_large",
+                    instance=request.url.path,
+                )
+        elif (
+            request.method not in ("GET", "HEAD", "OPTIONS", "DELETE")
+            and "chunked" in request.headers.get("transfer-encoding", "").lower()
+        ):
+            return problem_response(
+                status=411,
+                title="length_required",
+                detail="Send a Content-Length header.",
+                type_="urn:momentum25:error:length_required",
+                instance=request.url.path,
+            )
+        return await call_next(request)
+
+
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 

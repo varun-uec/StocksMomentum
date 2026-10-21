@@ -157,8 +157,7 @@ class DeterminismVerificationUseCase:
         Returns:
             A dict with keys: run_id_a, run_id_b, is_deterministic, diffs.
         """
-        import time
-        ts = int(time.time())
+        ts = await self._historical_screening.next_sequence(strategy_name)
         # First run
         result_a = await self._historical_screening.execute(
             strategy_name, as_of_date, symbol_filter, run_suffix=f":det_a_{ts}"

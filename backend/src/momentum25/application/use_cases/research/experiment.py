@@ -116,9 +116,8 @@ class ExperimentUseCase:
         run_dates: tuple[date, ...],
     ) -> list[ExperimentResult]:
         """Run the strategy on multiple dates and aggregate results."""
-        import time
-
-        suffix = f":exp_{int(time.time())}"
+        sequence = await self._historical_screening.next_sequence(strategy_name)
+        suffix = f":exp_{sequence}"
         results = []
         for run_date in run_dates:
             result = await self._historical_screening.execute(

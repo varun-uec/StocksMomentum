@@ -75,11 +75,9 @@ async def run_screening_pipeline(
                 market_data_provider is not None or get_settings().direct_exchange_downloads_enabled
             )
         if ingest_enabled and market_data_provider is None:
-            import httpx
-
             from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
 
-            market_data_provider = BhavcopyProvider(httpx.AsyncClient())
+            market_data_provider = BhavcopyProvider()
         security_repo = SqlSecurityRepository(session)
         ohlcv_repo = SqlOHLCVRepository(session)
         screening_run_repo = SqlScreeningRunRepository(session)

@@ -111,6 +111,9 @@ class _FakeScreeningRunRepo:
     async def update(self, run: Any) -> None:
         self.updated_runs.append(run)
 
+    async def list_runs(self, **_: Any) -> tuple[list[Any], int]:
+        return [], 0
+
     async def save_results(self, run_id: int, scores: list[Any], rankings: list[Any]) -> None:
         pass
 

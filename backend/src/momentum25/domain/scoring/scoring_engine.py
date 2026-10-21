@@ -28,10 +28,11 @@ class ScoringEngineImpl:
     this class only combines them into the final momentum / buy-setup scores.
 
     Gate engines (``EngineConfig.gate``, e.g. the Trend Template) are excluded
-    from both weighted scores: among qualifiers a gate engine's score is 1.0 by
-    construction (``passed_gate`` requires every rule to pass), so it has zero
-    cross-sectional variance and contributes nothing but a constant offset.
-    Dropping it is provably rank-neutral and removes an artificial score floor.
+    from both weighted scores, and the remaining weights are re-normalised.
+    The Trend Template scores ``passed rules / all rules``, which is 1.0 for
+    every qualifier. It adds a constant, so dropping it moves no rank and removes
+    an artificial score floor. That holds only for a gate engine whose score is
+    1.0 among qualifiers. Rule-level gates stay inside their engine's score.
     """
 
     def score(

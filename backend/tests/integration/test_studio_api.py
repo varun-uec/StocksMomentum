@@ -23,7 +23,6 @@ from momentum25.domain.errors import ConflictError
 from momentum25.domain.strategy.config_codec import raw_from_config
 from momentum25.domain.strategy.rule_schemas import RULES, registry_version
 from momentum25.infrastructure.config.strategy_loader import load_strategy_file
-from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
 from momentum25.main import create_app
 
@@ -55,7 +54,6 @@ async def client(db_session: AsyncSession) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=create_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as http:
         yield http
-    await get_database().engine.dispose()
 
 
 async def _family(

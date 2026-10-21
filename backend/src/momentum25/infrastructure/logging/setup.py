@@ -20,11 +20,7 @@ def configure_logging(*, level: str = "INFO", json_logs: bool = True) -> None:
         level: Minimum log level name (e.g. ``"INFO"``).
         json_logs: Emit JSON when ``True``; otherwise a colorized console renderer.
     """
-    logging.basicConfig(
-        format="%(message)s",
-        stream=sys.stdout,
-        level=getattr(logging, level.upper(), logging.INFO),
-    )
+    log_level = getattr(logging, level.upper(), logging.INFO)
 
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -38,6 +34,23 @@ def configure_logging(*, level: str = "INFO", json_logs: bool = True) -> None:
         if json_logs
         else structlog.dev.ConsoleRenderer()
     )
+
+    # Stdlib records (APScheduler, uvicorn errors, SQLAlchemy) go through the
+    # same processors, so every line has one format (R3-B-20).
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(
+        structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=[structlog.stdlib.add_logger_name, *shared_processors],
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.processors.format_exc_info,
+                renderer,
+            ],
+        )
+    )
+    root = logging.getLogger()
+    root.handlers[:] = [handler]
+    root.setLevel(log_level)
 
     structlog.configure(
         processors=[*shared_processors, renderer],

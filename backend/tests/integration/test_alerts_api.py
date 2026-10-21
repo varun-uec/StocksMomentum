@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from momentum25.application.use_cases.alerts import EvaluateAlerts
 from momentum25.domain.entities.alert import Alert, AlertSource, SeriesPoint
 from momentum25.infrastructure.config.strategy_loader import load_strategy_file
-from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import AlertModel, OHLCVDailyModel, SecurityModel
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
 from momentum25.infrastructure.persistence.repositories.alerts import SqlAlertRepository
@@ -92,7 +91,6 @@ async def client(security_id: int) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=create_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as http:
         yield http
-    await get_database().engine.dispose()
 
 
 def _alert(**overrides: Any) -> dict[str, Any]:

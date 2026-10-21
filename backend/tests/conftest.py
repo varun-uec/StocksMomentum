@@ -79,6 +79,9 @@ async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         await conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
     async with get_database().session() as session:
         yield session
+    # Close the pool after the session returns its connection, so no connection
+    # outlives the test (R3-B-23).
+    await db_engine.dispose()
 
 
 @pytest.fixture

@@ -82,6 +82,26 @@ class HistoricalScreeningUseCase:
         self._strategy_engine = strategy_engine
         self._calendar = calendar
 
+    async def next_sequence(self, strategy_name: str) -> int:
+        """Return the next run sequence number for a strategy (R3-B-17).
+
+        A ``data_version`` needs a token so a repeat screen of the same date does
+        not break the run's unique key. The token counts the strategy's stored
+        runs. It depends on the database state, not on the wall clock, so the same
+        state gives the same ``data_version``. Two screens started at the same
+        instant can draw one number; the unique key then rejects the second.
+        """
+        strategy = await self._strategy_repo.get_active(strategy_name)
+        _, total = await self._screening_run_repo.list_runs(
+            status=None,
+            limit=1,
+            offset=0,
+            exclude_historical=False,
+            exclude_research=False,
+            strategy_id=strategy.id if strategy else None,
+        )
+        return int(total) + 1
+
     async def execute(
         self,
         strategy_name: str,
@@ -177,8 +197,7 @@ class HistoricalScreeningUseCase:
             raise ValueError("No securities to screen")
 
         # 3. Create the screening run
-        import time
-        unique_suffix = run_suffix or f":{int(time.time())}"
+        unique_suffix = run_suffix or f":{await self.next_sequence(strategy_name)}"
         basis = (
             f":pit:{point_in_time_data_version}"
             if point_in_time_data_version is not None

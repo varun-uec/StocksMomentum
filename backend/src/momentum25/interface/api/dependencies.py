@@ -399,11 +399,9 @@ async def get_execute_screening() -> AsyncIterator[ExecuteScreening]:
         settings = get_settings()
         market_data_provider = None
         if settings.direct_exchange_downloads_enabled:
-            import httpx
-
             from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
 
-            market_data_provider = BhavcopyProvider(httpx.AsyncClient())
+            market_data_provider = BhavcopyProvider()
         security_repo = SqlSecurityRepository(session)
         ohlcv_repo = SqlOHLCVRepository(session)
         screening_run_repo = SqlScreeningRunRepository(session)
@@ -447,12 +445,10 @@ async def get_refresh_corporate_actions() -> AsyncIterator[RefreshCorporateActio
             ),
         )
     async with _shared_session() as session:
-        import httpx
-
         from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
 
         yield RefreshCorporateActions(
-            market_data_provider=BhavcopyProvider(httpx.AsyncClient()),
+            market_data_provider=BhavcopyProvider(),
             security_repo=SqlSecurityRepository(session),
             corporate_action_repo=SqlCorporateActionRepository(session),
             ohlcv_repo=SqlOHLCVRepository(session),
@@ -475,15 +471,13 @@ async def get_refresh_latest_market_data() -> AsyncIterator[RefreshLatestMarketD
             ),
         )
     async with _shared_session() as session:
-        import httpx
-
         from momentum25.infrastructure.providers.bhavcopy import BhavcopyProvider
         from momentum25.infrastructure.providers.bse_bhavcopy import BSEBhavcopyProvider
 
         yield RefreshLatestMarketData(
             providers={
-                "NSE": BhavcopyProvider(httpx.AsyncClient()),
-                "BSE": BSEBhavcopyProvider(httpx.AsyncClient()),
+                "NSE": BhavcopyProvider(),
+                "BSE": BSEBhavcopyProvider(),
             },
             security_repo=SqlSecurityRepository(session),
             ohlcv_repo=SqlOHLCVRepository(session),
