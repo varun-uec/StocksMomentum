@@ -99,3 +99,12 @@ async def test_forced_run_is_rejected_before_creating_a_run_when_downloads_are_d
         assert runs.status_code == 200
         assert runs.json()["total"] == 0
     get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("path", ["/api/v1/runs/{n}", "/api/v1/rankings/runs/{n}"])
+async def test_a_run_id_beyond_64_bits_is_rejected_not_a_server_error(
+    client: httpx.AsyncClient, path: str
+) -> None:
+    """R3-B-19: the driver overflowed on an id above 2**63 and the API answered 500."""
+    response = await client.get(path.format(n=10**20))
+    assert response.status_code == 422

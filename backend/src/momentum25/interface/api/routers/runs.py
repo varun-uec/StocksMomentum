@@ -25,6 +25,7 @@ from momentum25.interface.api.dependencies import (
     get_list_runs,
     get_trigger_refresh,
 )
+from momentum25.interface.api.params import EntityId
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -142,7 +143,7 @@ async def get_latest_run_for_strategy(
 
 @router.get("/{run_id}", response_model=RunDTO)
 async def get_run(
-    run_id: int,
+    run_id: EntityId,
     use_case: Annotated[GetRun, Depends(get_get_run)],
 ) -> RunDTO:
     """Return a single run's status and stats."""

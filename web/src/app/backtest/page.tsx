@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { runWalkForwardBacktest } from '@/lib/api-client';
 import { Card, MetricCard, LoadingSpinner, ErrorMessage, PageHeader, EmptyState } from '@/components/shared/Card';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -10,6 +11,20 @@ const inputClass = 'px-3 py-2 rounded-lg border border-slate-300 dark:border-sla
 
 function formatPercent(value: string): string {
   return `${(parseFloat(value) * 100).toFixed(2)}%`;
+}
+
+/** Fills shown in the table; the full log stays in the API response. */
+const TRADE_ROWS_SHOWN = 500;
+
+/** A symbol that opens its chart, or the security id when no symbol is stored. */
+function SecurityCell({ id, symbols }: { id: number; symbols: Record<string, string> }) {
+  const symbol = symbols[String(id)];
+  if (!symbol) return <span className="tabular-nums">{id}</span>;
+  return (
+    <Link to={`/chart/${encodeURIComponent(symbol)}`} className={`text-indigo-700 dark:text-indigo-300 hover:underline ${focusRing}`}>
+      {symbol}
+    </Link>
+  );
 }
 
 export default function BacktestPage() {
@@ -133,7 +148,7 @@ export default function BacktestPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
                       {result.nontrading_holdings.map((h) => (
                         <tr key={h.security_id}>
-                          <td className="px-3 py-3 tabular-nums">{h.security_id}</td>
+                          <td className="px-3 py-3"><SecurityCell id={h.security_id} symbols={result.symbols} /></td>
                           <td className="px-3 py-3">{h.last_bar_date}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{h.sessions_without_bar}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{formatPercent(h.weight)}</td>
@@ -194,6 +209,54 @@ export default function BacktestPage() {
                       <Line type="monotone" dataKey="nav" name="NAV" stroke={chartPalette.info} dot={false} strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
+                </div>
+              </Card>
+            )}
+
+            {result.trades.length === 0 && (
+              <div role="status" className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+                No fills in this range. Read the Eligible column in the rebalance log: a name needs a stored listing date at least 252 days before the decision, and bars to score on.
+              </div>
+            )}
+
+            {result.trades.length > 0 && (
+              <Card
+                title="Trades"
+                subtitle={
+                  result.trades.length > TRADE_ROWS_SHOWN
+                    ? `First ${TRADE_ROWS_SHOWN} of ${result.trades.length} fills`
+                    : `${result.trades.length} fills`
+                }
+              >
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700/60">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/60 text-slate-500 uppercase tracking-wider">
+                        <th scope="col" className="text-left px-3 py-3">Fill date</th>
+                        <th scope="col" className="text-left px-3 py-3">Security</th>
+                        <th scope="col" className="text-left px-3 py-3">Side</th>
+                        <th scope="col" className="text-right px-3 py-3">Quantity</th>
+                        <th scope="col" className="text-right px-3 py-3">Price</th>
+                        <th scope="col" className="text-right px-3 py-3">Cost</th>
+                        <th scope="col" className="text-left px-3 py-3">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40" data-testid="backtest-trades">
+                      {result.trades.slice(0, TRADE_ROWS_SHOWN).map((t, i) => (
+                        <tr key={`${t.fill_date}-${t.security_id}-${t.side}-${i}`}>
+                          <td className="px-3 py-3">{t.fill_date}</td>
+                          <td className="px-3 py-3"><SecurityCell id={t.security_id} symbols={result.symbols} /></td>
+                          <td className="px-3 py-3">{t.side}</td>
+                          <td className="px-3 py-3 text-right tabular-nums">{Math.abs(parseFloat(t.quantity)).toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
+                          <td className="px-3 py-3 text-right tabular-nums">{parseFloat(t.fill_price).toFixed(2)}</td>
+                          <td className="px-3 py-3 text-right tabular-nums">{parseFloat(t.cost).toFixed(2)}</td>
+                          <td className="px-3 py-3 text-slate-500">
+                            {[t.partial ? 'partial' : '', t.delay_sessions > 0 ? `${t.delay_sessions} sessions late` : ''].filter(Boolean).join(', ')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </Card>
             )}

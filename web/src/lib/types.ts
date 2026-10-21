@@ -1143,4 +1143,6 @@ export interface BacktestResponse {
   provenance: BacktestProvenance;
   simulation_notice: string;
   survivorship_warning: string;
+  /** Symbol of each security id the result names; an id with no stored security is absent. */
+  symbols: Record<string, string>;
 }

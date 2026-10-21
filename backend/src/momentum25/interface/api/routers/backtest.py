@@ -17,13 +17,16 @@ from starlette.concurrency import run_in_threadpool
 from momentum25.application.dto.walk_forward import (
     BacktestRequest,
     BacktestResponse,
+    referenced_security_ids,
     to_backtest_response,
 )
 from momentum25.application.use_cases.walk_forward import WalkForwardRunner
+from momentum25.domain.ports.repositories import SecurityRepository
 from momentum25.domain.value_objects.manifest import DataManifest
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
 )
+from momentum25.interface.api.dependencies import get_security_repo
 from momentum25.interface.walk_forward_wiring import build_walk_forward_runner
 
 router = APIRouter(prefix="/backtest", tags=["backtest"])
@@ -49,6 +52,7 @@ def get_walk_forward_runner_factory() -> RunnerFactory:
 async def run_walk_forward(
     body: BacktestRequest,
     runner_factory: Annotated[RunnerFactory, Depends(get_walk_forward_runner_factory)],
+    securities: Annotated[SecurityRepository, Depends(get_security_repo)],
 ) -> BacktestResponse:
     """Run the backtest over ``[start, end]`` and return its full log."""
     if body.start > body.end:
@@ -62,6 +66,12 @@ async def run_walk_forward(
     result = await run_in_threadpool(
         runner.run, body.start, body.end, body.initial_capital
     )
+    wanted = referenced_security_ids(result)
+    symbols = {
+        s.id: str(s.symbol)
+        for s in await securities.list_all()
+        if s.id is not None and s.id in wanted
+    }
     return to_backtest_response(
-        result, body.start, body.end, SURVIVORSHIP_ELIGIBILITY_WARNING, manifest
+        result, body.start, body.end, SURVIVORSHIP_ELIGIBILITY_WARNING, manifest, symbols
     )

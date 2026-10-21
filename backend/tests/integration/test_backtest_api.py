@@ -22,10 +22,13 @@ from momentum25.application.use_cases.walk_forward import (
     WalkForwardResult,
 )
 from momentum25.domain.backtest.execution import ExecutionPolicy
+from momentum25.domain.entities.security import Security
 from momentum25.domain.value_objects.manifest import DataManifest
+from momentum25.domain.value_objects.types import Symbol
 from momentum25.infrastructure.persistence.repositories.walk_forward_market_data import (
     SURVIVORSHIP_ELIGIBILITY_WARNING,
 )
+from momentum25.interface.api.dependencies import get_security_repo
 from momentum25.interface.api.routers.backtest import get_walk_forward_runner_factory
 from momentum25.main import create_app
 
@@ -99,8 +102,16 @@ class _StubRunner:
         return _RESULT
 
 
+class _StubSecurities:
+    """Knows security 7 only; 9 has no stored security."""
+
+    async def list_all(self) -> list[Security]:
+        return [Security(symbol=Symbol("SEVEN"), name="Seven", id=7)]
+
+
 def _client() -> TestClient:
     app = create_app()
+    app.dependency_overrides[get_security_repo] = lambda: _StubSecurities()
 
     async def _factory(start: date, end: date) -> tuple[_StubRunner, DataManifest]:
         return _StubRunner(), _MANIFEST
@@ -163,3 +174,12 @@ def test_reversed_date_range_is_rejected() -> None:
         json={"start": "2023-08-31", "end": "2023-03-01"},
     )
     assert response.status_code == 422
+
+
+def test_response_names_the_symbols_it_can_resolve() -> None:
+    """Ids alone are unreadable in the UI; 9 has no stored security and stays absent."""
+    body = _client().post(
+        "/api/v1/backtest/walk-forward",
+        json={"start": "2023-03-01", "end": "2023-08-31"},
+    ).json()
+    assert body["symbols"] == {"7": "SEVEN"}

@@ -37,6 +37,7 @@ from momentum25.interface.api.dependencies import (
     get_submit_evaluation,
     run_evaluation_job,
 )
+from momentum25.interface.api.params import EntityId
 
 router = APIRouter(prefix="/studio", tags=["studio"])
 
@@ -66,7 +67,7 @@ async def create_family(
 
 @router.post("/families/{family_id}/strategies", response_model=StudioStrategyDTO, status_code=201)
 async def save_strategy(
-    family_id: int,
+    family_id: EntityId,
     request: SaveStrategyRequest,
     use_case: Annotated[SaveStrategy, Depends(get_save_strategy)],
 ) -> StudioStrategyDTO:
@@ -76,7 +77,7 @@ async def save_strategy(
 
 @router.post("/families/{family_id}/evaluations", response_model=EvaluationDTO, status_code=202)
 async def submit_evaluation(
-    family_id: int,
+    family_id: EntityId,
     request: SubmitEvaluationRequest,
     background_tasks: BackgroundTasks,
     use_case: Annotated[SubmitEvaluation, Depends(get_submit_evaluation)],
@@ -92,7 +93,7 @@ async def submit_evaluation(
 
 @router.get("/families/{family_id}/evaluations", response_model=list[EvaluationDTO])
 async def list_evaluations(
-    family_id: int,
+    family_id: EntityId,
     use_case: Annotated[ListEvaluations, Depends(get_list_evaluations)],
 ) -> list[EvaluationDTO]:
     """A family's evaluations, newest first."""
@@ -101,7 +102,7 @@ async def list_evaluations(
 
 @router.get("/evaluations/{evaluation_id}", response_model=EvaluationDTO)
 async def get_evaluation(
-    evaluation_id: int,
+    evaluation_id: EntityId,
     use_case: Annotated[GetEvaluation, Depends(get_get_evaluation)],
 ) -> EvaluationDTO:
     """One evaluation with its progress and, once complete, its result."""
@@ -110,7 +111,7 @@ async def get_evaluation(
 
 @router.post("/evaluations/{evaluation_id}/retry", response_model=EvaluationDTO, status_code=202)
 async def retry_evaluation(
-    evaluation_id: int,
+    evaluation_id: EntityId,
     background_tasks: BackgroundTasks,
     use_case: Annotated[RetryEvaluation, Depends(get_retry_evaluation)],
 ) -> EvaluationDTO:

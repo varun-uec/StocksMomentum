@@ -31,6 +31,7 @@ from momentum25.interface.api.dependencies import (
     get_mark_alerts_seen,
     get_rearm_alert,
 )
+from momentum25.interface.api.params import EntityId
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -52,7 +53,7 @@ async def create_alert(
 
 @router.delete("/{alert_id}", status_code=204)
 async def delete_alert(
-    alert_id: int, use_case: Annotated[DeleteAlert, Depends(get_delete_alert)]
+    alert_id: EntityId, use_case: Annotated[DeleteAlert, Depends(get_delete_alert)]
 ) -> Response:
     """Delete an alert."""
     await use_case.execute(alert_id)
@@ -61,7 +62,7 @@ async def delete_alert(
 
 @router.patch("/{alert_id}", response_model=AlertDTO)
 async def edit_alert(
-    alert_id: int,
+    alert_id: EntityId,
     request: EditAlertRequest,
     use_case: Annotated[EditAlert, Depends(get_edit_alert)],
 ) -> AlertDTO:
@@ -71,7 +72,7 @@ async def edit_alert(
 
 @router.post("/{alert_id}/rearm", response_model=AlertDTO)
 async def rearm_alert(
-    alert_id: int, use_case: Annotated[RearmAlert, Depends(get_rearm_alert)]
+    alert_id: EntityId, use_case: Annotated[RearmAlert, Depends(get_rearm_alert)]
 ) -> AlertDTO:
     """Make a fired alert watch again, from bars after the last stored session."""
     return await use_case.execute(alert_id)

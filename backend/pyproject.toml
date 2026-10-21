@@ -37,7 +37,7 @@ dev = [
 ]
 
 [project.scripts]
-momentum25 = "momentum25.interface.cli.main:app"
+momentum25 = "momentum25.interface.cli.main:main"
 
 [build-system]
 requires = ["hatchling"]

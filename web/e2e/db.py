@@ -10,6 +10,7 @@
           watch one fire on bars already stored (the synthetic fixture gets no new bars).
 ``holdout-provenance`` Set the isolated 2023–2025 E2E hold-out months to published or
           reconstructed, for the Strategy Studio insufficient-provenance case.
+``list-synthetic`` / ``unlist-synthetic``  Set or clear the E2E10Y listing dates (backtest journey).
 ``bump-synthetic-close`` Correct the latest synthetic E2E10Y0 bar by 0.0001 for
           each invocation, forcing a new manifest and screening execution.
 
@@ -199,8 +200,10 @@ async def main(command: str, url: str, *arguments: str) -> None:
         "bump-synthetic-close",
         "extra-bar",
         "drop-extra-bar",
+        "list-synthetic",
+        "unlist-synthetic",
     }:
-        sys.exit("usage: db.py {verify|seed|reset|age-alerts|holdout-provenance}")
+        sys.exit("usage: db.py {verify|seed|reset|age-alerts|holdout-provenance|list-synthetic}")
     if command == "holdout-provenance":
         if len(arguments) != 1 or arguments[0] not in {"published", "reconstructed"}:
             sys.exit("usage: db.py holdout-provenance {published|reconstructed}")
@@ -269,6 +272,14 @@ async def main(command: str, url: str, *arguments: str) -> None:
             return
         if command == "age-alerts":
             await conn.execute("UPDATE alerts SET armed_after = armed_after - 30")
+            return
+        if command in {"list-synthetic", "unlist-synthetic"}:
+            # A backtest needs a stored listing date 252 days before each decision.
+            # The seed leaves it empty, so the backtest journey sets it, then clears it.
+            listed = "DATE '2010-01-04'" if command == "list-synthetic" else "NULL"
+            await conn.execute(
+                f"UPDATE securities SET listing_date = {listed} WHERE symbol LIKE 'E2E10Y%'"
+            )
             return
         if command == "bump-synthetic-close":
             result = await conn.execute(

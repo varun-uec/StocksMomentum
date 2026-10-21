@@ -1536,6 +1536,13 @@ export interface components {
             simulation_notice: string;
             /** Survivorship Warning */
             survivorship_warning: string;
+            /**
+             * Symbols
+             * @default {}
+             */
+            symbols: {
+                [key: string]: string;
+            };
         };
         /**
          * BenchmarkComparisonDTO

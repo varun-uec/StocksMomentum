@@ -151,6 +151,18 @@ class BacktestResponse(BaseModel):
     provenance: BacktestProvenance
     simulation_notice: str
     survivorship_warning: str
+    # Symbol of every security id the result names. An id with no stored security is absent.
+    symbols: dict[int, str] = {}
+
+
+def referenced_security_ids(result: WalkForwardResult) -> set[int]:
+    """Every security id the result names, for the symbol lookup."""
+    return (
+        {t.security_id for t in result.trades}
+        | {o.security_id for o in result.closed_orders}
+        | {h.security_id for h in result.nontrading_holdings}
+        | {i for r in result.rebalances for i in r.selected}
+    )
 
 
 def to_trade_dto(record: TradeRecord) -> TradeDTO:
@@ -216,6 +228,7 @@ def to_backtest_response(
     end: date,
     survivorship_warning: str,
     manifest: DataManifest,
+    symbols: dict[int, str] | None = None,
 ) -> BacktestResponse:
     """Map a runner result and the manifest of its data to the API response."""
     lower_return = (
@@ -265,4 +278,5 @@ def to_backtest_response(
         ),
         simulation_notice=SIMULATION_NOTICE,
         survivorship_warning=survivorship_warning,
+        symbols=symbols or {},
     )

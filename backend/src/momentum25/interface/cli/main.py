@@ -8,6 +8,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import typer
+from sqlalchemy.exc import SQLAlchemyError
 
 from momentum25.application.use_cases.import_market_data import (
     ImportBenchmarkCsv,
@@ -185,5 +186,14 @@ async def _import_benchmark(file: Path) -> dict[str, int | str]:
         return await ImportBenchmarkCsv(SqlBenchmarkIndexRepository(session)).execute(file)
 
 
+def main() -> None:
+    """Run the CLI; a database or network failure prints one line, not a traceback (R3-B-20)."""
+    try:
+        app()
+    except (OSError, SQLAlchemyError) as exc:
+        typer.echo(f"Failed: {type(exc).__name__}: {exc}", err=True)
+        raise SystemExit(1) from exc
+
+
 if __name__ == "__main__":
-    app()
+    main()
