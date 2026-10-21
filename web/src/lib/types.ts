@@ -706,6 +706,8 @@ export interface LiveStockAnalysis {
   refreshed: boolean;
   bars_fetched: number;
   data_sufficient: boolean;
+  /** Why the reference universe excludes the name, or null. Null does not mean it is in the latest run. */
+  universe_exclusion?: string | null;
   explanation: StockExplanation | null;
   indeterminate_rules: string[];
   rs_basis: Record<string, unknown>;

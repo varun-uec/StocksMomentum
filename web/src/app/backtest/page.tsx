@@ -16,12 +16,19 @@ function formatPercent(value: string): string {
 /** Fills shown in the table; the full log stays in the API response. */
 const TRADE_ROWS_SHOWN = 500;
 
-/** A symbol that opens its chart, or the security id when no symbol is stored. */
-function SecurityCell({ id, symbols }: { id: number; symbols: Record<string, string> }) {
+/**
+ * A symbol that opens its chart as it stood on `asOf` (bar replay), or the security id
+ * when no symbol is stored. The date is the fill or last-bar date of the row.
+ */
+function SecurityCell({ id, symbols, asOf }: { id: number; symbols: Record<string, string>; asOf: string }) {
   const symbol = symbols[String(id)];
   if (!symbol) return <span className="tabular-nums">{id}</span>;
   return (
-    <Link to={`/chart/${encodeURIComponent(symbol)}`} className={`text-indigo-700 dark:text-indigo-300 hover:underline ${focusRing}`}>
+    <Link
+      to={`/chart/${encodeURIComponent(symbol)}?replay=${asOf}`}
+      title={`Open ${symbol} as it stood on ${asOf}`}
+      className={`text-indigo-700 dark:text-indigo-300 hover:underline ${focusRing}`}
+    >
       {symbol}
     </Link>
   );
@@ -148,7 +155,7 @@ export default function BacktestPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
                       {result.nontrading_holdings.map((h) => (
                         <tr key={h.security_id}>
-                          <td className="px-3 py-3"><SecurityCell id={h.security_id} symbols={result.symbols} /></td>
+                          <td className="px-3 py-3"><SecurityCell id={h.security_id} symbols={result.symbols} asOf={h.last_bar_date} /></td>
                           <td className="px-3 py-3">{h.last_bar_date}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{h.sessions_without_bar}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{formatPercent(h.weight)}</td>
@@ -245,7 +252,7 @@ export default function BacktestPage() {
                       {result.trades.slice(0, TRADE_ROWS_SHOWN).map((t, i) => (
                         <tr key={`${t.fill_date}-${t.security_id}-${t.side}-${i}`}>
                           <td className="px-3 py-3">{t.fill_date}</td>
-                          <td className="px-3 py-3"><SecurityCell id={t.security_id} symbols={result.symbols} /></td>
+                          <td className="px-3 py-3"><SecurityCell id={t.security_id} symbols={result.symbols} asOf={t.fill_date} /></td>
                           <td className="px-3 py-3">{t.side}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{Math.abs(parseFloat(t.quantity)).toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
                           <td className="px-3 py-3 text-right tabular-nums">{parseFloat(t.fill_price).toFixed(2)}</td>

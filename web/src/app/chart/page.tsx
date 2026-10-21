@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useStrategy } from '@/app/strategy-context';
 import { LoadingSpinner } from '@/components/shared/Card';
@@ -37,7 +37,7 @@ import { useChartSlot } from '@/components/workspace/useChartSlot';
 import { useSecuritySearch } from '@/components/workspace/useSecuritySearch';
 import { createCrosshairSync, type CrosshairSync } from '@/lib/crosshair-sync';
 import { getLatestRunForStrategy, getOhlcv, listStrategies } from '@/lib/api-client';
-import type { ReplayState } from '@/lib/replay';
+import { sessionOnOrBefore, type ReplayState } from '@/lib/replay';
 import { isTyping, opensSearch } from '@/lib/shortcuts';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { focusRing } from '@/lib/theme';
@@ -307,6 +307,20 @@ function ChartWorkspace({ symbol }: { symbol: string }) {
     const dates = shell.bars.map((b) => b.date);
     if (dates.length > 1) setReplay({ date: dates[Math.max(0, dates.length - 61)], playing: false, speed: '1×' });
   };
+  // A link from a result (a backtest fill) opens the chart as it stood on that date: `?replay=YYYY-MM-DD`.
+  // It applies once per symbol and date; exiting replay does not bring it back.
+  const [searchParams] = useSearchParams();
+  const replayParam = searchParams.get('replay');
+  const appliedReplay = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${symbol}:${replayParam}`;
+    if (!replayParam || !/^\d{4}-\d{2}-\d{2}$/.test(replayParam) || appliedReplay.current === key) return;
+    const dates = shell.bars.map((b) => b.date);
+    if (dates.length < 2) return;
+    appliedReplay.current = key;
+    const date = sessionOnOrBefore(dates, replayParam);
+    if (date) setReplay({ date, playing: false, speed: '1×' });
+  }, [replayParam, symbol, shell.bars]);
   const watchlist = useWatchlistDetail(strategyName, strategyHash);
   const toggleWatchlist = useWatchlistToggle();
   const listed = watchlist.data?.items.some((i) => i.symbol === symbol) ?? false;

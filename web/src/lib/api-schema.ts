@@ -2581,6 +2581,8 @@ export interface components {
             relative_strength_vs_index?: components["schemas"]["RelativeStrengthPoint"][];
             /** Benchmark Index */
             benchmark_index?: string | null;
+            /** Universe Exclusion */
+            universe_exclusion?: string | null;
         };
         /**
          * LivenessDTO

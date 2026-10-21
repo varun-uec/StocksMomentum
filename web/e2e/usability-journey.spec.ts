@@ -42,14 +42,19 @@ test('journey: find stock → chart → run strategy → ranking → backtest �
   await expect(page.getByTestId('backtest-provenance')).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('note')).toContainText(/simulation/i);
 
-  // The trades are readable: a symbol that opens its chart, not a bare id.
+  // The trades are readable: a symbol that opens its chart as it stood on the fill date, not a bare id.
   const trades = page.getByTestId('backtest-trades');
-  await expect(trades.locator('tr').first()).toBeVisible();
-  const firstSymbol = trades.locator('tr').first().getByRole('link');
-  await expect(firstSymbol).toHaveAttribute('href', /^\/chart\/E2E10Y\d+$/);
+  const firstRow = trades.locator('tr').first();
+  await expect(firstRow).toBeVisible();
+  const fillDate = (await firstRow.locator('td').first().innerText()).trim();
+  const firstSymbol = firstRow.getByRole('link');
+  await expect(firstSymbol).toHaveAttribute('href', new RegExp(`^/chart/E2E10Y\\d+\\?replay=${fillDate}$`));
   await firstSymbol.click();
-  await expect(page).toHaveURL(/\/chart\/E2E10Y\d+$/);
+  await expect(page).toHaveURL(/\/chart\/E2E10Y\d+\?replay=\d{4}-\d{2}-\d{2}$/);
   await chartReady(page);
+  await expect(page.getByLabel('Replay date')).toHaveValue(fillDate);
+  await page.getByRole('button', { name: 'Exit replay' }).click();
+  await expect(page.getByLabel('Replay date')).toHaveCount(0);
 
   // Save and restore the workspace: the layout survives a reload.
   await chooseLayout(page, '2x2');

@@ -21,6 +21,7 @@
  */
 
 import { InspectorDisclosure } from '@/components/workspace/InspectorDisclosure';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useTheme } from '@/app/theme-provider';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -1934,6 +1935,8 @@ export function PriceChart({
         )}
     </>
   );
+  const phone = useMediaQuery('(max-width: 599px)');
+  const [footOpen, setFootOpen] = useState(false);
   const footText = isLoading
     ? 'Loading price series…'
     : (footnote ??
@@ -2041,13 +2044,15 @@ export function PriceChart({
             <>
               {rangeButtons}
               <span className="flex-1" />
-              <span className="chart-footnote" title={footText}>{footText}</span>
-              {/* Phones: a touch screen cannot show the title, so the full text opens on tap (R3-U-13). */}
-              <span className="chart-footnote-note">
-                <InspectorDisclosure label="Data" name="Data source and version">
-                  <p className="study-options-content chart-footnote-content" role="note">{footText}</p>
-                </InspectorDisclosure>
-              </span>
+              {phone ? (
+                // A touch screen cannot show a title: a tap opens the full line above the bar (R3-U-13).
+                <span className="chart-footnote-wrap" onKeyDown={(e) => { if (e.key === 'Escape' && footOpen) { e.stopPropagation(); setFootOpen(false); } }}>
+                  <button type="button" className="chart-footnote text-left" aria-expanded={footOpen} onClick={() => setFootOpen((open) => !open)}>{footText}</button>
+                  {footOpen && <p role="note" className="chart-footnote-content">{footText}</p>}
+                </span>
+              ) : (
+                <span className="chart-footnote" title={footText}>{footText}</span>
+              )}
               {scaleGroup}
               {fitButton}
             </>,

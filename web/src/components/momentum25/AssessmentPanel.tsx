@@ -105,7 +105,7 @@ export function AssessmentPanel({
           {explanation && <span className="ml-auto tabular-nums text-slate-500" title="Momentum score">{num(explanation.momentum_score)}</span>}
         </div>
         {isLive ? (
-          <p className="text-slate-500">Live analysis of the stored daily bars: {symbol} is not in this run, so it has no rank.</p>
+          <p className="text-slate-500">Live analysis of the stored daily bars: {symbol} is not in this run, so it has no rank.{live.data?.universe_exclusion ? ` It is outside the screening universe because ${live.data.universe_exclusion}.` : ''}</p>
         ) : null}
         <ProvenanceLine strategy={strategy} run={run} label={label} />
         {replay?.runId === null && (

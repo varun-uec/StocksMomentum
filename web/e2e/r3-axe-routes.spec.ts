@@ -75,3 +75,23 @@ test('scrollable regions take keyboard focus on a phone and on a desktop', async
   }
   expect(found, 'scrollable regions without keyboard access').toEqual([]);
 });
+
+test('R3-U-13: the phone chart opens the full data-source line on tap; a desktop shows it inline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/chart/${SYMBOL}`);
+  const line = page.getByRole('button', { name: /bars from the stored NSE series/ });
+  await expect(line).toBeVisible();
+  await expect(line).toHaveAttribute('aria-expanded', 'false');
+  await line.click();
+  await expect(line).toHaveAttribute('aria-expanded', 'true');
+  const note = page.getByRole('note').filter({ hasText: 'bars from the stored NSE series' });
+  await expect(note).toBeVisible();
+  const box = await note.boundingBox();
+  expect(box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0, 'the note stays inside the phone screen').toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(note).toBeHidden();
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.getByRole('button', { name: /bars from the stored NSE series/ })).toHaveCount(0);
+  await expect(page.locator('.chart-footnote')).toBeVisible();
+});

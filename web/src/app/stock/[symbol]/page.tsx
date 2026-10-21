@@ -221,7 +221,7 @@ export default function StockResearchPage() {
         message={
           unreachable
             ? 'Cannot reach the Momentum25 API. Check that the backend is running and reachable, then reload.'
-            : `No ${horizonLabel} analysis available for ${symbol}. It was not in the most recent screening run and could not be evaluated on demand either — it may have insufficient price history, or the symbol may not exist.`
+            : `No ${horizonLabel} analysis available for ${symbol}. It was not in the most recent screening run and could not be evaluated on demand either — it may have insufficient price history, or the symbol may not exist.${live?.universe_exclusion ? ` It is outside the screening universe because ${live.universe_exclusion}.` : ''}`
         }
       />
     );
@@ -301,8 +301,9 @@ export default function StockResearchPage() {
         {usingLiveFallback && (
           <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-800 dark:text-amber-300">
             {symbol} was not part of the latest {horizonLabel} screening run, so there is no rank,
-            percentile or score history for it. Everything below was evaluated on demand just now
-            using the same rules, against data as of {live?.data_as_of ?? '—'}.
+            percentile or score history for it.
+            {live?.universe_exclusion ? ` It is outside the screening universe because ${live.universe_exclusion}.` : ''}
+            {' '}Everything below was evaluated on demand just now using the same rules, against data as of {live?.data_as_of ?? '—'}.
           </div>
         )}
 

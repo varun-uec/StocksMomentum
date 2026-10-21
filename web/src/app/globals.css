@@ -137,13 +137,10 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .ws-shell[data-route='chart'] { --ws-status: 0px; }
 .chart-footnote { min-width: 0; flex-shrink: 1 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #5f7280; }
 .dark .chart-footnote { color: #95a5b0; }
-.chart-footnote-note { display: none; }
-.chart-footnote-content { top: auto; bottom: 34px; left: 0; right: auto; font-size: 12px; line-height: 1.4; white-space: normal; }
-@media (max-width: 599px) {
-  .chart-footnote { display: none; }
-  .chart-footnote-note { display: block; }
-  .chart-footnote-note .study-options-content { right: auto; }
-}
+.chart-footnote-wrap > button { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.chart-footnote-wrap > button::before { content: '\24D8\00a0' / ''; }
+.chart-footnote-wrap { position: relative; display: flex; min-width: 0; flex-shrink: 1 !important; }
+.chart-footnote-content { position: fixed; left: 12px; right: 12px; bottom: calc(var(--ws-phone-nav, 0px) + 52px); z-index: 30; padding: 10px 12px; border: 1px solid var(--ws-line); border-radius: 6px; background: var(--ws-surface); color: var(--ws-ink); box-shadow: 0 12px 32px #0002; font-size: 12px; line-height: 1.4; white-space: normal; }
 .chart-cell-label { position: absolute; z-index: 10; top: 2px; left: 4px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-radius: 3px; background: color-mix(in srgb, var(--ws-surface) 85%, transparent); }
 /* The grouped drawing rail (A4.1): corner arrows, flyouts and the phone "Draw" sheet. */
 .chart-rail-arrow { position: absolute; right: -3px; bottom: 0; width: 10px; height: 10px; padding: 1px; color: #8a9aa5; opacity: .7; border-radius: 2px; }
