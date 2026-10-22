@@ -95,7 +95,12 @@ class StartVariantRun:
                 "overrides: the variant would equal its parent. Name an existing "
                 "engine, rule or parameter and a different value"
             )
-        family, variant, reused_variant = await self._place(request, parent, child)
+        try:
+            family, variant, reused_variant = await self._place(request, parent, child)
+        except ConflictError:
+            # A concurrent identical request stored the family or variant first.
+            # Look again: the second pass joins it, or states the real conflict.
+            family, variant, reused_variant = await self._place(request, parent, child)
         evaluation, created = await self._submit.submit(
             family.id,
             SubmitEvaluationRequest(config_hash=variant.config_hash, result_class="in_sample"),

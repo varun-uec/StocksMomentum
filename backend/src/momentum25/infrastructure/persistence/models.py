@@ -580,6 +580,17 @@ class StrategyEvaluationModel(Base):
             unique=True,
             postgresql_where=text("result_class = 'out_of_sample'"),
         ),
+        # One In-Sample run per family, config, window and data version (ADR-014 section 12).
+        Index(
+            "uq_strategy_evaluations_in_sample",
+            "family_id",
+            "config_hash",
+            "window_start",
+            "window_end",
+            "data_version",
+            unique=True,
+            postgresql_where=text("result_class = 'in_sample'"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

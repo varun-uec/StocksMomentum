@@ -52,7 +52,11 @@ class SqlEvaluationRepository:
         window: tuple[date, date],
         data_version: str,
     ) -> Evaluation:
-        """Queue an evaluation; raise ``ConflictError`` if the family's hold-out is spent."""
+        """Queue an evaluation.
+
+        Raise ``ConflictError`` if the family's hold-out is spent, or if the same
+        In-Sample run is already stored.
+        """
         row = _Row(
             family_id=family_id,
             config_hash=config_hash,
@@ -65,6 +69,11 @@ class SqlEvaluationRepository:
             async with self._session.begin_nested():
                 self._session.add(row)
         except IntegrityError as exc:
+            if result_class == "in_sample":
+                raise ConflictError(
+                    f"Family {family_id} already has this In-Sample run on "
+                    f"{window[0]}..{window[1]}"
+                ) from exc
             raise ConflictError(
                 f"Family {family_id} has spent its hold-out on {window[0]}..{window[1]}: "
                 "one Out-of-Sample Evaluation per family per window"

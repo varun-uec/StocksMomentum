@@ -11,6 +11,7 @@ Reuses the small synthetic market and policy of ``test_strategy_evaluation``.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import date
 from typing import Any
@@ -21,7 +22,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_strategy_evaluation import _BUILTIN, DAYS, POLICY, _market, _Studio
 
-from momentum25.application.dto.studio import VariantOverrideDTO, VariantRunRequest
+from momentum25.application.dto.studio import (
+    SubmitEvaluationRequest,
+    VariantOverrideDTO,
+    VariantRunRequest,
+)
 from momentum25.application.use_cases.strategy_evaluation import RunEvaluation, SubmitEvaluation
 from momentum25.application.use_cases.studio import CreateFamily, SaveStrategy
 from momentum25.application.use_cases.variant_run import StartVariantRun
@@ -33,6 +38,7 @@ from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import (
     ScreeningRunModel,
     StrategyEvaluationModel,
+    StrategyFamilyModel,
     StrategyModel,
 )
 from momentum25.infrastructure.persistence.repositories import SqlStrategyRepository
@@ -211,17 +217,89 @@ async def test_a_repeated_request_or_a_retry_counts_one_research_run(studio: _St
     assert rows == 2
 
 
-async def test_a_duplicate_row_from_a_race_still_counts_one_research_run(
-    studio: _Studio,
-) -> None:
+async def test_the_database_refuses_a_second_row_for_one_run(studio: _Studio) -> None:
     run = await _use_case(studio).execute(_request())
     window = (run.evaluation.window_start, run.evaluation.window_end)
-    # Two requests that pass the lookup together would each insert a row. The count is
-    # over run identities, so the second row is redundant and the budget stays at one.
-    await studio.evaluations.create(
-        run.family.id, run.variant.config_hash, "in_sample", window, run.evaluation.data_version
-    )
+    with pytest.raises(ConflictError):
+        await studio.evaluations.create(
+            run.family.id, run.variant.config_hash, "in_sample", window, run.evaluation.data_version
+        )
     assert await studio.evaluations.research_runs(run.family.id) == 1
+
+
+async def _concurrent(requests: list[VariantRunRequest]) -> list[Any]:
+    """Run each request in its own session at the same time, as separate HTTP calls do."""
+
+    async def one(request: VariantRunRequest) -> Any:
+        async with get_database().session() as session:
+            return await _use_case(_Studio(session)).execute(request)
+
+    return await asyncio.gather(*(one(r) for r in requests))
+
+
+async def _counts(studio: _Studio) -> tuple[int, int, int]:
+    async def count(model: Any) -> int:
+        query = select(func.count()).select_from(model)
+        if model is StrategyModel:
+            query = query.where(StrategyModel.kind == "user")  # not the parent's file row
+        return int(await studio.session.scalar(query) or 0)
+
+    return (
+        await count(StrategyFamilyModel),
+        await count(StrategyModel),
+        await count(StrategyEvaluationModel),
+    )
+
+
+async def test_identical_concurrent_handoffs_to_a_new_family_store_one_of_each(
+    studio: _Studio,
+) -> None:
+    runs = await _concurrent([_request() for _ in range(4)])
+
+    assert len({r.family.id for r in runs}) == 1
+    assert len({r.variant.config_hash for r in runs}) == 1
+    assert len({r.evaluation.id for r in runs}) == 1
+    assert sum(not r.reused_run for r in runs) == 1  # one request queues the work
+    assert all(r.research_runs == 1 for r in runs)
+    assert await _counts(studio) == (1, 1, 1)
+
+
+async def test_identical_concurrent_handoffs_to_an_existing_family_store_one_variant(
+    studio: _Studio,
+) -> None:
+    first = await _use_case(studio).execute(_request())
+    joined = _request(
+        variant_name="rs_floor_2",
+        overrides=[VariantOverrideDTO(parameter_path=RS_FLOOR, value=2)],
+        hypothesis=None,
+        family_id=first.family.id,
+        hypothesis_confirmed=True,
+    )
+    runs = await _concurrent([joined for _ in range(4)])
+
+    assert len({r.variant.config_hash for r in runs}) == 1
+    assert len({r.evaluation.id for r in runs}) == 1
+    assert sum(not r.reused_run for r in runs) == 1
+    assert await _counts(studio) == (1, 2, 2)
+    assert await studio.evaluations.research_runs(first.family.id) == 2
+
+
+async def test_concurrent_submits_of_one_in_sample_run_queue_it_once(studio: _Studio) -> None:
+    first = await _use_case(studio).execute(_request())
+    submit = SubmitEvaluationRequest(
+        config_hash=first.variant.config_hash, result_class="in_sample"
+    )
+
+    async def one() -> tuple[Any, bool]:
+        async with get_database().session() as session:
+            s = _Studio(session)
+            parts = (s.studio, s.evaluations, s.manifests, s.market_at, POLICY)
+            return await SubmitEvaluation(*parts).submit(first.family.id, submit)
+
+    results = await asyncio.gather(*(one() for _ in range(4)))
+    assert {e.id for e, _ in results} == {first.evaluation.id}
+    assert not any(created for _, created in results)
+    assert await _counts(studio) == (1, 1, 1)
 
 
 async def test_a_variant_needs_an_explicit_hypothesis(studio: _Studio) -> None:

@@ -26,7 +26,7 @@ from structlog import get_logger
 from momentum25.application.dto.studio import EvaluationDTO, SubmitEvaluationRequest
 from momentum25.domain.entities.evaluation import Evaluation
 from momentum25.domain.entities.strategy import Strategy
-from momentum25.domain.errors import NotFoundError, ValidationError
+from momentum25.domain.errors import ConflictError, NotFoundError, ValidationError
 from momentum25.domain.ports.evaluation import (
     EvaluationMarket,
     EvaluationRepository,
@@ -123,9 +123,20 @@ class SubmitEvaluation:
             )
             if known is not None:
                 return evaluation_dto(known), False
-        evaluation = await self._evaluations.create(
-            family_id, request.config_hash, request.result_class, window, manifest.data_version
-        )
+        try:
+            evaluation = await self._evaluations.create(
+                family_id, request.config_hash, request.result_class, window, manifest.data_version
+            )
+        except ConflictError:
+            if request.result_class != "in_sample":
+                raise
+            # A concurrent identical submit stored the run first. Return that row.
+            known = await self._evaluations.find_in_sample(
+                family_id, request.config_hash, window, manifest.data_version
+            )
+            if known is None:
+                raise
+            return evaluation_dto(known), False
         return evaluation_dto(evaluation), True
 
     async def _window(

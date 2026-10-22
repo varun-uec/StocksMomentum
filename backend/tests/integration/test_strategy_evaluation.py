@@ -214,11 +214,14 @@ async def test_same_config_and_data_version_give_the_same_result(studio: _Studio
     first = await studio.run(family_id, config_hash, "in_sample")
 
     # A later correction to every bar must not reach an evaluation at the old manifest.
+    # The same run cannot be stored twice, so a second config with the same behaviour
+    # (it differs by name only) replays the first run at the first run's data version.
+    other_id, other_hash = await studio.family("rs1b", "The same floor, replayed.")
     await studio.session.execute(update(OHLCVDailyModel).values(close=OHLCVDailyModel.close * 2))
     await studio.session.commit()
     replay = await studio.evaluations.create(
-        family_id,
-        config_hash,
+        other_id,
+        other_hash,
         "in_sample",
         (date.fromisoformat(first["window"]["start"]), date.fromisoformat(first["window"]["end"])),
         first["data_version"],
@@ -229,7 +232,7 @@ async def test_same_config_and_data_version_give_the_same_result(studio: _Studio
     again = await studio.evaluations.get(replay.id)
     assert again is not None and again.result is not None
     assert again.data_version == first["data_version"]
-    for key in ("outcomes", "metrics", "regime", "provenance", "window"):
+    for key in ("outcomes", "metrics", "regime", "window"):
         assert again.result[key] == first[key], key
 
 
