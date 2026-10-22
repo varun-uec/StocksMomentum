@@ -146,7 +146,7 @@ A supplier is **not** needed for Stage A engineering-complete. It is needed for 
 **Recorded 2026-10-22 by the owner: G-1, G-2, G-3, G-4, G-5 all approved. Revision 2 approved for Stage A (W0–W1) only, with amendments 1–5 above incorporated (amendment 5 lands in W5-0 before any Stage C code).** Every increment preserves existing Momentum25 behaviour, strategy identities, historical runs and workspace capabilities. Stage A is authorised to engineering-complete on synthetic fixtures. Not authorised: Stages B and C, any real-data import (no supplier recorded), push, deploy.
 
 **First execution steps on approval of this plan:**
-1. Commit this plan as `docs/history/plans/2026-10-22-wickstreet-2/11-consolidated-plan.md` and record the Gate 0 decisions in it. Mark A2 "Accepted for W0–W1". Mark ADR-016, ADR-021 and ADR-014 §13 Accepted, with the I-1 and I-3 amendments. Mark the 03 §1.4 metric dictionary and the §1.6 thresholds "approved v1".
+1. Commit this plan as `docs/history/plans/2026-10-22-wickstreet-2/11-wickstreet-2.0.md` and record the Gate 0 decisions in it. Mark A2 "Accepted for W0–W1". Mark ADR-016, ADR-021 and ADR-014 §13 Accepted, with the I-1 and I-3 amendments. Mark the 03 §1.4 metric dictionary and the §1.6 thresholds "approved v1".
 2. Update the dashboard: Stage A in progress; W2–W5 shown as gated.
 3. W0.1 → W0.7, then W1.1 → W1.7. One local commit per step, with verification each time.
 4. Stop at the slice review gate and report.
