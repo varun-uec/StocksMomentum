@@ -1,6 +1,6 @@
 # ADR-020: Descriptive Scorecards, No Composite Score
 
-**Status:** Proposed (2026-10-22). Methodology; needs owner approval. Part of the [Wickstreet 2.0 blueprint](../../history/plans/2026-10-22-wickstreet-2/README.md).
+**Status:** Proposed (2026-10-22). Methodology; needs owner approval. Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md).
 
 ## Context
 Research products show stock and fund "scores". An opaque score invites trust it has not earned. The Momentum25 research record shows how hard predictive ranking is: 11 proposals, none passed hold-out. Any scorecard Wickstreet shows must be deterministic, traceable and honest about what it claims.

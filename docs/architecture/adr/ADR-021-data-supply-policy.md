@@ -1,6 +1,6 @@
 # ADR-021: Source-Neutral Data Supply
 
-**Status:** Proposed (2026-10-22). Touches licensing; the owner decides each supplier. Part of the [Wickstreet 2.0 blueprint](../../history/plans/2026-10-22-wickstreet-2/README.md). Extends ADR-003 and the ADR-012 data-use check.
+**Status:** Proposed (2026-10-22). Touches licensing; the owner decides each supplier. Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md). Extends ADR-003 and the ADR-012 data-use check.
 
 ## Context
 The M16 check found that NSE's website terms forbid automated collection and simulation use. On 2026-10-22 the AMFI terms were read: use is "personal and non-commercial", "You shall not store electronically any significant portion of any part of the Site", derivative works are barred, and other uses need a written agreement. BSE and NSE Indices terms could not be read. Every 2.0 dataset (financials, NAV, holdings, classifications, TRI) has a licence question. The user's own portfolio does not.

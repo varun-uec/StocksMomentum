@@ -1,6 +1,6 @@
 # ADR-013: Web Stack, Chart Data Semantics and Workspace Persistence
 
-**Status:** Accepted (2026-10-18). The owner accepted the [M10 spike evidence](../../history/audits/2026-10-18-m10-stack-spike-report.md) (S1–S7 pass) and approved Vite 7 + React. §4 and §5 were revised during M11 to match what was built; the changes are marked *(M11)*.
+**Status:** Accepted (2026-10-18). The owner accepted the [M10 spike evidence](../../audits/2026-10-18-m10-stack-spike-report.md) (S1–S7 pass) and approved Vite 7 + React. §4 and §5 were revised during M11 to match what was built; the changes are marked *(M11)*.
 
 ## Context
 Wickstreet is a client-heavy workspace (ADD A1). Four facts from the code shape this decision:

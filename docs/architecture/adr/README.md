@@ -18,8 +18,8 @@ Each ADR follows: **Context · Decision · Consequences · Alternatives consider
 | [012](./ADR-012-open-source-self-hosted.md) | Open-source, self-hosted, local by default *(Proposed)* |
 | [013](./ADR-013-web-stack-and-chart-data.md) | Web stack, chart data semantics, workspace persistence *(Accepted)* |
 | [014](./ADR-014-strategy-studio.md) | Strategy Studio: configured rules, three result classes, sealed hold-out *(Accepted 2026-10-18; section 12, variant-run handoff, accepted and implemented 2026-10-21)* |
-| [013a](./ADR-013-alert-amendment.md) | Amendment to 013: editable armed alerts and drawing snapshots *(Accepted 2026-10-19)* |
-| [013b](./ADR-013-line-alert-amendment.md) | Amendment to 013: sloped drawing alerts *(Accepted 2026-10-20)* |
+| [013a](ADR-013a-alert-amendment.md) | Amendment to 013: editable armed alerts and drawing snapshots *(Accepted 2026-10-19)* |
+| [013b](ADR-013b-line-alert-amendment.md) | Amendment to 013: sloped drawing alerts *(Accepted 2026-10-20)* |
 | [015](./ADR-015-licence.md) | Licence *(Proposed)* |
 | [016](./ADR-016-fundamentals-point-in-time.md) | Company fundamentals, stored by publication time *(Proposed, Wickstreet 2.0)* |
 | [017](./ADR-017-funds-etfs-holdings.md) | Mutual funds, ETFs and holdings disclosures *(Proposed, Wickstreet 2.0)* |

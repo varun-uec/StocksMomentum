@@ -1,10 +1,10 @@
 # OpenChart Parity Audit Evidence
 
-**Date:** 2026-10-19 · **Report:** [OPENCHART_COMPATIBILITY_AUDIT.md](../../OPENCHART_COMPATIBILITY_AUDIT.md)
+**Date:** 2026-10-19 · **Report:** [OPENCHART_COMPATIBILITY_AUDIT.md](../../docs/audits/2026-10-19-openchart-parity/OPENCHART_COMPATIBILITY_AUDIT.md)
 
 ## What is here
 
-Wickstreet screenshots only. No OpenChart screenshot, asset or page capture is stored. The OpenChart desktop app was not run, and the audit kept no copies of its marketing images ([clean-room record](../../OPENCHART_CLEAN_ROOM_RECORD.md)).
+Wickstreet screenshots only. No OpenChart screenshot, asset or page capture is stored. The OpenChart desktop app was not run, and the audit kept no copies of its marketing images ([clean-room record](../../docs/audits/2026-10-19-openchart-parity/OPENCHART_CLEAN_ROOM_RECORD.md)).
 
 ## How they were made
 

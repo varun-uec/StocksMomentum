@@ -116,4 +116,4 @@ Elliott Wave, chart-pattern annotations, swing targets and the analysis page's t
 
 The suggested stop-loss is risk-only: `entry − k · ATR(14)`, falling back to the last confirmed swing low, plus a chandelier trailing variant. It carries no target, R-multiple or reward figure.
 
-On 2026-08-10 the user removed the earlier "no Buy/Sell signal" constraint for the analysis screen. Its signal score runs in the browser (`web/src/lib/strategies.ts`) and is never stored. Making signals a scoring input is an open proposal: [signal-engine proposal](../history/plans/2026-08-10-signal-engine-proposal.md).
+On 2026-08-10 the user removed the earlier "no Buy/Sell signal" constraint for the analysis screen. Its signal score runs in the browser (`web/src/lib/strategies.ts`) and is never stored. Making signals a scoring input is an open proposal: [signal-engine proposal](../plans/proposed/2026-08-10-signal-engine-proposal.md).

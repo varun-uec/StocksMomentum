@@ -22,7 +22,7 @@ the original Phase 3 convention, not listed separately here since it is
 covered by config comparison) more conservative than the original Phase 3
 report, which did not model this.
 
-Runner: `backend/scripts/phase3b_swing_backtest.py`. Raw run output:
+Runner: `backend/scripts/one_off/phase3b_swing_backtest.py`. Raw run output:
 in-sample screen only — no config cleared the bar, so the hold-out fold was
 never touched by 3b (0/6 configs reached it).
 

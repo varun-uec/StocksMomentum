@@ -39,7 +39,7 @@ Do not weaken an assertion to make a test pass. A business change comes with a t
 - **Clean room.** TradingView and OpenChart are usability references only. Do not copy their code, names, logos or assets.
 - **Data.** Do not commit market data, database dumps or credentials. NSE's terms apply to each user's own retrieval ([ADR-012](docs/architecture/adr/ADR-012-open-source-self-hosted.md)).
 - **Dependencies.** Add one only when a few lines of code cannot do the job. Lock it (`uv lock`, `package-lock.json`).
-- **Writing.** Short sentences, active voice, one term for one thing. This applies to code comments, commit messages, docs and UI text (see `Claude.md`, "Writing").
+- **Writing.** Short sentences, active voice, one term for one thing. This applies to code comments, commit messages, docs and UI text (see `CLAUDE.md`, "Writing").
 
 ## Licence
 

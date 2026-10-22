@@ -424,7 +424,7 @@ def build_html(metrics: dict[str, Any], sections: tuple[Section, ...]) -> str:
 
     blocks.extend(
         [
-            "<section><span class=\"eyebrow\">Decision and limits</span><h2>Scope and acceptance</h2><p>The line-alert trigger basis is recorded in <code>ADR-013-line-alert-amendment.md</code>. Alerts use each anchor's date-specific adjustment factor and compare daily closes.</p><p>Known limits: replay runs on /chart and ends when the user leaves; it advances one daily session at every interval. Line alerts are close-to-close and daily. Fibonacci spacing is screen-based, so log-scale prices are not exact ratios. B5 remains deferred. Phase C is not started.</p><p>Axis-label collision and interval-loading viewport fixes are UI changes. Production financial calculations are unchanged. The UI acceptance decision remains with the owner.</p><p>Nothing has been pushed.</p></section>",
+            "<section><span class=\"eyebrow\">Decision and limits</span><h2>Scope and acceptance</h2><p>The line-alert trigger basis is recorded in <code>ADR-013b-line-alert-amendment.md</code>. Alerts use each anchor's date-specific adjustment factor and compare daily closes.</p><p>Known limits: replay runs on /chart and ends when the user leaves; it advances one daily session at every interval. Line alerts are close-to-close and daily. Fibonacci spacing is screen-based, so log-scale prices are not exact ratios. B5 remains deferred. Phase C is not started.</p><p>Axis-label collision and interval-loading viewport fixes are UI changes. Production financial calculations are unchanged. The UI acceptance decision remains with the owner.</p><p>Nothing has been pushed.</p></section>",
             f"<footer>Source commit {html.escape(metrics['source_commit'])}. Performance capture commit {html.escape(perf['capture_commit'])}. Generated from verified JSON and embedded PNG captures.</footer>",
             "</main></body></html>",
         ]
@@ -622,7 +622,7 @@ def write_pdf(path: Path, metrics: dict[str, Any], sections: tuple[Section, ...]
     story.extend([
         PageBreak(),
         para("Decision and limits", "heading"),
-        para("The line-alert trigger basis is recorded in ADR-013-line-alert-amendment.md. Alerts use each anchor's date-specific adjustment factor and compare daily closes.", "body"),
+        para("The line-alert trigger basis is recorded in ADR-013b-line-alert-amendment.md. Alerts use each anchor's date-specific adjustment factor and compare daily closes.", "body"),
         para("Known limits: replay runs on /chart and ends when the user leaves; it advances one daily session at every interval. Line alerts are close-to-close and daily. Fibonacci spacing is screen-based, so log-scale prices are not exact ratios.", "body"),
         para("Axis-label collision and interval-loading viewport fixes are UI changes. Production financial calculations are unchanged. The UI acceptance decision remains with the owner. B5 is deferred, Phase C has not started, and nothing has been pushed.", "body"),
         para(f"Source commit {metrics['source_commit']}. Performance capture commit {perf['capture_commit']}.", "mono"),

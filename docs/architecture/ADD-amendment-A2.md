@@ -2,7 +2,7 @@
 
 > **Status:** Proposed (2026-10-22). The ADD text below takes effect only when the owner approves this amendment. Until then, A1 §4 governs scope.
 > **Applies to:** ADD §1, §2, §3, §4, §6, §26, §27 (as amended by A1)
-> **Blueprint:** [docs/history/plans/2026-10-22-wickstreet-2/](../history/plans/2026-10-22-wickstreet-2/README.md)
+> **Blueprint:** [docs/plans/wickstreet-2/](../plans/wickstreet-2/README.md)
 
 ## §1 Executive Summary — add after the A1 paragraphs
 

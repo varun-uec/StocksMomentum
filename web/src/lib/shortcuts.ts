@@ -1,6 +1,6 @@
 /**
  * Keyboard shortcuts of the chart workspace (M12). The shortcuts dialog and
- * docs/current/keyboard-shortcuts.md both list this table.
+ * docs/current/reference/keyboard-shortcuts.md both list this table.
  */
 export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'Type a letter, / or Ctrl/⌘+K', action: 'Search for a symbol' },

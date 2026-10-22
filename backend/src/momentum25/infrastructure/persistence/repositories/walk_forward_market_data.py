@@ -30,7 +30,7 @@ human-decision-blocked gap recorded in
 
 Survivorship (checklist item 8) is now REAL: ``securities.delisting_date``/
 ``last_trade_date`` are populated from observed bar coverage (see
-``scripts/rp012_populate_survivorship_dates.py``), and
+``scripts/one_off/rp012_populate_survivorship_dates.py``), and
 ``SqlSurvivorshipEligibilityProvider`` below uses them instead of the
 ``is_active`` flag. See ``SURVIVORSHIP_ELIGIBILITY_WARNING``.
 """
@@ -269,7 +269,7 @@ SURVIVORSHIP_ELIGIBILITY_WARNING = (
     "set is the reference equity universe: NSE and dual-listed equities, no "
     "fund or ETF units, listed and not delisted on the decision date. "
     "Survivorship IS real: securities.delisting_date/last_trade_date come from "
-    "observed bar coverage (scripts/rp012_populate_survivorship_dates.py), so a "
+    "observed bar coverage (scripts/one_off/rp012_populate_survivorship_dates.py), so a "
     "delisted security is included until its delisting date and excluded from "
     "it, regardless of the is_active flag. Renames are separate security rows "
     "until a verified identity link joins them (R3-B-31); a holding whose bars "

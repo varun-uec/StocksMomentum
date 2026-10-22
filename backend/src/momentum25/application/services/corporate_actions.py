@@ -22,7 +22,7 @@ immediately, but historical replay over the legacy era keeps the adjustment
 factors written by the original backfill until that backfill is re-run.
 Re-running it is the intended remedy: rebuilding adjustment factors across
 the whole legacy archive is a bulk batch job
-(``scripts/rp012_phase3_backfill.py``), not per-symbol work to fold into a
+(``scripts/one_off/rp012_phase3_backfill.py``), not per-symbol work to fold into a
 refresh that is already one external HTTP call per security.
 
 The practical exposure is bounded. ``corporate_actions`` starts at

@@ -1,6 +1,6 @@
 # Phase B evidence
 
-Evidence for B1–B4 of the [TradingView-workstation plan](../../docs/history/plans/2026-10-19-tradingview-workstation-plan.md), captured on 2026-10-20. B5 Volume Profile is deferred. Phase C has not started.
+Evidence for B1–B4 of the [TradingView-workstation plan](../../docs/plans/shipped/2026-10-19-tradingview-workstation-plan.md), captured on 2026-10-20. B5 Volume Profile is deferred. Phase C has not started.
 
 ## Final visual sign-off continuation (2026-10-20)
 

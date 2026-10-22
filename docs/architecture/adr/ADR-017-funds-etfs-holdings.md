@@ -1,6 +1,6 @@
 # ADR-017: Mutual Funds, ETFs and Holdings Disclosures
 
-**Status:** Proposed (2026-10-22). Part of the [Wickstreet 2.0 blueprint](../../history/plans/2026-10-22-wickstreet-2/README.md). Requires [ADD Amendment A2](../ADD-amendment-A2.md).
+**Status:** Proposed (2026-10-22). Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md). Requires [ADD Amendment A2](../ADD-amendment-A2.md).
 
 ## Context
 ADD A1 §4 put non-equity assets out of scope. Wickstreet 2.0 makes mutual funds a first-class asset class and adds ETFs. A fund has schemes, plans and options with separate NAVs and costs. Its holdings are known only through periodic disclosures published days after the portfolio date. ETFs already appear in `securities` as if they were equities.

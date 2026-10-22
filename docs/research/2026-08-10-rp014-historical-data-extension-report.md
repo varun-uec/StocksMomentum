@@ -100,9 +100,9 @@ cross-exchange fallback, per the cross-listing rule.
 
 ## 8. Runbooks
 
-- NSE rerun: `scripts/rp012_phase3_backfill.py` (resumes by year-chunk
+- NSE rerun: `scripts/one_off/rp012_phase3_backfill.py` (resumes by year-chunk
   checkpoint; per-day upserts idempotent).
-- BSE rerun: `scripts/rp014_bse_legacy_backfill.py` (junction insert-only;
+- BSE rerun: `scripts/one_off/rp014_bse_legacy_backfill.py` (junction insert-only;
   per-day upserts idempotent).
 - Both run with `M25_DATABASE_URL` set explicitly (backend has no .env).
 

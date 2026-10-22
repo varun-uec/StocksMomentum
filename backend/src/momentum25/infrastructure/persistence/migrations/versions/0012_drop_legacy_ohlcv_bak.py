@@ -13,7 +13,7 @@ Measured on the overlap with the live ``ohlcv_daily``:
 The snapshot is superseded and wrong, and no code reads it. Drop it.
 
 The downgrade recreates the empty table. The rows are not recoverable, and
-they should not be: re-run ``scripts/rp012_phase3_backfill.py`` to rebuild the
+they should not be: re-run ``scripts/one_off/rp012_phase3_backfill.py`` to rebuild the
 legacy archive from source.
 
 Revision ID: 0012_drop_legacy_ohlcv_bak

@@ -36,7 +36,7 @@ Optimize for lifetime maintainability rather than implementation speed.
 
 # Authority
 
-[CLAUDE.md](../Claude.md) sets the precedence order: ADD, ADRs, Implementation Specification, CLAUDE.md, current task, existing code. These guidelines add to CLAUDE.md. They never override it.
+[CLAUDE.md](../CLAUDE.md) sets the precedence order: ADD, ADRs, Implementation Specification, CLAUDE.md, current task, existing code. These guidelines add to CLAUDE.md. They never override it.
 
 ---
 
