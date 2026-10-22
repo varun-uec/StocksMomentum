@@ -2,6 +2,8 @@
 
 Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 (with its two amendments) and 014 **Accepted**. 012 and 015 to 021 are **Proposed**. Each ADR may end with a dated update that records what changed after acceptance. The decision text above it is not rewritten.
 
+The [Wickstreet Target Architecture — ADD Amendment A3](../ADD-amendment-A3.md) was **accepted 2026-10-22** after the owner-requested C1 correction. It is an ADD amendment, not an ADR. Its scoped supersession of ADR-010 is effective; the ADR's historical text is preserved. This acceptance does not authorize implementation.
+
 | ADR | Title |
 |---|---|
 | [001](./ADR-001-hexagonal-architecture.md) | Hexagonal / Clean architecture |
@@ -13,7 +15,7 @@ Each ADR follows: **Context · Decision · Consequences · Alternatives consider
 | [007](./ADR-007-in-process-scheduler.md) | In-process APScheduler, queue-ready |
 | [008](./ADR-008-api-first-thin-clients.md) | API-first, thin clients (mobile readiness) |
 | [009](./ADR-009-determinism-contract.md) | Determinism contract |
-| [010](./ADR-010-no-auth-mvp.md) | No auth in MVP, SaaS seams pre-built |
+| [010](./ADR-010-no-auth-mvp.md) | No auth in local MVP; SaaS seam assumption superseded by A3 |
 | [011](./ADR-011-chart-engine.md) | Chart engine: keep lightweight-charts |
 | [012](./ADR-012-open-source-self-hosted.md) | Open-source, self-hosted, local by default *(Proposed)* |
 | [013](./ADR-013-web-stack-and-chart-data.md) | Web stack, chart data semantics, workspace persistence *(Accepted)* |

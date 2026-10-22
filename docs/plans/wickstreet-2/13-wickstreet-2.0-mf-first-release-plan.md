@@ -1,6 +1,6 @@
 # Wickstreet 2.0 (Mutual Funds, ₹199) / 3.0 (Stocks) — Release Plan
 
-> **Current direction and documentation edits approved, 2026-10-22.** Bootstrapped, founder-operated self-service simulations. Implementation, expenditure, real market data ingestion, IA applications, commits, pushes and deployments remain unauthorised. This is the canonical release plan. See the [blueprint](README.md) and [D0-R research](12-d0r-data-source-research.md).
+> **Current direction and documentation edits approved, 2026-10-22.** Bootstrapped, founder-operated MF research and user-directed calculators. Implementation, expenditure, real market data ingestion, CAS intake, IA applications, commits, pushes and deployments remain unauthorised. This is the canonical release plan. The accepted [Wickstreet Target Architecture — ADD Amendment A3](../../architecture/ADD-amendment-A3.md) governs the architecture; acceptance does not authorize implementation. See the [blueprint](README.md) and [D0-R research](12-d0r-data-source-research.md).
 
 ## Context and decision
 
@@ -13,23 +13,25 @@ Binding assumptions:
 - Zero salaried engineers, dedicated SRE or paid on-call team. Founder owns architecture, maintenance, support, security and operations.
 - Supervised interns use legally valid engagements, IP/confidentiality terms and synthetic fixtures. Zero remuneration is conditional on lawful classification, not a blanket exemption for internships or apprenticeships.
 - ₹0 recurring MF data licensing is conditional on commercial rights. No production market ingestion or publication of affected datasets before permission and separate authority.
-- CAS-first portfolio intake. Groww/Zerodha are optional read-only capabilities, subject to provider permission and separate owner approval. No broker execution, distribution commissions or client-money custody.
+- Stage B delivers MF research and basic user-directed calculators before CAS. CAS-first remains the intake choice when Stage C portfolio capabilities are authorized. Groww/Zerodha are optional read-only capabilities, subject to provider permission and separate owner approval. No broker execution, distribution commissions or client-money custody.
 - Wickstreet 3.0 retains stocks, Company Intelligence, advanced charting, Momentum25, Strategy Studio and the unified equity roadmap. Existing code, `strategy_id=30`, manifest invariants, Gate 0 G-1 to G-5, sealed hold-out, ADR statuses and audit records are preserved.
+
+**Capability Preservation Invariant:** All existing Momentum25 and Wickstreet stock-market capabilities, including their domain engines, APIs, persistence, charting, strategies, research, screening, backtesting and saved workspaces, must be preserved. The Wickstreet 2.0 MF-first release may hide or defer their exposure in the commercial interface, but must not delete, disable, regress or irreversibly alter these capabilities. Any future replacement or deprecation requires explicit owner approval and regression verification.
 
 ## A1. Free and Pro capabilities
 
-| Capability | Free | Pro ₹199/year | Boundary |
-|---|---|---|---|
-| Discovery, screening, factual comparisons | Comprehensive | — | User-selected criteria; no curated buy list |
-| NAV charts, historical returns, risk metrics, TER/costs | Included, rights gated | — | Method, date and coverage shown |
-| Holdings and overlap | Included where licensed | — | Factual exposures |
-| CAS import, XIRR, allocation and concentration diagnostics | Included | — | Describe the portfolio; no switch instructions |
-| Advanced allocation scenarios | — | Included | User selects funds, weights, amounts and assumptions |
-| SIP, lumpsum and goal calculators | — | Included | Mathematical outcomes under user-entered assumptions |
-| Rebalancing simulations | — | Included | User selects targets, dates, thresholds and cost assumptions |
-| Side-by-side comparisons, saved scenarios and reports | — | Included | No suitability ranking or recommended winner |
-| Groww/Zerodha portfolio connectivity | — | Optional after approval | Read-only; never a launch dependency |
-| Personalised allocation, scheme selection or investment instructions | Excluded | Excluded | Separate future D0-IA capability |
+| Capability | Free | Pro ₹199/year | Earliest stage | Boundary |
+|---|---|---|---|---|
+| Discovery, screening, factual comparisons | Comprehensive | — | B | User-selected criteria; no curated buy list; applicable data rights first |
+| NAV charts, historical returns, risk metrics, TER/costs | Included where rights permit | — | B | Method, date and coverage shown |
+| Holdings and overlap | Included where rights permit | — | B/C | Shared-data overlap in B if licensed; portfolio-linked overlap in C |
+| Basic SIP, lumpsum and goal calculators | — | Included | B | User chooses schemes, amounts and assumptions |
+| CAS import, XIRR, allocation and concentration diagnostics | Included when launched | — | C | Describe the portfolio; isolated parser and tenant controls required |
+| Advanced allocation and portfolio-linked scenarios | — | Included | C | User selects funds, weights, amounts and assumptions |
+| Portfolio rebalancing simulations | — | Included | C | User selects targets, dates, thresholds and cost assumptions |
+| Side-by-side comparisons, saved scenarios and reports | Factual comparisons | Included | B/C | No suitability ranking or recommended winner |
+| Groww/Zerodha portfolio connectivity | — | Optional after approval | C/D | Read-only; provider permission and separate approval; never launch prerequisite |
+| Personalised allocation, scheme selection or investment instructions | Excluded | Excluded | Future gate | Separate Personalised Guidance capability; no implementation or launch until fresh regulatory and commercial approval |
 
 A goal calculator may state the contribution required under the user's return assumption. It must not choose the return, fund or risk allocation. A rebalance simulator may calculate differences from a user-selected target; it must not prescribe that target or tell the user to transact.
 
@@ -39,13 +41,13 @@ Use “simulate”, “your selected allocation”, “calculated outcome” and
 
 ## A2. Regulatory classification and gates
 
-**Working classification, not a SEBI approval:** genuine user-controlled calculations need neither IA registration nor advisory onboarding merely because they concern mutual funds. PRO-0 reviews actual workflows for IA **and** RA exposure. A feature that becomes advice is removed/redesigned or enters the separately approved future pathway; registration is not imposed on the whole product by default.
+**Working classification, not a SEBI approval:** genuine user-controlled calculations need neither IA registration nor advisory onboarding merely because they concern mutual funds. PRO-0 reviews actual workflows for IA **and** RA exposure. A feature that becomes advice is removed/redesigned or enters the separately approved future Personalised Guidance pathway; registration is not imposed on the whole product by default.
 
 | Workflow | Classification / action |
 |---|---|
 | Factual data, user-chosen comparisons, XIRR and descriptive portfolio metrics | Analytical candidate; validate content and data rights |
 | User-authored historical/assumed-return scenarios | Analytical candidate; no platform-generated investment prescription |
-| Profile-selected allocation, named fund/amount recommendation, buy/sell/hold instruction | Potential regulated advice; excluded |
+| Profile-selected allocation, named fund/amount recommendation, buy/sell/hold instruction | Potential regulated advice; excluded from 2.0; future Personalised Guidance requires separate approval |
 | Curated fund ratings, recommended portfolios or investment opinions | Potential research service even without personalisation; excluded pending separate assessment |
 | Account access and billing | Ordinary SaaS obligations; no advisory KYC, suitability review, advisory agreement or advisory retention by default |
 
@@ -127,10 +129,10 @@ Annual steady-state results, ₹ lakh; costs include refunds, payment fees, free
 
 This is a conditional planning illustration, not a committed forecast, budget, sales target or promise of launch timing. The subscriber path is an unvalidated acquisition scenario; actual demand, CAC, retention, settlement timing, supplier quotes and legal obligations may materially change receipts, costs and funding needs. It is not a basis for committing expenditure. Rebuild the cash flow from observed pilot cohorts and actual costs before a paid launch or funding decision.
 
-M1 November 2026; M7–8 private analytics beta; M9 conditional paid launch July 2027; M24 October 2028. This schedule is an illustration, not implementation authority. If a gate fails, receipts move later and discretionary spend pauses.
+M1 November 2026; M7–8 initial MF research/basic-calculator beta (Stage B); M9 conditional paid launch July 2027; M24 October 2028. This schedule is an illustration, not implementation authority. CAS and portfolio-linked capabilities remain Stage C and are not prerequisites for Stage B. If a gate fails, receipts move later and discretionary spend pauses.
 
 - M1–6 development hosting/running cost: **₹0 incremental** using existing resources. No automatic monthly legal/security/operations spend.
-- M6 launch-preparation allowance: ₹25,000 targeted workflow/data/privacy/terms review + ₹25,000 scoped independent security review = ₹50,000. **U, not quotes or a legal minimum**. Pay only when those reviews become necessary for the intended exposure. No incorporation/trademark spend is assumed; if existing arrangements are insufficient, add the actual required cost before launch.
+- M6 launch-preparation allowance: ₹25,000 targeted Stage B workflow/data/privacy/terms review + ₹25,000 scoped independent security review for the intended initial exposure = ₹50,000. **U, not quotes or a legal minimum**. Pay only when those reviews become necessary for the intended exposure. Before Stage C CAS intake, scope and complete any additional review required by that materially different exposure. No incorporation/trademark spend is assumed; if existing arrangements are insufficient, add the actual required cost before launch.
 - M7–8: ₹1,800/month production-beta envelope, triggered by real users, plus free-account cost. M9 onward: stage annual envelope at active paid count /12, using the 1,000-user minimum until actual costs justify less.
 - No separate annual VAPT or ₹3 lakh initial opinion is charged. Material-change assessment/legal costs must fit the selected envelope or be added transparently.
 - Full new paid cohorts M9–12: 200, 300, 400, 500; M13–24: 600, 650, 700, 750, 800, 850, 900, 950, 1,000, 1,050, 1,100, 1,150. This remains an **unvalidated demand path**, not a forecast justified by pricing alone.
@@ -205,7 +207,7 @@ Tests planned for later authorised work: cash/unit conservation; SIP timing and 
 
 **D0-MF:** per dataset, establish commercial retrieval, storage, display, simulation/history, derived report and export permissions in writing before publication/ingestion. R8 does not establish those rights by public availability. Retain source/date/permission evidence and fail closed per use; no aggregator workaround. User-entered hypothetical calculators can proceed on fixtures without a market feed. Historical simulations and the full research product wait for rights; narrow or hold affected capabilities if permission fails.
 
-**CAS baseline:** password in memory only, secure parser sandbox/limits, preview/undo, discard raw PDF after the defined processing step, encrypt retained records, tenant controls, consent/deletion and backups. Never put real CAS into development fixtures or logs.
+**CAS baseline (Stage C only):** process untrusted files in a dedicated bounded worker/container, even at low volume. Quarantine private uploads; enforce allowlisted format and file/page limits; run non-root with CPU/memory/time/temp-disk limits, read-only base filesystem, no general internet egress, only narrowly allowlisted private object/job endpoints, and no general application DB credentials. Validate normalized output before tenant-scoped commit. Never put real CAS in development fixtures or logs; define raw-file retention/deletion, consent, encryption and backup handling before intake. This worker is a security boundary, not a general queue or microservice commitment.
 
 **Provider boundary:** official Kite documentation identifies read-only MF holdings and says MF order placement cannot be done through those APIs (R10). Groww public equity holdings APIs do not establish an MF connector. No claimed Groww MF sync until written approval. No broker credentials scraping, execution or commission-funded business model.
 
@@ -229,28 +231,20 @@ Tests planned for later authorised work: cash/unit conservation; SIP timing and 
 - Results go in `docs/audits/`.
 
 
-### A4a. Sequence and launch gates
+### A4a. Staged sequence and launch gates
 
-All stages below describe future work and need separate implementation/expenditure authority.
+The capability stages below are product phases, not service boundaries. All work needs separate implementation/expenditure authority. Stage B explicitly precedes CAS; Stage C adds portfolio-linked features after its isolation/security gate.
 
 | Stage | Deliverable | Gate |
 |---|---|---|
-| D0-MF / PRO-0 | Rights map; screen/default/report/notification classification against IA/RA and educational-data rules | Founder review and targeted professional clarification where needed; remove unclear prescribing features |
-| SIM-0 / S0-A | Calculation dictionary; hosted/auth/tenancy/billing/rights/privacy/simulation ADR proposals | Owner accepts methodology and architecture; ADR-010/012 and proposed ADR-019/021 changes remain proposals |
-| W0 / MF2-0 | Synthetic fixtures, identity isolation, rights harness, portfolio accounting spec | Existing invariants and acceptance tests preserved |
-| B1–B4 | CAS → accounting/XIRR → compare owned funds → descriptive risk/overlap | Accuracy, provenance and upload security verified |
-| SR-0 / SR-1 / H0 | Threat model, scoped independent review, production hardening, encrypted off-host backup and restore drill | No open critical/high findings before live CAS; no production data on development infrastructure |
-| LT / free beta | Founder-operated capacity test and portfolio-first beta | Expected beta peak passes NFR targets; users can complete portfolio tasks |
-| DV / MF1 | Validate ₹199 simulation demand; complete comprehensive discovery | Intent, task success, actual paid conversion and fully loaded CAC measured; no advice pre-order |
-| SIM-1 | User-controlled allocation, SIP/lumpsum/goal scenarios | Determinism, arithmetic parity and PRO-0 wording/default checks |
-| SIM-2 | Rebalance simulation, comparison, reports, saved scenarios | User-selected rules, explainability and output boundary preserved |
-| Paid pilot / launch | Useful end-to-end Pro product | Rights, PRO-0, security, payments/privacy and observed capacity pass; owner go/no-go |
-| Optional connectors | Provider-approved read-only Groww/Zerodha | Separate approval and cost assessment; no launch dependency |
-| Growth | Capacity/support/security expansion | Measured spend triggers, reviewed unit economics and separate spending authority |
-| Future D0-IA | Personalised advice, if later desired | Separate product/legal/business-case/registration decision; not part of 2.0 launch |
-| 3.0 | Stock/Company Intelligence/charting/Strategy Studio/Momentum25 roadmap | Existing investments retained; separate equity rights and scope authority |
+| **A — Development** | Synthetic MF fixtures, deterministic calculators and module contracts on existing infrastructure | ₹0 incremental development hosting; no production data |
+| **B — Initial SaaS** | Auth/tenancy, billing entitlements, rights-gated MF discovery/comparison and basic user-directed SIP/lumpsum/goal calculators | Workflow/data rights, account/privacy/payment controls, security review for intended exposure, tested backup/restore, demand and founder-capacity gate |
+| **C — Portfolio Intelligence** | B1–B4 CAS → accounting/XIRR → compare owned funds → descriptive risk/overlap; advanced portfolio-linked simulations and rebalancing | Dedicated CAS worker; tenant isolation, consent/retention/deletion, scoped security review with no open critical/high findings, accounting accuracy and recovery evidence |
+| **D — Growth and Wickstreet 3.0** | Evidence-driven infrastructure growth; existing stock intelligence, charting, Momentum25, Strategy Studio, screening, research and backtesting | Measured workload or operating need; regression verification and explicit owner approval for any replacement/deprecation |
+| **Optional provider integrations** | Approved read-only Groww/Zerodha connectivity | Provider permission, technical/security assessment and separate owner approval; not a launch dependency |
+| **Future Personalised Guidance** | Separate advisory capability and workflow, only if desired | Fresh IA/RA classification, commercial case, operating model and explicit owner approval; no recommendation code/API or launch in this plan |
 
-**Demand gate:** a useful fixture-based prototype and direct user research come before substantial spending. Historical waitlist ≥2,000/20% stated intent, CAS activation ≥40% and paid conversion ≥5% remain comparison hypotheses, not prerequisites for learning with a small pilot. Validate the simulation offer itself: a payer can save/compare scenarios and explain the benefit over free diagnostics. Measure CAC including unsuccessful acquisition attempts and founder acquisition time separately. Renewal is measured only when cohorts reach 12 months; 80%/70% are assumptions until then. Test 5:1, 10:1 and 25:1 free:paid exposure.
+**Demand gate:** a useful fixture-based prototype and direct user research come before substantial spending. Stage B tests whether users value comprehensive MF research and basic user-directed calculators without CAS. Historical waitlist ≥2,000/20% stated intent, CAS activation ≥40% and paid conversion ≥5% remain comparison hypotheses, not prerequisites for learning with a small pilot. Validate scenario value over free research; do not describe calculators as allocation recommendations. Measure CAC including unsuccessful acquisition attempts and founder acquisition time separately. Renewal is measured only when cohorts reach 12 months; 80%/70% are assumptions until then. Test 5:1, 10:1 and 25:1 free:paid exposure.
 
 ## A5. Current owner decision register
 
@@ -260,18 +254,19 @@ All stages below describe future work and need separate implementation/expenditu
 | OD-3 | Rights/provider correspondence remains unsent | Owner controls actual sending/permissions; existing commercial rights still unresolved |
 | OD-4 | Targeted legal clarification of real workflows/data/terms, not automatic enterprise retainer | Applicability, scope and quotes before expenditure |
 | OD-5/8 | Validate simulations using a small useful prototype; scale acquisition on observed economics | Pilot metrics, CAC ceiling, renewal evidence |
-| OD-6/15 | Comprehensive free research; ₹199 Pro self-service simulations | PRO-0 behaviour review and demand evidence |
-| OD-7 | Architecture scope proposed in this plan | Accept ADR/methodology changes before code |
-| OD-9 | Portfolio-first; scoped independent security check before live CAS | Assessment quote and findings closure |
+| OD-6/15 | Comprehensive free research; ₹199 Pro user-directed calculators and simulations; Personalised Guidance future-only | PRO-0 behaviour review and demand evidence; separate Guidance approval |
+| OD-7 | Architecture scope in [ADD Amendment A3](../../architecture/ADD-amendment-A3.md) accepted, 2026-10-22 | Implementation still requires separate authority |
+| OD-9 | Stage B MF research/basic calculators before CAS; Stage C portfolio capabilities require isolated parsing and scoped independent security review | Assessment quote and findings closure before real CAS |
 | OD-10 | Replace old funding claims with stage/cohort model; development hosting ₹0 incremental | Validate review costs, actual production costs and own living runway; no spend authority |
 | OD-11/12 | Founder-managed hosting; credits optional; spending follows measured demand | Appropriate production setup, bill alerts and restore evidence |
-| OD-13 | Personalised advice deferred; founder-led non-individual IA only a future working hypothesis, subject to D0-IA | No eligibility/registration commitment; later compare partnership on actual costs |
+| OD-13 | Personalised Guidance is a separate future capability; no IA business model or registration route is selected | Fresh workflow classification, eligibility, operating model, economics and owner approval before any advice feature |
 | OD-14 | CAS-first, optional approved read-only connectors; no execution or commissions | Provider permissions and separate integration approval |
 | OD-16 | Simulation calculation/version/input contract proposed | Owner approves exact timing, rounding and rebalance rules |
 | OD-17 | Founder support/incident limits must be explicit before scaling | Measured workload, intake cap and fallback access/runbooks |
 | OD-18 | Quotations remain pending; owner requested drafts to send from StackVerity | No requests sent or supplier selected; replace allowances with applicable SaaS quotes, not IA procurement |
+| OD-19 | A3 target architecture accepted, 2026-10-22; scoped ADR-010 supersession effective | No implementation authority implied; implementation remains separately gated |
 
-Remaining blockers: commercial dataset permissions; actual-flow IA/RA classification of any ambiguous ratings/defaults; educational-cutoff treatment; payment merchant approval; lawful privacy/business arrangements; independent pre-CAS security scope/quote; demand and founder-capacity evidence. None requires buying growth infrastructure before development.
+Remaining blockers: commercial dataset permissions; actual-flow IA/RA classification of any ambiguous ratings/defaults; educational-cutoff treatment; payment merchant approval; lawful privacy/business arrangements; Stage B security/recovery readiness; separate isolated-worker and security readiness before CAS; demand and founder-capacity evidence. Personalised Guidance has its own future regulatory/commercial gate. None requires buying growth infrastructure before development.
 
 ## A6. Sources and evidence status
 
@@ -292,7 +287,7 @@ V = primary publication verified during review; I = product-specific interpretat
 
 ## A7. Historical decisions — superseded as current direction
 
-The sequence on 2026-10-22 was: MF/stock release split; personalised-advice exploration; analytics-only direction; founder-led IA reassessment; return to user-controlled simulations; bootstrapped spending correction; approval of repository documentation edits. No intermediate proposal authorised code, data ingestion or an IA application. Earlier ₹9–11/₹19–21/₹32 lakh and later enterprise-style simulation funding estimates are retired as current budgets. Prior cost assumptions are not validated quotations.
+The sequence on 2026-10-22 was: MF/stock release split; personalised-advice exploration; analytics-only direction; founder-led IA reassessment; return to user-controlled simulations; bootstrapped spending correction; approval of planning-document edits; revised A–D capability stages; and acceptance of A3 after the C1 egress wording was corrected. The earlier portfolio-first beta sequence is retained only as historical owner-register text below; current Stage B delivers MF research/basic calculators before Stage C CAS. No intermediate proposal authorised code, data ingestion or an IA application. Earlier ₹9–11/₹19–21/₹32 lakh and later enterprise-style simulation funding estimates are retired as current budgets. Prior cost assumptions are not validated quotations.
 
 Earlier owner-register text is preserved verbatim below as history; current A5 controls the planning direction. Historical “adopt”/“approve” text does not grant new expenditure or implementation authority.
 
@@ -338,6 +333,6 @@ Earlier owner-register text is preserved verbatim below as history; current A5 c
 
 ## Part B — Documentation changes and verification
 
-Approved edits are limited to this canonical file, [README](README.md), [10 roadmap](10-roadmap.md) and [11 staged plan](11-wickstreet-2.0.md). Supporting documents receive scope/status banners; their historical decisions and detailed designs remain intact. No duplicate release-plan file or memory edit is required. ADR bodies, blueprint 01–09, code, strategies, audit/history files, staged research and index state are preserved.
+The owner authorized exactly three documentation changes for this review: create [ADD Amendment A3](../../architecture/ADD-amendment-A3.md) as the single target architecture; add its status/reference to the [ADR index](../../architecture/adr/README.md); and align this canonical plan to A–D stages and separately gated Personalised Guidance. A3 was accepted after the requested C1 wording correction and final consistency review; its scoped ADR-010 supersession is effective. No implementation or expenditure authority is implied. Historical owner-register records, ADR bodies, blueprint 01–09, code, strategies, audit/history files and staged research remain unchanged.
 
-Verification for this amendment: validate relative file/anchor links; recompute annual tables, all 24 monthly cash movements, renewal timing, cumulative balances, break-even interpolation and downside cases from the stated inputs; compare staged diff before/after; hash-check unrelated files. No application test suite is required for documentation-only edits. Financial arithmetic verification does not validate demand, data permissions, vendor prices or legal conclusions.
+Verification for this documentation update: validate relative file/anchor links; confirm A3 status and the scoped ADR-010 supersession; verify exact C1 egress wording against §9.1; reconcile A–D scope and Guidance language across A3 and this plan; run `git diff --check`; and confirm the exact authorized file set. Annual and monthly financial calculations are unchanged. No application test suite is required for documentation-only edits. Financial arithmetic does not validate demand, data permissions, vendor prices or legal conclusions.
