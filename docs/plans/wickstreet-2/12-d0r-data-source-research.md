@@ -3,8 +3,14 @@
 > Desk research, 2026-10-22. Builds on blueprint [04-data-sources.md](04-data-sources.md) and the [M16 NSE data-use check](../../audits/2026-10-19-m16-nse-data-use.md).
 > Status: research for owner review. **This is not legal advice.** No code was changed. No charges were incurred, no paid dataset was opened and no market data was imported.
 
+**Historical scope; current SaaS boundary:** Sections A–H and the final answers record the earlier personal/self-hosted sourcing exercise. Their per-instance costs, bring-your-own-key recommendations and owner-decision defaults are historical, not a data-supply model approved for centrally hosted Wickstreet 2.0. The proposed ADRs cited below remain proposed; no personal licence, user's download or public endpoint establishes Wickstreet's commercial retrieval, shared storage, derived-use, free/paid display or redistribution rights. The [canonical release plan](13-wickstreet-2.0-mf-first-release-plan.md), [Stage B permissions gate](14-stage-b-implementation-plan.md#5-data-acquisition-and-permissions-gate) and [B0 cost envelope](15-stage-b0-product-and-value-specification.md#6-data-rights-and-199-cost-envelope) control current decisions.
+
+No commercial MF supplier, permission or quotation has been established. Before committing to a dependent feature, verify the contracting entity, coverage and corrections, shared caching, derived analytics, free and paid users, reports/exports, historical retention/replay and termination/deletion rights. Separate fixed licence minimums from usage/subscriber charges, including free-user load. A ₹0 licence remains conditional; unknown costs are not zero. No vendor contact, procurement or ingestion is authorized by this reconciliation.
+
+**Regulatory currency:** disclosure references below were checked against the June 2024 MF circular only. The [20 March 2026 MF Master Circular](https://www.sebi.gov.in/legal/master-circulars/mar-2026/master-circular-for-mutual-funds_100491.html), effective 1 April 2026, replaced it. Recheck the selected fields against that circular and subsequent changes before implementation/publication; this note does not revalidate the historical deadlines or grant commercial data rights.
+
 **Confidence labels used throughout**
-- **V** = verified today on the supplier's own page or the regulator's own text.
+- **V** = verified during the original dated research on the supplier's own page or the regulator's own text; not a fresh verification for SaaS use.
 - **C** = conditional: the evidence supports it, but it depends on a term not yet read, a test not yet run, or an interpretation that needs confirmation.
 - **U** = unverified: secondary sources only, or no evidence found.
 
@@ -276,7 +282,7 @@ Partly. The portfolio core (W5 direct equity, CAS import) runs on the user's own
 - Bulk fund data needs AMFI's written permission. AMFI publishes no licensing route.
 - Fundamentals at a personal price arrive without filing times, so point-in-time history is `estimated`.
 - The exchanges' own licensed products start at ₹1,00,000/yr per site. They are not individual products.
-- No supplier permits redistribution, so Wickstreet can never ship data or share it between users.
+- The reviewed personal-use terms do not establish Wickstreet's commercial redistribution or shared-service rights. Whether a supplier will grant suitable commercial rights, and at what price, remains unverified; this is not evidence that such contracts are unavailable.
 
 **6. Most viable long-term strategy**
 Keep ADR-021: source-neutral import contracts, no default fetchers. Build on three layers:

@@ -4,11 +4,11 @@
 
 ## Context and decision
 
-**Build the useful simulation product, validate demand, and scale spending progressively.** Wickstreet calculates consequences of investment choices made by users; it does not prescribe investments. No IA business is a 2.0 launch dependency. The former advisory proposal and earlier budgets are superseded as current strategy; historical owner decisions remain below.
+**Validate a useful MF research proposition and scale spending progressively.** Tickertape-class MF research remains the long-term benchmark. A paid research workspace is the leading B0 hypothesis, not a selected product or approved feature bundle. Wickstreet calculates consequences of investment choices made by users; it does not prescribe investments. No IA business is a 2.0 launch dependency. The former advisory proposal and earlier budgets are superseded as current strategy; historical owner decisions remain below.
 
 Binding assumptions:
 
-- Centrally hosted SaaS; Pro ₹199/year including GST. Comprehensive free research remains.
+- Centrally hosted SaaS; ₹199/year including applicable GST remains the initial, unvalidated Pro price hypothesis. Useful, comprehensive free research remains the direction; exact Free/Pro boundaries depend on task evidence and the rights-and-cost assessment. ₹399–₹499 alternatives are candidates for later separately approved testing after fixing the task and feasible bundle, not selected prices or test authority.
 - **Zero incremental hosting during development**, using existing infrastructure and synthetic fixtures. Existing sunk infrastructure cost is not charged again. No production customer data on development systems.
 - Zero salaried engineers, dedicated SRE or paid on-call team. Founder owns architecture, maintenance, support, security and operations.
 - Supervised interns use legally valid engagements, IP/confidentiality terms and synthetic fixtures. Zero remuneration is conditional on lawful classification, not a blanket exemption for internships or apprenticeships.
@@ -20,17 +20,19 @@ Binding assumptions:
 
 ## A1. Free and Pro capabilities
 
-| Capability | Free | Pro ₹199/year | Earliest stage | Boundary |
+**All paywall allocations below are provisional.** The [B0 proposition](15-stage-b0-product-and-value-specification.md#4-candidate-free-and-pro-proposition) governs their evaluation. Basic calculators are supporting/free candidates, not the assumed paid differentiator. The workspace, advanced filters, analytical depth and scenario continuity are hypotheses to test; no exact limits, entitlements or first-release bundle are approved. This commercial reconciliation retains A3 and Stages A–D.
+
+| Capability | Free hypothesis | Pro hypothesis — ₹199/year initially | Earliest stage | Boundary |
 |---|---|---|---|---|
-| Discovery, screening, factual comparisons | Comprehensive | — | B | User-selected criteria; no curated buy list; applicable data rights first |
-| NAV charts, historical returns, risk metrics, TER/costs | Included where rights permit | — | B | Method, date and coverage shown |
-| Holdings and overlap | Included where rights permit | — | B/C | Shared-data overlap in B if licensed; portfolio-linked overlap in C |
-| Basic SIP, lumpsum and goal calculators | — | Included | B | User chooses schemes, amounts and assumptions |
-| CAS import, XIRR, allocation and concentration diagnostics | Included when launched | — | C | Describe the portfolio; isolated parser and tenant controls required |
-| Advanced allocation and portfolio-linked scenarios | — | Included | C | User selects funds, weights, amounts and assumptions |
-| Portfolio rebalancing simulations | — | Included | C | User selects targets, dates, thresholds and cost assumptions |
-| Side-by-side comparisons, saved scenarios and reports | Factual comparisons | Included | B/C | No suitability ranking or recommended winner |
-| Groww/Zerodha portfolio connectivity | — | Optional after approval | C/D | Read-only; provider permission and separate approval; never launch prerequisite |
+| Discovery, screening, factual comparisons | Useful scheme discovery, basic numerical filters and comparisons | Advanced user-defined filters and saved screens, if valued | B | User-selected criteria; no curated buy list; applicable data rights first |
+| NAV charts, historical returns, risk metrics, TER/costs | Useful factual research where rights permit | Deeper comparisons and periods, if valued and viable | B | Method, date and coverage shown; metric/paywall choices pending |
+| Holdings and overlap | Candidate where rights permit | Allocation pending; no initial-release promise | B/C | Shared-data overlap only if separately selected and licensed; portfolio-linked overlap in C |
+| Basic SIP, lumpsum and goal calculators | Available in the candidate free bundle | Retained; possible integration with user-authored scenarios | B | User chooses schemes, amounts and assumptions; formulas alone are not the paid proposition |
+| CAS import, XIRR, allocation and concentration diagnostics | Allocation pending for Stage C | Allocation pending for Stage C | C | Excluded from Stage B; isolated parser and tenant controls required |
+| Advanced allocation and portfolio-linked scenarios | Allocation pending for Stage C | Candidate, not committed | C | User selects funds, weights, amounts and assumptions |
+| Portfolio rebalancing simulations | Allocation pending for Stage C | Candidate, not committed | C | User selects targets, dates, thresholds and cost assumptions |
+| Side-by-side comparisons, saved research/scenarios and reports | Useful transient factual comparison | Private saved comparisons, notes and reproducibility as a leading hypothesis | B/C | Exact scheme/period limits pending; no suitability ranking or recommended winner; retention/report rights required |
+| Groww/Zerodha portfolio connectivity | Allocation pending | Optional candidate after approval | C/D | Read-only; provider permission and separate approval; never launch prerequisite |
 | Personalised allocation, scheme selection or investment instructions | Excluded | Excluded | Future gate | Separate Personalised Guidance capability; no implementation or launch until fresh regulatory and commercial approval |
 
 A goal calculator may state the contribution required under the user's return assumption. It must not choose the return, fund or risk allocation. A rebalance simulator may calculate differences from a user-selected target; it must not prescribe that target or tell the user to transact.
@@ -84,6 +86,8 @@ Ordinary SaaS security/privacy obligations remain applicable. SEBI CSCRF/cloud/r
 
 **Model `SIM-BOOT-2026-10-22-v1`: arithmetic verified; inputs unverified unless sourced.** Estimates are expenditure envelopes, not purchase authority or supplier quotations. No IA-only expenses, deposits, supervisory charges, advisory agreements or ₹40 advisory/client allowance appear. No founder salary, SRE or paid engineering is hidden in the budgets.
 
+This retained model is a conditional illustration, not evidence for or against commercial viability or approval of the former calculator-led offer. Acquisition, retention, free-tier load and conditional ₹0 data licensing are unproven. Before a commercial decision, reconcile the selected bundle with actual fixed/variable licence terms, first-year full acquisition costs, renewal-specific costs, servicing and founder time. Mature replacement-CAC economics cannot stand in for first-year acquisition, and annual advance cash is not earned profit. Alternative-price tests must evaluate conversion and contribution together. No financial inputs or projections are adopted merely because the independent review's different illustrative assumptions produce different break-even figures.
+
 ### A3a. Unit economics and stage budgets
 
 | Input | Lean launch | Growth stage |
@@ -110,7 +114,7 @@ The following annual budgets cover incremental production hosting/backups, email
 
 Lean starting envelope: ₹14,400 host, ₹3,600 backup/storage, ₹2,400 email, ₹9,600 admin/tools and ₹6,000 routine security work per year = ₹36,000. These are U allowances, not verified AWS or professional quotes. Existing capacity may reduce actual incremental spend; missing legal/entity costs may increase it. The growth envelope permits managed services, deeper reviews and support help when justified, but contains no salaried engineering or SRE. Reconcile supplier line items before authorising each increase.
 
-Steady-state contribution per payer = `199/1.18 × .98 − 4.6964 − 2×free_ratio − (1−retention)×CAC`. This is ₹132.574786 lean / ₹110.574786 growth. Acquisition here replaces annual churn; the monthly growth forecast charges full CAC to every new payer. First-year margins before fixed costs are ₹100.57 lean / ₹40.57 growth; renewals have no new-customer CAC.
+Steady-state contribution per payer = `199/1.18 × .98 − 4.6964 − 2×free_ratio − (1−retention)×CAC`. This is ₹132.574786 lean / ₹110.574786 growth. Acquisition here replaces annual churn; the monthly illustrative cohort scenario charges full CAC to every new payer. First-year margins before fixed costs are ₹100.57 lean / ₹40.57 growth; renewals have no new-customer CAC in this illustration, but actual renewal effort/cost must be measured. These figures exclude a verified commercial data allowance and founder compensation.
 
 Annual steady-state results, ₹ lakh; costs include refunds, payment fees, free users, replacement CAC and the stage envelope. Surplus is before founder pay, income tax and recovery of launch costs.
 
@@ -225,9 +229,9 @@ Tests planned for later authorised work: cash/unit conservation; SIP timing and 
 - **Package size:** one vertical slice per package, 1–2 weeks, with a written spec, fixtures and acceptance tests up front, a reviewable change (no commit without separate authority), and the existing verification steps (`pytest`, `mypy`, `ruff`, `lint-imports`, migrations on a fresh DB, Vitest, Playwright).
 
 
-**Usability goal (owner, 2026-10-22): the free tier offers better usability than Tickertape.** This is a target to prove, not a claim to publish.
+**Usability goal (owner, 2026-10-22): the free tier offers better usability than Tickertape.** This is a target to prove, not a claim to publish. The [Discovery Protocol](16-b0-discovery-protocol.md#6-measures-and-interpretation) controls task-specific experimental design.
 - **Benchmark (UX-1, before beta and again before launch):** the same fund tasks on Wickstreet free and on Tickertape's free tier. Tasks: find a fund, read its returns and risk, compare 2–3 funds, see its costs. Measure interactions to answer, time to answer, task success, and interruptions (paywalls, ads, sign-up walls).
-- **Pass bar:** fewer interactions and higher task success on every task. The existing I-5 rule (any capability within 2 interactions from where the user is) holds. Keyboard and screen-reader checks pass. Light and dark themes are checked at 1440, 1024 and 390 px.
+- **Pass bar:** predefine the priority task, primary outcome and meaningful improvement before testing; assess comprehension, effort and reproducibility with uncertainty and learning effects recorded. Do not require superiority on every task or use a universal two-interaction count as an acceptance rule. No material comprehension/accessibility regression; keyboard and screen-reader checks pass. Light and dark themes are checked at 1440, 1024 and 390 px. This replaces the earlier every-task/two-interaction bar without changing A3.
 - Results go in `docs/audits/`.
 
 
@@ -244,7 +248,7 @@ The capability stages below are product phases, not service boundaries. All work
 | **Optional provider integrations** | Approved read-only Groww/Zerodha connectivity | Provider permission, technical/security assessment and separate owner approval; not a launch dependency |
 | **Future Personalised Guidance** | Separate advisory capability and workflow, only if desired | Fresh IA/RA classification, commercial case, operating model and explicit owner approval; no recommendation code/API or launch in this plan |
 
-**Demand gate:** a useful fixture-based prototype and direct user research come before substantial spending. Stage B tests whether users value comprehensive MF research and basic user-directed calculators without CAS. Historical waitlist ≥2,000/20% stated intent, CAS activation ≥40% and paid conversion ≥5% remain comparison hypotheses, not prerequisites for learning with a small pilot. Validate scenario value over free research; do not describe calculators as allocation recommendations. Measure CAC including unsuccessful acquisition attempts and founder acquisition time separately. Renewal is measured only when cohorts reach 12 months; 80%/70% are assumptions until then. Test 5:1, 10:1 and 25:1 free:paid exposure.
+**Demand gate:** separately authorized discovery and a narrow synthetic prototype come before substantial paid-functionality engineering or spending. Stage B tests a feasible MF research proposition without CAS; a paid workspace leads the hypotheses but is not selected. Interviews, task benchmarking and rights/cost evidence determine the bundle before any price test; ₹199 remains the target hypothesis and ₹399–₹499 alternatives require their own test decision. Historical waitlist ≥2,000/20% stated intent, CAS activation ≥40% and paid conversion ≥5% are historical comparison values, not current pass thresholds or prerequisites for learning. Measure CAC including unsuccessful acquisition attempts and founder acquisition time separately. Renewal is measured only when cohorts reach 12 months; 80%/70% are assumptions until then. Test 5:1, 10:1 and 25:1 free:paid exposure. Tenancy, live-data permissions and commercial publication clearance remain exposure gates, not prerequisites for approved synthetic testing with appropriate participant safeguards.
 
 ## A5. Current owner decision register
 
@@ -253,8 +257,8 @@ The capability stages below are product phases, not service boundaries. All work
 | OD-1/2 | MF 2.0 / stocks 3.0 split retained; W0 investment retained; W1 belongs to 3.0 | No rewrite of historical Gate 0 or implemented code |
 | OD-3 | Rights/provider correspondence remains unsent | Owner controls actual sending/permissions; existing commercial rights still unresolved |
 | OD-4 | Targeted legal clarification of real workflows/data/terms, not automatic enterprise retainer | Applicability, scope and quotes before expenditure |
-| OD-5/8 | Validate simulations using a small useful prototype; scale acquisition on observed economics | Pilot metrics, CAC ceiling, renewal evidence |
-| OD-6/15 | Comprehensive free research; ₹199 Pro user-directed calculators and simulations; Personalised Guidance future-only | PRO-0 behaviour review and demand evidence; separate Guidance approval |
+| OD-5/8 | Bounded discovery and a narrow synthetic prototype recommended; execution remains separately gated | Customer task, channel, first-year contribution and renewal evidence; no outreach/prototype authority |
+| OD-6/15 | Useful free research retained; Free/Pro tables provisional; ₹199 unvalidated; paid research workspace leads the hypotheses; Personalised Guidance future-only | Exact bundle/paywalls after evidence; consider ₹399–₹499 tests only after task/bundle definition and separate approval; actual-flow review before publication |
 | OD-7 | Architecture scope in [ADD Amendment A3](../../architecture/ADD-amendment-A3.md) accepted, 2026-10-22 | Implementation still requires separate authority |
 | OD-9 | Stage B MF research/basic calculators before CAS; Stage C portfolio capabilities require isolated parsing and scoped independent security review | Assessment quote and findings closure before real CAS |
 | OD-10 | Replace old funding claims with stage/cohort model; development hosting ₹0 incremental | Validate review costs, actual production costs and own living runway; no spend authority |
@@ -333,6 +337,6 @@ Earlier owner-register text is preserved verbatim below as history; current A5 c
 
 ## Part B — Documentation changes and verification
 
-The owner authorized exactly three documentation changes for this review: create [ADD Amendment A3](../../architecture/ADD-amendment-A3.md) as the single target architecture; add its status/reference to the [ADR index](../../architecture/adr/README.md); and align this canonical plan to A–D stages and separately gated Personalised Guidance. A3 was accepted after the requested C1 wording correction and final consistency review; its scoped ADR-010 supersession is effective. No implementation or expenditure authority is implied. Historical owner-register records, ADR bodies, blueprint 01–09, code, strategies, audit/history files and staged research remain unchanged.
+For the A3 architecture review, the owner authorized exactly three documentation changes: create [ADD Amendment A3](../../architecture/ADD-amendment-A3.md) as the single target architecture; add its status/reference to the [ADR index](../../architecture/adr/README.md); and align this canonical plan to A–D stages and separately gated Personalised Guidance. A3 was accepted after the requested C1 wording correction and final consistency review; its scoped ADR-010 supersession is effective. The subsequent bounded commercial-planning reconciliation affects documents 12–16 only; it does not amend A3 or authorize implementation/expenditure. Historical owner-register records, ADR bodies, blueprint 01–09, code, strategies, audit/history files and staged research remain preserved.
 
 Verification for this documentation update: validate relative file/anchor links; confirm A3 status and the scoped ADR-010 supersession; verify exact C1 egress wording against §9.1; reconcile A–D scope and Guidance language across A3 and this plan; run `git diff --check`; and confirm the exact authorized file set. Annual and monthly financial calculations are unchanged. No application test suite is required for documentation-only edits. Financial arithmetic does not validate demand, data permissions, vendor prices or legal conclusions.
