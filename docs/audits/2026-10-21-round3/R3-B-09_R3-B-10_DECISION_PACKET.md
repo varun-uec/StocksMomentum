@@ -4,7 +4,7 @@
 
 Date: 2026-10-20. Branch `wickstreet/m10-m11` at `2506150`. Data: development database, `ohlcv_daily` revision 133621 (3,206,035 bars, last session 2026-10-19), read with `default_transaction_read_only=on`.
 
-**This packet changes no code, specification, ADR, strategy or stored result.** Every number below comes from the scripts in [`backend/decision-packet/`](backend/decision-packet/). Each script reads a read-only CSV export ([`export.sh`](backend/decision-packet/export.sh)) and runs in memory. No database was written, restored or created.
+**This packet changes no code, specification, ADR, strategy or stored result.** Every number below comes from the scripts in [`backend/decision-packet/`](../../../audit-evidence/audit-r3/backend/decision-packet/). Each script reads a read-only CSV export ([`export.sh`](../../../audit-evidence/audit-r3/backend/decision-packet/export.sh)) and runs in memory. No database was written, restored or created.
 
 Terms used with one meaning throughout:
 
@@ -12,7 +12,7 @@ Terms used with one meaning throughout:
 - **Stale fill:** a trade priced from a bar dated before the fill date.
 - **Stale mark:** a valuation that uses a bar dated before the valuation date.
 - **Bar on X:** an `ohlcv_daily` row for the security dated exactly X.
-- **Current engine:** `WalkForwardRunner` at `2506150`. **Reference simulator:** [`sim.py`](backend/decision-packet/sim.py). It imports no backtest or domain code.
+- **Current engine:** `WalkForwardRunner` at `2506150`. **Reference simulator:** [`sim.py`](../../../audit-evidence/audit-r3/backend/decision-packet/sim.py). It imports no backtest or domain code.
 
 ---
 
@@ -44,7 +44,7 @@ Each question has a recommended default. Nothing is implemented until you approv
 
 ### 2.1 Reproduction
 
-[`reproduce.py`](backend/decision-packet/reproduce.py) feeds the production `WalkForwardRunner`, `SqlPriceHistoryProvider`, `SqlSurvivorshipEligibilityProvider` and `SqlBenchmarkProvider` from the export. The window is 2025-01-01 to 2026-07-31 and capital is ₹10,00,000, the same as the audit.
+[`reproduce.py`](../../../audit-evidence/audit-r3/backend/decision-packet/reproduce.py) feeds the production `WalkForwardRunner`, `SqlPriceHistoryProvider`, `SqlSurvivorshipEligibilityProvider` and `SqlBenchmarkProvider` from the export. The window is 2025-01-01 to 2026-07-31 and capital is ₹10,00,000, the same as the audit.
 
 | Check | Result |
 |---|---|
@@ -61,18 +61,18 @@ The reference simulator, rebuilt from brief.md alone, reproduces the current eng
 
 | Step | Code | What happens |
 |---|---|---|
-| Universe | [`walk_forward_market_data.py:275`](../../backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py#L275) | It loads `exchange == 'NSE'` only. Dual-listed names carry `exchange = 'BOTH'` (since Phase 5, 2026-08-08), so all 2,431 of them are dropped: RELIANCE, TCS, INFY, HDFCBANK, MCX. It applies no equity filter, so 353 of the 1,018 names (35%) are ETFs or fund units. Example: EBBETF0425, a bond ETF that matured in April 2025, was held. Membership and surveillance are stubs. **The universe is mostly small names with long trading gaps.** New findings: R3-B-27 and R3-B-28. Brief §1 says "Nifty 500 constituents", so both contradict it. |
-| Signal | [`walk_forward.py:230`](../../backend/src/momentum25/application/use_cases/walk_forward.py#L230) | `p_t = price_on_or_before(D)` returns the last bar, however old. **All 176 stale fills follow a signal scored on a stale `p_t`:** none of those names had a bar on D. The `_score` docstring says the opposite: "never scored on a fabricated or forward-filled price". |
-| Price lookup | [`walk_forward_market_data.py:124`](../../backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py#L124) | `bisect_right(dates, min(target, as_of)) - 1` returns the latest bar on or before the fill date. It never returns `None` for a name that traded earlier. |
-| Execution | [`walk_forward.py:290`](../../backend/src/momentum25/application/use_cases/walk_forward.py#L290) | `_apply` fills at that bar's adjusted open. The "Skip rather than invent one" branch (line 297) cannot run for any name that traded before. **This is the stale fill.** |
-| Valuation | [`walk_forward.py:270`](../../backend/src/momentum25/application/use_cases/walk_forward.py#L270) | `_mark_to_market` uses the same lookup. Its docstring says a name with no price "is marked to zero". In fact it is marked at the old bar's open. **This is the stale mark.** |
-| Accounting | [`walk_forward.py:314`](../../backend/src/momentum25/application/use_cases/walk_forward.py#L314) | `_settle` rebuilds holdings as `target_value / price` for every target name and sets `cash = nav_pre − invested − total_cost`. It does not use the fills. It agrees with the trade log only because every fill succeeds. **If fills could be skipped, holdings, cash and costs would leave the trade log.** This is a latent defect that any policy fix must remove. |
-| Final NAV | [`walk_forward.py:397`](../../backend/src/momentum25/application/use_cases/walk_forward.py#L397) | The final mark uses the last close on or before the end date: a stale terminal mark. |
+| Universe | [`walk_forward_market_data.py:275`](../../../backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py#L275) | It loads `exchange == 'NSE'` only. Dual-listed names carry `exchange = 'BOTH'` (since Phase 5, 2026-08-08), so all 2,431 of them are dropped: RELIANCE, TCS, INFY, HDFCBANK, MCX. It applies no equity filter, so 353 of the 1,018 names (35%) are ETFs or fund units. Example: EBBETF0425, a bond ETF that matured in April 2025, was held. Membership and surveillance are stubs. **The universe is mostly small names with long trading gaps.** New findings: R3-B-27 and R3-B-28. Brief §1 says "Nifty 500 constituents", so both contradict it. |
+| Signal | [`walk_forward.py:230`](../../../backend/src/momentum25/application/use_cases/walk_forward.py#L230) | `p_t = price_on_or_before(D)` returns the last bar, however old. **All 176 stale fills follow a signal scored on a stale `p_t`:** none of those names had a bar on D. The `_score` docstring says the opposite: "never scored on a fabricated or forward-filled price". |
+| Price lookup | [`walk_forward_market_data.py:124`](../../../backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py#L124) | `bisect_right(dates, min(target, as_of)) - 1` returns the latest bar on or before the fill date. It never returns `None` for a name that traded earlier. |
+| Execution | [`walk_forward.py:290`](../../../backend/src/momentum25/application/use_cases/walk_forward.py#L290) | `_apply` fills at that bar's adjusted open. The "Skip rather than invent one" branch (line 297) cannot run for any name that traded before. **This is the stale fill.** |
+| Valuation | [`walk_forward.py:270`](../../../backend/src/momentum25/application/use_cases/walk_forward.py#L270) | `_mark_to_market` uses the same lookup. Its docstring says a name with no price "is marked to zero". In fact it is marked at the old bar's open. **This is the stale mark.** |
+| Accounting | [`walk_forward.py:314`](../../../backend/src/momentum25/application/use_cases/walk_forward.py#L314) | `_settle` rebuilds holdings as `target_value / price` for every target name and sets `cash = nav_pre − invested − total_cost`. It does not use the fills. It agrees with the trade log only because every fill succeeds. **If fills could be skipped, holdings, cash and costs would leave the trade log.** This is a latent defect that any policy fix must remove. |
+| Final NAV | [`walk_forward.py:397`](../../../backend/src/momentum25/application/use_cases/walk_forward.py#L397) | The final mark uses the last close on or before the end date: a stale terminal mark. |
 | Tests | `tests/unit/test_walk_forward.py:63` | `FakePrices` has the same on-or-before rule, and no test covers a missing fill-date bar. So the defect cannot fail a test. |
 
 **How staleness is distributed.** Median 42 sessions, p90 103, maximum 258. Only 13 of 176 stale fills are within 5 sessions.
 
-### 2.3 Worked examples ([`trace.py`](backend/decision-packet/trace.py))
+### 2.3 Worked examples ([`trace.py`](../../../audit-evidence/audit-r3/backend/decision-packet/trace.py))
 
 | Name | What the current engine did | What the market offered |
 |---|---|---|
@@ -106,7 +106,7 @@ All non-current policies share these rules. Holdings are marked at the fill-date
 
 Every rule is deterministic, and every rule uses only facts known at or before the trading session.
 
-1. **E1 Signal availability.** Score a name at D only if it has a bar on D. Lookback prices (3, 6 and 12 months) keep the documented rule: the latest session on or before the target date ([`walk_forward.py`](../../backend/src/momentum25/application/use_cases/walk_forward.py) `_months_before` docstring). The result counts lookbacks more than 5 sessions stale (§4.5).
+1. **E1 Signal availability.** Score a name at D only if it has a bar on D. Lookback prices (3, 6 and 12 months) keep the documented rule: the latest session on or before the target date ([`walk_forward.py`](../../../backend/src/momentum25/application/use_cases/walk_forward.py) `_months_before` docstring). The result counts lookbacks more than 5 sessions stale (§4.5).
 2. **E2 Execution price.** Use only the adjusted open of a bar dated on the execution session.
 3. **E3 Sizing.** Target value = NAV before trading / number of target names. A held name is marked at its adjusted open on F, or else at its last close on or before D (flagged).
 4. **E4 Order.** Sells, then buys, in the same session.
@@ -138,7 +138,7 @@ Every rule is deterministic, and every rule uses only facts known at or before t
 
 ## 4. Financial impact analysis
 
-Window 2025-01-01 → 2026-07-31, 19 rebalances, ₹10,00,000. Benchmark: Nifty 500 Price Index (not TRI), +2.80% over the same span, the same under every policy. Source: [`headline.json`](backend/decision-packet/headline.json), [`out-NSE.txt`](backend/decision-packet/out-NSE.txt).
+Window 2025-01-01 → 2026-07-31, 19 rebalances, ₹10,00,000. Benchmark: Nifty 500 Price Index (not TRI), +2.80% over the same span, the same under every policy. Source: [`headline.json`](../../../audit-evidence/audit-r3/backend/decision-packet/headline.json), [`out-NSE.txt`](../../../audit-evidence/audit-r3/backend/decision-packet/out-NSE.txt).
 
 ### 4.1 Production configuration (NSE-only universe, current signal rule)
 
@@ -176,13 +176,13 @@ The current engine's cash is slightly negative because `_settle` pays costs out 
 | Costs / turnover | ₹24,885 / 2.46× | ₹17,526 / 1.76× |
 | Mean holdings / NAV on stale marks | 30.0 / 3.3% | 36.4 / 15.1% |
 
-### 4.3 Attribution and direction of bias ([`attrib.py`](backend/decision-packet/attrib.py))
+### 4.3 Attribution and direction of bias ([`attrib.py`](../../../audit-evidence/audit-r3/backend/decision-packet/attrib.py))
 
 - The gap between the current engine and A is −34.5 points of return (₹−3,45,296). Of that, ₹−2,94,776 (85%) sits in the 51 names with at least one stale fill. The rest comes from different holdings later in the path (the buffer rule depends on holdings).
 - The current engine lost ₹1,91,836 on those 51 names and made ₹1,01,675 on all other names.
 - **The sign of the bias depends on the mix.** A stale buy enters before a fall, so it hurts. A stale sell exits before a fall, so it flatters. In the wider universe with E1, the current engine shows −3.6% and EXEC-1 shows −9.7%. So the audit register's phrase "biased toward illiquid names" is right about exposure, but no fixed direction may be claimed for returns.
 
-### 4.4 Sensitivity: universe and signal ([`out-BOTH.txt`](backend/decision-packet/out-BOTH.txt), [`out-BOTH-fresh.txt`](backend/decision-packet/out-BOTH-fresh.txt))
+### 4.4 Sensitivity: universe and signal ([`out-BOTH.txt`](../../../audit-evidence/audit-r3/backend/decision-packet/out-BOTH.txt), [`out-BOTH-fresh.txt`](../../../audit-evidence/audit-r3/backend/decision-packet/out-BOTH-fresh.txt))
 
 With dual-listed names included, 1,477 to 1,929 names are scored per rebalance (NSE-only: 142 to 211). ETFs are still in the universe in this sensitivity run:
 
@@ -195,7 +195,7 @@ With dual-listed names included, 1,477 to 1,929 names are scored per rebalance (
 
 **Across these four configurations, total return runs from −42% to +28%** once valuation is included. The fill policy matters, but universe construction and the valuation of names that stop trading matter as much. This backtest cannot support a performance claim until R3-B-27, R3-B-28 and loop-3 Item 13 are resolved (B09-8).
 
-### 4.5 Liquidity and lookback staleness ([`liquidity.json`](backend/decision-packet/liquidity.json))
+### 4.5 Liquidity and lookback staleness ([`liquidity.json`](../../../audit-evidence/audit-r3/backend/decision-packet/liquidity.json))
 
 | Configuration | Fills | Median participation | p99 | Fills > 10% of session value | Fills > 100% |
 |---|---|---|---|---|---|
@@ -207,8 +207,8 @@ Lookbacks: under E1, 1,233 of 10,281 lookback prices (12.0%) in the NSE-only uni
 
 ### 4.6 Consequences beyond the backtest
 
-- **Strategy selection and ranking.** The backtest does not use the screener, its engines, Strategy Studio or the hold-out ([ADR-014](../../docs/architecture/adr/ADR-014-strategy-studio.md), context item 1 and the rejected alternative "Reuse the walk-forward backtest"). The policy changes only the backtest's own holdings path (Jaccard 0.89–0.92 against the current engine).
-- **Research walk-forward and out-of-sample results.** These are unaffected. `validation.py` and the forward-return backfill never call `WalkForwardRunner` or `price_on_or_before` (verified by search). Forward returns count the security's own bars ([`forward_returns.py`](../../backend/src/momentum25/domain/research/forward_returns.py)).
+- **Strategy selection and ranking.** The backtest does not use the screener, its engines, Strategy Studio or the hold-out ([ADR-014](../../architecture/adr/ADR-014-strategy-studio.md), context item 1 and the rejected alternative "Reuse the walk-forward backtest"). The policy changes only the backtest's own holdings path (Jaccard 0.89–0.92 against the current engine).
+- **Research walk-forward and out-of-sample results.** These are unaffected. `validation.py` and the forward-return backfill never call `WalkForwardRunner` or `price_on_or_before` (verified by search). Forward returns count the security's own bars ([`forward_returns.py`](../../../backend/src/momentum25/domain/research/forward_returns.py)).
 - **Stored results.** No backtest result is persisted: there is no table, and `/backtest/walk-forward` computes on demand. The only stored outputs are the audit files `walkforward/wf_1.json` and `wf_2.json`. No current document quotes a backtest return.
 
 ---
@@ -230,7 +230,7 @@ Lookbacks: under E1, 1,233 of 10,281 lookback prices (12.0%) in the NSE-only uni
 
 | Surface | Change |
 |---|---|
-| Version carriers | Items 2 and 3 move existing indicator values, so bump `INDICATOR_VERSION` 2 → 3 (the rule at [`indicator_pipeline.py:67`](../../backend/src/momentum25/infrastructure/pipelines/indicator_pipeline.py#L67): "Bump only when an existing value moves"). Items 1 and 4 live outside both `INDICATOR_VERSION` and `registry_version()`, so `data_version` cannot see them today. Precedent: `18cab43` (2026-10-19) changed every RS rating without a version bump. Approve Q4: add `ENGINE_VERSION` to the manifest identity as identity schema 3. Schema 1 and 2 bodies keep their hash rules, so every stored key still loads. |
+| Version carriers | Items 2 and 3 move existing indicator values, so bump `INDICATOR_VERSION` 2 → 3 (the rule at [`indicator_pipeline.py:67`](../../../backend/src/momentum25/infrastructure/pipelines/indicator_pipeline.py#L67): "Bump only when an existing value moves"). Items 1 and 4 live outside both `INDICATOR_VERSION` and `registry_version()`, so `data_version` cannot see them today. Precedent: `18cab43` (2026-10-19) changed every RS rating without a version bump. Approve Q4: add `ENGINE_VERSION` to the manifest identity as identity schema 3. Schema 1 and 2 bodies keep their hash rules, so every stored key still loads. |
 | Stored runs | Immutable under ADR-006. The next screen writes a new run with a new `data_version`. Run 149 and every earlier run keep their results, rules, explanations and hashes. |
 | `config_hash` | Unchanged. The stored config already says `tie_breakers: [..., "symbol"]`. After B10-4 the code honours text that the hash already covers. |
 | Score and rank history | The UI and the APIs that show a stock's score or rank history across runs must mark the engine-version break. The minimum is a field on each point; the chart shows a divider. |
@@ -241,16 +241,16 @@ Lookbacks: under E1, 1,233 of 10,281 lookback prices (12.0%) in the NSE-only uni
 
 ## 6. R3-B-10 decision table
 
-Source: [`r3b10.py`](backend/decision-packet/r3b10.py) for run 149, and [`r3b10_multi.py`](backend/decision-packet/r3b10_multi.py) and [`r3b10_optc.py`](backend/decision-packet/r3b10_optc.py) for 7 more runs (2020-11-27 to 2025-09-30). The rebuild reproduces run 149 first: RS 0 mismatches over 3,073 equities, gates 1,338 of 1,338, ranks 155 of 155, maximum score difference 0.0018 (stored contributions are rounded to 4 dp).
+Source: [`r3b10.py`](../../../audit-evidence/audit-r3/backend/decision-packet/r3b10.py) for run 149, and [`r3b10_multi.py`](../../../audit-evidence/audit-r3/backend/decision-packet/r3b10_multi.py) and [`r3b10_optc.py`](../../../audit-evidence/audit-r3/backend/decision-packet/r3b10_optc.py) for 7 more runs (2020-11-27 to 2025-09-30). The rebuild reproduces run 149 first: RS 0 mismatches over 3,073 equities, gates 1,338 of 1,338, ranks 155 of 155, maximum score difference 0.0018 (stored contributions are rounded to 4 dp).
 
 ### 6.1 Item 1 — RS rating population
 
 | Field | Finding |
 |---|---|
 | Specification | Spec §8: "percentile rank (1–99) of RS raw return across the **eligible universe** in the same run". ADD §17 (higher precedence): "computed across **the universe** within a run". ADD §25: "Compute RS after **universe load**". ADD §17 also says: "**Insufficient history ⇒ indicator `None`** and the security is flagged ineligible." |
-| Implementation | [`screening_orchestrator.py:121`](../../backend/src/momentum25/application/use_cases/screening_orchestrator.py#L121) loads every active equity; [`:318`](../../backend/src/momentum25/application/use_cases/screening_orchestrator.py#L318) ranks RS over it before eligibility. [`rs_ratings.py:111`](../../backend/src/momentum25/application/services/rs_ratings.py#L111) shortens each window to `min(period, len(bars) − 1)` and takes the last bar however old. The historical and read paths use the same service. |
+| Implementation | [`screening_orchestrator.py:121`](../../../backend/src/momentum25/application/use_cases/screening_orchestrator.py#L121) loads every active equity; [`:318`](../../../backend/src/momentum25/application/use_cases/screening_orchestrator.py#L318) ranks RS over it before eligibility. [`rs_ratings.py:111`](../../../backend/src/momentum25/application/services/rs_ratings.py#L111) shortens each window to `min(period, len(bars) − 1)` and takes the last bar however old. The historical and read paths use the same service. |
 | Classification | **Ambiguity** (ADD and spec differ) **with an embedded defect**. Run 149 ranks 669 names with fewer than 253 bars on shortened windows, against ADD §17 and the formula `R(d) = close/close[−d] − 1`. It also ranks 468 names whose last bar is more than 30 days old. |
-| Options | **A** current: all active equities (3,073 on run 149). **B** spec: eligible names only (1,338). **C** all active equities with valid inputs: ≥ 253 bars and not stale under the screener's own rule `is_stale_as_of` (more than 30 days, [`data_quality.py:33`](../../backend/src/momentum25/domain/research/data_quality.py#L33)) (1,959). C adds no new threshold. |
+| Options | **A** current: all active equities (3,073 on run 149). **B** spec: eligible names only (1,338). **C** all active equities with valid inputs: ≥ 253 bars and not stale under the screener's own rule `is_stale_as_of` (more than 30 days, [`data_quality.py:33`](../../../backend/src/momentum25/domain/research/data_quality.py#L33)) (1,959). C adds no new threshold. |
 | Financial impact | A → B over 8 runs: 1,005–1,678 ratings change per run. Per run, 0–157 names cross RS 70 upward and 0–3 downward. Qualified set grows by up to +60 (run 88: 200 → 260). **Top-25 overlap 19–25 of 25**, with 0–6 names swapped per run; run 149 swaps 0. **B against C:** qualified-set Jaccard 0.98–1.00, mean rating difference 0.04–0.23 points in 7 of 8 runs (4.8 on run 149). The code-versus-spec gap is almost entirely the invalid inputs, not the liquidity and price floors. |
 | User and workflow impact | Option B ties every RS rating to each strategy's eligibility settings (`min_price_inr`, `min_avg_turnover_inr`). A Studio strategy that raises its turnover floor would change every name's RS rating, and the gate `tt_rs_rating_min` would mean different things in different strategies. Option C keeps RS one shared measure. |
 | Compatibility | Engine version change (§5.2). The read path (`resolve_universe_rs_ratings`, `/live`, the watchlist) must change in the same commit, or R3-B-08 returns. Bump the RS cache key to v3. |
@@ -262,7 +262,7 @@ Source: [`r3b10.py`](backend/decision-packet/r3b10.py) for run 149, and [`r3b10_
 | Field | Finding |
 |---|---|
 | Specification | Spec §8: "`avg_volume50 = mean(volume[-50:])`. `rel_volume = volume_today / avg_volume50`." The denominator includes today. |
-| Implementation | [`indicator_pipeline.py:852`](../../backend/src/momentum25/infrastructure/pipelines/indicator_pipeline.py#L852) computes `volume[-1] / mean(volume[-50:-1])`, a mean of **49** prior sessions. Its docstring says "over `window` (excluding latest)", which would be 50 prior sessions. All 1,337 stored values equal the 49-session form. |
+| Implementation | [`indicator_pipeline.py:852`](../../../backend/src/momentum25/infrastructure/pipelines/indicator_pipeline.py#L852) computes `volume[-1] / mean(volume[-50:-1])`, a mean of **49** prior sessions. Its docstring says "over `window` (excluding latest)", which would be 50 prior sessions. All 1,337 stored values equal the 49-session form. |
 | Classification | **Defect.** It matches neither the spec nor its own docstring (off by one). |
 | Financial impact | Run 149: `vol_breakout_confirm` (threshold 1.4, weight 1.0) changes pass/fail for 1 name under the spec form and for 6 under the 50-prior form. Rank order changes at 7 (spec) or 26 (50-prior) of 155 positions. Top-25 is unchanged under both. The largest single change is 72.5% of the value (spec form), on a high-volume day. |
 | User impact | `rel_volume` shows on the stock pages and the screener and drives one scored rule. The values change slightly. |
@@ -275,7 +275,7 @@ Source: [`r3b10.py`](backend/decision-packet/r3b10.py) for run 149, and [`r3b10_
 | Field | Finding |
 |---|---|
 | Specification | Spec §8: "EMA(n): … **seed = SMA(n) of first n bars**." |
-| Implementation | [`indicator_pipeline.py:112`](../../backend/src/momentum25/infrastructure/pipelines/indicator_pipeline.py#L112) calls `ewm(span, adjust=False)`, seeded with the first close. The docstring states the deviation openly. The browser seeds with SMA ([`overlays.ts:66`](../../web/src/lib/indicators/overlays.ts#L66), golden-tested). MACD is built from the same `_ema`. |
+| Implementation | [`indicator_pipeline.py:112`](../../../backend/src/momentum25/infrastructure/pipelines/indicator_pipeline.py#L112) calls `ewm(span, adjust=False)`, seeded with the first close. The docstring states the deviation openly. The browser seeds with SMA ([`overlays.ts:66`](../../../web/src/lib/indicators/overlays.ts#L66), golden-tested). MACD is built from the same `_ema`. |
 | Classification | **Intentional deviation**, with no approval recorded in any spec or ADR. |
 | Financial impact | **No screening effect.** No rule reads `ema10`, `ema21` or MACD (verified by search). At the last bar of the 277-bar window, values differ at 4 dp for 4 names (`ema21`) and 7 names (MACD) out of 1,337, all with short histories. |
 | User impact | The backend MACD series feeds the chart's MACD pane (`PriceChart.tsx:408`), the Technical Workbench and server-side MACD alerts. 56% of its rows differ from the SMA-seeded series at 4 dp, by up to 5.7% of price near the start of the window. The browser's catalogue MACD uses an SMA seed, so two MACDs on one screen can disagree. |
@@ -288,7 +288,7 @@ Source: [`r3b10.py`](backend/decision-packet/r3b10.py) for run 149, and [`r3b10_
 | Field | Finding |
 |---|---|
 | Specification | Spec §10: `(momentum_score desc, buy_setup_score desc, rs_rating desc, symbol asc)`. ADD §21: "→ `symbol`". Run 149's stored strategy config: `ranking.tie_breakers: ["buy_setup_score", "rs_rating", "symbol"]`, which is inside `config_hash`. |
-| Implementation | [`ranking_engine.py:41`](../../backend/src/momentum25/domain/scoring/ranking_engine.py#L41) sorts by `s.security_id  # deterministic proxy for symbol ascending`. No code reads `ranking.tie_breakers`. |
+| Implementation | [`ranking_engine.py:41`](../../../backend/src/momentum25/domain/scoring/ranking_engine.py#L41) sorts by `s.security_id  # deterministic proxy for symbol ascending`. No code reads `ranking.tie_breakers`. |
 | Classification | **Defect.** The "proxy" is false for 97 adjacent id pairs among 3,463 securities. |
 | Financial impact | **Zero on production.** Across 136 completed `minervini_trend_template` runs (31,239 qualified rows), no tie exists where id order and symbol order differ. The 9 cases sit in two `benchmark_c_trend_template_only` research runs, at ranks 102–233, never at the Top-25 boundary. |
 | Compatibility | Engine version (§5.2). The ranking needs the symbol as of the run (carry it on `StockScore`), so that a later rename does not reorder a replay. |
@@ -299,10 +299,10 @@ Source: [`r3b10.py`](backend/decision-packet/r3b10.py) for run 149, and [`r3b10_
 
 | ID | Finding | Recommendation |
 |---|---|---|
-| R3-B-27 (P1) | The backtest universe excludes all 2,431 `exchange = 'BOTH'` names ([`walk_forward_market_data.py:275`](../../backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py#L275)). | FIX CODE with B09-1 (B09-6). |
+| R3-B-27 (P1) | The backtest universe excludes all 2,431 `exchange = 'BOTH'` names ([`walk_forward_market_data.py:275`](../../../backend/src/momentum25/infrastructure/persistence/repositories/walk_forward_market_data.py#L275)). | FIX CODE with B09-1 (B09-6). |
 | R3-B-28 (P1) | The backtest universe includes 353 ETFs and fund units; EBBETF0425 was held. | FIX CODE with B09-1: use `is_equity`, as the screener does. |
-| R3-B-29 (P3) | The scoring engine leaves gate engines out of both weighted scores ([`scoring_engine.py:119`](../../backend/src/momentum25/domain/scoring/scoring_engine.py#L119)). Spec §10 sums every engine. The code docstring proves it is rank-neutral among names that pass. | AMEND SPEC (B10-7). It is documented in code, it is reproduced exactly by this packet's rebuild, and no rank changes. |
-| Note | `_MIN_LISTING_DAYS = 252` "trading days" is compared with calendar days ([`eligibility.py:17`](../../backend/src/momentum25/domain/backtest/eligibility.py#L17)). This has no effect today, because the 12-month lookback price enforces 12 months of history. | Fix the comment when the backtest is touched. |
+| R3-B-29 (P3) | The scoring engine leaves gate engines out of both weighted scores ([`scoring_engine.py:119`](../../../backend/src/momentum25/domain/scoring/scoring_engine.py#L119)). Spec §10 sums every engine. The code docstring proves it is rank-neutral among names that pass. | AMEND SPEC (B10-7). It is documented in code, it is reproduced exactly by this packet's rebuild, and no rank changes. |
+| Note | `_MIN_LISTING_DAYS = 252` "trading days" is compared with calendar days ([`eligibility.py:17`](../../../backend/src/momentum25/domain/backtest/eligibility.py#L17)). This has no effect today, because the 12-month lookback price enforces 12 months of history. | Fix the comment when the backtest is touched. |
 | Note | The backtest reports no CAGR or drawdown, although loop-2 addendum §3 asks for CAGR. | Add both with B09-7. |
 
 ---

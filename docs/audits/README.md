@@ -9,6 +9,6 @@ Dated, never-edited evidence. One folder per audit round. Files directly here ar
 | `2026-10-19-openchart-parity/` | OpenChart clean-room parity audit |
 | `2026-10-19-final-stabilisation/` | Final engineering readiness |
 | `2026-10-20-transformation/` | Wickstreet transformation delivery logs |
-| [`../../audit-evidence/audit-r3/`](../../audit-evidence/audit-r3/AUDIT_REPORT.md) | Round 3 audit reports (verdict NOT READY; Stage B fixes done 2026-10-21). They stay beside their fixtures because a backend test reads `audit-r3/ui/`. |
+| `2026-10-21-round3/` | Round 3 audit reports (verdict NOT READY; Stage B fixes done 2026-10-21). Fixtures stay in [`audit-evidence/audit-r3/ui/`](../../audit-evidence/audit-r3/), read by a backend test. |
 
 Screenshots, traces and benchmarks live in [`audit-evidence/`](../../audit-evidence/README.md).

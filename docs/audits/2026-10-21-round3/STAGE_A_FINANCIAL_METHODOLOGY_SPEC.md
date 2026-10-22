@@ -2,7 +2,7 @@
 
 Date: 2026-10-20. Branch `wickstreet/m10-m11` at `2506150`. Status: **PROPOSED. Not approved. Not implemented.**
 
-This document answers the owner direction "Financial Correctness Remediation — Consolidated Owner Direction" (2026-10-20). It builds on the [decision packet](R3-B-09_R3-B-10_DECISION_PACKET.md) and supersedes the packet's defaults where §1 says so. It changes no code, specification, ADR, strategy or stored result. Every number comes from scripts in [`backend/decision-packet/`](backend/decision-packet/) and [`backend/decision-packet/stage-a/`](backend/decision-packet/stage-a/). Those scripts read a read-only export ([`export.sh`](backend/decision-packet/export.sh)) and run in memory.
+This document answers the owner direction "Financial Correctness Remediation — Consolidated Owner Direction" (2026-10-20). It builds on the [decision packet](R3-B-09_R3-B-10_DECISION_PACKET.md) and supersedes the packet's defaults where §1 says so. It changes no code, specification, ADR, strategy or stored result. Every number comes from scripts in [`backend/decision-packet/`](../../../audit-evidence/audit-r3/backend/decision-packet/) and [`backend/decision-packet/stage-a/`](../../../audit-evidence/audit-r3/backend/decision-packet/stage-a/). Those scripts read a read-only export ([`export.sh`](../../../audit-evidence/audit-r3/backend/decision-packet/export.sh)) and run in memory.
 
 Precedence (CLAUDE.md): ADD, then ADRs, then the Implementation Spec, then CLAUDE.md, then the task prompt. The owner direction is a task prompt. Where it conflicts with a higher source, this document says so and does not resolve the conflict silently (§1, B10-4 and S-8).
 
@@ -18,8 +18,8 @@ The packet's conclusions stand. Four new facts change what the method must cover
 |---|---|---|---|
 | **R3-B-30** (P1) | The backtest price provider drops every bar with `adj_close` NULL. That is 553,534 bars (17%), and 42% of all 2026 bars. **Every one has `adj_factor = 1`**, so `close × adj_factor` prices it exactly. The indicator pipeline already uses `close × adj_factor`. | read-only SELECT; `stage-a/stageA.py` | Names that traded look absent. With the corrected universe over 2021–2026, the 5.5-year result moves from +334% to +281% (§5). |
 | **R3-B-31** (P1) | **Renames are split across unlinked security rows.** TWL ends 2023-06-16 and TITAGARH starts 2023-06-19. MAGMA ends 2021-06-08 and POONAWALLA starts 2021-09-13, with the same listing date. MEGASOFT and SIGMAADV share one ISIN. Old rows have no ISIN. A heuristic (an old row without ISIN, delisted, sharing a listing date with a live row) finds up to 334 candidate pairs. **Not verified.** | `stuckA.py`; read-only SELECT | The backtest freezes a renamed holding at its last pre-rename price for years. MAGMA was held frozen for 1,269 sessions. The screener and RS treat the successor as a new listing until it has 253 bars. |
-| **R3-B-32** (P2, research) | Stored forward returns count the security's own next *h* bars ([`forward_returns.py`](../../backend/src/momentum25/domain/research/forward_returns.py)). For a name with trading gaps, "120 sessions" covers more calendar time. | `rs_align.py` | In-Sample Top-25 names with gaps: 65.7% stored against 50.3% measured on exchange sessions (120 sessions). Research IC and Top-25 returns on gap names are inflated. |
-| Lead | The ingest keeps EQ-series rows only ([`bhavcopy.py:238`](../../backend/src/momentum25/infrastructure/providers/bhavcopy.py#L238)). The repeated 2–4-month gaps are consistent with trade-for-trade (BE) periods, which the EQ ingest never records. In the In-Sample runs, 12.9 of 25 Top-25 names on average have under 95% bar completeness. **Not verified:** that needs one NSE bhavcopy fetch, which leaves this machine (S-10). | `gaps_top25.py`, `rs_ref.py` | If true, a "missing bar" usually means "trading under surveillance", not "suspended". Brief §1 excludes T2T names, so treating those sessions as untradable fits the brief. |
+| **R3-B-32** (P2, research) | Stored forward returns count the security's own next *h* bars ([`forward_returns.py`](../../../backend/src/momentum25/domain/research/forward_returns.py)). For a name with trading gaps, "120 sessions" covers more calendar time. | `rs_align.py` | In-Sample Top-25 names with gaps: 65.7% stored against 50.3% measured on exchange sessions (120 sessions). Research IC and Top-25 returns on gap names are inflated. |
+| Lead | The ingest keeps EQ-series rows only ([`bhavcopy.py:238`](../../../backend/src/momentum25/infrastructure/providers/bhavcopy.py#L238)). The repeated 2–4-month gaps are consistent with trade-for-trade (BE) periods, which the EQ ingest never records. In the In-Sample runs, 12.9 of 25 Top-25 names on average have under 95% bar completeness. **Not verified:** that needs one NSE bhavcopy fetch, which leaves this machine (S-10). | `gaps_top25.py`, `rs_ref.py` | If true, a "missing bar" usually means "trading under surveillance", not "suspended". Brief §1 excludes T2T names, so treating those sessions as untradable fits the brief. |
 
 ---
 
@@ -118,7 +118,7 @@ The packet's conclusions stand. Four new facts change what the method must cover
 
 On a date t, a security belongs to the reference universe when all of these hold:
 
-1. `exchange ∈ {NSE, BOTH}`. Dual-listed names use their NSE print; NSE is canonical ([`cross_listing.py`](../../backend/src/momentum25/domain/research/cross_listing.py) rule 1).
+1. `exchange ∈ {NSE, BOTH}`. Dual-listed names use their NSE print; NSE is canonical ([`cross_listing.py`](../../../backend/src/momentum25/domain/research/cross_listing.py) rule 1).
 2. It is an equity: `is_equity(isin)` is true, which excludes ISIN prefix `INF` (funds and ETFs).
 3. Point in time: `listing_date ≤ t`, and not `t > delisting_date`. The current `is_active` flag is never used for history. This matches today's universe exactly on 8 sampled dates (`rs_ref.py`), so the change is a rule fix with no effect today.
 4. Identity chain (S-5): an old row and its successor form one economic history. Until the chains exist, the result states this limitation.
@@ -130,7 +130,7 @@ On a date t, a security belongs to the reference universe when all of these hold
 The population on run date t is the reference universe (§3.1) restricted to names with valid RS inputs:
 
 - at least 253 bars on or before t (R(252) needs `close[−252]`), with no window shortened to the bars available;
-- not stale: `is_stale_as_of(t, last_bar)` is false (more than 30 days, [`data_quality.py:33`](../../backend/src/momentum25/domain/research/data_quality.py#L33));
+- not stale: `is_stale_as_of(t, last_bar)` is false (more than 30 days, [`data_quality.py:33`](../../../backend/src/momentum25/domain/research/data_quality.py#L33));
 - prices are `close × adj_factor` (S-13).
 
 **Returns, two options for S-4:**
@@ -159,7 +159,7 @@ Both options meet direction §3 on truncation, staleness, strategy independence 
 
 ## 4. Methodology versioning and compatibility (reconciled with ADR-014 §10)
 
-ADR-014 §10 (accepted) puts the market data (revision, calendar) and the engine (`INDICATOR_VERSION`, registry fingerprint) in one `data_version` hash. Runs are unique on `(strategy_id, run_date, data_version, config_hash)` ([`models.py:361`](../../backend/src/momentum25/infrastructure/persistence/models.py#L361)), and runs are reused by that identity. §10 already requires a separate engine version, and `18cab43` shows the need: it changed every RS rating with no version change.
+ADR-014 §10 (accepted) puts the market data (revision, calendar) and the engine (`INDICATOR_VERSION`, registry fingerprint) in one `data_version` hash. Runs are unique on `(strategy_id, run_date, data_version, config_hash)` ([`models.py:361`](../../../backend/src/momentum25/infrastructure/persistence/models.py#L361)), and runs are reused by that identity. §10 already requires a separate engine version, and `18cab43` shows the need: it changed every RS rating with no version change.
 
 **Proposed identity schema 3 (amends ADR-014 §10; S-8):**
 
@@ -186,7 +186,7 @@ ADR-014 §10 (accepted) puts the market data (revision, calendar) and the engine
 
 ## 5. Financial impact and sensitivity
 
-**These numbers show sensitivity to modelling choices. They are not evidence of investment performance (direction §10).** Benchmark: Nifty 500 Price Index (not TRI). Source: [`stageA_grid.json`](backend/decision-packet/stage-a/stageA_grid.json), [`t1.json`](backend/decision-packet/stage-a/t1.json).
+**These numbers show sensitivity to modelling choices. They are not evidence of investment performance (direction §10).** Benchmark: Nifty 500 Price Index (not TRI). Source: [`stageA_grid.json`](../../../audit-evidence/audit-r3/backend/decision-packet/stage-a/stageA_grid.json), [`t1.json`](../../../audit-evidence/audit-r3/backend/decision-packet/stage-a/t1.json).
 
 ### 5.1 Corrections applied one at a time (E1 on, buys at F only, sells retried)
 
@@ -216,7 +216,7 @@ Cash never goes below zero in any row. For the base policy (buys at F only, 2021
 
 ### 5.3 RS and screener impact, In-Sample only
 
-20 runs, 2020-11-27 → 2022-06-30, forward exits ≤ 2022-12-30. The hold-out is not read. Source: [`rs_ref.json`](backend/decision-packet/stage-a/rs_ref.json), [`rs_align.json`](backend/decision-packet/stage-a/rs_align.json).
+20 runs, 2020-11-27 → 2022-06-30, forward exits ≤ 2022-12-30. The hold-out is not read. Source: [`rs_ref.json`](../../../audit-evidence/audit-r3/backend/decision-packet/stage-a/rs_ref.json), [`rs_align.json`](../../../audit-evidence/audit-r3/backend/decision-packet/stage-a/rs_align.json).
 
 | RS population | Rated | Qualified | Top-25 overlap with today | Top-25 return, 120 sessions (stored / session) | Rank IC, 120 (stored) |
 |---|---|---|---|---|---|
@@ -230,7 +230,7 @@ The paired difference C − A over 20 runs is −0.22 points (6 runs better, 11 
 
 ## 6. Independent verification and acceptance-test plan
 
-Every test uses fixtures built by hand or computed by the reference simulator ([`sim2.py`](backend/decision-packet/stage-a/sim2.py)). None imports the production code under test. Each test must fail before its fix.
+Every test uses fixtures built by hand or computed by the reference simulator ([`sim2.py`](../../../audit-evidence/audit-r3/backend/decision-packet/stage-a/sim2.py)). None imports the production code under test. Each test must fail before its fix.
 
 | Area | Test |
 |---|---|

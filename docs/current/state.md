@@ -37,7 +37,7 @@ The single-user app has no authentication and must remain loopback-only. An unau
 
 ## Round 3 audit, 2026-10-20
 
-Full record: [audit-evidence/audit-r3/AUDIT_REPORT.md](../../audit-evidence/audit-r3/AUDIT_REPORT.md). Verdict: **not ready for release.** The live screener is correct and deterministic. The audit found that the walk-forward backtest filled 27% of notional at stale prices (R3-B-09). That is fixed in source (backtest method v2, `371af70`). None of the Round 3 fixes is deployed: the running container still has the old image.
+Full record: [audits/2026-10-21-round3/AUDIT_REPORT.md](../audits/2026-10-21-round3/AUDIT_REPORT.md). Verdict: **not ready for release.** The live screener is correct and deterministic. The audit found that the walk-forward backtest filled 27% of notional at stale prices (R3-B-09). That is fixed in source (backtest method v2, `371af70`). None of the Round 3 fixes is deployed: the running container still has the old image.
 
 | Check | Result |
 |---|---|
@@ -60,7 +60,7 @@ Fixed in source in Round 3: import date guard (R3-B-02), run identity and confli
 - session-bounded forward returns (R3-B-32);
 - methodology provenance on runs, score history and comparisons.
 
-Records: [REMEDIATION_REGISTER.md](../../audit-evidence/audit-r3/REMEDIATION_REGISTER.md) and the Stage B section of [FINANCIAL_CORRECTNESS_REPORT.md](../../audit-evidence/audit-r3/FINANCIAL_CORRECTNESS_REPORT.md). Runs before engine v2 are not comparable with runs after it. Research reports dated before 2026-10-20 quote engine 1 results and own-bars forward returns (`horizon_basis = 'own_bars'`). They stay as written and are not comparable with engine v2 numbers.
+Records: [REMEDIATION_REGISTER.md](../audits/2026-10-21-round3/REMEDIATION_REGISTER.md) and the Stage B section of [FINANCIAL_CORRECTNESS_REPORT.md](../audits/2026-10-21-round3/FINANCIAL_CORRECTNESS_REPORT.md). Runs before engine v2 are not comparable with runs after it. Research reports dated before 2026-10-20 quote engine 1 results and own-bars forward returns (`horizon_basis = 'own_bars'`). They stay as written and are not comparable with engine v2 numbers.
 
 Schema drift (R3-B-15) is fixed in source by migration 0024 and checked in CI; the dev database was migrated to 0024 in Round 5.
 

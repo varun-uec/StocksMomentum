@@ -35,6 +35,8 @@ When documents conflict, CLAUDE.md sets the order: ADD → ADRs → Implementati
 
 ## Audit, plan and history index
 
+For all audit reports, read [audits/README.md](audits/README.md). Milestone reports M12 to M16 and the Round 3 audit are listed there. The table below keeps the older entries.
+
 | Record | What it is |
 |---|---|
 | [audits/2026-08-09-functional-audit.md](audits/2026-08-09-functional-audit.md) | Full app audit against real data, diagnosis only |

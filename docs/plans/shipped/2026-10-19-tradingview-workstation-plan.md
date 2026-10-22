@@ -443,8 +443,8 @@ controls from it. Record the result in the design record.
      `AlertsTab.tsx`, `useChartSlot.ts`, `chart/page.tsx`,
      `traded-prices(.test).ts`, the new `alert-levels*` and
      `alert-editor-basis*` files, `transformation.spec.ts`,
-     `design-record.md`, `TRANSFORMATION_PROGRESS.md` and the untracked
-     `WICKSTREET_TRANSFORMATION.md`.
+     `design-record.md`, `docs/audits/2026-10-20-transformation/TRANSFORMATION_PROGRESS.md` and the untracked
+     `docs/audits/2026-10-20-transformation/WICKSTREET_TRANSFORMATION.md`.
    - Fix only real defects. Then run `npm test`, lint, typecheck and the
      specs these files touch (`transformation`, `m15-alerts`, `m11-slice`).
    - Stage those named paths only. Keep the doc files out of this commit if
@@ -651,7 +651,7 @@ controls from it. Record the result in the design record.
    Every existing route keeps its URL and stays reachable: from the site
    header or the Research menu, and on /chart from the ☰ app menu.
 
-   Update `WICKSTREET_TRANSFORMATION.md` and `TRANSFORMATION_PROGRESS.md`.
+   Update `docs/audits/2026-10-20-transformation/WICKSTREET_TRANSFORMATION.md` and `docs/audits/2026-10-20-transformation/TRANSFORMATION_PROGRESS.md`.
 
 ## Scope phases
 
