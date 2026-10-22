@@ -1,5 +1,7 @@
 # 10 — Phased Implementation Roadmap
 
+> **Current planning direction (documentation approved 2026-10-22):** [canonical MF 2.0 / stocks 3.0 release plan](13-wickstreet-2.0-mf-first-release-plan.md) governs proposed sequencing and economics: comprehensive free MF research, ₹199 self-service simulations, zero incremental development hosting, founder operations and spending on measured demand. W0 is retained; Company Intelligence/W1 and the equity roadmap belong to 3.0. The company-intelligence-first phase order below is superseded and must not be used to sequence Wickstreet 2.0 work. Treat all phase instructions here as historical; the canonical plan controls current sequencing. This update does not approve SaaS code, data ingestion, expenditure, registration, commits or deployment. ADR statuses and engineering investments remain unchanged.
+
 > Part of the [Wickstreet 2.0 blueprint](README.md). Status: Proposed. Nothing in this roadmap starts until the owner accepts [ADD Amendment A2](../../architecture/ADD-amendment-A2.md) and the phase's ADRs.
 
 ## 0. How every phase runs

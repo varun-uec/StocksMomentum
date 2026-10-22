@@ -1,5 +1,7 @@
 # Wickstreet 2.0
 
+> **Superseded execution plan — do not execute its Stage A instructions.** The [canonical MF 2.0 / stocks 3.0 release plan](13-wickstreet-2.0-mf-first-release-plan.md), approved as the current planning direction on 2026-10-22, replaces this document's stock-first Stage A sequence. The prior Stage A approval, Gate 0 execution record, “First execution steps” and W0/W1 task list below are historical records and confer no current implementation authority. Wickstreet 2.0 starts with the portfolio-first MF sequence in the canonical plan; W1/Company Intelligence belongs to Wickstreet 3.0. Do not follow the old stock-first instructions. ADR statuses and engineering investments remain unchanged.
+
 > Part of the [Wickstreet 2.0 blueprint](README.md). **Approved by the owner on 2026-10-22 for Stage A (W0–W1) only**, with amendments 1–5 incorporated. Stages B and C, real-data import, push and deploy are not authorised.
 
 ## Context

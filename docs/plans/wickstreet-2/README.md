@@ -1,11 +1,13 @@
-# Wickstreet 2.0 Blueprint — Investment Intelligence
+# Wickstreet 2.0 Blueprint — Investment Intelligence (Historical Proposal)
+
+> **Current planning direction (documentation approved 2026-10-22):** [canonical MF 2.0 / stocks 3.0 release plan](13-wickstreet-2.0-mf-first-release-plan.md) governs proposed sequencing and economics: comprehensive free MF research, ₹199 self-service simulations, zero incremental development hosting, founder operations and spending on measured demand. W0 is retained; Company Intelligence/W1 and the equity roadmap belong to 3.0. The architecture and phase sequence in this document are historical proposals, including the description of Wickstreet as one local app; they are not the current product or deployment architecture. This update does not approve SaaS code, data ingestion, expenditure, registration, commits or deployment. ADR statuses and engineering investments remain unchanged.
 
 > **Status:** Proposed (2026-10-22). Design and planning only. No code, migration, data import or deployment was done. Branch `wickstreet/m10-m11`, base `c03a890`.
 > **Governs:** nothing until the owner accepts [ADD Amendment A2](../../architecture/ADD-amendment-A2.md) and [ADR-016](../../architecture/adr/ADR-016-fundamentals-point-in-time.md) to [ADR-021](../../architecture/adr/ADR-021-data-supply-policy.md).
 
-## The product in one paragraph
+## Historical product proposal — not current scope
 
-Wickstreet 2.0 adds company research, mutual funds, ETFs, a unified screener, descriptive scorecards and a private portfolio view to the existing chart workstation. It stays one local app. Every number shows its formula, its inputs and the date they became public. A user can move from a fund to a stock it holds, to its chart, to its Momentum25 assessment and back, without losing their place. Momentum25 does not change.
+The earlier proposal added company research, mutual funds, ETFs, a unified screener, descriptive scorecards and a private portfolio view to the existing chart workstation, described as one local app. That architecture and combined release scope are retained here only as historical context. The current product and delivery sequence are defined by the canonical plan linked above.
 
 ## The binding constraint
 
@@ -28,8 +30,9 @@ Wickstreet 2.0 adds company research, mutual funds, ETFs, a unified screener, de
 | 11 | UX flows and wireframes | [07](07-ux-flows-and-wireframes.md) |
 | 12 | Phased roadmap with acceptance gates | [10-roadmap.md](10-roadmap.md) |
 | 13 | Proposed ADRs and methodology decisions | [ADD A2](../../architecture/ADD-amendment-A2.md), [ADR-016](../../architecture/adr/ADR-016-fundamentals-point-in-time.md), [017](../../architecture/adr/ADR-017-funds-etfs-holdings.md), [018](../../architecture/adr/ADR-018-unified-screening.md), [019](../../architecture/adr/ADR-019-portfolio-look-through.md), [020](../../architecture/adr/ADR-020-descriptive-scorecards.md), [021](../../architecture/adr/ADR-021-data-supply-policy.md) |
-| — | **Wickstreet 2.0 — staged implementation plan (approved for Stage A)** | [11-wickstreet-2.0.md](11-wickstreet-2.0.md) |
+| — | **Historical staged implementation plan (Stage A execution instructions superseded)** | [11-wickstreet-2.0.md](11-wickstreet-2.0.md) |
 | — | D0-R data-source research and feasibility (for owner review) | [12-d0r-data-source-research.md](12-d0r-data-source-research.md) |
+| — | **Wickstreet 2.0 (Mutual Funds, ₹199) / 3.0 (Stocks) release plan** (Proposed) | [13-wickstreet-2.0-mf-first-release-plan.md](13-wickstreet-2.0-mf-first-release-plan.md) |
 
 ## Key decisions taken (routine, reversible)
 
