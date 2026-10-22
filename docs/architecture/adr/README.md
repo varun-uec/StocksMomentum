@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 (with its two amendments) and 014 **Accepted**. 012 and 015 are **Proposed**. Each ADR may end with a dated update that records what changed after acceptance. The decision text above it is not rewritten.
+Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 (with its two amendments) and 014 **Accepted**. 012 and 015 to 021 are **Proposed**. Each ADR may end with a dated update that records what changed after acceptance. The decision text above it is not rewritten.
 
 | ADR | Title |
 |---|---|
@@ -21,3 +21,9 @@ Each ADR follows: **Context · Decision · Consequences · Alternatives consider
 | [013a](./ADR-013-alert-amendment.md) | Amendment to 013: editable armed alerts and drawing snapshots *(Accepted 2026-10-19)* |
 | [013b](./ADR-013-line-alert-amendment.md) | Amendment to 013: sloped drawing alerts *(Accepted 2026-10-20)* |
 | [015](./ADR-015-licence.md) | Licence *(Proposed)* |
+| [016](./ADR-016-fundamentals-point-in-time.md) | Company fundamentals, stored by publication time *(Proposed, Wickstreet 2.0)* |
+| [017](./ADR-017-funds-etfs-holdings.md) | Mutual funds, ETFs and holdings disclosures *(Proposed, Wickstreet 2.0)* |
+| [018](./ADR-018-unified-screening.md) | Unified screening in the domain *(Proposed, Wickstreet 2.0)* |
+| [019](./ADR-019-portfolio-look-through.md) | Portfolio ledger and look-through exposure *(Proposed, Wickstreet 2.0)* |
+| [020](./ADR-020-descriptive-scorecards.md) | Descriptive scorecards, no composite score *(Proposed, Wickstreet 2.0)* |
+| [021](./ADR-021-data-supply-policy.md) | Source-neutral data supply *(Proposed, Wickstreet 2.0)* |

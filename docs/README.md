@@ -46,6 +46,7 @@ When documents conflict, CLAUDE.md sets the order: ADD → ADRs → Implementati
 | [history/plans/2026-10-18-wickstreet-milestones.md](history/plans/2026-10-18-wickstreet-milestones.md) | Wickstreet M9–M16: dependencies and exit criteria (proposed) |
 | [history/plans/2026-10-18-m11-vertical-slice-plan.md](history/plans/2026-10-18-m11-vertical-slice-plan.md) | M11 Find → Analyse → Draw → Restore: design, changes, tests (proposed) |
 | [history/plans/2026-10-18-m9-reference-study.md](history/plans/2026-10-18-m9-reference-study.md) | Wickstreet M9: capability inventory, parity matrix, reuse matrix, wireframes (proposed) |
+| [history/plans/2026-10-22-wickstreet-2/](history/plans/2026-10-22-wickstreet-2/README.md) | Wickstreet 2.0 blueprint: fundamentals, funds, ETFs, unified screener, scorecards, portfolio; data-source feasibility; roadmap (proposed, with [ADD A2](architecture/ADD-amendment-A2.md) and ADR-016 to ADR-021) |
 | [history/backtest-loop/](history/backtest-loop/) | Backtest brief (ground truth for `domain/backtest/`), addenda, loop protocol, round-by-round findings |
 | [history/autonomous-audit/](history/autonomous-audit/) | 2026-08-18 six-batch audit: findings, fixes, verification, final report |
 
