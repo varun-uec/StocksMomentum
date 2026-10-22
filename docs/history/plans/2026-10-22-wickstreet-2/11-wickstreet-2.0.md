@@ -1,4 +1,4 @@
-# Wickstreet 2.0 — Consolidated, Staged Implementation Plan (revision 2)
+# Wickstreet 2.0
 
 > Part of the [Wickstreet 2.0 blueprint](README.md). **Approved by the owner on 2026-10-22 for Stage A (W0–W1) only**, with amendments 1–5 incorporated. Stages B and C, real-data import, push and deploy are not authorised.
 
