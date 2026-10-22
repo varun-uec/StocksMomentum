@@ -29,6 +29,7 @@ Wickstreet 2.0 adds company research, mutual funds, ETFs, a unified screener, de
 | 12 | Phased roadmap with acceptance gates | [10-roadmap.md](10-roadmap.md) |
 | 13 | Proposed ADRs and methodology decisions | [ADD A2](../../architecture/ADD-amendment-A2.md), [ADR-016](../../architecture/adr/ADR-016-fundamentals-point-in-time.md), [017](../../architecture/adr/ADR-017-funds-etfs-holdings.md), [018](../../architecture/adr/ADR-018-unified-screening.md), [019](../../architecture/adr/ADR-019-portfolio-look-through.md), [020](../../architecture/adr/ADR-020-descriptive-scorecards.md), [021](../../architecture/adr/ADR-021-data-supply-policy.md) |
 | — | **Wickstreet 2.0 — staged implementation plan (approved for Stage A)** | [11-wickstreet-2.0.md](11-wickstreet-2.0.md) |
+| — | D0-R data-source research and feasibility (for owner review) | [12-d0r-data-source-research.md](12-d0r-data-source-research.md) |
 
 ## Key decisions taken (routine, reversible)
 
