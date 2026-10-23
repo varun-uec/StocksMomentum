@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI
 
@@ -27,7 +28,11 @@ from wickstreet.identity.application.principals import RegisterPrincipal
 from wickstreet.identity.infrastructure.local import PERSONAL_CONTEXT, authenticate_local
 from wickstreet.identity.infrastructure.registry import SqlPrincipalRegistry
 from wickstreet.identity.interface.http import router as identity_router
+from wickstreet.mf_data.application.ingest import IngestionBusyError
+from wickstreet.mf_data.domain.model import AMFI, REFRESH
+from wickstreet.mf_data.infrastructure.scheduler import IST, RefreshScheduler, refresh_due
 from wickstreet.persistence.database import check_runtime_role, tenant_transaction
+from wickstreet.wiring import Ingestion, build_ingestion
 
 _logger = get_logger("wickstreet.startup")
 _ERROR_NAMESPACE = "wickstreet"
@@ -44,18 +49,48 @@ def _authenticator(settings: WickstreetSettings) -> Authenticator:
     raise UnsupportedModeError("WICKSTREET_MODE=saas needs the OIDC identity adapter (Phase 2).")
 
 
+async def _start_refresh(ingestion: Ingestion) -> RefreshScheduler:
+    """Schedule the 11:30 IST refresh, and run a slot missed while the app was down."""
+
+    async def job() -> None:
+        try:
+            summary = await ingestion.refresh.execute(datetime.now(IST).date())
+            _logger.info("mf_refresh_finished", statuses=dict(summary.statuses))
+        except IngestionBusyError:
+            _logger.info("mf_refresh_skipped_lock_held")
+        except Exception as exc:  # noqa: BLE001 - a failed refresh must not stop the app
+            _logger.error("mf_refresh_failed", error=str(exc))
+
+    scheduler = RefreshScheduler(job)
+    scheduler.start()
+    now = datetime.now(IST)
+    status = await ingestion.store.run_status(AMFI, REFRESH, now.date())
+    if refresh_due(now, completed_today=status == "completed"):
+        scheduler.run_now()
+    return scheduler
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: WickstreetSettings = app.state.settings
     database: Database = app.state.database
+    ingestion: Ingestion | None = None
+    scheduler: RefreshScheduler | None = None
     try:
         await check_runtime_role(database)
         if settings.mode == "personal":
             async with tenant_transaction(database, PERSONAL_CONTEXT.tenant_id) as session:
                 await RegisterPrincipal(SqlPrincipalRegistry(session)).execute(PERSONAL_CONTEXT)
-        _logger.info("wickstreet_started", mode=settings.mode)
+        if settings.refresh_enabled:
+            ingestion = build_ingestion(settings, database)
+            scheduler = await _start_refresh(ingestion)
+        _logger.info("wickstreet_started", mode=settings.mode, refresh=settings.refresh_enabled)
         yield
     finally:
+        if scheduler is not None:
+            scheduler.shutdown()
+        if ingestion is not None:
+            await ingestion.aclose()
         await database.dispose()
 
 

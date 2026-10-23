@@ -66,7 +66,7 @@ def test_every_context_is_in_the_layering_contract() -> None:
     layers = next(c for c in _CONTRACTS["contracts"] if c["type"] == "layers" and "containers" in c)
     expected = {f"wickstreet.{context.name}" for context in _contexts()}
     assert set(layers["containers"]) == expected
-    assert layers["layers"] == ["interface", "application", "domain"]
+    assert layers["layers"] == ["(interface)", "application", "domain"]
 
 
 def test_the_two_applications_stay_independent() -> None:

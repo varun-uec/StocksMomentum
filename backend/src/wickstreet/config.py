@@ -7,6 +7,7 @@ Domain and application code never read it (OM-1).
 from __future__ import annotations
 
 import ipaddress
+from decimal import Decimal
 from functools import lru_cache
 from typing import Literal
 
@@ -58,6 +59,21 @@ class WickstreetSettings(BaseSettings):
     in_container: bool = False
     # The host address Docker publishes the port on (Compose passes APP_BIND).
     published_bind: str | None = None
+
+    # MF data acquisition (ADR-022 §2.11, §2.12; ADR-017 MF-7, MF-8).
+    # Raw source files: outside the repository, never in CI or fixtures.
+    raw_dir: str = "~/.wickstreet/raw"
+    # Every source adapter: AMFI, TigZig and MFAPI.
+    http_min_interval_seconds: float = 1.0
+    http_timeout_seconds: float = 120.0
+    http_max_attempts: int = 4
+    # Days the daily refresh re-reads to catch late NAVs and corrections.
+    nav_lookback_days: int = 7
+    # A move beyond this fraction of the previous NAV is flagged, not dropped.
+    nav_jump_threshold: Decimal = Decimal("0.25")
+    history_years: int = 10
+    # Runs the 11:30 IST refresh inside the app process.
+    refresh_enabled: bool = False
 
     @model_validator(mode="after")
     def _personal_mode_is_loopback_only(self) -> WickstreetSettings:

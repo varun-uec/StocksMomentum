@@ -178,7 +178,7 @@ Templates alone are always a complete, correct answer.
   | Rule | Setting |
   |---|---|
   | Rights-register entry | Source `amfi`, basis `amfi_terms_personal_use`, mode `personal`. Grants: `automated_retrieval` and `storage` **within the personal scope only**, `derived_metrics`, `display` (the one local user), `ai_processing_internal`. Denies `ai_processing_external`, `export`, display to anyone else, and all SaaS-mode use |
-  | Bulk acquisition | **Gated, off.** The full-universe backfill cannot run until an adequate legal basis is recorded (permission, or a licensed supplier) |
+  | Bulk acquisition | **Gated, off.** The full-universe backfill cannot run until an adequate legal basis is recorded (permission, or a licensed supplier). Personal mode: opened by the owner's authorisation of 2026-10-23 ([ADR-023 U10](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)); dates AMFI no longer serves come from the TigZig archive ([U11](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)) |
   | Personal scope | A bounded, owner-set AMFI scope (setting `amfi.personal_scope`). **Default: none** (synthetic fixtures only) until the owner records a scope it considers defensible (ADR-023 §6) |
   | Capability | The full-universe pipeline is built and tested anyway. Schema, import contracts, fetcher, validation and the daily job are designed for ~38,000 schemes × ~20 years, and verified at that scale on **synthetic** data |
   | Retrieval | The AMFI adapter fetches direct from amfiindia.com (no mirrors), only within the gate and scope. Disabled by default; rate-limited; resumable; honest User-Agent; raw files kept with SHA-256 and fetch time. Owner exception to [ADR-021](ADR-021-data-supply-policy.md) rule 2, limited to this |
@@ -188,7 +188,7 @@ Templates alone are always a complete, correct answer.
   | Exit | If the legal basis fails: set scope to none, delete stored AMFI data and raw files, and use a licensed supplier's adapter. Core, agent and tests stay unchanged |
 
 - **Owner actions running in parallel (outward-facing; not part of this ADR):** the AMFI permission request (doc 17 P1, including both AI-processing uses), and/or qualified legal advice.
-- **Not used:** AMFI data through mirrors (mfnav.in, TigZig, mfapi.in), AMC files, index data, and real CAS files (A3 forbids real CAS in development).
+- **Not used:** AMFI data through mirrors (mfnav.in, TigZig, mfapi.in), AMC files, index data, and real CAS files (A3 forbids real CAS in development). Personal-mode exception: TigZig for the dates AMFI no longer serves, and MFAPI as a cross-check ([ADR-023 U11](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).
 
 ### 2.12 Data refresh policy (owner decision, 2026-10-23)
 

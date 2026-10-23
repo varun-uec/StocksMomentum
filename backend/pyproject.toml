@@ -125,11 +125,12 @@ forbidden_modules = ["apphost"]
 
 # Every wickstreet context is layered like momentum25 (OM-11). A new context is
 # added to `containers`; tests/wickstreet/test_boundaries.py fails until it is.
+# `(interface)` is optional: a context with no HTTP routes has none.
 [[tool.importlinter.contracts]]
 name = "Wickstreet contexts: dependencies point inward"
 type = "layers"
-containers = ["wickstreet.identity"]
-layers = ["interface", "application", "domain"]
+containers = ["wickstreet.identity", "wickstreet.data_rights", "wickstreet.mf_data"]
+layers = ["(interface)", "application", "domain"]
 
 [[tool.importlinter.contracts]]
 name = "Wickstreet domain and application never import infrastructure, interface or wiring"

@@ -1,0 +1,516 @@
+"""MF ingestion on synthetic AMFI files, as the runtime role (ADR-017 MF-5 to MF-10, OM-4)."""
+
+from __future__ import annotations
+
+import gzip
+import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, replace
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
+
+from platform_common.database import Database
+from tests.wickstreet.amfi_files import master_file, nav_file
+from tests.wickstreet.archive_files import (
+    archive_file,
+    mfapi_adapter,
+    mfapi_file,
+    snapshot_file,
+    tigzig_adapter,
+)
+from tests.wickstreet.conftest import Urls
+from wickstreet.app import create_app
+from wickstreet.config import WickstreetSettings
+from wickstreet.data_rights.application.gate import RightsGate
+from wickstreet.data_rights.domain.rights import RightsDeniedError, Use
+from wickstreet.data_rights.infrastructure.register import SqlRightsRegister, record_grants
+from wickstreet.mf_data.application.ingest import (
+    Backfill,
+    CrossCheck,
+    DailyRefresh,
+    ImportArchive,
+    IngestNavDay,
+    IngestSchemeMaster,
+    Outcome,
+    Reparse,
+)
+from wickstreet.mf_data.domain.model import AMFI, MFAPI, TIGZIG, NavRecord, RawFile
+from wickstreet.mf_data.infrastructure.amfi import parse_nav_file, parse_scheme_master
+from wickstreet.mf_data.infrastructure.raw_store import FileRawStore
+from wickstreet.mf_data.infrastructure.store import SqlMfStore
+from wickstreet.mf_data.infrastructure.tigzig import ARCHIVE_URL
+
+D1 = date(2026, 9, 1)
+
+
+def day(n: int) -> date:
+    return D1 + timedelta(days=n - 1)
+
+
+class FakeSource:
+    """Serves synthetic files; records every fetch."""
+
+    name = AMFI
+    adapter_version = "fake-1"
+
+    def __init__(self, files: dict[date, bytes], master: bytes = master_file(["10001"])) -> None:
+        self.files = files
+        self.master = master
+        self.fetches: list[object] = []
+
+    async def nav_day(self, on: date) -> RawFile | None:
+        self.fetches.append(on)
+        content = self.files.get(on)
+        return None if content is None else RawFile(f"fake://nav/{on}", datetime.now(UTC), content)
+
+    async def scheme_master(self) -> RawFile:
+        self.fetches.append("master")
+        return RawFile("fake://master", datetime.now(UTC), self.master)
+
+    def parse_nav(self, raw: RawFile) -> list[Any]:
+        return parse_nav_file(raw.content)
+
+    def parse_schemes(self, raw: RawFile) -> list[Any]:
+        return parse_scheme_master(raw.content)
+
+
+@dataclass
+class Pipeline:
+    store: SqlMfStore
+    days: IngestNavDay
+    master: IngestSchemeMaster
+    backfill: Backfill
+    source: FakeSource
+
+    def refresh(self, lookback: int) -> DailyRefresh:
+        return DailyRefresh(self.days, self.master, self.store, lookback)
+
+
+@pytest.fixture
+async def granted(mf_urls: Urls) -> AsyncIterator[None]:
+    """The owner records retrieval and storage for AMFI in personal mode."""
+    owner = Database(mf_urls.owner)
+    await record_grants(
+        owner,
+        source=AMFI,
+        mode="personal",
+        uses=[Use.AUTOMATED_RETRIEVAL, Use.STORAGE],
+        basis="test grant",
+        granted_by="tests",
+    )
+    await owner.dispose()
+    yield
+
+
+def _pipeline(database: Database, raw_root: Path, source: FakeSource) -> Pipeline:
+    store = SqlMfStore(database)
+    rights = RightsGate(SqlRightsRegister(database, "personal"))
+    raw = FileRawStore(raw_root)
+    days = IngestNavDay(source, store, raw, rights, Decimal("0.25"))
+    master = IngestSchemeMaster(source, store, raw, rights)
+    return Pipeline(store, days, master, Backfill(days, master, store, source, rights), source)
+
+
+async def _rows(database: Database, sql: str, **params: Any) -> list[tuple[Any, ...]]:
+    async with database.engine.connect() as connection:
+        return [tuple(r) for r in (await connection.execute(text(sql), params)).all()]
+
+
+async def _visible_at(database: Database, revision: int) -> dict[str, Decimal | None]:
+    """NAVs visible at a revision: the MF-5 rule."""
+    rows = await _rows(
+        database,
+        "SELECT p.amfi_code, n.nav FROM wickstreet.nav n "
+        "JOIN wickstreet.plan_option p ON p.id = n.plan_option_id "
+        "WHERE n.revision_id <= :r "
+        "AND (n.superseded_revision IS NULL OR n.superseded_revision > :r)",
+        r=revision,
+    )
+    return dict(rows)
+
+
+async def test_without_a_grant_nothing_is_fetched(app_database: Database, tmp_path: Path) -> None:
+    """OM-4: the gate is closed, so the adapter is never called."""
+    source = FakeSource({day(1): nav_file(day(1), {"10001": "10"})})
+    pipeline = _pipeline(app_database, tmp_path, source)
+    with pytest.raises(RightsDeniedError):
+        await pipeline.days.execute(day(1))
+    assert source.fetches == []
+    assert await _rows(app_database, "SELECT status FROM wickstreet.ingestion_run") == [("denied",)]
+
+
+async def test_a_day_publishes_one_revision_with_its_provenance(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    source = FakeSource({day(1): nav_file(day(1), {"10001": "10.5000", "10002": "20"})})
+    outcome = await _pipeline(app_database, tmp_path, source).days.execute(day(1))
+    assert (outcome.status, outcome.inserted, outcome.superseded) == ("published", 2, 0)
+    assert await _rows(app_database, "SELECT revision_id FROM wickstreet.publication") == [
+        (outcome.revision,)
+    ]
+    assert await _visible_at(app_database, outcome.revision or 0) == {
+        "10001": Decimal("10.5000"),
+        "10002": Decimal("20"),
+    }
+    ((path, sha, retrieval, storage),) = await _rows(
+        app_database,
+        "SELECT raw_path, raw_sha256, retrieval_grant_id, storage_grant_id "
+        "FROM wickstreet.revision",
+    )
+    assert Path(path).is_file() and len(sha) == 64 and retrieval != storage
+
+
+async def test_an_unchanged_file_writes_no_revision(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    pipeline = _pipeline(
+        app_database, tmp_path, FakeSource({day(1): nav_file(day(1), {"10001": "10"})})
+    )
+    await pipeline.days.execute(day(1))
+    again = await pipeline.days.execute(day(1), refetch=True)
+    skipped = await pipeline.days.execute(day(1))
+    assert (again.status, skipped.status) == ("unchanged", "skipped")
+    assert await _rows(app_database, "SELECT count(*) FROM wickstreet.revision") == [(1,)]
+
+
+async def test_a_correction_supersedes_the_old_value_and_keeps_it(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    source = FakeSource({day(1): nav_file(day(1), {"10001": "10", "10002": "20"})})
+    pipeline = _pipeline(app_database, tmp_path, source)
+    first = await pipeline.days.execute(day(1))
+    source.files[day(1)] = nav_file(day(1), {"10001": "10.0000", "10002": "21"})
+    second = await pipeline.days.execute(day(1), refetch=True)
+    assert (second.status, second.inserted, second.superseded) == ("published", 1, 1)
+    assert await _visible_at(app_database, first.revision or 0) == {
+        "10001": Decimal("10"),
+        "10002": Decimal("20"),
+    }
+    assert (await _visible_at(app_database, second.revision or 0))["10002"] == Decimal("21")
+    assert await _rows(app_database, "SELECT count(*) FROM wickstreet.nav") == [(3,)]
+
+
+async def test_a_blocked_file_publishes_nothing(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    content = nav_file(day(1), {"10001": "10"}) + b"10001;X;Direct Plan;Growth;;;11;01-Sep-2026\r\n"
+    outcome = await _pipeline(app_database, tmp_path, FakeSource({day(1): content})).days.execute(
+        day(1)
+    )
+    assert outcome.status == "failed" and "different values" in (outcome.error or "")
+    for table in ("nav", "revision", "publication", "plan_option"):
+        assert await _rows(app_database, f"SELECT count(*) FROM wickstreet.{table}") == [(0,)]
+
+
+async def test_anomalies_are_stored_as_filed_with_a_flag(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    source = FakeSource(
+        {
+            day(1): nav_file(day(1), {"10001": "10", "10002": "5"}),
+            day(2): nav_file(day(2), {"10001": "20", "10002": "0", "10003": "N.A."}),
+        }
+    )
+    pipeline = _pipeline(app_database, tmp_path, source)
+    await pipeline.days.execute(day(1))
+    outcome = await pipeline.days.execute(day(2))
+    assert outcome.anomalies == 3
+    assert await _rows(
+        app_database,
+        "SELECT p.amfi_code, n.nav, n.anomaly FROM wickstreet.nav n "
+        "JOIN wickstreet.plan_option p ON p.id = n.plan_option_id "
+        "WHERE n.nav_date = :d ORDER BY 1",
+        d=day(2),
+    ) == [
+        ("10001", Decimal("20"), "nav_jump"),
+        ("10002", Decimal("0"), "nav_zero"),
+        ("10003", None, "nav_missing"),
+    ]
+
+
+async def test_attributes_are_effective_dated(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    source = FakeSource(
+        {
+            day(1): nav_file(day(1), {"10001": "10"}, names={"10001": "Old Name"}),
+            day(2): nav_file(day(2), {"10001": "10"}, names={"10001": "New Name"}),
+        }
+    )
+    pipeline = _pipeline(app_database, tmp_path, source)
+    await pipeline.days.execute(day(1))
+    await pipeline.days.execute(day(2))
+    source.files[day(1)] = source.files[day(1)] + b"\r\n"  # re-read: same rows, new hash
+    assert (await pipeline.days.execute(day(1), refetch=True)).status == "unchanged"
+    assert await _rows(
+        app_database,
+        "SELECT effective_from, nav_name FROM wickstreet.plan_option_listing "
+        "WHERE superseded_revision IS NULL ORDER BY effective_from",
+    ) == [(day(1), "Old Name"), (day(2), "New Name")]
+
+
+async def test_the_backfill_records_the_unserved_range_and_resumes(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    files = {day(n): nav_file(day(n), {"10001": str(10 + n)}) for n in (4, 5, 6)}
+    pipeline = _pipeline(app_database, tmp_path, FakeSource(files))
+    summary = await pipeline.backfill.execute(day(1), day(6), today=day(7))
+    assert summary.first_served == day(4)
+    assert summary.statuses == {"published": 4}  # the master and three dates
+    assert await _rows(
+        app_database,
+        "SELECT period_start, period_end FROM wickstreet.ingestion_run "
+        "WHERE status = 'unavailable'",
+    ) == [(day(1), day(3))]
+    again = await pipeline.backfill.execute(day(1), day(6), today=day(7))
+    assert again.statuses == {"skipped": 4}
+    assert await _rows(app_database, "SELECT count(*) FROM wickstreet.revision") == [(4,)]
+
+
+async def test_the_daily_refresh_starts_after_the_last_stored_date(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    files = {day(n): nav_file(day(n), {"10001": str(10 + n)}) for n in range(1, 7)}
+    pipeline = _pipeline(app_database, tmp_path, FakeSource(files))
+    await pipeline.days.execute(day(1))
+    await pipeline.days.execute(day(2))
+    pipeline.source.fetches.clear()
+    summary = await pipeline.refresh(lookback=2).execute(today=day(6))
+    assert pipeline.source.fetches == ["master", day(3), day(4), day(5)]
+    assert summary.statuses == {"published": 4}
+    assert await _rows(
+        app_database,
+        "SELECT status FROM wickstreet.ingestion_run WHERE dataset = 'daily-refresh'",
+    ) == [("completed",)]
+
+
+async def test_one_runner_at_a_time(app_database: Database) -> None:
+    store = SqlMfStore(app_database)
+    async with store.exclusive() as first, store.exclusive() as second:
+        assert (first, second) == (True, False)
+    async with store.exclusive() as later:
+        assert later
+
+
+async def test_the_runtime_role_cannot_grant_itself_rights(app_database: Database) -> None:
+    with pytest.raises(DBAPIError, match="permission denied"):
+        await record_grants(
+            app_database,
+            source=AMFI,
+            mode="personal",
+            uses=[Use.STORAGE],
+            basis="self-granted",
+            granted_by="app",
+        )
+
+
+async def test_the_app_schedules_the_refresh_and_catches_up(
+    mf_settings: WickstreetSettings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[date] = []
+
+    class Stub:
+        class store:  # noqa: N801
+            @staticmethod
+            async def run_status(*args: object) -> str | None:
+                return None
+
+        class refresh:  # noqa: N801
+            @staticmethod
+            async def execute(today: date) -> Any:
+                calls.append(today)
+                raise RuntimeError("stub refresh")
+
+        @staticmethod
+        async def aclose() -> None:
+            return None
+
+    monkeypatch.setattr("wickstreet.app.build_ingestion", lambda settings, database: Stub)
+    monkeypatch.setattr("wickstreet.app.refresh_due", lambda now, completed_today: True)
+    settings = mf_settings.model_copy(update={"refresh_enabled": True})
+    with TestClient(create_app(settings), base_url="http://localhost") as client:
+        deadline = time.monotonic() + 3
+        while not calls and time.monotonic() < deadline:
+            client.get("/me")
+            time.sleep(0.05)
+    assert len(calls) == 1  # a failed refresh is logged; the app keeps serving
+
+
+async def _grant(urls: Urls, source: str) -> None:
+    owner = Database(urls.owner)
+    await record_grants(
+        owner,
+        source=source,
+        mode="personal",
+        uses=[Use.AUTOMATED_RETRIEVAL, Use.STORAGE],
+        basis="test grant",
+        granted_by="tests",
+    )
+    await owner.dispose()
+
+
+async def test_the_archive_is_the_record_before_the_cutoff_and_a_fill_after(
+    app_database: Database, mf_urls: Urls, tmp_path: Path, granted: None
+) -> None:
+    """ADR-023 U11: AMFI wins from its first date; the archive fills gaps and counts conflicts."""
+    await _grant(mf_urls, TIGZIG)
+    amfi = _pipeline(
+        app_database,
+        tmp_path,
+        FakeSource(
+            {day(5): nav_file(day(5), {"10001": "10", "10002": "20"})},
+            master=master_file(["10001", "10002"]),
+        ),
+    )
+    await amfi.master.execute(day(11))
+    await amfi.days.execute(day(5))
+    store, raw = SqlMfStore(app_database), FileRawStore(tmp_path)
+    assert await store.first_nav_day(AMFI) == day(5)
+    rows = [("10001", day(3), "9.0000"), ("10001", day(4), "9.5000")]
+    rows += [("10001", day(5), "10.0000"), ("10002", day(5), "21.0000")]
+    rows += [("10003", day(5), "30.0000"), ("10001", day(12), "11.0000")]
+    rows += [("10004", day(3), "10.0000"), ("10004", day(4), "20.0000")]
+    source = tigzig_adapter(
+        tmp_path / "work", archive_file(rows), snapshot_file(["10001", "10003"])
+    )
+    rights = RightsGate(SqlRightsRegister(app_database, "personal"))
+    master = IngestSchemeMaster(source, store, raw, rights, fill_only=True)
+    importer = ImportArchive(source, store, raw, rights, master, Decimal("0.25"))
+    outcomes: list[Outcome] = []
+    await importer.execute(day(1), day(10), day(5), day(11), outcomes.append)
+
+    assert [(o.period, o.status, o.inserted, o.anomalies, o.conflicts) for o in outcomes] == [
+        (day(11), "published", 1, 0, 0),  # the snapshot adds 10003 only
+        (day(1), "published", 4, 1, 0),  # the record before the cutoff
+        (day(5), "published", 1, 0, 1),  # fills 10003; 10002 differs and is kept
+    ]
+    assert dict(
+        await _rows(
+            app_database,
+            "SELECT p.amfi_code, n.nav FROM wickstreet.nav n JOIN wickstreet.plan_option p "
+            "ON p.id = n.plan_option_id WHERE n.nav_date = :d AND n.superseded_revision IS NULL",
+            d=day(5),
+        )
+    ) == {"10001": Decimal("10"), "10002": Decimal("20"), "10003": Decimal("30.0000")}
+    assert await _rows(
+        app_database,
+        "SELECT p.amfi_code, n.anomaly FROM wickstreet.nav n JOIN wickstreet.plan_option p "
+        "ON p.id = n.plan_option_id WHERE n.anomaly IS NOT NULL",
+    ) == [("10004", "nav_jump")]
+    assert await _rows(
+        app_database,
+        "SELECT r.period_start, r.period_end, v.url FROM wickstreet.ingestion_run r "
+        "JOIN wickstreet.revision v ON v.run_id = r.id "
+        "WHERE r.source = 'tigzig' AND r.dataset = 'nav-v1' ORDER BY 1",
+    ) == [(day(1), day(4), ARCHIVE_URL), (day(5), day(10), ARCHIVE_URL)]
+    assert await _rows(
+        app_database,
+        "SELECT p.amfi_code, m.amc FROM wickstreet.plan_option_master m "
+        "JOIN wickstreet.plan_option p ON p.id = m.plan_option_id ORDER BY 1",
+    ) == [
+        ("10001", "Example AMC Limited"),
+        ("10002", "Example AMC Limited"),
+        ("10003", "Example AMC"),
+    ]
+    again = await importer.execute(day(1), day(10), day(5), day(11))
+    assert again.statuses == {"skipped": 3}
+
+    # AMFI corrects 10002 to the archive's value: the same archive now has no conflict.
+    amfi.source.files[day(5)] = nav_file(day(5), {"10001": "10", "10002": "21"})
+    await amfi.days.execute(day(5), refetch=True)
+    rechecked: list[Outcome] = []
+    await importer.execute(day(1), day(10), day(5), day(11), rechecked.append, refetch=True)
+    assert [(o.period, o.status, o.rows, o.conflicts) for o in rechecked[1:]] == [
+        (day(1), "unchanged", 0, 0),  # same file, record month: not re-read
+        (day(5), "unchanged", 3, 0),  # fill month: rechecked against the store
+    ]
+
+
+async def test_the_cross_check_measures_the_store_and_publishes_nothing(
+    app_database: Database, mf_urls: Urls, tmp_path: Path, granted: None
+) -> None:
+    await _grant(mf_urls, MFAPI)
+    files = {day(1): nav_file(day(1), {"10001": "10"}), day(2): nav_file(day(2), {"10001": "11"})}
+    amfi = _pipeline(app_database, tmp_path, FakeSource(files))
+    await amfi.days.execute(day(1))
+    await amfi.days.execute(day(2))
+    store = SqlMfStore(app_database)
+    assert await store.sample_codes(5, day(1), day(10)) == ["10001"]
+    reference = mfapi_adapter(
+        {"10001": mfapi_file({day(1): "10.00001", day(2): "11.5", day(3): "12"})}
+    )
+    check = CrossCheck(
+        reference,
+        store,
+        FileRawStore(tmp_path),
+        RightsGate(SqlRightsRegister(app_database, "personal")),
+    )
+    before = await _rows(app_database, "SELECT count(*) FROM wickstreet.revision")
+    (result,) = await check.execute(["10001"], day(1), day(10), day(11))
+    assert (result.matched, result.differing, result.reference_only, result.stored_only) == (
+        1,
+        1,
+        1,
+        0,
+    )
+    assert await _rows(app_database, "SELECT count(*) FROM wickstreet.revision") == before
+
+
+class OldParser(FakeSource):
+    """The adapter before the fix: a NAV written with a bare point is not a number."""
+
+    adapter_version = "fake-0"
+
+    def parse_nav(self, raw: RawFile) -> list[Any]:
+        records: list[NavRecord] = parse_nav_file(raw.content)
+        return [replace(r, nav=None) if r.amfi_code == "10002" else r for r in records]
+
+
+async def test_a_reparse_corrects_stored_values_from_the_kept_raw_file(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    """A parser fix becomes a new revision; the old value stays as history (MF-5, MF-9)."""
+    files = {day(1): nav_file(day(1), {"10001": "10", "10002": "222."})}
+    old = _pipeline(app_database, tmp_path, OldParser(files))
+    first = await old.days.execute(day(1))
+    fixed = FakeSource({})  # the network is never used
+    pipeline = _pipeline(app_database, tmp_path, fixed)
+    summary = await Reparse(pipeline.days, pipeline.store).execute(day(1), day(2))
+    assert dict(summary.statuses) == {"published": 1, "skipped": 1}  # day 2 has no run
+    assert fixed.fetches == []
+    assert await _visible_at(app_database, first.revision or 0) == {
+        "10001": Decimal("10"),
+        "10002": None,
+    }
+    latest = await _rows(app_database, "SELECT max(id) FROM wickstreet.revision")
+    assert await _visible_at(app_database, latest[0][0]) == {
+        "10001": Decimal("10"),
+        "10002": Decimal("222"),
+    }
+    assert await _rows(
+        app_database, "SELECT adapter_version FROM wickstreet.revision ORDER BY id"
+    ) == [("fake-0",), ("fake-1",)]
+    assert await _rows(
+        app_database,
+        "SELECT count(*) FROM wickstreet.ingestion_run WHERE period_start = :d",
+        d=day(2),
+    ) == [(0,)]
+
+
+async def test_a_reparse_refuses_a_raw_file_that_does_not_match_its_hash(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    files = {day(1): nav_file(day(1), {"10001": "10"})}
+    pipeline = _pipeline(app_database, tmp_path, FakeSource(files))
+    await pipeline.days.execute(day(1))
+    ((path,),) = await _rows(app_database, "SELECT raw_path FROM wickstreet.revision")
+    Path(path).write_bytes(gzip.compress(b"tampered"))
+    outcome = await pipeline.days.reparse(day(1))
+    assert outcome.status == "failed" and "SHA-256" in (outcome.error or "")

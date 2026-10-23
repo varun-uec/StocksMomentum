@@ -1,6 +1,6 @@
 # Architecture — as built
 
-Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0).
+Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), and the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1).
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
@@ -48,7 +48,7 @@ All nine pass (2026-10-23). The Momentum25 contracts do not cover `infrastructur
 
 ## Wickstreet 2.0 platform (Slice 0)
 
-Implements the platform items of [ADR-023](../architecture/adr/ADR-023-operating-modes.md) §7 (U1–U3, U6, U8). No MF data, analytics, agent or UI exists yet.
+Implements the platform items of [ADR-023](../architecture/adr/ADR-023-operating-modes.md) §7 (U1–U3, U6, U8). Slice 0 added no MF data; [Slice 1](#wickstreet-20-mf-data-slice-1) adds it. No analytics, agent or UI exists yet.
 
 | Package | Holds |
 |---|---|
@@ -70,6 +70,30 @@ Implements the platform items of [ADR-023](../architecture/adr/ADR-023-operating
 | OM-10 no single-user tables | `test_schema_rules.py`: catalog rule for every MF table, and a probe table that breaks it |
 | OM-11 boundaries | contracts 4–8; `test_boundaries.py` requires each context in contract 7 |
 | OM-12 MF routes and migrations | `test_boundaries.py` (routes, metadata, `ALL_VERSIONED`); `test_schema_rules.py` (models match migrations; down and up leaves Momentum25's tables and version rows unchanged); `test_host.py` |
+
+## Wickstreet 2.0 MF data (Slice 1)
+
+Implements ADR-017 MF-2 to MF-11, ADR-021 rule 1 and ADR-022 §2.11–§2.12 under the owner's decisions in [ADR-023](../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23) U9–U11.
+
+| Package | Holds |
+|---|---|
+| `wickstreet/data_rights/` | The rights register (`rights_grant`, written only with the owner login) and `RightsGate`, which fails closed. Every run asks it for `automated_retrieval` before a fetch and `storage` before a write, and records both grant ids on the revision. No interface layer. |
+| `wickstreet/mf_data/domain/` | The `nav-v1` and `schemes-v1` contracts, blocking checks and anomaly flags (`validation.py`), the series comparison, and the ports: `NavSource`, `ArchiveSource`, `ReferenceSource`, `RawStore`, `MfStore`. |
+| `wickstreet/mf_data/application/ingest.py` | `IngestNavDay`, `IngestSchemeMaster`, `Backfill`, `DailyRefresh`, `ImportArchive`, `CrossCheck`. All runners share one PostgreSQL advisory lock. |
+| `wickstreet/mf_data/infrastructure/` | `amfi.py`, `tigzig.py`, `mfapi.py` (each over `client.py`: one request at a time, 1 s apart, retries on 429, 5xx and transport errors), `raw_store.py` (gzip files under `WICKSTREET_RAW_DIR`), `store.py`, `tables.py`, `scheduler.py` (11:30 IST), `report.py`. |
+| `wickstreet/wiring.py` | Builds the ingestion graph for the CLI and the app. |
+
+**Storage (migration `0002_mf_data_foundation`).** `plan_option` keys each AMFI code on a surrogate id (MF-2). `nav` is append-only: a changed value inserts a row at revision R and marks the old row `superseded_revision = R`; a value is visible at R when `revision_id <= R` and it is not superseded at or before R (MF-5). `plan_option_listing` (from AMFI NAV files) and `plan_option_master` (from a scheme master) hold effective-dated attributes. `revision` records each publication's URL, fetch time, SHA-256, raw file path, adapter version, contract and grant ids (MF-9). `publication` is a one-row pointer to the latest revision (MF-6). `ingestion_run` holds one row per source, dataset and period, with status, counts, anomalies and conflicts (MF-10). MF data is shared reference data, so these tables have no row-level security.
+
+**Sources and precedence (ADR-023 U11).** AMFI direct is the source of record from the first date it serves, 2023-04-01: one run per date, plus the scheme master. Before that date the TigZig archive is the record, one run and one revision per calendar month. From that date on the archive only fills a code and date that AMFI lacks; a different value counts as a conflict on the run and AMFI's value stays. TigZig keeps NAVs to 4 decimals, so a difference of 0.0001 or less is rounding. The TigZig snapshot adds master rows only for codes with none. MFAPI writes nothing: `mf crosscheck` compares a fixed sample of codes with the store.
+
+**Checks.** A file blocks (the run fails and nothing publishes) when its layout is unknown, it has no rows, a row has another date, or a code appears twice with different values. Rows are stored as filed, and missing, zero or negative NAVs and moves beyond 25% of the previous NAV are flagged (MF-8). An unchanged file is a no-op (MF-7).
+
+**Data loaded (local database, 2026-10-23).** 22,267,862 current NAV rows on every calendar date from 2016-10-16 to 2026-10-22 (3,659 dates; no date without a settled run, no weekday without a NAV). AMFI direct holds 7,197,748 rows from 2023-04-01 (1,301 daily runs, no failure). TigZig holds 15,070,114 rows before that (78 monthly runs). 40,213 plan-options have master rows: 16,472 from AMFI's master and 23,741 from the TigZig snapshot; 22,397 have a NAV in the window. Flags: 201,625 `nav_zero` (segregated portfolios filed at 0.00), 681 `nav_jump`, 8 `nav_missing`. Reconciliation: TigZig's 7,180,754 rows from 2023-04-01 on add no code or date that AMFI lacks; 6 values differ, one fund-of-funds on 2026-10-22 at +0.053%, and AMFI's are kept. MFAPI, 100 sampled codes over the window: 82,274 values match, 30 differ (0.036%), and the store holds 5,838 dates MFAPI lacks (mostly 2016–2018). Reconciliation found one parser defect: AMFI writes some NAVs with a bare point (`222.`), which were stored as null. The fixed adapter (`amfi-2026-10-23.2`) re-derived 992 dates from their raw files, so 1,839 values are corrections that keep the nulls as history. Database 7.6 GB (NAV table 2.8 GB); raw files 362 MB. Logs and the full report: `~/.wickstreet/logs/`.
+
+**Known limits.** AMFI's history report restates current scheme names and categories for past dates, so attributes stored from the backfill are those of 2026-10-23, and name history accumulates from the daily refresh on. TigZig's archive has the filed name per row, but it is not stored. Archive NAVs before 2023-04-01 have 4 decimals. MFAPI and TigZig differ on 30 values, mostly before 2023, that no direct AMFI file can settle.
+
+**Operations.** `wickstreet mf backfill`, `mf archive`, `mf crosscheck`, `mf refresh`, `mf reparse` and `mf report` (see `backend/README.md`). `mf reparse` re-derives published AMFI dates from their kept raw files after a parser fix; it checks each file against its recorded SHA-256 and publishes changed values as a new revision under the new adapter version. The daily refresh re-reads the master and the last 7 days, or every date since the last stored one after downtime. With `WICKSTREET_REFRESH_ENABLED=true` (Compose sets it) the app runs it at 11:30 IST, and at startup when the day's run is due. If `SSL_CERT_FILE` points at an older CA bundle, AMFI's Sectigo R46 chain fails; unset it or point it at certifi's bundle.
 
 ## Data stores
 

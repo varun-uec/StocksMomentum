@@ -15,7 +15,9 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
-import wickstreet.identity.infrastructure.tables  # noqa: F401 - registers the tables
+import wickstreet.data_rights.infrastructure.tables  # noqa: F401 - registers the tables
+import wickstreet.identity.infrastructure.tables  # noqa: F401
+import wickstreet.mf_data.infrastructure.tables  # noqa: F401
 from wickstreet.config import get_settings
 from wickstreet.persistence.database import SCHEMA, include_mf_schema, metadata
 

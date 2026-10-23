@@ -59,6 +59,13 @@ services:
       WICKSTREET_BIND_HOST: 0.0.0.0
       WICKSTREET_IN_CONTAINER: "true"
       WICKSTREET_PUBLISHED_BIND: ${APP_BIND:-127.0.0.1}
+      # The 11:30 IST MF refresh runs in this process (ADR-022 §2.12).
+      WICKSTREET_REFRESH_ENABLED: ${WICKSTREET_REFRESH_ENABLED:-true}
+      # Raw source files live on the host at the path the CLI uses, so every
+      # revision's raw_path resolves from both (ADR-017 MF-9).
+      WICKSTREET_RAW_DIR: ${WICKSTREET_RAW_DIR:-${HOME}/.wickstreet/raw}
+    volumes:
+      - ${WICKSTREET_RAW_DIR:-${HOME}/.wickstreet/raw}:${WICKSTREET_RAW_DIR:-${HOME}/.wickstreet/raw}
     # Loopback only. APP_BIND=0.0.0.0 exposes an unauthenticated app to the LAN;
     # that instance is not secure, and every reachable browser has full access.
     # Use an authenticating proxy for network exposure and list its host in M25_ALLOWED_HOSTS.

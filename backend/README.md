@@ -35,6 +35,18 @@ uv run alembic -c alembic-wickstreet.ini upgrade head
 uv run python -m apphost         # loopback only in personal mode
 ```
 
+MF data (ADR-023 U10, U11). The owner records each source's grants with the owner login,
+then runs the acquisition in this order. Every command is resumable.
+```bash
+uv run wickstreet rights grant amfi --use automated_retrieval --use storage --basis "..." --by owner
+uv run wickstreet mf backfill    # AMFI direct: scheme master, then one run per date
+uv run wickstreet mf archive     # TigZig: dates before AMFI's first served date, then fills
+uv run wickstreet mf crosscheck  # compare a fixed sample of codes with MFAPI; writes nothing
+uv run wickstreet mf refresh     # the 11:30 IST job, run now
+uv run wickstreet mf reparse     # after a parser fix: re-derive AMFI dates from kept raw files
+uv run wickstreet mf report      # coverage, gaps, anomalies and conflicts as JSON
+```
+
 ## Quality
 ```bash
 uv run ruff check src tests      # lint

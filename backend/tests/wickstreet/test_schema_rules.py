@@ -21,15 +21,28 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
-import wickstreet.identity.infrastructure.tables  # noqa: F401 - registers the tables
+import wickstreet.data_rights.infrastructure.tables  # noqa: F401 - registers the tables
+import wickstreet.identity.infrastructure.tables  # noqa: F401
+import wickstreet.mf_data.infrastructure.tables  # noqa: F401
 from tests.wickstreet.conftest import Urls, alembic_config
 from tests.wickstreet.tenant_cases import CASES
 from wickstreet.persistence.database import SCHEMA, include_mf_schema, metadata
 
 # Principals: tenant-scoped by these columns, no owner column.
 IDENTITY_TABLES = {"tenant": "id", "app_user": "tenant_id"}
-# Shared, not tenant-owned (ADR-023 §2.6). List each one; none exists yet.
-SHARED_REFERENCE_TABLES: frozenset[str] = frozenset()
+# Shared, not tenant-owned (ADR-023 §2.6). List each one.
+SHARED_REFERENCE_TABLES = frozenset(
+    {
+        "rights_grant",
+        "ingestion_run",
+        "revision",
+        "publication",
+        "plan_option",
+        "nav",
+        "plan_option_listing",
+        "plan_option_master",
+    }
+)
 _POLICY_SETTING = "current_setting('wickstreet.tenant_id'"
 
 
@@ -163,4 +176,4 @@ async def test_mf_migrations_run_alone_and_leave_momentum25_untouched(
     await admin.dispose()
     assert before[0]
     assert after == before
-    assert mf_version == "0001_identity_tenancy"
+    assert mf_version == "0002_mf_data_foundation"
