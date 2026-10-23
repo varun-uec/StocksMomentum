@@ -1,0 +1,19 @@
+flowchart TD
+  subgraph LocalCAS[Local CAS and portfolio - Slice 6]
+    File[File and one-use password] --> Preview[Parse-only preview]
+    Preview --> Issues{Reconciled?}
+    Issues -->|No| Resolve[Resolve exact plans and duplicates]
+    Resolve --> Preview
+    Issues -->|Yes| Commit[Explicit idempotent commit]
+    Commit --> Ledger[Tenant-owned ledger]
+    Commit --> Undo[Undo batch]
+    Ledger --> Portfolio[Portfolio views and scenarios]
+  end
+  subgraph Agent[Research agent - Slice 5]
+    Question[Question and research context] --> Tools[Rights-checked deterministic tools]
+    Tools --> Validate{Validated claims?}
+    Validate -->|Yes| Answer[Cited answer and editable view]
+    Validate -->|No| Template[Reviewed template fallback]
+    Answer --> Save[Preview then save exact evidence]
+  end
+  Portfolio -. Later derived data boundary only .-> Tools

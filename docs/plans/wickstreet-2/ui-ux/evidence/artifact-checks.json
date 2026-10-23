@@ -1,0 +1,231 @@
+{
+  "date": "2026-10-23",
+  "checks": [
+    {
+      "screen": 1,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 1,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 2,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 2,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 3,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 3,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 4,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 4,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 5,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 5,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 6,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 6,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 7,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 7,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 8,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 8,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 9,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 9,
+      "device": "mobile",
+      "loaded": true
+    },
+    {
+      "screen": 10,
+      "device": "desktop",
+      "loaded": true
+    },
+    {
+      "screen": 10,
+      "device": "mobile",
+      "loaded": true
+    }
+  ],
+  "svgCount": 30,
+  "bounds": [
+    {
+      "file": "D01-discover.svg",
+      "outside": 0
+    },
+    {
+      "file": "D02-screen.svg",
+      "outside": 0
+    },
+    {
+      "file": "D03-fund.svg",
+      "outside": 0
+    },
+    {
+      "file": "D04-studio.svg",
+      "outside": 0
+    },
+    {
+      "file": "D05-compare.svg",
+      "outside": 0
+    },
+    {
+      "file": "D06-simulate.svg",
+      "outside": 0
+    },
+    {
+      "file": "D07-portfolio.svg",
+      "outside": 0
+    },
+    {
+      "file": "D08-workspace.svg",
+      "outside": 0
+    },
+    {
+      "file": "D09-agent.svg",
+      "outside": 0
+    },
+    {
+      "file": "D10-mobile.svg",
+      "outside": 0
+    },
+    {
+      "file": "M01-discover.svg",
+      "outside": 0
+    },
+    {
+      "file": "M02-screen.svg",
+      "outside": 0
+    },
+    {
+      "file": "M03-fund.svg",
+      "outside": 0
+    },
+    {
+      "file": "M04-studio.svg",
+      "outside": 0
+    },
+    {
+      "file": "M05-compare.svg",
+      "outside": 0
+    },
+    {
+      "file": "M06-simulate.svg",
+      "outside": 0
+    },
+    {
+      "file": "M07-portfolio.svg",
+      "outside": 0
+    },
+    {
+      "file": "M08-workspace.svg",
+      "outside": 0
+    },
+    {
+      "file": "M09-agent.svg",
+      "outside": 0
+    },
+    {
+      "file": "M10-mobile.svg",
+      "outside": 0
+    },
+    {
+      "file": "S01-screen-empty.svg",
+      "outside": 0
+    },
+    {
+      "file": "S02-score-evidence.svg",
+      "outside": 0
+    },
+    {
+      "file": "S03-cas-review.svg",
+      "outside": 0
+    },
+    {
+      "file": "S04-studio-visuals.svg",
+      "outside": 0
+    },
+    {
+      "file": "S05-portfolio-overview.svg",
+      "outside": 0
+    },
+    {
+      "file": "S06-mobile-portfolio.svg",
+      "outside": 0
+    },
+    {
+      "file": "contact-sheet.svg",
+      "outside": 0
+    },
+    {
+      "file": "cas-agent-boundaries.svg",
+      "outside": 0
+    },
+    {
+      "file": "navigation.svg",
+      "outside": 0
+    },
+    {
+      "file": "research-loop.svg",
+      "outside": 0
+    }
+  ],
+  "externalRequests": 0,
+  "axeViolations": [],
+  "failures": []
+}

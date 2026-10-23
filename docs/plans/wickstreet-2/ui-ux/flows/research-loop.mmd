@@ -1,0 +1,15 @@
+flowchart TD
+  Q[Question or collection] --> S[Screen exact criteria]
+  S --> Result{Successful response?}
+  Result -->|Error| Retry[Keep prior result and retry]
+  Retry --> S
+  Result -->|No matches| Relax[Inspect returned relaxations]
+  Relax --> S
+  Result -->|Matches| F[Fund evidence and limitations]
+  F --> C[Compare exact alternatives]
+  C --> Sim[Historical scenario]
+  Sim --> B[Save dated decision brief]
+  B --> R{Later review}
+  R -->|Original| Replay[Replay pinned evidence]
+  R -->|Refresh copy| Diff[Inspect changes and annotate]
+  Diff --> B
