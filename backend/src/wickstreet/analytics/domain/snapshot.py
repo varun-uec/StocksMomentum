@@ -44,6 +44,8 @@ class Snapshot:
     # Field id -> reason -> how many rows miss that field for that reason; counted from
     # the rows when not given.
     missing: dict[str, Counter[str]] = field(default_factory=dict)
+    # Cross-fund tables of method v4: ``pairs``, ``near_duplicates``, ``regimes``, ``proxy``.
+    tables: dict[str, Any] = field(default_factory=dict)
     by_code: dict[str, FundRow] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -114,7 +116,7 @@ class Encoder:
         self._method_version = method_version
         self._tail = (
             f',"revision":{_json(revision)},"sources":{_json(sorted(sources))},'
-            f'"states":{_json([list(pair) for pair in STATES])}}}'
+            f'"states":{_json([list(pair) for pair in STATES])}'
         )
         self._missing: dict[str, Counter[str]] = {f.id: Counter() for f in FIELDS}
         self._last: int | None = None
@@ -140,11 +142,12 @@ class Encoder:
         self._last = row.plan_option_id
         self.funds += 1
 
-    def finish(self) -> Encoded:
-        """Close the body and return the gzipped payload and its hash."""
+    def finish(self, tables: dict[str, Any] | None = None) -> Encoded:
+        """Close the body with the cross-fund tables; return the gzipped payload and its hash."""
         self._write(
             f'],"method_version":{_json(self._method_version)},"missing":{_json(self._missing)}'
             + self._tail
+            + f',"tables":{_json(tables or {})}}}'
         )
         self._gzip.close()
         return Encoded(self._buffer.getvalue(), self._sha.hexdigest(), self.funds)
@@ -182,6 +185,7 @@ def decode(snapshot_id: int, payload: bytes) -> Snapshot:
             for pid, code, name, values, codes, anchors in body["funds"]
         ),
         missing={f: Counter(reasons) for f, reasons in body.get("missing", {}).items()},
+        tables=body.get("tables", {}),
     )
 
 

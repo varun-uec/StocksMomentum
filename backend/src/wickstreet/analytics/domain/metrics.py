@@ -25,7 +25,10 @@ from typing import Literal
 # the real-data spot check (unclaimed-dividend plans, "IDCW Yield", "RetireInvest").
 # v3: Slice 3 adds status, annual returns, drawdown episodes, worst periods, downside
 # risk, category ranks, consistency, scores and sibling categories (doc 20 §3).
-METHOD_VERSION = 3
+# v4: doc 21 — SEBI 2026 categories, point-in-time peer groups and rank history,
+# persistence, deterioration, direct vs regular, rolling percentiles, current drawdown,
+# near-duplicates.
+METHOD_VERSION = 4
 # The longest gap between two valid NAVs an anchor or a window may span.
 MAX_GAP_DAYS = 7
 # A fund is active when its last valid NAV is this close to the as-of date.
@@ -46,6 +49,7 @@ NO_DRAWDOWN = "no_drawdown"
 ZERO_DENOMINATOR = "zero_denominator"
 NO_PEER_GROUP = "no_peer_group"
 TOO_FEW_PEERS = "too_few_peers"
+NO_PAIR = "no_pair"
 REASONS = frozenset(
     {
         NO_NAV,
@@ -58,6 +62,7 @@ REASONS = frozenset(
         ZERO_DENOMINATOR,
         NO_PEER_GROUP,
         TOO_FEW_PEERS,
+        NO_PAIR,
     }
 )
 
@@ -86,7 +91,20 @@ TRAILING = (
     ("cagr_10y", 120, True),
 )
 ROLLING = (("rolling_1y", 12), ("rolling_3y", 36), ("rolling_5y", 60))
-ROLLING_STATS = ("count", "mean", "median", "min", "max", "positive_share")
+ROLLING_STATS = (
+    "count",
+    "mean",
+    "median",
+    "min",
+    "max",
+    "positive_share",
+    "p10",
+    "p25",
+    "p75",
+    "p90",
+)
+# (stat, quantile) by nearest rank, as for VaR.
+PERCENTILES = (("p10", 0.10), ("p25", 0.25), ("p75", 0.75), ("p90", 0.90))
 VOLATILITY = (("vol_1y", 12), ("vol_3y", 36))
 DRAWDOWN = (("mdd_1y", 12), ("mdd_3y", 36))
 SINCE = ("since_start", "ret_since", "cagr_since", "mdd_since")
@@ -105,6 +123,7 @@ EPISODES = (("dd_3y", 36), ("dd_since", None))
 EPISODE_STATS = ("peak", "trough", "recovery", "fall_days", "recovery_days")
 WORST = (("worst_1m", 1), ("worst_3m", 3), ("worst_1y", 12))
 DOWNSIDE = ("downside_dev_3y", "sortino_3y", "var95_3y", "cvar95_3y", "ret_risk_3y")
+UNDERWATER = ("dd_now", "dd_now_days", "underwater_max_days")
 METRIC_FIELDS = (
     *LATEST,
     *(name for name, _, _ in TRAILING),
@@ -115,22 +134,45 @@ METRIC_FIELDS = (
     *(f"{name}_{stat}" for name, _ in EPISODES for stat in EPISODE_STATS),
     *(name for name, _ in WORST),
     *DOWNSIDE,
+    *UNDERWATER,
     *(f"{name}_{stat}" for name, _ in ROLLING for stat in ROLLING_STATS),
 )
 
 
+def _floats() -> array[float]:
+    return array("d")
+
+
+@dataclass(frozen=True, slots=True)
+class MonthEnds:
+    """A fund's values at each complete month-end it was alive (method v4).
+
+    Parallel arrays: ``months`` (year × 12 + month - 1), the NAV, the trailing 1Y return
+    and the trailing 3Y CAGR at the fund's last valid NAV of the month (``nan`` when the
+    window has no start anchor). Arrays keep 40k funds small.
+    """
+
+    months: array[int] = field(default_factory=lambda: array("l"))
+    navs: array[float] = field(default_factory=_floats)
+    ret_1y: array[float] = field(default_factory=_floats)
+    cagr_3y: array[float] = field(default_factory=_floats)
+
+
 @dataclass(frozen=True, slots=True)
 class FundMetrics:
-    """Every metric of one fund, its trailing anchors and its month-end rolling 3Y.
+    """Every metric of one fund, its trailing anchors and the inputs of cross-fund fields.
 
-    ``month_ends`` (year × 12 + month - 1) and ``rolling_3y`` are parallel arrays of the
-    month-end rolling 3Y returns, used for consistency. Arrays keep 22k funds small.
+    ``then`` holds ``ret_1y``, ``vol_3y`` and ``mdd_3y`` one year before the as-of date,
+    for funds alive then. ``days`` and ``levels`` are the valid NAVs of an active fund's 3Y
+    window, from its start anchor, for near-duplicates.
     """
 
     values: dict[str, Value]
     anchors: dict[str, str]
-    month_ends: array[int] = field(default_factory=lambda: array("l"))
-    rolling_3y: array[float] = field(default_factory=lambda: array("d"))
+    month_ends: MonthEnds = field(default_factory=MonthEnds)
+    then: dict[str, float] = field(default_factory=dict)
+    days: array[int] = field(default_factory=lambda: array("i"))
+    levels: array[float] = field(default_factory=_floats)
 
 
 @cache
@@ -306,8 +348,16 @@ def window_points(
     return points
 
 
+def nearest_rank(ordered: Sequence[float], quantile: float) -> float:
+    """The ⌈quantile × n⌉-th lowest of ``ordered`` (sorted, not empty)."""
+    return ordered[max(math.ceil(quantile * len(ordered)), 1) - 1]
+
+
 def rolling_summary(values: list[float]) -> dict[str, Value]:
-    """count, mean, median (mean of the middle two for an even count), min, max, share > 0."""
+    """count, mean, median, min, max, share > 0 and nearest-rank percentiles.
+
+    The median of an even count is the mean of the middle two.
+    """
     if not values:
         missing = Missing("NA", HISTORY_TOO_SHORT)
         empty: dict[str, Value] = {"count": 0}
@@ -323,6 +373,7 @@ def rolling_summary(values: list[float]) -> dict[str, Value]:
         "min": values[0],
         "max": values[-1],
         "positive_share": sum(1 for p in values if p > 0) / n,
+        **{stat: nearest_rank(values, q) for stat, q in PERCENTILES},
     }
 
 
@@ -353,6 +404,86 @@ def year_returns(
             found.append((year, navs[index] / navs[previous] - 1))
         previous = index
     return found
+
+
+def last_complete_month(as_of: int) -> int:
+    """The month key of the last month whose last day is on or before ``as_of``."""
+    day = date.fromordinal(as_of)
+    complete = day.day == monthrange(day.year, day.month)[1]
+    return month_key(as_of) - (0 if complete else 1)
+
+
+def _month_last_day(key: int) -> int:
+    year, month = divmod(key, 12)
+    return date(year, month + 1, monthrange(year, month + 1)[1]).toordinal()
+
+
+def month_end_values(dates: Sequence[int], navs: Sequence[float], as_of: int) -> MonthEnds:
+    """The fund's NAV, 1Y return and 3Y CAGR at each complete month-end it was alive.
+
+    Alive means its last valid NAV of the month is within ``MAX_GAP_DAYS`` of the
+    month's last day (method v4, M1).
+    """
+    found = MonthEnds()
+    if not dates:
+        return found
+    one = dict(window_points(dates, navs, 12, False))
+    three = dict(window_points(dates, navs, 36, True))
+    last = last_complete_month(as_of)
+    for j, day in enumerate(dates):
+        key = month_key(day)
+        if key > last:
+            break
+        if j + 1 < len(dates) and month_key(dates[j + 1]) == key:
+            continue
+        if _month_last_day(key) - day > MAX_GAP_DAYS:
+            continue
+        found.months.append(key)
+        found.navs.append(navs[j])
+        found.ret_1y.append(one.get(j, math.nan))
+        found.cagr_3y.append(three.get(j, math.nan))
+    return found
+
+
+def _then(dates: Sequence[int], navs: Sequence[float], as_of: int) -> dict[str, float]:
+    """ret_1y, vol_3y and mdd_3y one year before ``as_of``, when the fund was alive then."""
+    target = months_back(as_of, 12)
+    end = start_anchor(dates, target)
+    if isinstance(end, Missing):
+        return {}
+    found: dict[str, float] = {}
+    one = start_anchor(dates, months_back(target, 12))
+    if not isinstance(one, Missing):
+        found["ret_1y"] = navs[end] / navs[one] - 1
+    three = start_anchor(dates, months_back(target, 36))
+    if not isinstance(three, Missing):
+        for name, value in (
+            ("vol_3y", volatility(dates, navs, three, end)),
+            ("mdd_3y", drawdown(dates, navs, three, end)),
+        ):
+            if not isinstance(value, Missing):
+                found[name] = float(value)
+    return found
+
+
+def _underwater(dates: Sequence[int], navs: Sequence[float], active: bool) -> dict[str, Value]:
+    """Current fall from the running peak, days since that peak, longest time below a peak.
+
+    A stretch below a peak ends at the first NAV back at the peak, or at the last NAV
+    when it has not recovered.
+    """
+    peak = longest = 0
+    for k in range(1, len(navs)):
+        if navs[k] >= navs[peak]:
+            longest = max(longest, dates[k] - dates[peak])
+            peak = k
+    longest = max(longest, dates[-1] - dates[peak])
+    values: dict[str, Value] = {"underwater_max_days": longest}
+    if active:
+        values |= {"dd_now": navs[-1] / navs[peak] - 1, "dd_now_days": dates[-1] - dates[peak]}
+    else:
+        values |= dict.fromkeys(("dd_now", "dd_now_days"), Missing("NA", NO_RECENT_NAV))
+    return values
 
 
 def _ratio(numerator: Value, denominator: Value) -> Value:
@@ -464,22 +595,28 @@ def compute(points: Sequence[tuple[int, float | None, str | None]], as_of: int) 
         values |= {"downside_dev_3y": deviation, "var95_3y": var, "cvar95_3y": cvar}
     values["sortino_3y"] = _ratio(values["cagr_3y"], values["downside_dev_3y"])
     values["ret_risk_3y"] = _ratio(values["cagr_3y"], values["vol_3y"])
+    values |= _underwater(dates, navs, active)
+    days: array[int] = array("i")
+    levels: array[float] = array("d")
+    if active and not isinstance(three, Missing):
+        days.extend(dates[three : end + 1])
+        levels.extend(navs[three : end + 1])
 
     for name, months in WORST:
         worst = [v for _, v in window_points(dates, navs, months, False)]
         values[name] = min(worst) if worst else Missing("NA", HISTORY_TOO_SHORT)
-    month_ends: array[int] = array("l")
-    rolling_3y: array[float] = array("d")
     for name, months in ROLLING:
         points_ = window_points(dates, navs, months, True)
         for stat, value in rolling_summary([v for _, v in points_]).items():
             values[f"{name}_{stat}"] = value
-        if months == 36:
-            for j, value in points_:
-                if j == end or month_key(dates[j + 1]) != month_key(dates[j]):
-                    month_ends.append(month_key(dates[j]))
-                    rolling_3y.append(value)
-    return FundMetrics(values, anchors, month_ends, rolling_3y)
+    return FundMetrics(
+        values,
+        anchors,
+        month_end_values(dates, navs, as_of),
+        _then(dates, navs, as_of),
+        days,
+        levels,
+    )
 
 
 def rebase(

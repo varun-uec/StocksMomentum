@@ -1,6 +1,6 @@
 # Architecture — as built
 
-Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2), and the [Slice 3](#wickstreet-20-mf-analytics-v3-slice-3) section on 2026-10-23.
+Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2), the [Slice 3](#wickstreet-20-mf-analytics-v3-slice-3) section on 2026-10-23, and the [v4](#wickstreet-20-nav-analytics-v4) section on 2026-10-23.
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
@@ -145,6 +145,43 @@ Implements [doc 20](../plans/wickstreet-2/20-wickstreet-2.0-complete-mf-scope.md
 **Measured on the real store (2026-10-23, revision 2769).** Compute: 102 s, 404 MB peak (a recompute in a child process: 101 s, 388 MB). Payload 9.0 MB gzipped. Load 0.6 s; one decoded snapshot holds 219 MB. The loop waits 75 ms at most during a compute. Presets screen in about 18 ms; a formula over all 40,213 funds screens in 132 ms. Of 8,668 active funds, 4,688 have a score and 4,730 a consistency value; 1,102 stay Unclassified, because no sibling plan-option carries a current label. The opt-in real-data test checks the ranges of every v3 field and recomputes the snapshot byte for byte.
 
 **Snapshot rows replaced.** While the encoding changed on 2026-10-23, the v3 snapshot of revision 2769 was recomputed twice; the superseded rows (ids 3 and 4, derived caches) were deleted with the owner login. Snapshots 1 and 2 (v1, v2) stay.
+
+## Wickstreet 2.0 NAV analytics v4
+
+Implements the v4 scope of [doc 21](../plans/wickstreet-2/21-analytics-expansion-v4.md) under method v4 ([mf-metrics.md](mf-metrics.md)). Backend only: the owner paused UI work.
+
+| Module (`wickstreet/analytics/domain/`) | Adds |
+|---|---|
+| `classify.py` | SEBI 2026 categories and `fund_type`. |
+| `metrics.py` | Rolling percentiles, current drawdown and longest time under water; per fund, the month-end NAV, 1Y and 3Y values (`MonthEnds`), the year-ago values, and the 3Y NAVs of active funds for near-duplicates. |
+| `peers.py` | Point-in-time groups (members include funds that stopped), monthly ranks, persistence, year-ago ranks and changes, transitions; `rank_all` is the one ranking formula. |
+| `relations.py` | Direct–regular pairs and gaps, near-duplicates (numpy screen, then the exact compare correlation), the regime proxy and its windows. |
+| `views.py` | Underwater series, recovery spread, rolling SIP, frontier. |
+| `backtest.py` | Point-in-time top-N backtests against the group median, in-sample and hold-out. |
+| `tax.py` | Rule set `in-2018-04-01`: rules by sale date, indexation, pooled loss set-off. |
+
+**Snapshot.** 151 registry fields. The body adds `tables`: `pairs`, `near_duplicates` (top 10 per fund), `regimes` and `proxy` (label and daily levels). Pass 2 runs each peer group in a worker thread. Rank history, transitions and backtests read the group's series at the pinned revision and recompute month-ends with the same functions as the snapshot.
+
+**Routes** (under `/api/v1/mf`, pinned like Slice 2): `GET /funds/{code}/rank-history`, `/direct-regular`, `/underwater`, `/rolling-sip?tenor=&amount=&day=&step_up=`, `/near-duplicates`, `/score`, `/confidence`, `/regimes`; `GET /peers/transitions` and `/peers/frontier` (`category`, `plan`, `option`); `GET /regimes`; `POST /backtests`. `GET /screener/fields` adds `coverage`; `GET /compare` adds `average_correlation`. Existing routes keep their shape.
+
+**Measured on the real store (2026-10-23, revision 2769), against the Slice 3 baseline.**
+
+| Measure | Slice 3 | v4 |
+|---|---|---|
+| Compute | 102 s, 404 MB | 118–125 s, 508–574 MB |
+| Payload | 9.0 MB gzip | 10.4 MB gzip |
+| Load and decode | 0.6 s | 0.8 s |
+| Presets | ~18 ms | 30–35 ms |
+| Longest event-loop stall during a compute | 75 ms | ~170 ms (full GC passes; per-group work runs in a thread) |
+| Rank history, transitions or backtest, largest group (Index Funds direct growth, 409 funds) | — | ~1.4 s |
+| Backtest, Flexi Cap direct growth | — | 0.37 s |
+| Rolling SIP 5Y, underwater, confidence, regimes, score, frontier | — | 7–94 ms |
+
+Three computes gave the same SHA-256. Of 8,668 active funds, 111 stay Unclassified (v3: 1,102). The opt-in real-data tests check the v4 ranges, current drawdown against SQL, month-end ranks against an independent pandas rebuild, near-duplicates against the compare correlation (1e-12), pair gaps, and a byte-identical recompute.
+
+**Not built.** The splice across `plan_option_link` (M16): the table has no rows, and links are curated, never inferred.
+
+**Snapshot row replaced.** The first v4 snapshot (id 6) used an approximate near-duplicate correlation; it was deleted and recomputed as id 7. Snapshots 1, 2 and 5 (v1–v3) stay.
 
 ## Data stores
 

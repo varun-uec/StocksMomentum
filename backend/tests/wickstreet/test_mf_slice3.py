@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from array import array
 from dataclasses import replace
 from datetime import date
 
@@ -20,6 +21,7 @@ from wickstreet.analytics.domain.metrics import (
     NOT_RECOVERED,
     ZERO_DENOMINATOR,
     Missing,
+    MonthEnds,
     compute,
     downside,
     month_key,
@@ -109,17 +111,35 @@ def test_three_year_ratios_and_month_ends() -> None:
     assert metrics.values["downside_dev_3y"] == 0.0
     assert metrics.values["sortino_3y"] == Missing("NM", ZERO_DENOMINATOR)
     assert isinstance(metrics.values["ret_risk_3y"], float)
-    keys = list(metrics.month_ends)
-    assert keys == [month_key(o("2024-06-01"))]
-    assert len(metrics.rolling_3y) == len(keys)
+    ends = metrics.month_ends
+    # 2024-06 is not complete on 2024-06-28; no month-end has a full 3Y window.
+    assert (len(ends.months), ends.months[0], ends.months[-1]) == (
+        36,
+        month_key(o("2021-06-30")),
+        month_key(o("2024-05-31")),
+    )
+    assert all(math.isnan(v) for v in ends.cagr_3y)
+    assert sum(not math.isnan(v) for v in ends.ret_1y) == 24
 
 
 # ---- peers
 
 
-def peer(values: dict[str, object], months: int = 0, value: float = 0.0) -> PeerFund:
+def peer(
+    values: dict[str, object],
+    months: int = 0,
+    value: float = 0.0,
+    then: dict[str, float] | None = None,
+    active: bool = True,
+) -> PeerFund:
     base = dict.fromkeys(RANKED_INPUTS, NA) | values
-    return PeerFund(base, list(range(months)), [value] * months)  # type: ignore[arg-type]
+    ends = MonthEnds(
+        array("l", range(months)),
+        array("d", [100.0] * months),
+        array("d", [math.nan] * months),
+        array("d", [value] * months),
+    )
+    return PeerFund(base, ends, then or {}, active)  # type: ignore[arg-type]
 
 
 def test_category_ranks_split_ties_and_respect_direction() -> None:
@@ -127,7 +147,7 @@ def test_category_ranks_split_ties_and_respect_direction() -> None:
         peer({"ret_1y": r, "vol_3y": vol})
         for r, vol in zip([0.1, 0.2, 0.2, 0.3, 0.4], [0.5, 0.4, 0.3, 0.2, 0.1], strict=True)
     ]
-    add_group_fields(members)
+    add_group_fields(members, 11)
     got = [
         (m.values["ret_1y_cat_rank"], m.values["ret_1y_cat_pct"], m.values["ret_1y_cat_quartile"])
         for m in members
@@ -141,19 +161,19 @@ def test_category_ranks_split_ties_and_respect_direction() -> None:
 
 def test_too_few_peers_and_consistency_and_score() -> None:
     few = [peer({"ret_1y": 0.1}) for _ in range(4)]
-    add_group_fields(few)
+    add_group_fields(few, 11)
     assert few[0].values["ret_1y_cat_pct"] == Missing("NA", "too_few_peers")
     members = [
         peer({"ret_risk_3y": float(i), "mdd_3y": -0.1 * (5 - i)}, months=12, value=float(i))
         for i in range(5)
     ]
-    add_group_fields(members)
+    add_group_fields(members, 11)
     assert [m.values["consistency_3y"] for m in members] == [0.0, 0.0, 0.0, 1.0, 1.0]
     best = members[4].values
     assert best["score"] == pytest.approx((best["consistency_3y_cat_pct"] + 100 + 100) / 3)
     assert best["score_cat_rank"] == 1
     short = [peer({}, months=11, value=float(i)) for i in range(5)]
-    add_group_fields(short)
+    add_group_fields(short, 11)
     assert short[0].values["consistency_3y"] == Missing("NA", HISTORY_TOO_SHORT)
     assert short[0].values["score"] == Missing("NA", HISTORY_TOO_SHORT)
 
@@ -307,7 +327,7 @@ def test_debt_and_other_tax_and_reasons() -> None:
     old_debt = [sale("2021-01-01", "2024-08-01", 0, 10_000)]
     assert capital_gains_tax(old_debt, "debt", None, None).total == pytest.approx(1300.0)
     assert capital_gains_tax(old_debt, "other", None, None).total == pytest.approx(1300.0)
-    early = capital_gains_tax([sale("2020-01-01", "2024-07-01", 0, 10)], "equity", None, None)
+    early = capital_gains_tax([sale("2017-01-01", "2018-03-01", 0, 10)], "equity", None, None)
     assert (early.total, early.not_modelled) == (0.0, 1)
     assert capital_gains_tax(new_debt, None, 0.3, None).reason == "tax_class_needed"
     assert tax_class_of("Equity Scheme - Large Cap Fund", "Equity") == "equity"

@@ -357,3 +357,58 @@ async def test_slice3_views_presets_formulas_and_calculators(
     assert compared["correlations"] == [
         {"a": "10001", "b": "10002", "correlation": None, "observations": 2}
     ]
+
+
+async def test_v4_views_answer_through_the_api(
+    published: FakeSource, app_database: Database, client: TestClient
+) -> None:
+    await _compute(app_database).execute()
+    group = "category=Equity Scheme - Large Cap Fund&plan=direct&option=growth"
+
+    fields = {f["id"]: f for f in client.get("/screener/fields").json()["fields"]}
+    assert fields["fund_type"]["coverage"]["values"] == 3
+    assert fields["dr_gap_3y"]["coverage"]["missing"] == {"no_pair": 3}
+
+    history = client.get("/funds/10001/rank-history").json()
+    assert history["group"]["funds_with_nav"] == 2
+    assert history["history"] == []  # three NAVs make no complete ranked month-end
+    assert client.get(f"/peers/transitions?{group}").json()["counts"] == [[0] * 4] * 4
+    assert client.get(f"/peers/frontier?{group}").json()["points"] == []
+    unclassified = "category=Unclassified&plan=direct&option=growth"
+    assert client.get(f"/peers/frontier?{unclassified}").status_code == 422
+
+    run = client.post(
+        "/backtests",
+        json={"category": "Equity Scheme - Large Cap Fund", "plan": "direct", "option": "growth"},
+    ).json()
+    assert run["summary"]["whole"] == {"months": 0}
+    assert len(run["limits"]) == 4
+    bad = client.post(
+        "/backtests",
+        json={
+            "category": "Equity Scheme - Large Cap Fund",
+            "plan": "direct",
+            "option": "growth",
+            "signal": "score",
+        },
+    )
+    assert bad.status_code == 422
+
+    assert client.get("/funds/10001/direct-regular").json()["pair"] is None
+    underwater = client.get("/funds/10001/underwater").json()
+    assert underwater["series"][-1] == ["2026-10-22", 0.0]
+    assert underwater["dd_now"] == 0.0
+    sip = client.get("/funds/10001/rolling-sip?tenor=3y").json()
+    assert sip["summary"] == {"starts": 0}
+    assert client.get("/funds/10001/rolling-sip?tenor=2y").status_code == 422
+    assert client.get("/funds/10001/near-duplicates").json()["listed"] == []
+    score = client.get("/funds/10001/score").json()
+    assert [p["field"] for p in score["parts"]] == ["consistency_3y", "ret_risk_3y", "mdd_3y"]
+    assert score["penalties"] == []
+    confidence = client.get("/funds/10001/confidence").json()
+    assert confidence["valid_navs"] == 3
+    assert confidence["sources"][0]["rows"] == 3
+    assert client.get("/regimes").json()["windows"] == []
+    assert client.get("/funds/10001/regimes").json()["windows"] == []
+    compared = client.get("/compare?code=10001&code=10002").json()
+    assert compared["average_correlation"] is None

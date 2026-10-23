@@ -12,8 +12,10 @@ from collections.abc import Sequence
 from datetime import date
 from typing import Any
 
+from wickstreet.analytics.domain import calculators
 from wickstreet.analytics.domain.metrics import (
     Missing,
+    nearest_rank,
     start_anchor,
     valid_series,
     window_points,
@@ -161,3 +163,83 @@ def correlation(first: Points, second: Points) -> tuple[float | None, int]:
     if sxx == 0 or syy == 0:
         return None, len(x)
     return sxy / math.sqrt(sxx * syy), len(x)
+
+
+def underwater(points: Points) -> list[tuple[str, float]]:
+    """Each valid NAV's fall from the highest NAV so far (0 at a new peak)."""
+    dates, navs, _, _ = valid_series(points)
+    found: list[tuple[str, float]] = []
+    peak = 0.0
+    for day, nav in zip(dates, navs, strict=True):
+        peak = max(peak, nav)
+        found.append((_iso(day), nav / peak - 1))
+    return found
+
+
+def recovery_spread(episodes: Sequence[dict[str, Any]], depth: float) -> dict[str, Any]:
+    """Recovery times of recovered falls at least ``depth`` deep: count and nearest-rank spread."""
+    days = sorted(e["recovery_days"] for e in episodes if e["depth"] <= depth and e["recovery"])
+    open_falls = sum(1 for e in episodes if e["depth"] <= depth and not e["recovery"])
+    spread: dict[str, Any] = {"depth": depth, "recovered": len(days), "not_recovered": open_falls}
+    if days:
+        spread |= {
+            "min_days": days[0],
+            "median_days": nearest_rank(days, 0.5),
+            "p90_days": nearest_rank(days, 0.9),
+            "max_days": days[-1],
+        }
+    return spread
+
+
+def rolling_sip(
+    points: Points, as_of: int, months: int, amount: float, day: int, step_up: float
+) -> list[dict[str, Any]]:
+    """A SIP of ``months`` instalments started in every month with a full tenor.
+
+    A start counts when the fund has a valid NAV on or before the start date and the
+    tenor ends on or before ``as_of``. SIP drawdown is the lowest value ÷ invested − 1
+    on the instalment dates.
+    """
+    dates, _, _, _ = valid_series(points)
+    if not dates:
+        return []
+    first, last = date.fromordinal(dates[0]), date.fromordinal(as_of)
+    year, month = (first.year, first.month + 1) if first.day > 1 else (first.year, first.month)
+    found: list[dict[str, Any]] = []
+    while True:
+        year, month = (year + 1, month - 12) if month > 12 else (year, month)
+        start = date(year, month, 1)
+        end_year, end_month = divmod(year * 12 + month - 1 + months, 12)
+        end = date(end_year, end_month + 1, 1).toordinal() - 1
+        if end > as_of or start > last:
+            return found
+        outcome = calculators.sip(
+            points, amount, day, start, date.fromordinal(end), step_up=step_up
+        )
+        summary = outcome.summary
+        found.append(
+            {
+                "start": start.isoformat(),
+                "end": summary["valued_on"],
+                "invested": summary["invested"],
+                "value": summary["value"],
+                "xirr": summary["xirr"],
+                "sip_drawdown": min(t["value"] / t["invested"] - 1 for t in outcome.timeline),
+            }
+        )
+        month += 1
+
+
+def frontier(points: Sequence[tuple[str, float, float]]) -> set[str]:
+    """Codes no other point beats on both axes: lower risk and higher return.
+
+    ``points`` are (code, risk, return). A point is dominated when another has risk
+    no higher and return no lower, and is strictly better on one.
+    """
+    best: set[str] = set()
+    top = -math.inf
+    for code, _, ret in sorted(points, key=lambda p: (p[1], -p[2], p[0])):
+        if ret > top:
+            best.add(code)
+            top = ret
+    return best

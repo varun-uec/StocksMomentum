@@ -23,7 +23,8 @@ from wickstreet.analytics.domain.metrics import (
     WORST,
     Value,
 )
-from wickstreet.analytics.domain.peers import PEER_METRICS, SCORE_PARTS
+from wickstreet.analytics.domain.peers import PEER_METRICS, SCORE_PARTS, THEN_METRICS
+from wickstreet.analytics.domain.relations import NEAR_DUPLICATE
 from wickstreet.mf_data.domain.reads import FundRecord
 
 FieldType = Literal["number", "boolean", "enum", "date"]
@@ -65,6 +66,10 @@ _ROLLING_STATS = {
     "min": ("worst", "lowest annualised rolling return", _FRACTION),
     "max": ("best", "highest annualised rolling return", _FRACTION),
     "positive_share": ("positive share", "share of rolling returns above zero", _FRACTION),
+    **{
+        f"p{q}": (f"{q}th percentile", f"{q}th percentile (nearest rank) of the returns", _FRACTION)
+        for q in (10, 25, 75, 90)
+    },
 }
 
 FIELDS: tuple[Field, ...] = (
@@ -86,7 +91,25 @@ FIELDS: tuple[Field, ...] = (
         "enum",
         None,
         "From the category prefix.",
-        ("Equity", "Debt", "Hybrid", "Solution Oriented", "Other", classify.UNCLASSIFIED),
+        (
+            "Equity",
+            "Debt",
+            "Hybrid",
+            "Solution Oriented",
+            "Life Cycle",
+            "Other",
+            classify.UNCLASSIFIED,
+        ),
+    ),
+    Field(
+        "fund_type",
+        "Fund type",
+        "Fund",
+        "enum",
+        None,
+        "index, etf or fof from the category; otherwise open_ended, close_ended or interval "
+        "from AMFI's scheme type.",
+        classify.FUND_TYPES,
     ),
     Field("scheme_type", "Scheme type", "Fund", "enum", None, "Open, close or interval."),
     Field(
@@ -354,12 +377,134 @@ FIELDS: tuple[Field, ...] = (
         "CAGR 3Y ÷ volatility 3Y; not a Sharpe ratio (no risk-free rate).",
     ),
     Field(
+        "dd_now",
+        "Current drawdown",
+        "Drawdown",
+        "number",
+        _FRACTION,
+        "Last NAV ÷ highest NAV so far - 1; active funds only.",
+    ),
+    Field(
+        "dd_now_days",
+        "Days since peak",
+        "Drawdown",
+        "number",
+        "days",
+        "Calendar days since the last NAV at the running peak; active funds only.",
+    ),
+    Field(
+        "underwater_max_days",
+        "Longest time under water",
+        "Drawdown",
+        "number",
+        "days",
+        "Longest stretch below a peak in the stored history, recovered or not.",
+    ),
+    Field(
         "consistency_3y",
         "Consistency 3Y",
         "Peers",
         "number",
         _FRACTION,
-        "Share of month-ends whose rolling 3Y return beat the category median that month.",
+        "Share of month-ends whose rolling 3Y return beat the median of the peers alive that "
+        "month, including funds that later stopped.",
+    ),
+    Field(
+        "q1_share_3y",
+        "Top-quartile share 3Y",
+        "Persistence",
+        "number",
+        _FRACTION,
+        "Share of the last 36 month-ends with the 1Y return in the top quartile of the peers "
+        "alive then; needs 12 ranked month-ends.",
+    ),
+    Field(
+        "pct_mean_3y",
+        "Mean percentile 3Y",
+        "Persistence",
+        "number",
+        "percentile",
+        "Mean point-in-time category percentile of the 1Y return over the last 36 month-ends.",
+    ),
+    *(
+        Field(
+            f"{name}_cat_pct_1y_ago",
+            f"{_peer_label(name)} percentile 1Y ago",
+            "Deterioration",
+            "number",
+            "percentile",
+            "Category percentile one year before as-of, among the peers alive then.",
+        )
+        for name, _ in THEN_METRICS
+    ),
+    Field(
+        "ret_1y_cat_quartile_1y_ago",
+        "RET 1Y quartile 1Y ago",
+        "Deterioration",
+        "number",
+        "quartile",
+        "Category quartile of the 1Y return one year before as-of.",
+    ),
+    *(
+        Field(
+            f"{name}_pct_chg_1y",
+            f"{_peer_label(name)} percentile change 1Y",
+            "Deterioration",
+            "number",
+            "percentile",
+            "Category percentile now minus one year ago; negative = fell behind peers.",
+        )
+        for name, _ in THEN_METRICS
+    ),
+    Field(
+        "quartile_change_1y",
+        "RET 1Y quartile change",
+        "Deterioration",
+        "number",
+        "quartile",
+        "Quartile one year ago minus quartile now; negative = moved down.",
+    ),
+    Field(
+        "consistency_3y_chg_1y",
+        "Consistency change 1Y",
+        "Deterioration",
+        "number",
+        _FRACTION,
+        "Consistency 3Y now minus consistency 3Y as it stood 12 month-ends earlier.",
+    ),
+    Field(
+        "dr_gap_1y",
+        "Direct–regular gap 1Y",
+        "Direct vs regular",
+        "number",
+        _FRACTION,
+        "Direct plan 1Y return minus regular plan 1Y return, same scheme and option. "
+        "Observed NAV gap, not TER.",
+    ),
+    Field(
+        "dr_gap_3y",
+        "Direct–regular gap 3Y",
+        "Direct vs regular",
+        "number",
+        _FRACTION,
+        "Direct plan 3Y CAGR minus regular plan 3Y CAGR. Observed NAV gap, not TER.",
+    ),
+    Field(
+        "dr_wealth_10y",
+        "Direct–regular wealth gap",
+        "Direct vs regular",
+        "number",
+        "INR",
+        "₹10 lakh over 10 years at each plan's 3Y CAGR: direct value minus regular value.",
+    ),
+    Field(
+        "near_duplicates",
+        "Near-duplicates",
+        "Correlation",
+        "number",
+        "count",
+        f"Active peers whose daily returns over 3Y correlate at {NEAR_DUPLICATE} or more "
+        "(500 common days minimum).",
     ),
     *(
         field
@@ -453,6 +598,7 @@ def attributes(fund: FundRecord, sibling: str | None) -> dict[str, Value]:
         "source_category": fund.category or "",
         "asset_class": classify.asset_class(category),
         "scheme_type": fund.scheme_type or "",
+        "fund_type": classify.fund_type(category, fund.scheme_type),
         "plan": classify.plan_of(fund),
         "option": option,
         "return_basis": classify.return_basis(option),

@@ -253,6 +253,7 @@ async def compare(
         "funds": [_metrics(r) for r in result.rows],
         "series": {c: [[d, v] for d, v in points] for c, points in result.series.items()},
         "correlations": result.correlations,
+        "average_correlation": result.average_correlation,
     }
 
 
@@ -356,3 +357,147 @@ async def calculator(
         },
         "cautions": result.cautions,
     }
+
+
+# ---- method v4 (doc 21)
+
+Category = Annotated[str, Query(description="Canonical category, as in the registry.")]
+Plan = Annotated[str, Query(description="direct or regular.")]
+Option = Annotated[str, Query(description="growth, idcw, bonus or unknown.")]
+
+
+@router.get("/funds/{code}/rank-history")
+async def fund_rank_history(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """Point-in-time category rank of the 1Y return and 3Y CAGR at each month-end."""
+    envelope, body = await research.rank_history(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/peers/transitions")
+async def peer_transitions(
+    _: Context,
+    research: ResearchDep,
+    category: Category,
+    plan: Plan,
+    option: Option,
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """How often a 1Y-return quartile led to each quartile 12 month-ends later."""
+    envelope, body = await research.transitions(category, plan, option, data_revision)
+    return {**_envelope(envelope), **body}
+
+
+@router.get("/peers/frontier")
+async def peer_frontier(
+    _: Context,
+    research: ResearchDep,
+    category: Category,
+    plan: Plan,
+    option: Option,
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """Active peers on 3Y volatility and 3Y CAGR; ``frontier`` marks the non-dominated."""
+    envelope, body = await research.frontier(category, plan, option, data_revision)
+    return {**_envelope(envelope), **body}
+
+
+class BacktestIn(BaseModel):
+    """``POST /backtests``: a top-N strategy in one peer group (doc 21 M14)."""
+
+    category: str
+    plan: str
+    option: str
+    signal: str = "ret_1y"
+    top: int = 5
+    data_revision: int | None = None
+
+
+@router.post("/backtests")
+async def run_backtest(_: Context, research: ResearchDep, body: BacktestIn) -> dict[str, Any]:
+    """Monthly point-in-time selection against the group median, in-sample and hold-out."""
+    envelope, result = await research.backtest(
+        body.category, body.plan, body.option, body.signal, body.top, body.data_revision
+    )
+    return {**_envelope(envelope), **result}
+
+
+@router.get("/funds/{code}/direct-regular")
+async def fund_direct_regular(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """The other plan of the same scheme and option, and the observed gap."""
+    envelope, body = await research.direct_regular(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/underwater")
+async def fund_underwater(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """Fall from the running peak at each NAV, and recovery-time spreads."""
+    envelope, body = await research.underwater(code, data_revision)
+    body["series"] = [[d, v] for d, v in body["series"]]
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/rolling-sip")
+async def fund_rolling_sip(
+    _: Context,
+    research: ResearchDep,
+    code: str,
+    tenor: str = "3y",
+    amount: Annotated[float, Query(gt=0)] = 10_000.0,
+    day: Annotated[int, Query(ge=1, le=31)] = 1,
+    step_up: Annotated[float, Query(ge=0, le=1)] = 0.0,
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """A SIP started in every month with a full tenor: XIRR, best, worst and drawdown."""
+    envelope, body = await research.rolling_sip(code, tenor, amount, day, step_up, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/near-duplicates")
+async def fund_near_duplicates(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """Peers whose daily returns over 3Y correlate at 0.95 or more."""
+    envelope, body = await research.near_duplicates(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/score")
+async def fund_score(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """The score's parts, weights, peer counts, missing reasons and data-quality notes."""
+    envelope, body = await research.score(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/confidence")
+async def fund_confidence(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """What limits the fund's numbers: history, gaps, flags, category basis, sources."""
+    envelope, body = await research.confidence(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/regimes")
+async def market_regimes(
+    _: Context, research: ResearchDep, data_revision: Revision = None
+) -> dict[str, Any]:
+    """Falls and recoveries of the labelled NAV-built proxy; not an official index."""
+    envelope, body = await research.regimes(data_revision)
+    return {**_envelope(envelope), **body}
+
+
+@router.get("/funds/{code}/regimes")
+async def fund_regimes(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """The fund's return in each regime window beside the proxy's."""
+    envelope, body = await research.fund_regimes(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}

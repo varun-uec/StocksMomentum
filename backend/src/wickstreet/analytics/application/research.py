@@ -8,18 +8,23 @@ rights checks live here, not in HTTP, so every caller inherits them.
 from __future__ import annotations
 
 import asyncio
+import math
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from wickstreet.analytics.domain import calculators, views
+from wickstreet.analytics.domain import backtest, calculators, views
 from wickstreet.analytics.domain.calculators import Outcome
 from wickstreet.analytics.domain.classify import (
     CAUTION,
+    DIRECT,
     NAV_EXCLUDING_PAYOUTS,
     UNCLASSIFIED,
+    canonical_category,
+    option_of,
+    plan_of,
     sibling_categories,
 )
 from wickstreet.analytics.domain.fields import (
@@ -33,20 +38,44 @@ from wickstreet.analytics.domain.fields import (
 from wickstreet.analytics.domain.formulas import compile_formulas, with_formulas
 from wickstreet.analytics.domain.metrics import (
     ACTIVE,
+    HISTORY_TOO_SHORT,
+    MAX_GAP_DAYS,
     METHOD_VERSION,
     METRIC_FIELDS,
+    NO_NAV,
     NO_PEER_GROUP,
     Missing,
+    MonthEnds,
     Value,
     compute,
+    last_complete_month,
+    month_end_values,
     rebase,
+    valid_series,
 )
 from wickstreet.analytics.domain.peers import (
     RANKED_INPUTS,
+    SCORE_PARTS,
     PeerFund,
+    Rank,
     absent_fields,
     add_group_fields,
     group_absence,
+    monthly_ranks,
+    transitions,
+)
+from wickstreet.analytics.domain.relations import (
+    MAX_LISTED,
+    PROXY,
+    DailyNavs,
+    daily_returns,
+    near_duplicates,
+    no_pair,
+    pair_fields,
+    pairs,
+    proxy_index,
+    regimes,
+    window_return,
 )
 from wickstreet.analytics.domain.screening import (
     REGISTRY,
@@ -93,6 +122,8 @@ DEFAULT_COLUMNS = ("category", "plan", "option", "ret_1y", "cagr_3y", "cagr_5y",
 MAX_PAGE = 500
 MAX_COMPARE = 5
 # Funds computed between two turns of the event loop.
+# ponytail: full GC passes over the snapshot's objects still stall the loop ~120 ms;
+# run the compute in its own process if request latency during a compute matters.
 _YIELD_EVERY = 256
 
 
@@ -120,6 +151,23 @@ async def _turn(count: int) -> None:
         await asyncio.sleep(0)
 
 
+def _group_fields(
+    members: Sequence[tuple[int, PeerFund]], daily: Mapping[int, DailyNavs], last_month: int
+) -> dict[int, list[tuple[int, float, int]]]:
+    """Write one group's peer fields; return its near-duplicates."""
+    add_group_fields([peer for _, peer in members], last_month)
+    return near_duplicates([daily[pid] for pid, peer in members if peer.active and pid in daily])
+
+
+def _in_proxy(fund: FundRecord) -> bool:
+    """Whether the fund belongs to the regime proxy's category, plan and option."""
+    return (
+        canonical_category(fund.category) == PROXY["category"]
+        and plan_of(fund) == PROXY["plan"]
+        and option_of(fund) == PROXY["option"]
+    )
+
+
 class ComputeSnapshot:
     """Compute the snapshot of the published revision once (MF-11)."""
 
@@ -127,22 +175,34 @@ class ComputeSnapshot:
     async def encode(history: History) -> Encoded:
         """Every fund's fields at the history's revision, encoded; stores nothing.
 
-        Pass 1 computes each fund's own metrics from its stream. Pass 2 sets sibling
-        categories and the cross-fund fields (ranks, consistency, score). Pass 3
-        streams the rows through the encoder in plan-option order. The loop gets a
-        turn every ``_YIELD_EVERY`` funds, so requests keep moving.
+        Pass 1 computes each fund's own metrics from its stream and keeps the inputs of
+        the cross-fund fields. Pass 2 sets sibling categories, the peer fields (groups
+        hold every fund with a NAV, so past month-ends rank the funds alive then),
+        direct–regular pairs, near-duplicates and the regime proxy. Pass 3 streams the
+        rows through the encoder in plan-option order. The loop gets a turn every
+        ``_YIELD_EVERY`` funds, so requests keep moving.
         """
         as_of = history.as_of.toordinal()
         records: list[FundRecord] = []
         own: list[tuple[tuple[Value, ...], dict[str, str]]] = []
-        # Month-end rolling 3Y of active funds only; no other fund joins a group.
-        monthly: dict[int, tuple[Sequence[int], Sequence[float]]] = {}
+        month_ends: dict[int, tuple[MonthEnds, dict[str, float]]] = {}
+        daily: dict[int, DailyNavs] = {}
+        proxy_days: dict[int, list[float]] = defaultdict(list)
         async for series in history.funds:
+            fund = series.fund
             metrics = compute(series.points, as_of)
-            records.append(series.fund)
+            records.append(fund)
             own.append((tuple(metrics.values[n] for n in METRIC_FIELDS), metrics.anchors))
-            if metrics.values["status"] == ACTIVE:
-                monthly[series.fund.plan_option_id] = (metrics.month_ends, metrics.rolling_3y)
+            if metrics.values["status"] != NO_NAV:
+                month_ends[fund.plan_option_id] = (metrics.month_ends, metrics.then)
+            if metrics.days:
+                daily[fund.plan_option_id] = DailyNavs(
+                    fund.plan_option_id, metrics.days, metrics.levels
+                )
+            if _in_proxy(fund):
+                dates, navs, _, _ = valid_series(series.points)
+                for day, value in daily_returns(dates, navs):
+                    proxy_days[day].append(value)
             await _turn(len(records))
         siblings = sibling_categories(records)
         status_at, input_at = (
@@ -150,41 +210,82 @@ class ComputeSnapshot:
             [METRIC_FIELDS.index(n) for n in RANKED_INPUTS],
         )
         classes: list[dict[str, Value]] = []
-        groups: dict[tuple[str, str, str], list[PeerFund]] = defaultdict(list)
+        groups: dict[tuple[str, str, str], list[tuple[int, PeerFund]]] = defaultdict(list)
         grouped: dict[int, PeerFund] = {}
+        pair_keys: dict[int, tuple[str, str, str, str]] = {}
         for fund, (metric_values, _) in zip(records, own, strict=True):
             values = attributes(fund, siblings.get(fund.plan_option_id))
             classes.append(values)
             status = str(metric_values[status_at])
-            if group_absence(status, str(values["category"]), UNCLASSIFIED) is None:
-                month_ends, rolling_3y = monthly[fund.plan_option_id]
+            if status == ACTIVE:
+                pair_keys[fund.plan_option_id] = (
+                    fund.amc or "",
+                    fund.scheme_name or "",
+                    str(values["option"]),
+                    str(values["plan"]),
+                )
+            if status != NO_NAV and values["category"] != UNCLASSIFIED:
                 inputs = {n: metric_values[i] for n, i in zip(RANKED_INPUTS, input_at, strict=True)}
-                peer = PeerFund(inputs, month_ends, rolling_3y)
-                groups[
-                    (str(values["category"]), str(values["plan"]), str(values["option"]))
-                ].append(peer)
-                grouped[fund.plan_option_id] = peer
+                ends, then = month_ends[fund.plan_option_id]
+                peer = PeerFund(inputs, ends, then, status == ACTIVE)
+                key = (str(values["category"]), str(values["plan"]), str(values["option"]))
+                groups[key].append((fund.plan_option_id, peer))
+                if peer.active:
+                    grouped[fund.plan_option_id] = peer
             await _turn(len(classes))
-        monthly.clear()
+        month_ends.clear()
+        last_month = last_complete_month(as_of)
+        near: dict[int, list[tuple[int, float, int]]] = {}
         for members in groups.values():
-            add_group_fields(members)
-            await asyncio.sleep(0)
+            # A large group takes a second or more; a thread keeps the loop turning.
+            near |= await asyncio.to_thread(_group_fields, members, daily, last_month)
+        has_window = set(daily)
+        daily.clear()
+        partners = pairs(pair_keys)
+        position = {fund.plan_option_id: i for i, fund in enumerate(records)}
+        code = {fund.plan_option_id: fund.amfi_code for fund in records}
+        levels = proxy_index(proxy_days)
+        tables = {
+            "pairs": {code[a]: code[b] for a, b in partners.items()},
+            "near_duplicates": {
+                code[pid]: [[code[q], c, n] for q, c, n in found[:MAX_LISTED]]
+                for pid, found in near.items()
+            },
+            "regimes": regimes(levels),
+            "proxy": PROXY
+            | {"levels": [[date.fromordinal(d).isoformat(), level] for d, level in levels]},
+        }
         encoder = Encoder(METHOD_VERSION, history.revision, history.as_of, history.sources)
         for done, i in enumerate(
             sorted(range(len(records)), key=lambda i: records[i].plan_option_id)
         ):
             fund, values = records[i], classes[i]
+            pid = fund.plan_option_id
             metric_values, anchors = own[i]
             values |= dict(zip(METRIC_FIELDS, metric_values, strict=True))
-            found = grouped.get(fund.plan_option_id)
+            found = grouped.get(pid)
             if found is None:
                 absent = group_absence(str(values["status"]), str(values["category"]), UNCLASSIFIED)
-                values |= absent_fields(absent or Missing("NA", NO_PEER_GROUP))
+                absent = absent or Missing("NA", NO_PEER_GROUP)
+                values |= absent_fields(absent) | {"near_duplicates": absent}
             else:
                 values |= found.values
+                values["near_duplicates"] = (
+                    len(near.get(pid, []))
+                    if pid in has_window
+                    else Missing("NA", HISTORY_TOO_SHORT)
+                )
+            partner = partners.get(pid)
+            if partner is None:
+                values |= no_pair()
+            else:
+                mine = dict(zip(METRIC_FIELDS, metric_values, strict=True))
+                theirs = dict(zip(METRIC_FIELDS, own[position[partner]][0], strict=True))
+                direct, regular = (mine, theirs) if values["plan"] == DIRECT else (theirs, mine)
+                values |= pair_fields(direct, regular)
             encoder.add(
                 FundRow(
-                    fund.plan_option_id,
+                    pid,
                     fund.amfi_code,
                     fund.nav_name or fund.scheme_name or fund.amfi_code,
                     ordered(values),
@@ -192,7 +293,7 @@ class ComputeSnapshot:
                 )
             )
             await _turn(done + 1)
-        return encoder.finish()
+        return encoder.finish(tables)
 
     def __init__(self, reader: MfReader, snapshots: SnapshotStore, rights: RightsGate) -> None:
         """Compute over ``reader`` into ``snapshots``, under ``rights``."""
@@ -285,6 +386,8 @@ class Comparison:
     rows: list[FundRow]
     series: dict[str, list[tuple[str, float]]]
     correlations: list[dict[str, Any]]
+    # Mean of the pairwise correlations; ``None`` when any pair has none.
+    average_correlation: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +403,10 @@ class Simulated:
 
 SIMULATIONS = ("sip", "lumpsum", "swp", "stp")
 ROLLING_WINDOWS = {"1y": 12, "3y": 36, "5y": 60}
+SIP_TENORS = {"3y": 36, "5y": 60}
+# Recovery-time spreads are reported for falls at least this deep.
+RECOVERY_DEPTHS = (-0.05, -0.10, -0.20)
+PEER_KEY = ("category", "plan", "option")
 
 
 def _columns(columns: Sequence[str] | None, known: Columns) -> tuple[str, ...]:
@@ -363,6 +470,10 @@ class Research:
                 )
             reasons = snapshot.missing[f.id]
             available = sum(reasons.values()) < len(snapshot.rows)
+            coverage = {
+                "values": len(snapshot.rows) - sum(reasons.values()),
+                "missing": dict(sorted(reasons.items())),
+            }
             listed.append(
                 {
                     "id": f.id,
@@ -373,6 +484,7 @@ class Research:
                     "description": f.description,
                     **({"values": list(values)} if values is not None else {}),
                     "available": available,
+                    "coverage": coverage,
                     **(
                         {}
                         if available
@@ -466,14 +578,16 @@ class Research:
         rebased = {s.fund.amfi_code: rebase(s.points, start.toordinal()) for s in series}
         since = start.toordinal()
         windows = {s.fund.amfi_code: [p for p in s.points if p[0] >= since] for s in series}
-        correlations = []
+        correlations: list[dict[str, Any]] = []
         for i, a in enumerate(codes):
             for b in codes[i + 1 :]:
                 value, observations = correlation(windows.get(a, []), windows.get(b, []))
                 correlations.append(
                     {"a": a, "b": b, "correlation": value, "observations": observations}
                 )
-        return Comparison(envelope, start, rows, rebased, correlations)
+        values = [c["correlation"] for c in correlations if c["correlation"] is not None]
+        average = math.fsum(values) / len(values) if len(values) == len(correlations) else None
+        return Comparison(envelope, start, rows, rebased, correlations, average)
 
     async def _series(
         self, code: str, revision: int | None
@@ -553,6 +667,376 @@ class Research:
         if cell(row, "return_basis") == NAV_EXCLUDING_PAYOUTS:
             cautions.append(CAUTION)
         return Simulated(envelope, outcome, tax, chosen, cautions)
+
+    # ---- method v4 views (doc 21)
+
+    def _peer_rows(
+        self, snapshot: Snapshot, category: str, plan: str, option: str
+    ) -> list[FundRow]:
+        """Every fund of one peer group with a NAV, including funds that stopped."""
+        if category == UNCLASSIFIED:
+            raise FilterError("category", "Unclassified funds have no peer group")
+        found = [
+            r
+            for r in snapshot.rows
+            if (cell(r, "category"), cell(r, "plan"), cell(r, "option")) == (category, plan, option)
+            and cell(r, "status") != NO_NAV
+        ]
+        if not found:
+            raise FilterError("category", "no fund in this category, plan and option")
+        return found
+
+    async def _month_ends(self, snapshot: Snapshot, rows: Sequence[FundRow]) -> dict[str, Any]:
+        """Code -> month-ends, read at the snapshot's revision."""
+        found = await self._reader.series([r.amfi_code for r in rows], snapshot.revision)
+        as_of = snapshot.as_of.toordinal()
+        ends = {}
+        for one in found:
+            dates, navs, _, _ = valid_series(one.points)
+            ends[one.fund.amfi_code] = month_end_values(dates, navs, as_of)
+        return dict(sorted(ends.items()))
+
+    async def _group_ranks(
+        self, snapshot: Snapshot, category: str, plan: str, option: str
+    ) -> tuple[list[str], list[dict[int, Rank]], list[dict[int, Rank]]]:
+        ends = await self._month_ends(snapshot, self._peer_rows(snapshot, category, plan, option))
+        members = [PeerFund({}, e, {}, False) for e in ends.values()]
+        return list(ends), monthly_ranks(members, "ret_1y"), monthly_ranks(members, "cagr_3y")
+
+    async def rank_history(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """The fund's point-in-time category rank at each month-end (1Y and 3Y)."""
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        key = [str(cell(row, k)) for k in PEER_KEY]
+        codes, one, three = await self._group_ranks(snapshot, *key)
+        i = codes.index(code)
+        history = [
+            {
+                "month": _month(m),
+                "ret_1y": _rank_json(one[i].get(m)),
+                "cagr_3y": _rank_json(three[i].get(m)),
+            }
+            for m in sorted(one[i].keys() | three[i].keys())
+        ]
+        group = dict(zip(PEER_KEY, key, strict=True)) | {"funds_with_nav": len(codes)}
+        return envelope, {"group": group, "history": history}
+
+    async def transitions(
+        self, category: str, plan: str, option: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """Counts of 1Y-return quartile now and 12 month-ends later, over the group's history."""
+        snapshot, envelope = await self._pinned(revision)
+        codes, one, _ = await self._group_ranks(snapshot, category, plan, option)
+        counts = transitions(one)
+        shares = [[c / sum(row) if sum(row) else None for c in row] for row in counts]
+        return envelope, {
+            "group": {"category": category, "plan": plan, "option": option},
+            "funds_with_nav": len(codes),
+            "counts": counts,
+            "shares": shares,
+        }
+
+    async def direct_regular(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """The fund's direct–regular pair and the observed gap between the plans."""
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        partner = snapshot.tables.get("pairs", {}).get(code)
+        if partner is None:
+            return envelope, {"pair": None, "reason": "no_pair"}
+        other = self._row(snapshot, partner)
+        direct, regular = (row, other) if cell(row, "plan") == DIRECT else (other, row)
+        shown = ("ret_1y", "cagr_3y", "cagr_5y")
+        return envelope, {
+            "pair": {
+                plan: {
+                    "amfi_code": r.amfi_code,
+                    "name": r.name,
+                    **{f: cell(r, f) for f in shown},
+                }
+                for plan, r in (("direct", direct), ("regular", regular))
+            },
+            **{f: cell(row, f) for f in ("dr_gap_1y", "dr_gap_3y", "dr_wealth_10y")},
+            "label": "Observed NAV gap between the plans; includes the TER difference; not TER.",
+        }
+
+    async def underwater(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """The underwater series, recovery-time spreads and the longest time under water."""
+        envelope, row, series = await self._series(code, revision)
+        episodes = views.drawdowns(series.points, len(series.points))
+        return envelope, {
+            "series": views.underwater(series.points),
+            "recovery": [views.recovery_spread(episodes, d) for d in RECOVERY_DEPTHS],
+            **{f: cell(row, f) for f in ("dd_now", "dd_now_days", "underwater_max_days")},
+        }
+
+    async def rolling_sip(
+        self,
+        code: str,
+        tenor: str,
+        amount: float,
+        day: int,
+        step_up: float,
+        revision: int | None = None,
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """The SIP outcome of every start month with a full tenor."""
+        if tenor not in SIP_TENORS:
+            raise FilterError("tenor", f"tenor is one of {', '.join(SIP_TENORS)}")
+        envelope, _, series = await self._series(code, revision)
+        starts = views.rolling_sip(
+            series.points, envelope.as_of.toordinal(), SIP_TENORS[tenor], amount, day, step_up
+        )
+        known = [s for s in starts if s["xirr"] is not None]
+        summary: dict[str, Any] = {"starts": len(starts)}
+        if known:
+            ordered_ = sorted(known, key=lambda s: (s["xirr"], s["start"]))
+            summary |= {
+                "worst": ordered_[0],
+                "best": ordered_[-1],
+                "median_xirr": ordered_[(len(ordered_) - 1) // 2]["xirr"],
+                "positive_share": sum(1 for s in known if s["xirr"] > 0) / len(known),
+                "worst_sip_drawdown": min(s["sip_drawdown"] for s in starts),
+            }
+        return envelope, {
+            "tenor": tenor,
+            "amount": amount,
+            "day": day,
+            "step_up": step_up,
+            "summary": summary,
+            "starts": starts,
+        }
+
+    async def frontier(
+        self, category: str, plan: str, option: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """Active peers on 3Y volatility and 3Y CAGR, with the non-dominated set marked."""
+        snapshot, envelope = await self._pinned(revision)
+        rows = [
+            r
+            for r in self._peer_rows(snapshot, category, plan, option)
+            if cell(r, "status") == ACTIVE
+            and cell(r, "vol_3y") is not None
+            and cell(r, "cagr_3y") is not None
+        ]
+        points = [(r.amfi_code, float(cell(r, "vol_3y")), float(cell(r, "cagr_3y"))) for r in rows]
+        best = views.frontier(points)
+        return envelope, {
+            "risk": "vol_3y",
+            "return": "cagr_3y",
+            "points": [
+                {
+                    "amfi_code": r.amfi_code,
+                    "name": r.name,
+                    "vol_3y": cell(r, "vol_3y"),
+                    "cagr_3y": cell(r, "cagr_3y"),
+                    "downside_dev_3y": cell(r, "downside_dev_3y"),
+                    "frontier": r.amfi_code in best,
+                }
+                for r in rows
+            ],
+        }
+
+    async def near_duplicates(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """Peers whose daily returns move almost identically with this fund's."""
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        listed = snapshot.tables.get("near_duplicates", {}).get(code, [])
+        return envelope, {
+            "count": cell(row, "near_duplicates"),
+            "state": state(row, "near_duplicates"),
+            "listed": [
+                {
+                    "amfi_code": other,
+                    "name": snapshot.by_code[other].name,
+                    "correlation": value,
+                    "common_days": days,
+                }
+                for other, value, days in listed
+            ],
+        }
+
+    async def score(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """Why the fund has its score: each part, its weight, and the data behind it."""
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        weight = 1 / len(SCORE_PARTS)
+        parts = []
+        for name in SCORE_PARTS:
+            parts.append(
+                {
+                    "field": name,
+                    "value": cell(row, name),
+                    "state": state(row, name),
+                    "category_percentile": cell(row, f"{name}_cat_pct"),
+                    "percentile_state": state(row, f"{name}_cat_pct"),
+                    "peers_ranked": cell(row, f"{name}_cat_count"),
+                    "weight": weight,
+                }
+            )
+        notes = []
+        if (excluded := cell(row, "excluded_navs")) and excluded > 0:
+            notes.append(f"{excluded} NAV rows were excluded (null, zero or negative).")
+        if (jumps := cell(row, "jump_flags")) and jumps > 0:
+            notes.append(f"{jumps} NAV moves over 25% were kept and flagged.")
+        if cell(row, "category_basis") != "amfi":
+            notes.append(f"Category basis: {cell(row, 'category_basis')}.")
+        return envelope, {
+            "score": cell(row, "score"),
+            "state": state(row, "score"),
+            "rank": cell(row, "score_cat_rank"),
+            "peers_ranked": cell(row, "score_cat_count"),
+            "formula": "Equal-weight mean of the category percentiles of the parts.",
+            "parts": parts,
+            "penalties": [],
+            "data_quality": notes,
+        }
+
+    async def confidence(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """What limits the fund's numbers: history, gaps, flags, category, sources."""
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        found = await self._reader.series([code], snapshot.revision)
+        dates, _, excluded, jumps = valid_series(found[0].points)
+        gaps = [b - a for a, b in zip(dates, dates[1:], strict=False) if b - a > MAX_GAP_DAYS]
+        navs = await self._reader.navs(code, date.min, snapshot.as_of, snapshot.revision)
+        sources: dict[str, dict[str, Any]] = {}
+        for point in navs:
+            seen = sources.setdefault(
+                point.source, {"rows": 0, "first": point.nav_date, "last": point.nav_date}
+            )
+            seen["rows"] += 1
+            seen["last"] = point.nav_date
+        notes = [
+            "Categories are AMFI's current labels, applied to past dates.",
+            "Ranks and consistency include funds that later stopped, where their label maps.",
+        ]
+        if cell(row, "return_basis") == NAV_EXCLUDING_PAYOUTS:
+            notes.append(CAUTION)
+        return envelope, {
+            "status": cell(row, "status"),
+            "first_nav": _iso(dates[0]) if dates else None,
+            "last_nav": _iso(dates[-1]) if dates else None,
+            "history_days": dates[-1] - dates[0] if dates else 0,
+            "valid_navs": len(dates),
+            "gaps_over_7_days": len(gaps),
+            "longest_gap_days": max(gaps, default=0),
+            "excluded_navs": excluded,
+            "jump_flags": jumps,
+            "category": cell(row, "category"),
+            "category_basis": cell(row, "category_basis"),
+            "sources": [
+                {
+                    "source": k,
+                    "rows": v["rows"],
+                    "first": v["first"].isoformat(),
+                    "last": v["last"].isoformat(),
+                }
+                for k, v in sorted(sources.items(), key=lambda kv: kv[1]["first"])
+            ],
+            "notes": notes,
+        }
+
+    async def regimes(self, revision: int | None = None) -> tuple[Envelope, dict[str, Any]]:
+        """The proxy's falls and recoveries, with its label and daily levels."""
+        snapshot, envelope = await self._pinned(revision)
+        return envelope, {
+            "proxy": snapshot.tables.get("proxy", {}),
+            "windows": snapshot.tables.get("regimes", []),
+        }
+
+    async def fund_regimes(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """The fund's return in each regime window, beside the proxy's."""
+        envelope, _, series = await self._series(code, revision)
+        snapshot, _ = await self._pinned(envelope.data_revision)
+        dates, navs, _, _ = valid_series(series.points)
+        windows = []
+        for window in snapshot.tables.get("regimes", []):
+            value = window_return(dates, navs, window["start"], window["end"])
+            proxy = window["proxy_return"]
+            found: dict[str, Any]
+            if isinstance(value, Missing):
+                found = {
+                    "fund_return": None,
+                    "state": {"state": value.state, "reason": value.reason},
+                }
+                found |= {"difference": None, "capture": None}
+            else:
+                fund_return = float(value)
+                found = {
+                    "fund_return": fund_return,
+                    "state": None,
+                    "difference": fund_return - proxy,
+                    "capture": fund_return / proxy if proxy else None,
+                }
+            windows.append(window | found)
+        return envelope, {
+            "proxy_label": snapshot.tables.get("proxy", {}).get("label"),
+            "windows": windows,
+        }
+
+    async def backtest(
+        self,
+        category: str,
+        plan: str,
+        option: str,
+        signal: str,
+        top: int,
+        revision: int | None = None,
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """A point-in-time top-``top`` strategy in one peer group against its median."""
+        snapshot, envelope = await self._pinned(revision)
+        ends = await self._month_ends(snapshot, self._peer_rows(snapshot, category, plan, option))
+        try:
+            months = backtest.run(ends, signal, top)
+        except backtest.BacktestError as error:
+            raise FilterError("signal", str(error)) from error
+        return envelope, {
+            "strategy": {
+                "category": category,
+                "plan": plan,
+                "option": option,
+                "signal": signal,
+                "top": top,
+                "rebalance": "monthly",
+                "weights": "equal",
+                "returns": "NAV, net of TER, before tax",
+                "benchmark": "median next-month return of the funds alive at both month-ends",
+                "holdout_from": "2024-01",
+            },
+            "funds_with_nav": len(ends),
+            "summary": backtest.summarise(months),
+            "regimes_spanned": backtest.spanned(months, snapshot.tables.get("regimes", [])),
+            "limits": list(backtest.LIMITS),
+            "months": backtest.rows(months),
+        }
+
+
+def _iso(ordinal: int) -> str:
+    return date.fromordinal(ordinal).isoformat()
+
+
+def _month(key: int) -> str:
+    year, index = divmod(key, 12)
+    return f"{year:04d}-{index + 1:02d}"
+
+
+def _rank_json(rank: Rank | None) -> dict[str, Any] | None:
+    if rank is None:
+        return None
+    return {"rank": rank.rank, "count": rank.count, "pct": rank.pct, "quartile": rank.quartile}
 
 
 def cell(row: FundRow, field: str, index: Mapping[str, int] = INDEX) -> Any:

@@ -26,6 +26,7 @@ from wickstreet.analytics.domain.metrics import (
     volatility,
 )
 from wickstreet.analytics.domain.peers import absent_fields
+from wickstreet.analytics.domain.relations import no_pair
 from wickstreet.analytics.domain.snapshot import FundRow, decode, encode
 from wickstreet.mf_data.domain.reads import FundRecord
 
@@ -274,8 +275,13 @@ def test_every_alias_names_one_canonical_category() -> None:
         ("Gilt", classify.UNCLASSIFIED, classify.UNCLASSIFIED),
         (
             "Income/Debt Oriented Schemes - Short Term Fund",
-            classify.UNCLASSIFIED,
-            classify.UNCLASSIFIED,
+            "Income/Debt Oriented Schemes - Short Term Fund",
+            "Debt",
+        ),
+        (
+            "Life Cycle Funds - Life Cycle Fund with Maturity of 10 Years",
+            "Life Cycle Funds - Life Cycle Fund with Maturity of 10 Years",
+            "Life Cycle",
         ),
         (None, classify.UNCLASSIFIED, classify.UNCLASSIFIED),
     ],
@@ -295,7 +301,14 @@ def test_non_growth_options_are_flagged_as_excluding_payouts() -> None:
 
 def test_the_encoding_is_deterministic_and_round_trips() -> None:
     metrics = compute(series(("2023-06-23", 100.0), ("2024-06-28", 120.0)), o("2024-06-28"))
-    values = attributes(FUND, None) | metrics.values | absent_fields(Missing("NA", "no_peer_group"))
+    absent = Missing("NA", "no_peer_group")
+    values = (
+        attributes(FUND, None)
+        | metrics.values
+        | absent_fields(absent)
+        | no_pair()
+        | {"near_duplicates": absent}
+    )
     rows = [FundRow(1, "10001", "Example", ordered(values), metrics.anchors)]
     first = encode(1, 7, date(2024, 6, 28), ["tigzig", "amfi"], rows)
     second = encode(1, 7, date(2024, 6, 28), ["amfi", "tigzig"], list(rows))

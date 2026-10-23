@@ -2,8 +2,10 @@
 
 The option comes from the plan-option text only, never from the fund name, so
 "X Dividend Yield Fund - Growth" is a growth option. Categories are AMFI's SEBI
-labels as AMFI writes them. A variant label maps only when it names exactly one of
-them; every other label is ``Unclassified``. Each mapping is listed here and in
+labels as AMFI writes them: the 2017 framework, plus the labels of SEBI's revised
+framework (circular of 26 February 2026) that name no 2017 category (method v4).
+A variant label maps only when it names exactly one of them; every other label is
+``Unclassified``. Each mapping is listed here and in
 ``docs/current/mf-metrics.md``; changing one bumps ``METHOD_VERSION``.
 """
 
@@ -44,6 +46,8 @@ _ASSET_CLASSES = {
     "Hybrid Scheme - ": "Hybrid",
     "Solution Oriented Scheme - ": "Solution Oriented",
     "Other Scheme - ": "Other",
+    "Income/Debt Oriented Schemes - ": "Debt",
+    "Life Cycle Funds - ": "Life Cycle",
 }
 CATEGORIES = tuple(
     prefix + name
@@ -106,6 +110,27 @@ CATEGORIES = tuple(
     )
     for name in names
 )
+_INCOME = "Income/Debt Oriented Schemes - "
+# SEBI's 2026 framework, as AMFI writes it, where no 2017 category has the same name.
+# They are their own peer groups: mapping "Short Term" to "Short Duration" would guess.
+CATEGORIES_2026 = (
+    *(
+        _INCOME + name
+        for name in (
+            "Ultra Short Term Fund",
+            "Ultra Short to Short Term Fund",
+            "Short Term Fund",
+            "Medium Term Fund",
+            "Medium to Long Term Fund",
+            "Long Term Fund",
+            "Dynamic Term Fund",
+            "Sectoral Fund",
+        )
+    ),
+    # SEBI allows maturities of 5 to 30 years in steps of 5.
+    *(f"Life Cycle Funds - Life Cycle Fund with Maturity of {n} Years" for n in range(5, 31, 5)),
+)
+CATEGORIES = (*CATEGORIES, *CATEGORIES_2026)
 _CANONICAL = frozenset(CATEGORIES)
 
 
@@ -114,10 +139,8 @@ def _same(prefix: str, canonical_prefix: str, names: tuple[str, ...]) -> dict[st
 
 
 _E, _D, _H = "Equity Scheme - ", "Debt Scheme - ", "Hybrid Scheme - "
-_INCOME = "Income/Debt Oriented Schemes - "
 _ETF = "Exchange Traded Funds (ETFs) - "
-# Variant label -> the one canonical label it names. Old pre-2018 debt terms
-# (Short Term, Ultra Short Term, Dynamic Term ...) and broad labels (Income, Growth,
+# Variant label -> the one canonical label it names. Broad labels (Income, Growth,
 # Balanced, Gilt) name no single category, so they stay Unclassified.
 ALIASES: dict[str, str] = {
     **_same(
@@ -213,6 +236,32 @@ def asset_class(category: str) -> str:
     return next(
         (name for prefix, name in _ASSET_CLASSES.items() if category.startswith(prefix)),
         UNCLASSIFIED,
+    )
+
+
+OPEN_ENDED, CLOSE_ENDED, INTERVAL = "open_ended", "close_ended", "interval"
+INDEX_FUND, ETF, FOF = "index", "etf", "fof"
+FUND_TYPES = (OPEN_ENDED, CLOSE_ENDED, INTERVAL, INDEX_FUND, ETF, FOF)
+_TYPE_OF_CATEGORY = {
+    "Other Scheme - Index Funds": INDEX_FUND,
+    "Other Scheme - Gold ETF": ETF,
+    "Other Scheme - Other  ETFs": ETF,
+    "Other Scheme - FoF Overseas": FOF,
+    "Other Scheme - FoF Domestic": FOF,
+}
+
+
+def fund_type(category: str, scheme_type: str | None) -> str:
+    """Index fund, ETF or fund of funds by category; otherwise open, close or interval.
+
+    AMFI writes the scheme type as "Open Ended", "Close Ended Schemes", "Interval Fund"
+    and so on; an unrecognised one counts as open ended.
+    """
+    if category in _TYPE_OF_CATEGORY:
+        return _TYPE_OF_CATEGORY[category]
+    kind = (scheme_type or "").lower()
+    return (
+        CLOSE_ENDED if kind.startswith("close") else INTERVAL if "interval" in kind else OPEN_ENDED
     )
 
 

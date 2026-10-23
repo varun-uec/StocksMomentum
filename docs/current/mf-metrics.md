@@ -9,9 +9,10 @@ The method behind every number in the MF screener and research API ([ADR-017](..
 | 1 | 2026-10-23 | The method below, as proposed in the [Slice 2 plan](../plans/wickstreet-2/19-slice-2-mf-analytics.md) | Approved by the owner in the final plan review of 2026-10-23 |
 | 2 | 2026-10-23 | The option rule only. The real-data spot check found growth options of unclaimed-dividend plans classed as IDCW ("Unclaimed IDCW Plan - Growth"), AMFI's rename of "Dividend Yield" to "IDCW Yield" inside fund names, "RetireInvest" read as "reinvest", and the misspelling "IDWC". v2 removes those fund and plan phrases before matching, matches `reinvest` as a word, and adds `idwc`. Active plan-options: `idcw` 4,583 → 4,551, `growth` 3,688 → 3,693, `unknown` 327 → 354 | Built and in use; awaits owner review |
 
-| 3 | 2026-10-23 | Slice 3: status, annual returns, drawdown episodes, worst periods, downside risk, category ranks, consistency, the composite score and sibling categories (sections below). v1 and v2 values are unchanged | In use (owner decisions of 2026-10-23, [doc 20](../plans/wickstreet-2/20-wickstreet-2.0-complete-mf-scope.md#3-nav-analytics-to-add-method-v3)) |
+| 3 | 2026-10-23 | Slice 3: status, annual returns, drawdown episodes, worst periods, downside risk, category ranks, consistency, the composite score and sibling categories (sections below). v1 and v2 values are unchanged | Superseded by v4 |
+| 4 | 2026-10-23 | NAV analytics v4 ([doc 21](../plans/wickstreet-2/21-analytics-expansion-v4.md)): SEBI 2026 categories and fund type; point-in-time peer groups (consistency changes); persistence; deterioration; direct vs regular; rolling percentiles; current drawdown; near-duplicates; the regime proxy; tax rules back to 2018-04-01 (sections below) | In use (doc 21 accepted by the owner, 2026-10-23) |
 
-Snapshots of v1 and v2 (revision 2769) stay stored; reads use v3.
+Snapshots of v1, v2 and v3 (revision 2769) stay stored; reads use v4.
 
 ## Observations
 
@@ -53,6 +54,7 @@ A missing value is never 0. It is `NA` (not available) or `NM` (not meaningful),
 | NA | `history_too_short` | The series starts after the target date, or has too few points |
 | NA | `gap_at_start` | The nearest NAV before the target is more than 7 days early |
 | NM | `gap_in_window` | Two consecutive valid NAVs inside a volatility or drawdown window are more than 7 days apart |
+| NA | `no_pair` | v4: the fund has no single direct–regular counterpart |
 
 In a screen, every comparison on an `NA` or `NM` value is false, including `!=` and `not_in`. `is_missing` is true exactly on them and `is_available` exactly on a value.
 
@@ -89,7 +91,11 @@ A variant label maps only when it names exactly one canonical category:
 | "Exchange Traded Funds (ETFs) - Gold ETF", "GOLD ETFs" | Other Scheme - Gold ETF |
 | "Exchange Traded Funds (ETFs) - Equity/Debt/Other/Silver/Hybrid ETF, ETFs investing overseas", "Other ETFs" | Other Scheme - Other  ETFs |
 
-Every other label is **Unclassified**: AMFI's pre-2018 debt terms (Ultra Short to Short Term, Ultra Short Term, Short Term, Dynamic Term, Medium Term, Medium to Long Term, Long Term, Sectoral, Other Debt Scheme, Fixed Term Plan), the broad labels Income, Growth, Balanced, Gilt and Assured Return, and Life Cycle Funds. On 2026-10-23, 1,102 of 8,668 active plan-options are Unclassified, all from these labels.
+**SEBI 2026 categories (v4).** SEBI revised the categorisation on 26 February 2026 and gave schemes six months to comply. AMFI now writes a second label family beside the 2017 one. A 2026 label with the same name as a 2017 category maps to it (the table above). These 2026 labels name no 2017 category, so each is its own canonical category and peer group, as AMFI writes it: "Income/Debt Oriented Schemes - " + Ultra Short Term Fund, Ultra Short to Short Term Fund, Short Term Fund, Medium Term Fund, Medium to Long Term Fund, Long Term Fund, Dynamic Term Fund and Sectoral Fund (asset class Debt); and "Life Cycle Funds - Life Cycle Fund with Maturity of N Years" for N = 5 to 30 in steps of 5 (asset class Life Cycle). Mapping "Short Term" to "Short Duration" would be a guess, so v4 does not. Up to v3 these labels were read as pre-2018 terms and left Unclassified; that was wrong.
+
+Every other label is **Unclassified**: the broad labels Income, Growth, Balanced, Gilt and Assured Return, and "Other Debt Scheme" and "Fixed Term Plan". On 2026-10-23 (v4), 111 of 8,668 active plan-options are Unclassified (v3: 1,102); 102 of them are closed-ended "Income" plans, mostly fixed maturity plans.
+
+**Fund type (v4).** `fund_type` is `index`, `etf` or `fof` from the category (Index Funds; Gold ETF and Other ETFs; FoF Domestic and Overseas). Otherwise it comes from AMFI's scheme type: `close_ended` ("Close Ended…"), `interval` ("…Interval…"), else `open_ended`.
 
 ## Status (v3)
 
@@ -122,15 +128,80 @@ Over the 3Y window of `vol_3y` (same anchors, same gap rule):
 
 ## Peers, consistency and score (v3)
 
-- **Peer group:** canonical category × plan × option, active funds only. Unclassified and inactive funds have no group (`NA no_peer_group`, `no_recent_nav` or `no_nav`).
+- **Peer group:** canonical category × plan × option. Today's ranks use active funds only. Unclassified and inactive funds get no peer fields (`NA no_peer_group`, `no_recent_nav` or `no_nav`). From v4, past month-ends use every fund of the key alive then (see "Point-in-time peers").
 - **Ranks** need 5 peers with a value (`NA too_few_peers` otherwise). For each of `ret_1y`, `cagr_3y`, `cagr_5y`, `vol_3y` (lower is better), `mdd_3y`, `sortino_3y`, `ret_risk_3y`, `consistency_3y` and `score`:
   - `_cat_rank` = 1 + the number of peers strictly better;
   - `_cat_pct` = 100 × (peers worse + ½ × other peers equal) ÷ (n − 1), so 100 is best and ties share the average rank;
   - `_cat_quartile` = 1 when the percentile is 75 or more, 2 from 50, 3 from 25, else 4;
   - `_cat_count` = n; `_cat_median` = the median value over the n peers.
-- **Consistency:** at each month-end (the fund's last valid NAV of the month), the rolling 3Y return is compared with the median of its group's month-end values, where 5 peers have one. `consistency_3y` = the share of months above the median; it needs 12 months. Only funds active today are in a group, so the medians carry survivorship bias.
+- **Consistency:** at each complete month-end the fund was alive (below), its 3Y CAGR is compared with the median of the 3Y CAGRs of the group members alive that month-end, where 5 have one. `consistency_3y` = the share of months above the median; it needs 12 months. From v4 the medians include funds that later stopped publishing (v3 used today's active funds only).
 - **Score:** the equal-weight mean of the category percentiles of `consistency_3y`, `ret_risk_3y` and `mdd_3y`. Missing when any part is missing. Cost joins the score when TER data is stored. A custom weighting is a screen formula.
 - **Sibling categories:** an Unclassified plan-option takes the category of the other plan-options of its scheme (same AMC and scheme name) when they name exactly one canonical category (`category_basis = scheme_sibling`). On 2026-10-23 no active Unclassified fund had such a sibling, so 1,102 remain Unclassified.
+
+## Point-in-time peers (v4)
+
+- **Alive at a month-end:** the fund's last valid NAV of the month is within 7 days of the month's last day. Only complete months count: the month's last day is on or before D.
+- **Month-end values:** the NAV, the trailing 1Y return and the trailing 3Y CAGR at that NAV, with the start-anchor rules above.
+- **Members:** every plan-option of the group key with a valid NAV, active or not. A month ranks when 5 members alive then have a value. Rank, percentile and quartile use the formulas of today's ranks. Funds whose labels map to no category are in no group.
+- **Persistence:** over the last 36 complete month-ends, `q1_share_3y` = the share of ranked month-ends with the 1Y return in quartile 1, and `pct_mean_3y` = the mean 1Y percentile. Both need 12 ranked month-ends.
+- **Rank history** (`GET /funds/{code}/rank-history`) lists the 1Y and 3Y rank, peer count, percentile and quartile at each month-end. **Transitions** (`GET /peers/transitions`) count (1Y quartile at a month-end, 1Y quartile 12 month-ends later) over the group's history.
+
+## Deterioration (v4)
+
+One year before D (T = D − 12 months), a fund is alive when it has a start anchor at T. For funds alive then: `ret_1y` (anchors T and T − 12 months), `vol_3y` and `mdd_3y` (window T − 36 months to T).
+
+| Field | Formula |
+|---|---|
+| `ret_1y_cat_pct_1y_ago`, `vol_3y_cat_pct_1y_ago`, `mdd_3y_cat_pct_1y_ago` | Category percentile at T among the group members alive at T (5 needed) |
+| `ret_1y_cat_quartile_1y_ago` | Quartile of that 1Y percentile |
+| `ret_1y_pct_chg_1y`, `vol_3y_pct_chg_1y`, `mdd_3y_pct_chg_1y` | Percentile now − percentile at T. 100 is always best, so a fall is negative |
+| `quartile_change_1y` | Quartile at T − quartile now; −3 to 3, negative = moved down |
+| `consistency_3y_chg_1y` | `consistency_3y` − the same share over month-ends up to 12 months before the last complete month |
+
+No field combines them; a screen does.
+
+## Direct vs regular (v4)
+
+- **Pair:** among active funds, same AMC, scheme name and option, with exactly one direct and one regular plan-option. Otherwise `NA no_pair` (most IDCW options have several plan-options per side).
+- `dr_gap_1y` = direct `ret_1y` − regular `ret_1y`; `dr_gap_3y` = direct `cagr_3y` − regular `cagr_3y`. Both plans carry the same values.
+- `dr_wealth_10y` = ₹10,00,000 × ((1 + direct `cagr_3y`)^10 − (1 + regular `cagr_3y`)^10).
+- Labelled "observed NAV gap, not TER" until TER data (E1) is stored. On 2026-10-23, 5,794 plan-options have a pair; the median equity gap is +1.29% a year.
+
+## Rolling percentiles and drawdown (v4)
+
+- `rolling_1y/3y/5y_p10`, `_p25`, `_p75`, `_p90`: the ⌈q × n⌉-th lowest rolling return (nearest rank, as for VaR).
+- `dd_now` = end NAV ÷ the highest valid NAV so far − 1; `dd_now_days` = days since the last NAV at that peak. Active funds only (`NA no_recent_nav`).
+- `underwater_max_days`: the longest stretch from a peak to the first NAV back at it, or to the last NAV when not recovered, over the stored history.
+- `GET /funds/{code}/underwater`: the fall from the running peak at every valid NAV, and the recovery-time spread (count, min, median, 90th percentile and max days, nearest rank) of the recovered falls of at least 5%, 10% and 20%, with the count not recovered.
+
+## Near-duplicates (v4)
+
+Within the peer group, two active funds are near-duplicates when their daily returns over the 3Y window correlate at 0.95 or more, over at least 500 returns. Returns are those between consecutive dates both funds have a NAV, from each fund's 3Y start anchor: the compare definition. A fast screen on each fund's own returns at 0.85 picks the candidate pairs; each candidate is then computed exactly. `near_duplicates` counts them (`NA history_too_short` without a 3Y window); `GET /funds/{code}/near-duplicates` lists the top 10. On 2026-10-23, 3,075 active funds have at least one. `GET /compare` adds `average_correlation`, the mean of its pairwise correlations.
+
+## Regime proxy (v4)
+
+- **Proxy:** the median daily return of the "Equity Scheme - Large Cap Fund" direct growth plan-options with a valid NAV that day and the day before (gap of 7 days or less), on days with 5 such funds, chained into a level from 100. Funds that later stopped count while alive. It is labelled everywhere as a proxy built from fund NAVs, not an official index (owner decision M8).
+- **Regimes:** a fall from a running peak of 10% or more is a `correction`, of 20% or more a `crash`, from the peak to the trough. Its `recovery` runs from the trough to the first level back at the peak, `ongoing` when it has not.
+- `GET /regimes` lists the windows and the daily levels. `GET /funds/{code}/regimes` gives the fund's return over each window (start anchors at both ends), the difference from the proxy, and capture = fund return ÷ proxy return.
+- On 2026-10-23 the proxy shows six falls: 2016-10 to 2016-12 (−11.0%), 2018-08 to 2018-10 (−14.4%), 2020-02 to 2020-03 (−35.5%, crash), 2021-10 to 2022-06 (−18.0%), 2024-09 to 2025-02 (−16.1%) and 2026-01 to 2026-03 (−14.2%).
+
+## Backtests (v4)
+
+`POST /backtests` with a peer group, a `signal` (`ret_1y` or `cagr_3y`) and `top` (1 to 50):
+
+- At each complete month-end, rank the group's funds alive then on the signal (ties by AMFI code), hold the top `top` with equal weights to the next month-end. A pick with no NAV at the next month-end is dropped that month. A month counts when 5 funds have a signal and 5 have both month-end NAVs.
+- **Benchmark:** the median next-month return of every fund alive at both month-ends.
+- Returns are NAV returns, net of TER, before tax. Months with a signal before 2024-01 are in-sample, the rest the hold-out. The strategy fits nothing, so the split only reports the two periods apart.
+- Each result states its first and last signal month per period, the regime windows its months span, and the limits: current categories applied to past dates, unmapped closed funds outside every group, no splice across code changes.
+- Usable signal periods: 1Y from the first month-end with a 1Y window (about 2017-10), 3Y from about 2019-10, to the month before the last complete month.
+
+## Rolling SIP, frontier, score and confidence views (v4)
+
+- `GET /funds/{code}/rolling-sip?tenor=3y|5y&amount=&day=&step_up=`: the SIP calculator run for each start month (the 1st, from the first month that starts on or after the first valid NAV) whose tenor ends on or before D. Each start reports XIRR and the SIP drawdown, the lowest value ÷ invested − 1 on the instalment dates. The summary gives the best, worst and median XIRR, the share above zero and the worst SIP drawdown. Defaults: ₹10,000 on day 1, step-up 0 (M9).
+- `GET /peers/frontier`: the group's active funds on `vol_3y` and `cagr_3y`; `frontier` marks the funds no other fund beats on both, with risk no higher and return no lower (ties keep the first code).
+- `GET /funds/{code}/score`: each score part with its value, category percentile, peer count, weight (⅓) and missing reason; penalties (none, M12); data-quality notes.
+- `GET /funds/{code}/confidence`: status, first and last NAV, valid NAV count, gaps over 7 days, excluded and flagged rows, category and its basis, the rows and dates of each source, and fixed notes on the limits.
+- `GET /screener/fields` adds each field's `coverage`: rows with a value and rows missing by reason.
 
 ## Screen formulas
 
@@ -143,9 +214,16 @@ A screen request may define up to 10 formulas, such as `"0.6 * cagr_5y_cat_pct +
 - XIRR solves for a zero net present value on a 365-day year, by bisection over (−99.99%, 10,000%); `null` when no rate there does.
 - Exit loads, surcharge and securities transaction tax are not modelled. A simulation reads past NAVs; it is not a forecast.
 
-## Capital-gains tax (`in-2024-07-23`)
+## Capital-gains tax (`in-2018-04-01`, v4)
 
-For sales from 2024-07-23: equity-oriented funds pay 20% short term (12 months or less) and 12.5% long term on the financial year's net gain above ₹1.25 lakh, with 31 January 2018 grandfathering. Debt funds bought from 2023-04-01 pay the slab rate. Other units held over 24 months pay 12.5%, and otherwise the slab rate. Cess is 4%. A short-term loss is set off against the same year's long-term gain; nothing carries forward. The tax class comes from the category (equity: equity schemes and aggressive hybrid, arbitrage, equity savings; debt: debt schemes and conservative hybrid), or from the request when the category does not decide it. SIP and lump sum are taxed as if every unit were redeemed on the valuation date. Sales before 2024-07-23 are counted as not modelled.
+Each sale follows the rules in force on its sale date:
+
+| Sale date | Equity-oriented | Debt bought from 2023-04-01 | Other debt and `other` |
+|---|---|---|---|
+| From 2024-07-23 | 12.5% over 12 months, else 20% | Slab rate | 12.5% over 24 months, no indexation; else slab |
+| 2018-04-01 to 2024-07-22 | 10% over 12 months, else 15% | Slab rate | 20% on the indexed gain over 36 months; else slab |
+
+Holding periods are 365, 730 and 1,095 days. Indexed cost = cost × CII of the sale year ÷ CII of the purchase year (CBDT index, FY2013-14 to FY2024-25). Equity uses 31 January 2018 grandfathering. The financial year's net long-term equity gain above ₹1 lakh (₹1.25 lakh from FY2024-25) is taxed; the exemption goes against the highest rate first. Within a year, a long-term loss offsets only long-term gains; short-term and slab losses offset any gain; each goes against the highest rate first. Nothing carries forward. Cess is 4%. Sales before 2018-04-01 are counted as not modelled. The tax class comes from the category (equity: equity schemes and aggressive hybrid, arbitrage, equity savings; debt: debt schemes and conservative hybrid), or from the request when the category does not decide it. SIP and lump sum are taxed as if every unit were redeemed on the valuation date. Sales before 2018-04-01 are counted as not modelled.
 
 ## Known limits
 
@@ -154,5 +232,6 @@ For sales from 2024-07-23: equity-oriented funds pay 20% short term (12 months o
 - NAVs before 2023-04-01 come from the TigZig archive at 4 decimals.
 - No TRI, TER, AUM or risk-free series, so there is no Sharpe ratio, beta or tracking error (MF-14).
 - Series are not spliced across curated links (`plan_option_link`) in this version. A fund whose code changed shows a short history under its new code.
-- Consistency and ranks use today's active funds only (survivorship bias).
+- Today's ranks use today's active funds. Past month-ends include funds that stopped, but only where their label maps to a category; many closed funds carry broad labels and stay outside every group, so survivorship bias is reduced, not removed.
+- No series of categories as filed: AMFI restates current labels for past dates, and the TigZig archive carries no category.
 - No benchmark TRI yet, so there is no beta, alpha, capture ratio or tracking error.
