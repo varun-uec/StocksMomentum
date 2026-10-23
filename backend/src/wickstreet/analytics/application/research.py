@@ -7,6 +7,7 @@ rights checks live here, not in HTTP, so every caller inherits them.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -16,12 +17,15 @@ from wickstreet.analytics.domain.fields import BY_ID, FIELDS, INDEX, registry_ve
 from wickstreet.analytics.domain.metrics import METHOD_VERSION, Missing, compute, rebase
 from wickstreet.analytics.domain.screening import (
     FilterError,
+    Group,
     decode_cursor,
     encode_cursor,
     excluded_for_missing,
     fingerprint,
     parse_filter,
     parse_sort,
+    relaxations,
+    resolve,
     screen,
 )
 from wickstreet.analytics.domain.snapshot import (
@@ -29,7 +33,9 @@ from wickstreet.analytics.domain.snapshot import (
     FundRow,
     Snapshot,
     SnapshotStore,
-    encode,
+    assemble,
+    pack,
+    row_json,
 )
 from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.domain.rights import Use
@@ -38,6 +44,8 @@ from wickstreet.mf_data.domain.reads import FundRecord, History, Link, MfReader,
 DEFAULT_COLUMNS = ("category", "plan", "option", "ret_1y", "cagr_3y", "cagr_5y", "vol_3y", "mdd_3y")
 MAX_PAGE = 500
 MAX_COMPARE = 5
+# Funds computed between two turns of the event loop.
+_YIELD_EVERY = 256
 
 
 class NoSnapshotError(LookupError):
@@ -63,22 +71,28 @@ class ComputeSnapshot:
 
     @staticmethod
     async def encode(history: History) -> Encoded:
-        """Every fund's fields at the history's revision, encoded; stores nothing."""
+        """Every fund's fields at the history's revision, encoded; stores nothing.
+
+        Each row is serialised as it is computed, the loop gets a turn every
+        ``_YIELD_EVERY`` funds, and the gzip runs in a thread, so requests keep moving.
+        """
         as_of = history.as_of.toordinal()
-        rows: list[FundRow] = []
+        rows: list[tuple[int, str]] = []
         async for series in history.funds:
             fund = series.fund
             metrics = compute(series.points, as_of)
-            rows.append(
-                FundRow(
-                    fund.plan_option_id,
-                    fund.amfi_code,
-                    fund.nav_name or fund.scheme_name or fund.amfi_code,
-                    row_values(fund, metrics),
-                    metrics.anchors,
-                )
+            row = FundRow(
+                fund.plan_option_id,
+                fund.amfi_code,
+                fund.nav_name or fund.scheme_name or fund.amfi_code,
+                row_values(fund, metrics),
+                metrics.anchors,
             )
-        return encode(METHOD_VERSION, history.revision, history.as_of, history.sources, rows)
+            rows.append((row.plan_option_id, row_json(row)))
+            if len(rows) % _YIELD_EVERY == 0:
+                await asyncio.sleep(0)  # Funds without NAVs arrive with no I/O between them.
+        body = assemble(METHOD_VERSION, history.revision, history.as_of, history.sources, rows)
+        return await asyncio.to_thread(pack, body, len(rows))
 
     def __init__(self, reader: MfReader, snapshots: SnapshotStore, rights: RightsGate) -> None:
         """Compute over ``reader`` into ``snapshots``, under ``rights``."""
@@ -142,6 +156,10 @@ class ScreenResult:
     columns: tuple[str, ...]
     rows: list[FundRow]
     next: str | None
+    # The filter with percentile thresholds bound, for per-row explanations.
+    where: Group | None
+    # When nothing matches: how many would match without each top-level part.
+    relaxations: list[dict[str, Any]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +199,10 @@ class Research:
         self._snapshots = snapshots
         self._rights = rights
 
+    async def warm(self) -> None:
+        """Decode the latest snapshot now, so the first request after a compute does not wait."""
+        await self._snapshots.find(None, METHOD_VERSION)
+
     async def _pinned(self, revision: int | None) -> tuple[Snapshot, Envelope]:
         snapshot = await self._snapshots.find(revision, METHOD_VERSION)
         if snapshot is None:
@@ -219,6 +241,8 @@ class Research:
                         {v for r in snapshot.rows if isinstance(v := r.values[index], str) and v}
                     )
                 )
+            reasons = snapshot.missing[f.id]
+            available = sum(reasons.values()) < len(snapshot.rows)
             listed.append(
                 {
                     "id": f.id,
@@ -228,6 +252,12 @@ class Research:
                     "unit": f.unit,
                     "description": f.description,
                     **({"values": list(values)} if values is not None else {}),
+                    "available": available,
+                    **(
+                        {}
+                        if available
+                        else {"reason": min(reasons, key=lambda k: (-reasons[k], k))}
+                    ),
                 }
             )
         return envelope, registry_version(), listed
@@ -246,6 +276,7 @@ class Research:
             if request.data_revision not in (None, revision):
                 raise FilterError("page.after", "cursor does not match this request")
         snapshot, envelope = await self._pinned(revision)
+        where = resolve(where, snapshot.rows)
         matched = screen(snapshot.rows, where, sort)
         end = offset + request.size
         return ScreenResult(
@@ -256,6 +287,8 @@ class Research:
             columns=columns,
             rows=matched[offset:end],
             next=encode_cursor(snapshot.revision, request_id, end) if end < len(matched) else None,
+            where=where,
+            relaxations=relaxations(snapshot.rows, where) if not matched else [],
         )
 
     async def search(

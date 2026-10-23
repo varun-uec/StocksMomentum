@@ -24,6 +24,8 @@ from wickstreet.analytics.application.research import (
 )
 from wickstreet.analytics.domain import classify
 from wickstreet.analytics.domain.fields import FIELDS
+from wickstreet.analytics.domain.metrics import Missing
+from wickstreet.analytics.domain.screening import Group, explain
 from wickstreet.analytics.domain.snapshot import FundRow
 from wickstreet.dependencies import Context
 
@@ -97,6 +99,18 @@ async def screener_fields(
     return {**_envelope(envelope), "registry_version": version, "fields": fields}
 
 
+def _conditions(where: Group | None, row: FundRow) -> list[dict[str, Any]]:
+    return [
+        {"path": path, "passed": passed}
+        | (
+            {"value": None, "state": {"state": value.state, "reason": value.reason}}
+            if isinstance(value, Missing)
+            else {"value": value}
+        )
+        for path, passed, value in explain(where, row.values)
+    ]
+
+
 @router.post("/screener/run")
 async def screener_run(_: Context, research: ResearchDep, body: ScreenIn) -> dict[str, Any]:
     """Evaluate a filter tree over the pinned snapshot."""
@@ -116,7 +130,11 @@ async def screener_run(_: Context, research: ResearchDep, body: ScreenIn) -> dic
         "matched": result.matched,
         "excluded_missing": result.excluded_missing,
         "columns": list(result.columns),
-        "rows": [_row(r, result.columns) for r in result.rows],
+        "rows": [
+            _row(r, result.columns) | {"conditions": _conditions(result.where, r)}
+            for r in result.rows
+        ],
+        "relaxations": result.relaxations,
         "next": result.next,
     }
 

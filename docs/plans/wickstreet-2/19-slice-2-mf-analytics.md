@@ -180,9 +180,9 @@ Facts checked: `display` and `derived_metrics` grants exist for `amfi` (ids 3, 4
 
 ## Out of scope (named so nothing is half-built)
 - Saved research (tenant-owned, RLS): Slice 3, with the UI.
-- `top_pct`/`bottom_pct` operators and per-row condition explanations: when the UI or agent needs them.
+- ~~`top_pct`/`bottom_pct` operators and per-row condition explanations~~: built when Slice 2 was completed (2026-10-23), with empty-result relaxations and field availability.
 - Point-in-time screens at past dates.
-- Category-relative ranks.
+- Category-relative ranks: Slice 3 ([doc 20](20-wickstreet-2.0-complete-mf-scope.md)).
 - Splicing across links.
 - Snapshot pruning.
 

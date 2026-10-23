@@ -72,27 +72,48 @@ def _decoded(value: Any) -> Value:
     return Missing(value[0], value[1]) if isinstance(value, list) else value
 
 
+def _json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def row_json(row: FundRow) -> str:
+    """One fund's JSON; refuses NaN and infinity."""
+    return _json(
+        [row.plan_option_id, row.amfi_code, row.name, [_value(v) for v in row.values], row.anchors]
+    )
+
+
+def assemble(
+    method_version: int,
+    revision: int,
+    as_of: date,
+    sources: Sequence[str],
+    rows: Sequence[tuple[int, str]],
+) -> bytes:
+    """The JSON body from (plan-option id, row JSON) pairs, in plan-option order.
+
+    Equal to one ``json.dumps`` of the whole body with sorted keys; built from
+    parts so a caller can serialise each row as it is computed.
+    """
+    funds = ",".join(text for _, text in sorted(rows))
+    return (
+        f'{{"as_of":{_json(as_of.isoformat())},"fields":{_json([f.id for f in FIELDS])},'
+        f'"funds":[{funds}],"method_version":{_json(method_version)},'
+        f'"revision":{_json(revision)},"sources":{_json(sorted(sources))}}}'
+    ).encode()
+
+
+def pack(body: bytes, funds: int) -> Encoded:
+    """Gzip and hash a body; zlib and hashlib release the GIL, so this can run in a thread."""
+    return Encoded(gzip.compress(body, mtime=0), hashlib.sha256(body).hexdigest(), funds)
+
+
 def encode(
     method_version: int, revision: int, as_of: date, sources: Sequence[str], rows: Sequence[FundRow]
 ) -> Encoded:
-    """Serialise rows in plan-option order; refuses NaN and infinity."""
-    body = json.dumps(
-        {
-            "method_version": method_version,
-            "revision": revision,
-            "as_of": as_of.isoformat(),
-            "sources": sorted(sources),
-            "fields": [f.id for f in FIELDS],
-            "funds": [
-                [r.plan_option_id, r.amfi_code, r.name, [_value(v) for v in r.values], r.anchors]
-                for r in sorted(rows, key=lambda r: r.plan_option_id)
-            ],
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode()
-    return Encoded(gzip.compress(body, mtime=0), hashlib.sha256(body).hexdigest(), len(rows))
+    """Serialise rows in plan-option order."""
+    parts = [(r.plan_option_id, row_json(r)) for r in rows]
+    return pack(assemble(method_version, revision, as_of, sources, parts), len(rows))
 
 
 def decode(snapshot_id: int, payload: bytes) -> Snapshot:

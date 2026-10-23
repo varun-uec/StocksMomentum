@@ -15,9 +15,12 @@ from wickstreet.analytics.domain.screening import (
     decode_cursor,
     encode_cursor,
     excluded_for_missing,
+    explain,
     fingerprint,
     parse_filter,
     parse_sort,
+    relaxations,
+    resolve,
     screen,
 )
 from wickstreet.analytics.domain.snapshot import FundRow, Snapshot
@@ -195,3 +198,55 @@ def test_cursor_is_pinned_to_its_request() -> None:
 
 def test_index_covers_every_field() -> None:
     assert [f.id for f in FIELDS] == sorted(INDEX, key=INDEX.__getitem__)
+
+
+def test_percentile_operators_take_thresholds_over_the_snapshot() -> None:
+    rows = tuple(row(i, ret_1y=float(i)) for i in range(1, 11)) + (row(11, ret_1y=NM),)
+    top = resolve(parse_filter({"field": "ret_1y", "op": "top_pct", "value": 20}), rows)
+    assert ids(screen(rows, top, ())) == [9, 10]
+    bottom = resolve(parse_filter({"field": "ret_1y", "op": "bottom_pct", "value": 25}), rows)
+    assert ids(screen(rows, bottom, ())) == [1, 2, 3]
+    ties = (row(1, ret_1y=1.0), row(2, ret_1y=1.0), row(3, ret_1y=0.0))
+    tied = resolve(parse_filter({"field": "ret_1y", "op": "top_pct", "value": 10}), ties)
+    assert ids(screen(ties, tied, ())) == [1, 2]
+    none = (row(1),)
+    empty = resolve(parse_filter({"field": "ret_1y", "op": "top_pct", "value": 50}), none)
+    assert screen(none, empty, ()) == []
+    for bad in (0, 101, True, "10"):
+        with pytest.raises(FilterError):
+            parse_filter({"field": "ret_1y", "op": "top_pct", "value": bad})
+    with pytest.raises(FilterError):
+        parse_filter({"field": "plan", "op": "top_pct", "value": 10})
+
+
+def test_each_row_explains_every_condition() -> None:
+    where = parse_filter(
+        {
+            "all": [
+                {"field": "ret_1y", "op": ">", "value": 0.15},
+                {"field": "plan", "op": "in", "value": ["direct"]},
+            ]
+        }
+    )
+    assert explain(where, ROWS[1].values) == [("all[0]", True, 0.2), ("all[1]", False, "regular")]
+    assert explain(where, ROWS[2].values)[0] == ("all[0]", False, NM)
+    assert explain(None, ROWS[0].values) == []
+
+
+def test_an_empty_result_reports_each_relaxation() -> None:
+    where = parse_filter(
+        {
+            "all": [
+                {"field": "ret_1y", "op": ">", "value": 0.15},
+                {"field": "plan", "op": "in", "value": ["direct"]},
+                {"any": [{"field": "active", "op": "=", "value": True}]},
+            ]
+        }
+    )
+    assert screen(ROWS, where, ()) == []
+    assert relaxations(ROWS, where) == [
+        {"path": "all[0]", "matched": 2},
+        {"path": "all[1]", "matched": 0},
+        {"path": "all[2]", "matched": 0},
+    ]
+    assert relaxations(ROWS, parse_filter({"field": "ret_1y", "op": ">", "value": 9})) == []

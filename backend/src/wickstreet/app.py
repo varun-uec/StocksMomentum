@@ -75,6 +75,7 @@ async def _start_refresh(ingestion: Ingestion, analytics: Analytics) -> RefreshS
             _logger.error("mf_refresh_failed", error=str(exc))
         try:
             outcome = await analytics.compute.execute()
+            await analytics.research.warm()
             _logger.info("mf_snapshot", status=outcome.status, revision=outcome.revision)
         except Exception as exc:  # noqa: BLE001 - a failed compute must not stop the app
             _logger.error("mf_snapshot_failed", error=str(exc))

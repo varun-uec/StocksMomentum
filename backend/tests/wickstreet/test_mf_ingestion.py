@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -333,14 +334,30 @@ async def test_the_app_schedules_the_refresh_and_catches_up(
             return None
 
     monkeypatch.setattr("wickstreet.app.build_ingestion", lambda settings, database: Stub)
+    computed: list[bool] = []
+
+    class Analytics:
+        class compute:  # noqa: N801
+            @staticmethod
+            async def execute() -> Any:
+                computed.append(True)
+                return SimpleNamespace(status="current", revision=None)
+
+        class research:  # noqa: N801
+            @staticmethod
+            async def warm() -> None:
+                return None
+
+    monkeypatch.setattr("wickstreet.app.build_analytics", lambda settings, database: Analytics)
     monkeypatch.setattr("wickstreet.app.refresh_due", lambda now, completed_today: True)
     settings = mf_settings.model_copy(update={"refresh_enabled": True})
     with TestClient(create_app(settings), base_url="http://localhost") as client:
         deadline = time.monotonic() + 3
-        while not calls and time.monotonic() < deadline:
+        while not computed and time.monotonic() < deadline:
             client.get("/me")
             time.sleep(0.05)
     assert len(calls) == 1  # a failed refresh is logged; the app keeps serving
+    assert computed == [True]  # the snapshot step still runs after it
 
 
 async def _grant(urls: Urls, source: str) -> None:

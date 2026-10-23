@@ -3,8 +3,10 @@
 A filter is ``{"all": [...]}`` or ``{"any": [...]}`` holding conditions and at most
 one more level of groups. A condition on an ``NA`` or ``NM`` value is false, for
 every comparison including ``!=`` and ``not_in``. ``is_missing`` and
-``is_available`` test the state itself. Sorting puts missing values last and ends
-with the plan-option id, so equal requests give equal pages.
+``is_available`` test the state itself. ``top_pct`` and ``bottom_pct`` compare with
+a threshold taken over every fund in the snapshot that has a value. Sorting puts
+missing values last and ends with the plan-option id, so equal requests give equal
+pages.
 """
 
 from __future__ import annotations
@@ -13,8 +15,9 @@ import base64
 import binascii
 import hashlib
 import json
+import math
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Literal, cast
 
@@ -26,8 +29,9 @@ MAX_DEPTH = 2
 MAX_SORT_KEYS = 5
 _COMPARE = frozenset({">", ">=", "<", "<=", "=", "!="})
 _STATE = frozenset({"is_available", "is_missing"})
+_PERCENT = frozenset({"top_pct", "bottom_pct"})
 _OPERATORS: dict[str, frozenset[str]] = {
-    "number": _COMPARE | {"between"} | _STATE,
+    "number": _COMPARE | {"between", "top_pct", "bottom_pct"} | _STATE,
     "date": _COMPARE | {"between"} | _STATE,
     "boolean": frozenset({"=", "!="}) | _STATE,
     "enum": frozenset({"in", "not_in"}) | _STATE,
@@ -42,6 +46,9 @@ _TESTS: dict[str, Callable[[Any, Any], bool]] = {
     "between": lambda v, x: (x[0] is None or v >= x[0]) and (x[1] is None or v <= x[1]),
     "in": lambda v, x: v in x,
     "not_in": lambda v, x: v not in x,
+    # x = (percent, threshold); no threshold when no fund has a value.
+    "top_pct": lambda v, x: x[1] is not None and v >= x[1],
+    "bottom_pct": lambda v, x: x[1] is not None and v <= x[1],
     "is_available": lambda v, x: True,
     "is_missing": lambda v, x: False,
 }
@@ -157,6 +164,10 @@ def _operand(field: Field, op: str, value: Any, path: str) -> Any:
         if not isinstance(value, list) or len(value) != 2 or value == [None, None]:
             raise FilterError(path, "between needs [min, max]; one side may be null")
         return tuple(None if v is None else _scalar(field, v, path) for v in value)
+    if op in _PERCENT:
+        if isinstance(value, bool) or not isinstance(value, int | float) or not 0 < value <= 100:
+            raise FilterError(path, f"{op} needs a percentage above 0 and at most 100")
+        return (value, None)
     if op in ("in", "not_in"):
         if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
             raise FilterError(path, f"{op} needs a non-empty list of strings")
@@ -165,6 +176,53 @@ def _operand(field: Field, op: str, value: Any, path: str) -> Any:
             raise FilterError(path, f"{field.id} has no value {unknown[0]!r}")
         return frozenset(value)
     return _scalar(field, value, path)
+
+
+def _threshold(rows: Sequence[FundRow], field: str, op: str, percent: float) -> Any:
+    index = INDEX[field]
+    present = sorted(v for r in rows if not isinstance(v := r.values[index], Missing))
+    if not present:
+        return None
+    k = math.ceil(len(present) * percent / 100)
+    return present[-k] if op == "top_pct" else present[k - 1]
+
+
+def resolve(where: Group | None, rows: Sequence[FundRow]) -> Group | None:
+    """Bind each ``top_pct``/``bottom_pct`` to its threshold over ``rows``; ties pass."""
+    if where is None:
+        return None
+
+    def bound(node: Group | Condition) -> Group | Condition:
+        if isinstance(node, Group):
+            return Group(node.kind, tuple(bound(c) for c in node.children))
+        if node.op not in _PERCENT:
+            return node
+        percent = node.value[0]
+        return replace(node, value=(percent, _threshold(rows, node.field, node.op, percent)))
+
+    resolved = bound(where)
+    assert isinstance(resolved, Group)
+    return resolved
+
+
+def explain(where: Group | None, values: Sequence[Value]) -> list[tuple[str, bool, Value]]:
+    """Each condition's outcome on one fund, with the value it tested."""
+    if where is None:
+        return []
+    return [(c.path, c.matches(values), values[INDEX[c.field]]) for c in where.conditions()]
+
+
+def relaxations(rows: Sequence[FundRow], where: Group | None) -> list[dict[str, Any]]:
+    """For a top-level ``all`` of two or more parts: how many funds match without each part."""
+    if where is None or where.kind != "all" or len(where.children) < 2:
+        return []
+    found = []
+    for i in range(len(where.children)):
+        rest = Group("all", where.children[:i] + where.children[i + 1 :])
+        found.append(
+            {"path": f"all[{i}]", "matched": sum(1 for r in rows if rest.matches(r.values))}
+        )
+    return found
 
 
 @dataclass(frozen=True, slots=True)

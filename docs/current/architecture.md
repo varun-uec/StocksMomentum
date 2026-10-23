@@ -114,11 +114,15 @@ Implements ADR-017 MF-3, MF-11 to MF-13 and ADR-018 for MF, under the method in 
 
 **When snapshots are computed.** The app's 11:30 IST job refreshes when the day's slot is due, then computes; startup runs the job once. Every CLI publish path (`mf backfill`, `archive`, `reparse`, `refresh`) computes after a run that published. `wickstreet mf metrics` computes on demand. A failed compute is logged and does not stop the app.
 
+**Screens (ADR-018, doc 06).** Operators `> >= < <= = != between in not_in is_available is_missing top_pct bottom_pct`. A percentile threshold is taken over every fund in the snapshot with a value; ties at the threshold pass. Each row carries every condition's outcome and the value it tested (`conditions`). When nothing matches a top-level `all`, `relaxations` gives the count without each part. `GET /screener/fields` marks a field with no value in the snapshot `available: false` with the most common reason.
+
 **Errors.** RFC-7807 `application/problem+json`: `rights-denied` (403), `invalid-request` and `invalid-cursor` (422, with the path of the bad filter node), `no-snapshot` and `unknown-fund` (404).
 
 **Measured on the real store (2026-10-23, revision 2769, 22.27M NAV rows).** Compute: 82 s wall time, 297 MB peak RSS, 40,213 funds (targets 300 s and 1 GB). Snapshot load: 1.2 s. Screen evaluation over 40,213 rows: 17 ms for a 5-condition filter, 18 ms for 10 conditions; `POST /screener/run` 27–41 ms end to end in the container. The opt-in test `tests/wickstreet/test_mf_real_data.py` (`WICKSTREET_REAL_DATA_URL`) recomputes `ret_1y`, `cagr_3y` and `cagr_5y` for 50 fixed sample funds from independent SQL anchors (equal within 1e-12), checks the range of every value, and recomputes the snapshot byte for byte. Coverage of the 8,668 active plan-options: `ret_1y` 7,887, `cagr_3y` 6,366, `cagr_5y` 4,874, `cagr_10y` 3,175; `mdd_since` is `NM` (a gap over 7 days) for 141. Options: 4,551 IDCW, 3,693 growth, 354 unknown, 70 bonus. 1,102 are Unclassified (AMFI's pre-2018 debt labels and broad labels).
 
-**Known limits.** See [mf-metrics.md](mf-metrics.md#known-limits). The CPU part of a compute runs on the app's event loop between cursor batches, so requests slow during the 80-second compute after a refresh. Every snapshot is kept; pruning is not built.
+**Event loop.** A compute shares the app's event loop. Rows are serialised as they are computed, the loop gets a turn every 256 funds, and gzip and SHA-256 run in a thread. Measured over a full real compute: the loop waits 29 ms at p99 and 51 ms at most. After each compute the job decodes the new snapshot (1.2 s, once), so the first request does not wait for it.
+
+**Known limits.** See [mf-metrics.md](mf-metrics.md#known-limits). Every snapshot is kept; pruning is not built.
 
 ## Data stores
 

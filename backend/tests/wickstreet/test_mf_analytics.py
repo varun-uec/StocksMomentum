@@ -157,6 +157,32 @@ async def test_the_api_reads_one_pinned_snapshot(
         {"path": "all[0]", "field": "ret_1y", "count": 1, "reasons": {"no_nav": 1}}
     ]
     assert client.post("/screener/run", json=SCREEN).content == run.content
+    assert body["rows"][0]["conditions"] == [
+        {"path": "all[0]", "passed": True, "value": pytest.approx(0.2, rel=1e-12)}
+    ]
+    assert body["relaxations"] == []
+    fields_by_id = {f["id"]: f for f in fields["fields"]}
+    assert fields_by_id["ret_1y"]["available"] is True
+    assert fields_by_id["cagr_10y"] == fields_by_id["cagr_10y"] | {
+        "available": False,
+        "reason": "history_too_short",
+    }
+    nothing = client.post(
+        "/screener/run",
+        json={
+            "filter": {
+                "all": [
+                    {"field": "ret_1y", "op": ">", "value": 9},
+                    {"field": "plan", "op": "in", "value": ["direct"]},
+                ]
+            }
+        },
+    ).json()
+    assert nothing["matched"] == 0
+    assert nothing["relaxations"] == [
+        {"path": "all[0]", "matched": 3},
+        {"path": "all[1]", "matched": 0},
+    ]
 
     page = client.post("/screener/run", json=SCREEN | {"page": {"size": 1}}).json()
     assert page["next"] is not None
