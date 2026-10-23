@@ -6,22 +6,13 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from momentum25.application.dto.common import ProblemDetail
 from momentum25.domain.errors import Momentum25Error
 from momentum25.infrastructure.logging.setup import get_logger
+from platform_common.http import problem_response
+
+__all__ = ["problem_response", "register_exception_handlers"]
 
 _logger = get_logger("api.errors")
-_PROBLEM_MEDIA_TYPE = "application/problem+json"
-
-
-def problem_response(
-    status: int, title: str, detail: str | None, type_: str, instance: str
-) -> JSONResponse:
-    """Build an RFC-7807 ``application/problem+json`` response."""
-    body = ProblemDetail(type=type_, title=title, status=status, detail=detail, instance=instance)
-    return JSONResponse(
-        status_code=status, content=body.model_dump(), media_type=_PROBLEM_MEDIA_TYPE
-    )
 
 
 def register_exception_handlers(app: FastAPI) -> None:
