@@ -1,6 +1,6 @@
 # ADR-021: Source-Neutral Data Supply
 
-**Status:** Proposed (2026-10-22). Touches licensing; the owner decides each supplier. Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md). Extends ADR-003 and the ADR-012 data-use check.
+**Status:** Accepted 2026-10-23 (owner); proposed 2026-10-22. Touches licensing; the owner decides each supplier. Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md). Extends ADR-003 and the ADR-012 data-use check.
 
 ## Context
 The M16 check found that NSE's website terms forbid automated collection and simulation use. On 2026-10-22 the AMFI terms were read: use is "personal and non-commercial", "You shall not store electronically any significant portion of any part of the Site", derivative works are barred, and other uses need a written agreement. BSE and NSE Indices terms could not be read. Every 2.0 dataset (financials, NAV, holdings, classifications, TRI) has a licence question. The user's own portfolio does not.
@@ -24,4 +24,4 @@ The M16 check found that NSE's website terms forbid automated collection and sim
 - **Wait for a vendor before designing:** rejected. Contracts let design and code proceed.
 
 ## Update 2026-10-23
-Accepted [ADR-022](ADR-022-multilingual-research-agent.md) and [ADR-023](ADR-023-operating-modes.md) rely on rules 1, 3, 4 and 6 of this ADR. ADR-022 §2.11 makes one owner exception to rule 2: a disabled-by-default AMFI adapter in personal mode, within `amfi.personal_scope`. Rule 5 is met per dataset by the owner decisions recorded in ADR-022 §2.11. The status stays Proposed. The owner should accept this ADR together with the [ADR-017 realignment](ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-proposed-2026-10-23), because accepted records already depend on it.
+Accepted [ADR-022](ADR-022-multilingual-research-agent.md) and [ADR-023](ADR-023-operating-modes.md) rely on rules 1, 3, 4 and 6 of this ADR. ADR-022 §2.11 makes one owner exception to rule 2: a disabled-by-default AMFI adapter in personal mode, within `amfi.personal_scope`. Rule 5 is met per dataset by the owner decisions recorded in ADR-022 §2.11. The owner accepted this ADR on 2026-10-23, together with the [ADR-017 realignment](ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-accepted-2026-10-23), which accepted records depend on.

@@ -1,7 +1,7 @@
 # ADR-017: Mutual Funds, ETFs and Holdings Disclosures
 
 **Status:** Proposed (2026-10-22). Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md). Requires [ADD Amendment A2](../ADD-amendment-A2.md).
-**2.0 realignment:** Proposed 2026-10-23 (rules MF-1 to MF-14, last section). They are the MF data foundation for the `wickstreet` package under accepted [A3](../ADD-amendment-A3.md), [ADR-022](ADR-022-multilingual-research-agent.md) and [ADR-023](ADR-023-operating-modes.md). They rest on A3, not on A2. The owner must accept them before the MF data-foundation slice starts.
+**2.0 realignment:** Accepted 2026-10-23 (owner). Rules MF-1 to MF-14 (last section) are the MF data foundation for the `wickstreet` package under accepted [A3](../ADD-amendment-A3.md), [ADR-022](ADR-022-multilingual-research-agent.md) and [ADR-023](ADR-023-operating-modes.md). They rest on A3, not on A2. The original decision text stays as history; MF-1 says which points apply in 2.0.
 
 ## Context
 ADD A1 §4 put non-equity assets out of scope. Wickstreet 2.0 makes mutual funds a first-class asset class and adds ETFs. A fund has schemes, plans and options with separate NAVs and costs. Its holdings are known only through periodic disclosures published days after the portfolio date. ETFs already appear in `securities` as if they were equities.
@@ -26,7 +26,7 @@ ADD A1 §4 put non-equity assets out of scope. Wickstreet 2.0 makes mutual funds
 - **Use the latest holdings for all past dates:** rejected. It invents history.
 - **Compare funds against price indices:** rejected as a silent default. It flatters every fund by the dividend yield.
 
-## Wickstreet 2.0 realignment (Proposed 2026-10-23)
+## Wickstreet 2.0 realignment (Accepted 2026-10-23)
 
 The decision above predates accepted A3 and ADR-023. It edits Momentum25's `securities` table, and it has no revision or publication model. ADR-023 §2.8 now puts MF in its own package and PostgreSQL schema. ADR-022 §2.12 sets the daily refresh. No accepted record yet defines scheme identity, revisions, corrections or publication. This section does. The text above stays as history.
 

@@ -1,7 +1,7 @@
 # ADR-018: Unified Screening in the Domain
 
 **Status:** Proposed (2026-10-22). Part of the [Wickstreet 2.0 blueprint](../../plans/wickstreet-2/README.md).
-**2.0 note (2026-10-23):** for the MF-first Wickstreet 2.0, these evaluator rules apply to MF only, inside the `wickstreet` package ([ADR-017 MF-12](ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-proposed-2026-10-23)). The stock and fund screener is Wickstreet 3.0 work.
+**2.0 note (2026-10-23):** for the MF-first Wickstreet 2.0, these evaluator rules apply to MF only, inside the `wickstreet` package ([ADR-017 MF-12](ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-accepted-2026-10-23)). The stock and fund screener is Wickstreet 3.0 work.
 
 ## Context
 Today the screener filters one Momentum25 run's rows in the browser, with fixed fields and AND only. Wickstreet 2.0 needs compound filters across fundamental, technical, Momentum25, fund and ETF fields, saved screens, presets, and point-in-time historical screens, with an explanation for each row. The universes are small: about 2,500 equities, 250 ETFs and 1,600 scheme-plan rows.

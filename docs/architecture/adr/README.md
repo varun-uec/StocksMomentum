@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 (with its two amendments), 014, 022 and 023 **Accepted**. 012 and 015 to 021 are **Proposed**. Each ADR may end with a dated update that records what changed after acceptance. The decision text above it is not rewritten.
+Each ADR follows: **Context · Decision · Consequences · Alternatives considered**. Status: 001–011, 013 (with its two amendments), 014, 021, 022 and 023 **Accepted**, and 017's Wickstreet 2.0 realignment. 012, 015, 016, 018, 019 and 020, and 017's original decision, are **Proposed**. Each ADR may end with a dated update that records what changed after acceptance. The decision text above it is not rewritten.
 
 The [Wickstreet Target Architecture — ADD Amendment A3](../ADD-amendment-A3.md) was **accepted 2026-10-22** after the owner-requested C1 correction. It is an ADD amendment, not an ADR. Its scoped supersession of ADR-010 is effective; the ADR's historical text is preserved. This acceptance does not authorize implementation.
 
@@ -24,10 +24,10 @@ The [Wickstreet Target Architecture — ADD Amendment A3](../ADD-amendment-A3.md
 | [013b](ADR-013b-line-alert-amendment.md) | Amendment to 013: sloped drawing alerts *(Accepted 2026-10-20)* |
 | [015](./ADR-015-licence.md) | Licence *(Proposed)* |
 | [016](./ADR-016-fundamentals-point-in-time.md) | Company fundamentals, stored by publication time *(Proposed, Wickstreet 2.0)* |
-| [017](./ADR-017-funds-etfs-holdings.md) | Mutual funds, ETFs and holdings disclosures *(Proposed, Wickstreet 2.0; MF data-foundation realignment MF-1 to MF-14 proposed 2026-10-23)* |
+| [017](./ADR-017-funds-etfs-holdings.md) | Mutual funds, ETFs and holdings disclosures *(Proposed, Wickstreet 2.0; MF data-foundation realignment MF-1 to MF-14 accepted 2026-10-23)* |
 | [018](./ADR-018-unified-screening.md) | Unified screening in the domain *(Proposed, Wickstreet 2.0)* |
 | [019](./ADR-019-portfolio-look-through.md) | Portfolio ledger and look-through exposure *(Proposed, Wickstreet 2.0)* |
 | [020](./ADR-020-descriptive-scorecards.md) | Descriptive scorecards, no composite score *(Proposed, Wickstreet 2.0)* |
-| [021](./ADR-021-data-supply-policy.md) | Source-neutral data supply *(Proposed, Wickstreet 2.0)* |
+| [021](./ADR-021-data-supply-policy.md) | Source-neutral data supply *(Accepted 2026-10-23, Wickstreet 2.0)* |
 | [022](./ADR-022-multilingual-research-agent.md) | Multilingual research agent: Pydantic AI, tool boundary, hybrid explanations, egress policy *(Accepted 2026-10-23 with corrections; Phase 1 personal mode)* |
 | [023](./ADR-023-operating-modes.md) | One core, two operating modes; production-evolvable personal app; enforced tenant ownership *(Accepted 2026-10-23)* |

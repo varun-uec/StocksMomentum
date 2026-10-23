@@ -152,7 +152,7 @@ Wickstreet 2.0 is a **new, cleanly separated application in this repository**. I
 
 ## 7. Architecture review update (2026-10-23)
 
-An independent review checked this ADR against the code. The decisions in §2 stand. Items U1–U8 close gaps that would otherwise force rework. Where an item and the text above differ, the item governs.
+An independent review checked this ADR against the code. The decisions in §2 stand. Items U1–U9 close gaps that would otherwise force rework. Where an item and the text above differ, the item governs.
 
 | # | Item |
 |---|---|
@@ -164,3 +164,4 @@ An independent review checked this ADR against the code. The decisions in §2 st
 | U6 | **Identifiers.** Tenant and user ids in the `wickstreet` context are UUIDs. Personal mode creates its fixed tenant and user at bootstrap. Momentum25's `CurrentUser.tenant_id: int \| None` is not reused |
 | U7 | **Phase and stage.** Phase 1 personal mode is an A3 Stage A deployment on the owner's machine. Phase 2 starts at A3 Stage B with every Stage B gate unchanged ([A3 §17](../ADD-amendment-A3.md#17-later-accepted-extensions-2026-10-23)) |
 | U8 | **Loopback in a container.** Under Docker Compose the app must bind `0.0.0.0` inside its container, so OM-2 cannot be a bind-address check there. In personal mode, loopback-only means: outside a container the app refuses a non-loopback bind; under Compose the published port binds `127.0.0.1` and personal mode rejects any other `APP_BIND`; the Host/Origin guard (U2) stays on. OM-2's test covers all three |
+| U9 | **Product target (owner decision, 2026-10-23).** Phase 1 serves real MF data: the complete universe, 10 years of NAV history (U4), refreshed daily at 11:30 IST (ADR-022 §2.12), stored locally. This is the target requirement, not a record of acquisition rights. AMFI's terms permit personal, non-commercial use of the site but bar electronic storage of "any significant portion" of it, so personal use alone does not establish permission for a full-universe, 10-year database. AMFI's 90-day limit per history download is a technical limit, not a licence. Bulk acquisition therefore stays gated (§2.3, ADR-022 §2.11) until a verified permission or a licensed supplier is recorded. Slice 1 builds and tests the complete pipeline on synthetic data, so a recorded permission turns real acquisition on by configuration, not code |

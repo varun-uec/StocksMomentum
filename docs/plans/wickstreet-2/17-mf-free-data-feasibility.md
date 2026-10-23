@@ -197,7 +197,7 @@ Under the fail-closed policy, an unresolved route blocks commercial use. It does
 
 ## 8. Architecture fit (conditional on verified rights)
 
-> **Superseded in part, 2026-10-23:** the refresh runs once daily at 11:30 IST ([ADR-022 §2.12](../../architecture/adr/ADR-022-multilingual-research-agent.md)), not at the example times below. MF tables live in the `wickstreet` schema with MF-owned versioning, not in Momentum25's `REFERENCE_VERSIONED` ([ADR-023 §2.8](../../architecture/adr/ADR-023-operating-modes.md); [ADR-017 MF-5 to MF-8](../../architecture/adr/ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-proposed-2026-10-23)).
+> **Superseded in part, 2026-10-23:** the refresh runs once daily at 11:30 IST ([ADR-022 §2.12](../../architecture/adr/ADR-022-multilingual-research-agent.md)), not at the example times below. MF tables live in the `wickstreet` schema with MF-owned versioning, not in Momentum25's `REFERENCE_VERSIONED` ([ADR-023 §2.8](../../architecture/adr/ADR-023-operating-modes.md); [ADR-017 MF-5 to MF-8](../../architecture/adr/ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-accepted-2026-10-23)).
 
 The accepted FastAPI/Python + PostgreSQL design fits without new services. Daily volume is small: about 8,300 active plans × 1 NAV/day. Each stage below runs **only for datasets whose permission record covers that use** ([14 §5](14-stage-b-implementation-plan.md#5-data-acquisition-and-permissions-gate)). A technically feasible pipeline is not a permitted one.
 
