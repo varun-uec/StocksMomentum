@@ -28,7 +28,9 @@ from typing import Literal
 # v4: doc 21 — SEBI 2026 categories, point-in-time peer groups and rank history,
 # persistence, deterioration, direct vs regular, rolling percentiles, current drawdown,
 # near-duplicates.
-METHOD_VERSION = 4
+# v5: E2 — the RBI 91-day T-bill yield: risk-free returns, Sharpe 1Y/3Y, Sortino against
+# the risk-free rate instead of 0%.
+METHOD_VERSION = 5
 # The longest gap between two valid NAVs an anchor or a window may span.
 MAX_GAP_DAYS = 7
 # A fund is active when its last valid NAV is this close to the as-of date.
@@ -50,6 +52,9 @@ ZERO_DENOMINATOR = "zero_denominator"
 NO_PEER_GROUP = "no_peer_group"
 TOO_FEW_PEERS = "too_few_peers"
 NO_PAIR = "no_pair"
+NO_RISK_FREE = "no_risk_free"
+# A window may end at most this long after the last auction it uses.
+RISK_FREE_STALE_DAYS = 35
 REASONS = frozenset(
     {
         NO_NAV,
@@ -63,6 +68,7 @@ REASONS = frozenset(
         NO_PEER_GROUP,
         TOO_FEW_PEERS,
         NO_PAIR,
+        NO_RISK_FREE,
     }
 )
 
@@ -124,6 +130,7 @@ EPISODE_STATS = ("peak", "trough", "recovery", "fall_days", "recovery_days")
 WORST = (("worst_1m", 1), ("worst_3m", 3), ("worst_1y", 12))
 DOWNSIDE = ("downside_dev_3y", "sortino_3y", "var95_3y", "cvar95_3y", "ret_risk_3y")
 UNDERWATER = ("dd_now", "dd_now_days", "underwater_max_days")
+RISK_FREE = ("rf_1y", "rf_3y", "sharpe_1y", "sharpe_3y")
 METRIC_FIELDS = (
     *LATEST,
     *(name for name, _, _ in TRAILING),
@@ -135,6 +142,7 @@ METRIC_FIELDS = (
     *(name for name, _ in WORST),
     *DOWNSIDE,
     *UNDERWATER,
+    *RISK_FREE,
     *(f"{name}_{stat}" for name, _ in ROLLING for stat in ROLLING_STATS),
 )
 
@@ -252,21 +260,78 @@ def volatility(dates: Sequence[int], navs: Sequence[float], start: int, end: int
     return math.sqrt(variance) * ANNUALISE_VOL
 
 
-def downside(
-    dates: Sequence[int], navs: Sequence[float], start: int, end: int
-) -> tuple[Value, Value, Value]:
-    """Downside deviation (threshold 0%, × √252), and 1-day historical VaR and CVaR at 95%.
+@dataclass(frozen=True, slots=True)
+class RiskFree:
+    """The 91-day T-bill yield as a deposit that accrues yield ÷ 365 each calendar day.
 
-    VaR is the return at the 5th percentile (nearest rank); CVaR is the mean of the
-    returns at or below it. Both are returns, so a loss is negative.
+    Each auction's yield is in force from its date to the next auction. ``growth[k]``
+    is the log growth from the first auction to auction k (method v5).
+    """
+
+    days: Sequence[int]
+    daily: Sequence[float]
+    growth: Sequence[float]
+
+    @classmethod
+    def of(cls, points: Sequence[tuple[int, float]]) -> RiskFree:
+        """From (date ordinal, % a year) in date order."""
+        days = [d for d, _ in points]
+        daily = [math.log1p(y / 100 / 365) for _, y in points]
+        growth = [0.0]
+        for k in range(1, len(days)):
+            growth.append(growth[-1] + (days[k] - days[k - 1]) * daily[k - 1])
+        return cls(days, daily, growth)
+
+    def _log(self, day: int) -> float:
+        k = bisect_right(self.days, day) - 1
+        return self.growth[k] + (day - self.days[k]) * self.daily[k]
+
+    def covers(self, start: int, end: int) -> bool:
+        """Whether an auction precedes ``start`` and a recent one precedes ``end``."""
+        if not self.days or start < self.days[0]:
+            return False
+        last = self.days[bisect_right(self.days, end) - 1]
+        return end - last <= RISK_FREE_STALE_DAYS
+
+    def growth_between(self, start: int, end: int) -> float:
+        """The deposit's return from ``start`` to ``end``; check :meth:`covers` first."""
+        return math.expm1(self._log(end) - self._log(start))
+
+    def annualised(self, start: int, end: int) -> Value:
+        """The deposit's annualised return over [start, end], on 365.25-day years."""
+        if not self.covers(start, end) or end <= start:
+            return Missing("NA", NO_RISK_FREE)
+        return math.expm1((self._log(end) - self._log(start)) * YEAR_DAYS / (end - start))
+
+
+def downside(
+    dates: Sequence[int],
+    navs: Sequence[float],
+    start: int,
+    end: int,
+    risk_free: RiskFree | None = None,
+) -> tuple[Value, Value, Value, Value]:
+    """Downside deviations (× √252), and 1-day historical VaR and CVaR at 95%.
+
+    The first deviation has a 0% threshold. The second's threshold is the risk-free
+    return over each interval (``NA no_risk_free`` without a covering series). VaR is
+    the return at the 5th percentile (nearest rank); CVaR is the mean of the returns at
+    or below it. Both are returns, so a loss is negative.
     """
     returns = _returns(dates, navs, start, end)
     if isinstance(returns, Missing):
-        return returns, returns, returns
+        return returns, returns, returns, returns
     deviation = math.sqrt(math.fsum(min(r, 0.0) ** 2 for r in returns) / len(returns))
+    excess: Value = Missing("NA", NO_RISK_FREE)
+    if risk_free is not None and risk_free.covers(dates[start], dates[end]):
+        below = [
+            min(r - risk_free.growth_between(dates[k], dates[k + 1]), 0.0) ** 2
+            for k, r in zip(range(start, end), returns, strict=True)
+        ]
+        excess = math.sqrt(math.fsum(below) / len(below)) * ANNUALISE_VOL
     ordered = sorted(returns)
     k = math.ceil((1 - VAR_LEVEL) * len(ordered))
-    return deviation * ANNUALISE_VOL, ordered[k - 1], math.fsum(ordered[:k]) / k
+    return deviation * ANNUALISE_VOL, excess, ordered[k - 1], math.fsum(ordered[:k]) / k
 
 
 @dataclass(frozen=True, slots=True)
@@ -529,7 +594,19 @@ def _annual(
     return values
 
 
-def compute(points: Sequence[tuple[int, float | None, str | None]], as_of: int) -> FundMetrics:
+def _excess(ret: Value, rf: Value) -> Value:
+    if isinstance(ret, Missing):
+        return ret
+    if isinstance(rf, Missing):
+        return rf
+    return float(ret) - float(rf)
+
+
+def compute(
+    points: Sequence[tuple[int, float | None, str | None]],
+    as_of: int,
+    risk_free: RiskFree | None = None,
+) -> FundMetrics:
     """Every per-fund metric at ``as_of``, the latest NAV date in the store."""
     dates, navs, excluded, jumps = valid_series(points)
     values: dict[str, Value] = {"excluded_navs": excluded, "jump_flags": jumps}
@@ -588,12 +665,22 @@ def compute(points: Sequence[tuple[int, float | None, str | None]], as_of: int) 
     three = starts[36]
     episode = three if isinstance(three, Missing) else deepest(dates, navs, three, end)
     values |= _episode_values("dd_3y", episode, dates)
+    rf = risk_free or RiskFree.of([])
+    for name, months in (("rf_1y", 12), ("rf_3y", 36)):
+        start = starts[months]
+        values[name] = (
+            start if isinstance(start, Missing) else rf.annualised(dates[start], dates[end])
+        )
+    excess_dev: Value = three
     if isinstance(three, Missing):
         values |= {"downside_dev_3y": three, "var95_3y": three, "cvar95_3y": three}
     else:
-        deviation, var, cvar = downside(dates, navs, three, end)
+        deviation, excess_dev, var, cvar = downside(dates, navs, three, end, rf)
         values |= {"downside_dev_3y": deviation, "var95_3y": var, "cvar95_3y": cvar}
-    values["sortino_3y"] = _ratio(values["cagr_3y"], values["downside_dev_3y"])
+    excess_3y = _excess(values["cagr_3y"], values["rf_3y"])
+    values["sortino_3y"] = _ratio(excess_3y, excess_dev)
+    values["sharpe_3y"] = _ratio(excess_3y, values["vol_3y"])
+    values["sharpe_1y"] = _ratio(_excess(values["ret_1y"], values["rf_1y"]), values["vol_1y"])
     values["ret_risk_3y"] = _ratio(values["cagr_3y"], values["vol_3y"])
     values |= _underwater(dates, navs, active)
     days: array[int] = array("i")

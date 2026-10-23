@@ -22,6 +22,7 @@ from wickstreet.analytics.domain.metrics import (
     ZERO_DENOMINATOR,
     Missing,
     MonthEnds,
+    RiskFree,
     compute,
     downside,
     month_key,
@@ -98,7 +99,7 @@ def test_worst_periods_and_status() -> None:
 
 
 def test_downside_deviation_var_and_cvar() -> None:
-    deviation, var, cvar = downside([1, 2, 3, 4], [100.0, 110.0, 99.0, 99.0], 0, 3)
+    deviation, _, var, cvar = downside([1, 2, 3, 4], [100.0, 110.0, 99.0, 99.0], 0, 3)
     returns = [0.1, 99.0 / 110.0 - 1, 0.0]
     assert deviation == pytest.approx(math.sqrt(returns[1] ** 2 / 3) * ANNUALISE_VOL, rel=1e-12)
     assert var == cvar == returns[1]
@@ -107,9 +108,14 @@ def test_downside_deviation_var_and_cvar() -> None:
 def test_three_year_ratios_and_month_ends() -> None:
     first = date(2021, 6, 1)
     days = (date(2024, 6, 28) - first).days + 1
-    metrics = compute(daily("2021-06-01", [100 * 1.0003**k for k in range(days)]), o("2024-06-28"))
+    points = daily("2021-06-01", [100 * 1.0003**k for k in range(days)])
+    metrics = compute(points, o("2024-06-28"))
     assert metrics.values["downside_dev_3y"] == 0.0
-    assert metrics.values["sortino_3y"] == Missing("NM", ZERO_DENOMINATOR)
+    assert metrics.values["sortino_3y"] == Missing("NA", "no_risk_free")
+    zero = RiskFree.of([(o("2021-01-01"), 0.0), (o("2024-06-01"), 0.0)])
+    assert compute(points, o("2024-06-28"), zero).values["sortino_3y"] == Missing(
+        "NM", ZERO_DENOMINATOR
+    )
     assert isinstance(metrics.values["ret_risk_3y"], float)
     ends = metrics.month_ends
     # 2024-06 is not complete on 2024-06-28; no month-end has a full 3Y window.

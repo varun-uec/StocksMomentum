@@ -485,6 +485,15 @@ async def fund_confidence(
     return {**_envelope(envelope), "amfi_code": code, **body}
 
 
+@router.get("/risk-free")
+async def risk_free(
+    _: Context, research: ResearchDep, data_revision: Revision = None
+) -> dict[str, Any]:
+    """The RBI 91-day T-bill cut-off yields used as the risk-free rate."""
+    envelope, body = await research.risk_free(data_revision)
+    return {**_envelope(envelope), **body}
+
+
 @router.get("/regimes")
 async def market_regimes(
     _: Context, research: ResearchDep, data_revision: Revision = None

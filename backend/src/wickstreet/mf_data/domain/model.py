@@ -19,8 +19,13 @@ from enum import StrEnum
 AMFI = "amfi"
 TIGZIG = "tigzig"
 MFAPI = "mfapi"
+RBI = "rbi"
 NAV_CONTRACT = "nav-v1"
 SCHEME_CONTRACT = "schemes-v1"
+# Reference rates imported from files (doc 21 E2); no fetcher.
+RATE_CONTRACT = "rates-v1"
+# The 91-day Treasury Bill implicit yield at the auction cut-off price, % a year.
+TBILL_91 = "tbill_91d_cutoff_yield"
 REFRESH = "daily-refresh"
 # Archive values are kept to 4 decimals; a smaller difference is rounding, not a conflict.
 ARCHIVE_TOLERANCE = Decimal("0.0001")
@@ -84,3 +89,12 @@ class Anomaly(StrEnum):
     ZERO = "nav_zero"
     NEGATIVE = "nav_negative"
     JUMP = "nav_jump"
+
+
+@dataclass(frozen=True, slots=True)
+class RatePoint:
+    """One published rate: ``value`` in % a year, in force from ``day`` (an auction date)."""
+
+    series: str
+    day: date
+    value: Decimal

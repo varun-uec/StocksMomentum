@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Protocol
 
-from wickstreet.mf_data.domain.model import Anomaly, NavRecord, RawFile, SchemeRecord
+from wickstreet.mf_data.domain.model import Anomaly, NavRecord, RatePoint, RawFile, SchemeRecord
 
 
 class SourceLayoutError(Exception):
@@ -76,6 +76,17 @@ class ReferenceSource(Protocol):
         ...
 
 
+class RateSource(Protocol):
+    """Port: parse reference-rate files a person obtained from the source (no fetching)."""
+
+    name: str
+    adapter_version: str
+
+    def parse_rates(self, raw: RawFile) -> list[RatePoint]:
+        """Extract the rates, or raise :class:`SourceLayoutError`."""
+        ...
+
+
 class RawStore(Protocol):
     """Keeps every fetched file, outside the repository (ADR-022 §2.11)."""
 
@@ -107,7 +118,8 @@ class Provenance:
     raw_path: str
     adapter_version: str
     contract: str
-    retrieval_grant_id: int
+    # None for an imported file: Wickstreet retrieved nothing.
+    retrieval_grant_id: int | None
     storage_grant_id: int
 
 
@@ -184,6 +196,15 @@ class MfStore(Protocol):
         """Write changed master attributes as a new revision, atomically.
 
         With ``fill_only`` only codes that have no master row yet are written.
+        """
+        ...
+
+    async def publish_rates(
+        self, run_id: int, records: Sequence[RatePoint], provenance: Provenance
+    ) -> Published:
+        """Write new and changed rates as a new revision and move the pointer, atomically.
+
+        A different value for a stored series and date supersedes it.
         """
         ...
 

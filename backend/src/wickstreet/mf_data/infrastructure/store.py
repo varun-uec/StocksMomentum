@@ -31,6 +31,7 @@ from wickstreet.mf_data.domain.model import (
     NAV_CONTRACT,
     Anomaly,
     NavRecord,
+    RatePoint,
     SchemeRecord,
 )
 from wickstreet.mf_data.domain.ports import Provenance, Published, Run, StoredRaw
@@ -475,6 +476,59 @@ class SqlMfStore:
         return Published(
             revision=revision_id, inserted=counts[0], superseded=counts[1], conflicts=conflicts
         )
+
+    async def publish_rates(
+        self, run_id: int, records: Sequence[RatePoint], provenance: Provenance
+    ) -> Published:
+        """Publish rates as revision R, or mark the run unchanged."""
+        rows = [(r.series, r.day, r.value) for r in records]
+        try:
+            async with self._database.engine.begin() as connection:
+                revision_id = await self._revision(connection, run_id, provenance)
+                await self._stage(
+                    connection,
+                    "rate_stage",
+                    "series text, effective_date date, value numeric",
+                    ("series", "effective_date", "value"),
+                    rows,
+                )
+                superseded = await connection.execute(
+                    text(
+                        "UPDATE wickstreet.rate_point t SET superseded_revision = :r "
+                        "FROM rate_stage s WHERE t.series = s.series "
+                        "AND t.effective_date = s.effective_date "
+                        "AND t.superseded_revision IS NULL AND t.value <> s.value"
+                    ),
+                    {"r": revision_id},
+                )
+                inserted = await connection.execute(
+                    text(
+                        "INSERT INTO wickstreet.rate_point "
+                        "(series, effective_date, value, revision_id) "
+                        "SELECT s.series, s.effective_date, s.value, CAST(:r AS bigint) "
+                        "FROM rate_stage s WHERE NOT EXISTS (SELECT 1 FROM wickstreet.rate_point t "
+                        "WHERE t.series = s.series AND t.effective_date = s.effective_date "
+                        "AND t.superseded_revision IS NULL)"
+                    ),
+                    {"r": revision_id},
+                )
+                if inserted.rowcount == 0:
+                    raise _NothingChangedError
+                await self._point(connection, revision_id)
+                await self._finish(
+                    connection,
+                    run_id,
+                    "published",
+                    raw_sha256=provenance.raw_sha256,
+                    revision_id=revision_id,
+                    rows=len(rows),
+                    inserted=int(inserted.rowcount),
+                    superseded=int(superseded.rowcount),
+                )
+        except _NothingChangedError:
+            await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
+            return Published(revision=None, inserted=0, superseded=0)
+        return Published(int(revision_id), int(inserted.rowcount), int(superseded.rowcount))
 
     async def publish_schemes(
         self,

@@ -55,6 +55,8 @@ class History:
     as_of: date
     sources: tuple[str, ...]
     funds: AsyncIterator[FundSeries]
+    # The 91-day T-bill yield as (date ordinal, % a year), in date order; empty if none.
+    risk_free: Sequence[tuple[int, float]] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,4 +114,8 @@ class MfReader(Protocol):
 
     async def links(self, code: str) -> list[Link]:
         """Return the curated links from or to one plan-option."""
+        ...
+
+    async def rates(self, series: str, revision: int) -> list[tuple[date, float]]:
+        """Return one rate series at ``revision``, in date order."""
         ...

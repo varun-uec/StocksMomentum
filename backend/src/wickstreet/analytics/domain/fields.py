@@ -350,7 +350,8 @@ FIELDS: tuple[Field, ...] = (
         "Risk",
         "number",
         "ratio",
-        "CAGR 3Y ÷ downside deviation 3Y; threshold 0% until a risk-free series is stored.",
+        "(CAGR 3Y − risk-free 3Y) ÷ downside deviation below the risk-free return of each "
+        "interval (RBI 91-day T-bill).",
     ),
     Field(
         "var95_3y",
@@ -375,6 +376,39 @@ FIELDS: tuple[Field, ...] = (
         "number",
         "ratio",
         "CAGR 3Y ÷ volatility 3Y; not a Sharpe ratio (no risk-free rate).",
+    ),
+    Field(
+        "rf_1y",
+        "Risk-free 1Y",
+        "Risk-free",
+        "number",
+        _FRACTION,
+        "Annualised return of a deposit earning the RBI 91-day T-bill cut-off yield each "
+        "day, over the fund's 1Y window. Source: Reserve Bank of India.",
+    ),
+    Field(
+        "rf_3y",
+        "Risk-free 3Y",
+        "Risk-free",
+        "number",
+        _FRACTION,
+        "As Risk-free 1Y, over the fund's 3Y window. Source: Reserve Bank of India.",
+    ),
+    Field(
+        "sharpe_1y",
+        "Sharpe 1Y",
+        "Risk-free",
+        "number",
+        "ratio",
+        "(Return 1Y − risk-free 1Y) ÷ volatility 1Y.",
+    ),
+    Field(
+        "sharpe_3y",
+        "Sharpe 3Y",
+        "Risk-free",
+        "number",
+        "ratio",
+        "(CAGR 3Y − risk-free 3Y) ÷ volatility 3Y.",
     ),
     Field(
         "dd_now",

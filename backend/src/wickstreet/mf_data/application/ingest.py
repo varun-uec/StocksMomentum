@@ -20,6 +20,7 @@ from wickstreet.mf_data.domain.model import (
     AMFI,
     ARCHIVE_TOLERANCE,
     NAV_CONTRACT,
+    RATE_CONTRACT,
     REFRESH,
     SCHEME_CONTRACT,
     Anomaly,
@@ -31,6 +32,7 @@ from wickstreet.mf_data.domain.ports import (
     MfStore,
     NavSource,
     Provenance,
+    RateSource,
     RawStore,
     ReferenceSource,
     SchemeSource,
@@ -41,6 +43,7 @@ from wickstreet.mf_data.domain.validation import (
     BlockingError,
     Comparison,
     check_nav_day,
+    check_rates,
     check_scheme_master,
     compare_series,
     flag_anomalies,
@@ -568,3 +571,56 @@ class CrossCheck:
             ours = await self._store.current_navs(code, start, end)
             results.append(compare_series(code, ours, theirs, ARCHIVE_TOLERANCE))
         return results
+
+
+class ImportRates:
+    """Import reference-rate files a person obtained, one revision per file (doc 21 E2).
+
+    Wickstreet retrieves nothing, so a revision records no retrieval grant; storing
+    needs the source's ``storage`` grant. A file already imported unchanged is a no-op.
+    """
+
+    def __init__(
+        self, source: RateSource, store: MfStore, raw_store: RawStore, rights: RightsGate
+    ) -> None:
+        """Import ``source`` files into ``store``, under ``rights``."""
+        self._source = source
+        self._store = store
+        self._raw_store = raw_store
+        self._rights = rights
+
+    async def execute(self, raw: RawFile) -> Outcome:
+        """Parse, check and publish one file. The run's period is the file's date range."""
+        try:
+            records = check_rates(self._source.parse_rates(raw))
+        except (SourceLayoutError, BlockingError) as exc:
+            return Outcome(raw.fetched_at.date(), "failed", error=str(exc))
+        first, last = records[0].day, records[-1].day
+        run = await self._store.open_run(self._source.name, RATE_CONTRACT, first, last)
+        if raw.sha256 == run.raw_sha256:
+            return Outcome(last, "unchanged")
+        try:
+            storage = (await self._rights.require(self._source.name, Use.STORAGE)).id
+        except RightsDeniedError as exc:
+            await self._store.close_run(run.id, "denied", error=str(exc))
+            raise
+        path = self._raw_store.save(self._source.name, RATE_CONTRACT, last, raw)
+        provenance = Provenance(
+            url=raw.url,
+            fetched_at_iso=raw.fetched_at.isoformat(),
+            raw_sha256=raw.sha256,
+            raw_path=path,
+            adapter_version=self._source.adapter_version,
+            contract=RATE_CONTRACT,
+            retrieval_grant_id=None,
+            storage_grant_id=storage,
+        )
+        published = await self._store.publish_rates(run.id, records, provenance)
+        return Outcome(
+            last,
+            "published" if published.revision is not None else "unchanged",
+            rows=len(records),
+            inserted=published.inserted,
+            superseded=published.superseded,
+            revision=published.revision,
+        )

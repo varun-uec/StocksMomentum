@@ -19,6 +19,7 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncResult
 
 from platform_common.database import Database
+from wickstreet.mf_data.domain.model import TBILL_91
 from wickstreet.mf_data.domain.reads import FundRecord, FundSeries, History, Link, NavPoint
 
 
@@ -78,6 +79,10 @@ _STREAM = (
     "WHERE n.superseded_revision IS NULL ORDER BY n.plan_option_id, n.nav_date"
 )
 _STREAM_BATCH = 20_000
+_RATES = text(
+    "SELECT effective_date, value::float8 FROM wickstreet.rate_point t "
+    f"WHERE series = :s AND {_visible('t')} ORDER BY effective_date"
+)
 
 
 def _record(row: Sequence[Any]) -> FundRecord:
@@ -154,12 +159,18 @@ class SqlMfReader:
                     )
                 )
                 sources = await self._sources(connection, revision)
+                risk_free = [
+                    (day.toordinal(), value)
+                    for day, value in await connection.execute(
+                        _RATES, {"s": TBILL_91, "r": revision}
+                    )
+                ]
                 found = await connection.execute(text(_funds_sql("TRUE")), {"r": revision})
                 records = {row[0]: _record(row) for row in found}
                 rows = await connection.stream(
                     text(_STREAM).execution_options(yield_per=_STREAM_BATCH)
                 )
-                yield History(revision, as_of, sources, _grouped(records, rows))
+                yield History(revision, as_of, sources, _grouped(records, rows), risk_free)
 
     async def search(self, query: str, limit: int, revision: int) -> list[FundRecord]:
         """Match an AMFI code or ISIN exactly, or a name by substring."""
@@ -205,15 +216,23 @@ class SqlMfReader:
     async def series(self, codes: Sequence[str], revision: int) -> list[FundSeries]:
         """Full series of a few plan-options, in the order of ``codes``."""
         records = {f.amfi_code: f for f in await self._funds(codes, revision)}
+        # Keyed on plan_option_id so the planner walks pk_nav, already in order; a filter
+        # on amfi_code through the join made it scan the whole table.
         sql = text(
-            f"SELECT p.amfi_code, {_ORDINAL}, n.nav::float8, n.anomaly FROM wickstreet.nav n "
-            "JOIN wickstreet.plan_option p ON p.id = n.plan_option_id "
-            f"WHERE p.amfi_code IN :codes AND {_visible('n')} ORDER BY p.amfi_code, n.nav_date"
-        ).bindparams(bindparam("codes", expanding=True))
+            f"SELECT n.plan_option_id, {_ORDINAL}, n.nav::float8, n.anomaly "
+            "FROM wickstreet.nav n "
+            f"WHERE n.plan_option_id = ANY(:ids) AND {_visible('n')} "
+            "ORDER BY n.plan_option_id, n.nav_date"
+        )
+        ids = {f.plan_option_id: f.amfi_code for f in records.values()}
         points: dict[str, list[tuple[int, float | None, str | None]]] = {c: [] for c in records}
-        for code, day, nav, anomaly in await self._rows(sql, codes=list(records), r=revision):
-            points[code].append((day, nav, anomaly))
+        for pid, day, nav, anomaly in await self._rows(sql, ids=list(ids), r=revision):
+            points[ids[pid]].append((day, nav, anomaly))
         return [FundSeries(records[c], points[c]) for c in codes if c in records]
+
+    async def rates(self, series: str, revision: int) -> list[tuple[date, float]]:
+        """One rate series at ``revision``, in date order."""
+        return [(day, value) for day, value in await self._rows(_RATES, s=series, r=revision)]
 
     async def links(self, code: str) -> list[Link]:
         """Curated links from or to one plan-option."""

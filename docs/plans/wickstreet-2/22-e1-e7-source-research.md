@@ -47,6 +47,8 @@ Recommendation: **RBI DBIE**, with the Handbook table as a cross-check and press
 
 Blocker: none on rights. Small task: confirm the DBIE series name.
 
+**Done 2026-10-23** ([as built](../../current/architecture.md#wickstreet-20-risk-free-rate-e2-method-v5)). DBIE lists the report "Auctions of 91-Day Government of India Treasury Bills" (weekly, 1993-01-08 to 2026-10-14), but its report viewer failed in the browser (an invalid certificate on its report host). The Handbook editions 2017–2026 and the weekly press releases supplied 529 auctions from 2016-07-05. RBI's file host answers scripts with a bot challenge, so Wickstreet imports files a person downloads and fetches nothing. A weekly automated fetch from rbi.org.in is an owner decision.
+
 ## 4. E3: benchmark TRI daily history, and each scheme's benchmark over time
 
 | Source | Finding |

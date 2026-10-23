@@ -10,9 +10,10 @@ The method behind every number in the MF screener and research API ([ADR-017](..
 | 2 | 2026-10-23 | The option rule only. The real-data spot check found growth options of unclaimed-dividend plans classed as IDCW ("Unclaimed IDCW Plan - Growth"), AMFI's rename of "Dividend Yield" to "IDCW Yield" inside fund names, "RetireInvest" read as "reinvest", and the misspelling "IDWC". v2 removes those fund and plan phrases before matching, matches `reinvest` as a word, and adds `idwc`. Active plan-options: `idcw` 4,583 → 4,551, `growth` 3,688 → 3,693, `unknown` 327 → 354 | Built and in use; awaits owner review |
 
 | 3 | 2026-10-23 | Slice 3: status, annual returns, drawdown episodes, worst periods, downside risk, category ranks, consistency, the composite score and sibling categories (sections below). v1 and v2 values are unchanged | Superseded by v4 |
-| 4 | 2026-10-23 | NAV analytics v4 ([doc 21](../plans/wickstreet-2/21-analytics-expansion-v4.md)): SEBI 2026 categories and fund type; point-in-time peer groups (consistency changes); persistence; deterioration; direct vs regular; rolling percentiles; current drawdown; near-duplicates; the regime proxy; tax rules back to 2018-04-01 (sections below) | In use (doc 21 accepted by the owner, 2026-10-23) |
+| 4 | 2026-10-23 | NAV analytics v4 ([doc 21](../plans/wickstreet-2/21-analytics-expansion-v4.md)): SEBI 2026 categories and fund type; point-in-time peer groups (consistency changes); persistence; deterioration; direct vs regular; rolling percentiles; current drawdown; near-duplicates; the regime proxy; tax rules back to 2018-04-01 (sections below) | Superseded by v5 |
+| 5 | 2026-10-23 | E2: the RBI 91-day T-bill yield. Risk-free returns, Sharpe 1Y and 3Y with category ranks, and Sortino against the risk-free return instead of 0% ("Risk-free (v5)" below) | In use (owner go-ahead for E2, 2026-10-23) |
 
-Snapshots of v1, v2 and v3 (revision 2769) stay stored; reads use v4.
+Snapshots of v1 to v4 stay stored; reads use v5.
 
 ## Observations
 
@@ -55,6 +56,7 @@ A missing value is never 0. It is `NA` (not available) or `NM` (not meaningful),
 | NA | `gap_at_start` | The nearest NAV before the target is more than 7 days early |
 | NM | `gap_in_window` | Two consecutive valid NAVs inside a volatility or drawdown window are more than 7 days apart |
 | NA | `no_pair` | v4: the fund has no single direct–regular counterpart |
+| NA | `no_risk_free` | v5: no risk-free rate covers the window, or it is more than 35 days old |
 
 In a screen, every comparison on an `NA` or `NM` value is false, including `!=` and `not_in`. `is_missing` is true exactly on them and `is_available` exactly on a value.
 
@@ -121,10 +123,10 @@ Over the 3Y window of `vol_3y` (same anchors, same gap rule):
 | Field | Formula |
 |---|---|
 | `downside_dev_3y` | √(mean of min(r, 0)²) × √252, over daily returns r |
-| `sortino_3y` | `cagr_3y` ÷ `downside_dev_3y`. The threshold is 0% until a risk-free series is stored. `NM zero_denominator` when no return was negative |
+| `sortino_3y` | v5: (`cagr_3y` − `rf_3y`) ÷ the downside deviation below the risk-free return of each interval (see "Risk-free (v5)"). v3–v4: `cagr_3y` ÷ `downside_dev_3y` |
 | `var95_3y` | The 5th-percentile daily return (nearest rank: the ⌈0.05 n⌉-th lowest) |
 | `cvar95_3y` | Mean of the daily returns at or below `var95_3y` |
-| `ret_risk_3y` | `cagr_3y` ÷ `vol_3y`. Not a Sharpe ratio: there is no risk-free rate |
+| `ret_risk_3y` | `cagr_3y` ÷ `vol_3y`, with no risk-free rate. It stays a score part; `sharpe_3y` is the risk-free version |
 
 ## Peers, consistency and score (v3)
 
@@ -137,6 +139,15 @@ Over the 3Y window of `vol_3y` (same anchors, same gap rule):
 - **Consistency:** at each complete month-end the fund was alive (below), its 3Y CAGR is compared with the median of the 3Y CAGRs of the group members alive that month-end, where 5 have one. `consistency_3y` = the share of months above the median; it needs 12 months. From v4 the medians include funds that later stopped publishing (v3 used today's active funds only).
 - **Score:** the equal-weight mean of the category percentiles of `consistency_3y`, `ret_risk_3y` and `mdd_3y`. Missing when any part is missing. Cost joins the score when TER data is stored. A custom weighting is a screen formula.
 - **Sibling categories:** an Unclassified plan-option takes the category of the other plan-options of its scheme (same AMC and scheme name) when they name exactly one canonical category (`category_basis = scheme_sibling`). On 2026-10-23 no active Unclassified fund had such a sibling, so 1,102 remain Unclassified.
+
+## Risk-free (v5)
+
+- **Series:** the implicit yield at the cut-off price of RBI's 91-day Treasury Bill auctions (% a year, actual/365), from the Handbook of Statistics on the Indian Economy (one edition a year) and the weekly "Treasury Bills: Full Auction Result" press releases. Stored in `rate_point`, revisioned like NAVs, so a snapshot reads the rates of its revision. A week with no accepted bids has no rate. Every response that uses it lists source `rbi`; `GET /risk-free` carries RBI's acknowledgement, which its terms require.
+- **Deposit:** each auction's yield is in force from its date to the next auction, and accrues yield ÷ 365 on each calendar day. The growth from day a to day b is ∏ (1 + yᵈ ÷ 36,500) over the days d in [a, b).
+- `rf_1y`, `rf_3y`: that growth over the fund's own 1Y or 3Y window (the start anchor of `ret_1y` or `cagr_3y` to the end anchor), annualised on 365.25-day years like a CAGR.
+- `sharpe_1y` = (`ret_1y` − `rf_1y`) ÷ `vol_1y`; `sharpe_3y` = (`cagr_3y` − `rf_3y`) ÷ `vol_3y`. `sharpe_3y` has category ranks like the other ranked fields.
+- `sortino_3y` = (`cagr_3y` − `rf_3y`) ÷ √(mean of min(rₖ − gₖ, 0)²) × √252, where gₖ is the deposit's growth over the k-th return interval.
+- `NA no_risk_free` when no auction precedes the window start, or the last auction before the window end is more than 35 days old. Without new imports, values go stale 35 days after the last stored auction.
 
 ## Point-in-time peers (v4)
 
@@ -230,7 +241,7 @@ Holding periods are 365, 730 and 1,095 days. Indexed cost = cost × CII of the s
 - √252 understates volatility for funds that publish a NAV on every calendar day (liquid, overnight).
 - Categories and names are AMFI's of 2026-10-23, because AMFI restates current labels for past dates.
 - NAVs before 2023-04-01 come from the TigZig archive at 4 decimals.
-- No TRI, TER, AUM or risk-free series, so there is no Sharpe ratio, beta or tracking error (MF-14).
+- No TRI, TER or AUM series, so there is no beta, alpha or tracking error (MF-14). The risk-free rate is stored from v5.
 - Series are not spliced across curated links (`plan_option_link`) in this version. A fund whose code changed shows a short history under its new code.
 - Today's ranks use today's active funds. Past month-ends include funds that stopped, but only where their label maps to a category; many closed funds carry broad labels and stay outside every group, so survivorship bias is reduced, not removed.
 - No series of categories as filed: AMFI restates current labels for past dates, and the TigZig archive carries no category.

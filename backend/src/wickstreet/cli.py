@@ -9,7 +9,8 @@ import sys
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 
 import typer
 
@@ -22,7 +23,7 @@ from wickstreet.data_rights.infrastructure.register import (
     revoke_grants,
 )
 from wickstreet.mf_data.application.ingest import Outcome, Summary
-from wickstreet.mf_data.domain.model import AMFI
+from wickstreet.mf_data.domain.model import AMFI, RawFile
 from wickstreet.mf_data.infrastructure.reader import SqlMfReader, record_link
 from wickstreet.mf_data.infrastructure.report import coverage_report
 from wickstreet.mf_data.infrastructure.scheduler import IST
@@ -245,6 +246,30 @@ def mf_reparse(
         if first is None:
             raise typer.BadParameter("No AMFI NAV date is stored yet.")
         return await ingestion.reparse.execute(first, last, _print)
+
+    _ingest(settings, work)
+
+
+@mf_app.command("import-rates")
+def mf_import_rates(
+    files: list[Path] = typer.Argument(..., help="RBI files, oldest first."),  # noqa: B008
+    url: list[str] = typer.Option(  # noqa: B008
+        ..., "--url", help="Where each file came from, in the same order."
+    ),
+) -> None:
+    """Import RBI 91-day T-bill files (Handbook XLSX or auction-result HTML); no fetching."""
+    if len(url) != len(files):
+        raise typer.BadParameter("give one --url per file")
+    settings = get_settings()
+
+    async def work(ingestion: Ingestion) -> Summary:
+        summary = Summary()
+        for path, source in zip(files, url, strict=True):
+            obtained = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+            outcome = await ingestion.rates.execute(RawFile(source, obtained, path.read_bytes()))
+            _print(outcome)
+            summary.add(outcome)
+        return summary
 
     _ingest(settings, work)
 

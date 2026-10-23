@@ -17,6 +17,7 @@ import sys
 import time
 from collections.abc import AsyncIterator
 from datetime import date
+from typing import Any
 
 import pytest
 from sqlalchemy import text
@@ -231,52 +232,71 @@ async def test_v4_current_drawdown_matches_sql(real: Database) -> None:
             assert cell(row, "dd_now") == pytest.approx(cell(row, "nav") / peak - 1, rel=1e-9)
 
 
-async def test_v4_point_in_time_ranks_match_pandas(real: Database) -> None:
-    """Month-end 1Y ranks rebuilt with pandas from SQL rows, funds that stopped included."""
-    import pandas as pd
+_NAVS = (
+    "SELECT p.amfi_code, n.nav_date, n.nav::float8 FROM wickstreet.nav n "
+    "JOIN wickstreet.plan_option p ON p.id = n.plan_option_id "
+    "WHERE p.amfi_code = ANY(:codes) AND n.nav > 0 AND n.nav <> 'NaN' "
+    "AND n.revision_id <= :r "
+    "AND (n.superseded_revision IS NULL OR n.superseded_revision > :r)"
+)
 
-    snapshot = await _snapshot(real)
-    key = ("Equity Scheme - Flexi Cap Fund", "direct", "growth")
-    group = [
+
+def _group(snapshot: Snapshot, key: tuple[str, str, str]) -> list[str]:
+    return [
         r.amfi_code
         for r in snapshot.rows
         if (cell(r, "category"), cell(r, "plan"), cell(r, "option")) == key
         and cell(r, "status") != "no_nav"
     ]
+
+
+async def _navs(real: Database, snapshot: Snapshot, codes: list[str]) -> Any:
+    import pandas as pd
+
     async with real.engine.connect() as connection:
         rows = (
-            await connection.execute(
-                text(
-                    "SELECT p.amfi_code, n.nav_date, n.nav::float8 FROM wickstreet.nav n "
-                    "JOIN wickstreet.plan_option p ON p.id = n.plan_option_id "
-                    "WHERE p.amfi_code = ANY(:codes) AND n.nav > 0 AND n.nav <> 'NaN' "
-                    "AND n.revision_id <= :r "
-                    "AND (n.superseded_revision IS NULL OR n.superseded_revision > :r)"
-                ),
-                {"codes": group, "r": snapshot.revision},
-            )
+            await connection.execute(text(_NAVS), {"codes": codes, "r": snapshot.revision})
         ).all()
     navs = pd.DataFrame(rows, columns=["code", "day", "nav"])
     navs["day"] = pd.to_datetime(navs["day"])
+    return navs.sort_values(["code", "day"])
+
+
+async def _pandas_month_ends(real: Database, snapshot: Snapshot, codes: list[str]) -> Any:
+    """Month-end NAV and 1Y return per fund, rebuilt with pandas from SQL rows."""
+    import pandas as pd
+
+    navs = await _navs(real, snapshot, codes)
     as_of = pd.Timestamp(snapshot.as_of)
     last_month = (as_of + pd.offsets.MonthEnd(0)).to_period("M")
     if as_of != as_of + pd.offsets.MonthEnd(0):
         last_month -= 1
-    values: dict[tuple[str, str], float] = {}
+    found = []
     for code, one in navs.groupby("code"):
-        one = one.sort_values("day").set_index("day")["nav"]
+        one = one.set_index("day")["nav"]
         for month, ends in one.groupby(one.index.to_period("M")):
             day = ends.index[-1]
             if month > last_month or (month.end_time.normalize() - day).days > 7:
                 continue
             target = day - pd.DateOffset(months=12)
             before = one[one.index <= target]
-            if before.empty or (target - before.index[-1]).days > 7:
-                continue
-            values[(str(code), str(month))] = ends.iloc[-1] / before.iloc[-1] - 1
-    table = pd.Series(values).rename_axis(["code", "month"]).reset_index(name="ret")
+            ret = (
+                ends.iloc[-1] / before.iloc[-1] - 1
+                if not before.empty and (target - before.index[-1]).days <= 7
+                else float("nan")
+            )
+            found.append((str(code), month, ends.iloc[-1], ret))
+    return pd.DataFrame(found, columns=["code", "month", "nav", "ret"])
+
+
+async def test_v4_point_in_time_ranks_match_pandas(real: Database) -> None:
+    """Month-end 1Y ranks rebuilt with pandas from SQL rows, funds that stopped included."""
+    snapshot = await _snapshot(real)
+    group = _group(snapshot, ("Equity Scheme - Flexi Cap Fund", "direct", "growth"))
+    table = (await _pandas_month_ends(real, snapshot, group)).dropna(subset=["ret"])
+    table["month"] = table["month"].astype(str)
     table["n"] = table.groupby("month")["ret"].transform("size")
-    table = table[table["n"] >= 5]
+    table = table[table["n"] >= 5].copy()
     table["pct"] = (
         100 * (table.groupby("month")["ret"].rank(method="average") - 1) / (table["n"] - 1)
     )
@@ -298,6 +318,142 @@ async def test_v4_point_in_time_ranks_match_pandas(real: Database) -> None:
         ours = {m["month"] for m in body["history"] if m["ret_1y"] is not None}
         assert ours == {m for c, m in expected.index if c == code}
     assert checked >= 100
+
+
+async def test_v4_backtest_matches_pandas(real: Database) -> None:
+    """Top-5 by 1Y return against the median, rebuilt month by month with pandas."""
+    import pandas as pd
+
+    snapshot = await _snapshot(real)
+    key = ("Equity Scheme - Flexi Cap Fund", "direct", "growth")
+    table = await _pandas_month_ends(real, snapshot, _group(snapshot, key))
+    by_month = {m: g.set_index("code") for m, g in table.groupby("month")}
+    expected = {}
+    for month, now in by_month.items():
+        later = by_month.get(month + 1)
+        if later is None:
+            continue
+        signal = now.dropna(subset=["ret"])
+        common = now.index.intersection(later.index)
+        returns = later.loc[common, "nav"] / now.loc[common, "nav"] - 1
+        if len(signal) < 5 or len(returns) < 5:
+            continue
+        ranked = signal.reset_index().sort_values(["ret", "code"], ascending=[False, True])
+        picks = [c for c in ranked["code"].head(5) if c in returns.index]
+        if picks:
+            expected[str(month)] = (picks, returns[picks].mean(), returns.median())
+    _, result = await _research(real).backtest(*key, "ret_1y", 5, snapshot.revision)
+    got = {m["signal_month"]: m for m in result["months"]}
+    assert set(got) == set(expected)
+    for month, (picks, strategy, median) in expected.items():
+        assert got[month]["picks"] == picks, month
+        assert got[month]["strategy"] == pytest.approx(strategy, rel=1e-12, abs=1e-15)
+        assert got[month]["median"] == pytest.approx(median, rel=1e-12, abs=1e-15)
+    growth = math.prod(1 + m["strategy"] for m in result["months"]) - 1
+    assert result["summary"]["whole"]["strategy_growth"] == pytest.approx(growth, rel=1e-12)
+    assert len(pd.Index(list(got))) >= 100
+
+
+def _newton_xirr(flows: list[tuple[int, float]]) -> float:
+    """XIRR by Newton's method from 10%; a different algorithm from the code's bisection."""
+    first = flows[0][0]
+    rate = 0.1
+    for _ in range(100):
+        f = sum(a / (1 + rate) ** ((d - first) / 365) for d, a in flows)
+        df = sum(-(d - first) / 365 * a / (1 + rate) ** ((d - first) / 365 + 1) for d, a in flows)
+        step = f / df
+        rate -= step
+        if abs(step) < 1e-14:
+            break
+    return rate
+
+
+async def test_v4_rolling_sip_matches_an_independent_simulation(real: Database) -> None:
+    import pandas as pd
+
+    snapshot = await _snapshot(real)
+    research = _research(real)
+    long_lived = [
+        c
+        for c in _sample(snapshot)
+        if (cell(snapshot.by_code[c], "since_start") or "9999") <= "2018-01-01"
+    ][:3]
+    assert long_lived
+    for code in long_lived:
+        _, body = await research.rolling_sip(code, "3y", 10_000.0, 1, 0.05, snapshot.revision)
+        starts = body["starts"]
+        navs = (await _navs(real, snapshot, [code])).set_index("day")["nav"]
+        for start in (starts[0], starts[len(starts) // 2], starts[-1]):
+            begin = pd.Timestamp(start["start"])
+            end = begin + pd.DateOffset(months=36) - pd.Timedelta(days=1)
+            units = invested = 0.0
+            flows, lowest = [], 0.0
+            for n in range(36):
+                due = begin + pd.DateOffset(months=n)
+                traded = navs[navs.index >= due]
+                if traded.empty or traded.index[0] > end:
+                    break
+                day, nav = traded.index[0], traded.iloc[0]
+                paid = 10_000.0 * 1.05 ** (n // 12)
+                duty = 0.00005 if day >= pd.Timestamp("2020-07-01") else 0.0
+                units += paid * (1 - duty) / nav
+                invested += paid
+                flows.append((day.toordinal(), -paid))
+                lowest = min(lowest, units * nav / invested - 1)
+            valued = navs[navs.index <= end]
+            value = units * valued.iloc[-1]
+            flows.append((valued.index[-1].toordinal(), value))
+            assert start["invested"] == pytest.approx(invested, rel=1e-12), (code, start)
+            assert start["value"] == pytest.approx(value, rel=1e-12), (code, start)
+            assert start["sip_drawdown"] == pytest.approx(lowest, rel=1e-12, abs=1e-15)
+            assert start["xirr"] == pytest.approx(_newton_xirr(sorted(flows)), abs=1e-9)
+
+
+async def test_v4_regime_proxy_matches_pandas(real: Database) -> None:
+    """The proxy's levels and windows, rebuilt with pandas from SQL rows."""
+    import pandas as pd
+
+    snapshot = await _snapshot(real)
+    proxy = snapshot.tables["proxy"]
+    codes = [
+        r.amfi_code
+        for r in snapshot.rows
+        if cell(r, "category") == proxy["category"]
+        and cell(r, "category_basis") == "amfi"
+        and cell(r, "plan") == proxy["plan"]
+        and cell(r, "option") == proxy["option"]
+        and cell(r, "status") != "no_nav"
+    ]
+    navs = await _navs(real, snapshot, codes)
+    navs["prev_day"] = navs.groupby("code")["day"].shift()
+    navs["ret"] = navs["nav"] / navs.groupby("code")["nav"].shift() - 1
+    navs = navs[(navs["day"] - navs["prev_day"]).dt.days <= 7]
+    daily = navs.groupby("day")["ret"].agg(["median", "size"])
+    daily = daily[daily["size"] >= 5]
+    levels = 100 * (1 + daily["median"]).cumprod()
+    stored = pd.Series(
+        [v for _, v in proxy["levels"]], index=pd.to_datetime([d for d, _ in proxy["levels"]])
+    )
+    assert list(stored.index) == list(levels.index)
+    assert stored.to_numpy() == pytest.approx(levels.to_numpy(), rel=1e-9)
+    falls = []
+    peak_day, peak, trough_day, trough = levels.index[0], levels.iloc[0], None, None
+    for day, level in levels.iloc[1:].items():
+        if level >= peak:
+            if trough is not None and trough / peak - 1 <= -0.10:
+                falls.append((peak_day, trough_day, trough / peak - 1))
+            peak_day, peak, trough_day, trough = day, level, None, None
+        elif trough is None or level < trough:
+            trough_day, trough = day, level
+    if trough is not None and trough / peak - 1 <= -0.10:
+        falls.append((peak_day, trough_day, trough / peak - 1))
+    windows = [w for w in snapshot.tables["regimes"] if w["kind"] != "recovery"]
+    assert [(w["start"], w["end"]) for w in windows] == [
+        (a.date().isoformat(), b.date().isoformat()) for a, b, _ in falls
+    ]
+    assert [w["proxy_return"] for w in windows] == pytest.approx([d for _, _, d in falls])
+    for window in windows:
+        assert window["kind"] == ("crash" if window["proxy_return"] <= -0.20 else "correction")
 
 
 async def test_v4_near_duplicates_agree_with_the_compare_correlation(real: Database) -> None:
@@ -339,3 +495,38 @@ async def test_v4_pair_gaps_and_ranges(real: Database) -> None:
         assert dd is None or -1 < dd <= 0
         quarter = cell(row, "quartile_change_1y")
         assert quarter is None or -3 <= quarter <= 3
+
+
+async def test_v5_risk_free_and_sharpe_match_pandas(real: Database) -> None:
+    """rf_3y from SQL rates, forward-filled over calendar days with pandas; then Sharpe 3Y."""
+    import pandas as pd
+
+    snapshot = await _snapshot(real)
+    async with real.engine.connect() as connection:
+        rows = (
+            await connection.execute(
+                text(
+                    "SELECT effective_date, value::float8 FROM wickstreet.rate_point "
+                    "WHERE series = 'tbill_91d_cutoff_yield' AND revision_id <= :r "
+                    "AND (superseded_revision IS NULL OR superseded_revision > :r)"
+                ),
+                {"r": snapshot.revision},
+            )
+        ).all()
+    rates = pd.Series({pd.Timestamp(d): v for d, v in rows}).sort_index()
+    checked = 0
+    for code in _sample(snapshot):
+        row = snapshot.by_code[code]
+        if cell(row, "rf_3y") is None:
+            continue
+        start = pd.Timestamp(row.anchors["cagr_3y"])
+        end = pd.Timestamp(cell(row, "last_nav_date"))
+        days = pd.date_range(start, end - pd.Timedelta(days=1), freq="D")
+        daily = rates.reindex(rates.index.union(days)).ffill().loc[days]
+        growth = (1 + daily / 100 / 365).prod()
+        expected = growth ** (365.25 / (end - start).days) - 1
+        assert cell(row, "rf_3y") == pytest.approx(expected, rel=1e-9), code
+        sharpe = (cell(row, "cagr_3y") - expected) / cell(row, "vol_3y")
+        assert cell(row, "sharpe_3y") == pytest.approx(sharpe, rel=1e-9), code
+        checked += 1
+    assert checked >= 30

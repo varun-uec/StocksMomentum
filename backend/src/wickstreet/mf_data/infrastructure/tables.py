@@ -69,7 +69,8 @@ revision = Table(
     Column("raw_path", Text, nullable=False),
     Column("adapter_version", Text, nullable=False),
     # Ids in the data-rights register; no foreign key across contexts (A3 §7.1).
-    Column("retrieval_grant_id", BigInteger, nullable=False),
+    # Null for an imported file, which Wickstreet did not retrieve (migration 0004).
+    Column("retrieval_grant_id", BigInteger),
     Column("storage_grant_id", BigInteger, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
@@ -170,5 +171,25 @@ plan_option_link = Table(
     CheckConstraint("kind IN ('merger', 'code_change', 'segregated_portfolio')", name="kind"),
     UniqueConstraint(
         "from_plan_option_id", "to_plan_option_id", "kind", name="uq_plan_option_link"
+    ),
+)
+
+# Reference rates by series and effective date, revisioned like NAVs (doc 21 E2).
+rate_point = Table(
+    "rate_point",
+    metadata,
+    Column("series", Text, nullable=False),
+    Column("effective_date", Date, nullable=False),
+    # As published, % a year.
+    Column("value", Numeric, nullable=False),
+    Column("revision_id", BigInteger, ForeignKey(revision.c.id), nullable=False),
+    Column("superseded_revision", BigInteger),
+    PrimaryKeyConstraint("series", "effective_date", "revision_id", name="pk_rate_point"),
+    Index(
+        "uq_rate_point_current",
+        "series",
+        "effective_date",
+        unique=True,
+        postgresql_where=text("superseded_revision IS NULL"),
     ),
 )

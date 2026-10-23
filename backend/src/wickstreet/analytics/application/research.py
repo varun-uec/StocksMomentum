@@ -46,6 +46,7 @@ from wickstreet.analytics.domain.metrics import (
     NO_PEER_GROUP,
     Missing,
     MonthEnds,
+    RiskFree,
     Value,
     compute,
     last_complete_month,
@@ -109,6 +110,7 @@ from wickstreet.analytics.domain.tax import (
 from wickstreet.analytics.domain.views import correlation
 from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.domain.rights import Use
+from wickstreet.mf_data.domain.model import TBILL_91
 from wickstreet.mf_data.domain.reads import (
     FundRecord,
     FundSeries,
@@ -183,6 +185,7 @@ class ComputeSnapshot:
         ``_YIELD_EVERY`` funds, so requests keep moving.
         """
         as_of = history.as_of.toordinal()
+        risk_free = RiskFree.of(history.risk_free)
         records: list[FundRecord] = []
         own: list[tuple[tuple[Value, ...], dict[str, str]]] = []
         month_ends: dict[int, tuple[MonthEnds, dict[str, float]]] = {}
@@ -190,7 +193,7 @@ class ComputeSnapshot:
         proxy_days: dict[int, list[float]] = defaultdict(list)
         async for series in history.funds:
             fund = series.fund
-            metrics = compute(series.points, as_of)
+            metrics = compute(series.points, as_of, risk_free)
             records.append(fund)
             own.append((tuple(metrics.values[n] for n in METRIC_FIELDS), metrics.anchors))
             if metrics.values["status"] != NO_NAV:
@@ -404,6 +407,9 @@ class Simulated:
 SIMULATIONS = ("sip", "lumpsum", "swp", "stp")
 ROLLING_WINDOWS = {"1y": 12, "3y": 36, "5y": 60}
 SIP_TENORS = {"3y": 36, "5y": 60}
+# ponytail: in-process cache of month-ends for the last 32 peer groups read; a snapshot
+# never changes, so entries need no invalidation. Move it out of process for SaaS.
+_GROUP_CACHE_SIZE = 32
 # Recovery-time spreads are reported for falls at least this deep.
 RECOVERY_DEPTHS = (-0.05, -0.10, -0.20)
 PEER_KEY = ("category", "plan", "option")
@@ -425,6 +431,7 @@ class Research:
         self._reader = reader
         self._snapshots = snapshots
         self._rights = rights
+        self._groups: dict[tuple[int, str, str, str], dict[str, MonthEnds]] = {}
 
     async def warm(self) -> None:
         """Decode the latest snapshot now, so the first request after a compute does not wait."""
@@ -686,20 +693,29 @@ class Research:
             raise FilterError("category", "no fund in this category, plan and option")
         return found
 
-    async def _month_ends(self, snapshot: Snapshot, rows: Sequence[FundRow]) -> dict[str, Any]:
-        """Code -> month-ends, read at the snapshot's revision."""
+    async def _month_ends(
+        self, snapshot: Snapshot, category: str, plan: str, option: str
+    ) -> dict[str, MonthEnds]:
+        """Code -> month-ends of one peer group, read at the snapshot's revision."""
+        key = (snapshot.id, category, plan, option)
+        if key in self._groups:
+            return self._groups[key]
+        rows = self._peer_rows(snapshot, category, plan, option)
         found = await self._reader.series([r.amfi_code for r in rows], snapshot.revision)
         as_of = snapshot.as_of.toordinal()
         ends = {}
         for one in found:
             dates, navs, _, _ = valid_series(one.points)
             ends[one.fund.amfi_code] = month_end_values(dates, navs, as_of)
-        return dict(sorted(ends.items()))
+        self._groups[key] = dict(sorted(ends.items()))
+        if len(self._groups) > _GROUP_CACHE_SIZE:
+            del self._groups[next(iter(self._groups))]
+        return self._groups[key]
 
     async def _group_ranks(
         self, snapshot: Snapshot, category: str, plan: str, option: str
     ) -> tuple[list[str], list[dict[int, Rank]], list[dict[int, Rank]]]:
-        ends = await self._month_ends(snapshot, self._peer_rows(snapshot, category, plan, option))
+        ends = await self._month_ends(snapshot, category, plan, option)
         members = [PeerFund({}, e, {}, False) for e in ends.values()]
         return list(ends), monthly_ranks(members, "ret_1y"), monthly_ranks(members, "cagr_3y")
 
@@ -947,6 +963,20 @@ class Research:
             "notes": notes,
         }
 
+    async def risk_free(self, revision: int | None = None) -> tuple[Envelope, dict[str, Any]]:
+        """The 91-day T-bill cut-off yields behind every risk-free value, with their source."""
+        snapshot, envelope = await self._pinned(revision)
+        points = await self._reader.rates(TBILL_91, snapshot.revision)
+        return envelope, {
+            "series": TBILL_91,
+            "unit": "% a year",
+            "points": [[day.isoformat(), value] for day, value in points],
+            "method": "Each auction's yield is in force until the next auction and accrues "
+            "yield ÷ 365 each calendar day.",
+            "acknowledgement": "Source: Reserve Bank of India (Handbook of Statistics on the "
+            "Indian Economy; Treasury Bills: Full Auction Result press releases).",
+        }
+
     async def regimes(self, revision: int | None = None) -> tuple[Envelope, dict[str, Any]]:
         """The proxy's falls and recoveries, with its label and daily levels."""
         snapshot, envelope = await self._pinned(revision)
@@ -998,7 +1028,7 @@ class Research:
     ) -> tuple[Envelope, dict[str, Any]]:
         """A point-in-time top-``top`` strategy in one peer group against its median."""
         snapshot, envelope = await self._pinned(revision)
-        ends = await self._month_ends(snapshot, self._peer_rows(snapshot, category, plan, option))
+        ends = await self._month_ends(snapshot, category, plan, option)
         try:
             months = backtest.run(ends, signal, top)
         except backtest.BacktestError as error:

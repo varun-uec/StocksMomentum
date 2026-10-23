@@ -20,6 +20,7 @@ from wickstreet.mf_data.application.ingest import (
     CrossCheck,
     DailyRefresh,
     ImportArchive,
+    ImportRates,
     IngestNavDay,
     IngestSchemeMaster,
     Reparse,
@@ -27,6 +28,7 @@ from wickstreet.mf_data.application.ingest import (
 from wickstreet.mf_data.infrastructure.amfi import AmfiAdapter
 from wickstreet.mf_data.infrastructure.mfapi import MfapiAdapter
 from wickstreet.mf_data.infrastructure.raw_store import FileRawStore
+from wickstreet.mf_data.infrastructure.rbi import RbiAdapter
 from wickstreet.mf_data.infrastructure.reader import SqlMfReader
 from wickstreet.mf_data.infrastructure.store import SqlMfStore
 from wickstreet.mf_data.infrastructure.tigzig import TigzigAdapter
@@ -43,6 +45,7 @@ class Ingestion:
     archive: ImportArchive
     crosscheck: CrossCheck
     reparse: Reparse
+    rates: ImportRates
 
     async def aclose(self) -> None:
         """Close every adapter's HTTP client."""
@@ -84,6 +87,7 @@ def build_ingestion(settings: WickstreetSettings, database: Database) -> Ingesti
         ),
         crosscheck=CrossCheck(mfapi, store, raw_store, rights),
         reparse=Reparse(day, store),
+        rates=ImportRates(RbiAdapter(), store, raw_store, rights),
     )
 
 

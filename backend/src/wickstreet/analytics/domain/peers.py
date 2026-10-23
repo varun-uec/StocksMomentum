@@ -37,6 +37,7 @@ PEER_METRICS = (
     ("vol_3y", False),
     ("mdd_3y", True),
     ("sortino_3y", True),
+    ("sharpe_3y", True),
     ("ret_risk_3y", True),
     ("consistency_3y", True),
     ("score", True),

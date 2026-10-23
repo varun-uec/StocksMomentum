@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from wickstreet.mf_data.domain.model import Anomaly, NavRecord, SchemeRecord
+from wickstreet.mf_data.domain.model import Anomaly, NavRecord, RatePoint, SchemeRecord
 
 
 class BlockingError(Exception):
@@ -124,3 +124,27 @@ def compare_series(
         stored_only=len(stored.keys() - reference.keys()),
         examples=tuple(examples),
     )
+
+
+# A yield outside this range is a parse error, not a rate (% a year).
+RATE_RANGE = (Decimal("0"), Decimal("25"))
+
+
+def check_rates(records: Iterable[RatePoint]) -> list[RatePoint]:
+    """Return the file's rates in date order, or raise :class:`BlockingError`.
+
+    Blocking: no rows, a value outside ``RATE_RANGE``, or one series and date given two
+    different values. Identical repeats are dropped.
+    """
+    unique: dict[tuple[str, date], RatePoint] = {}
+    for record in records:
+        low, high = RATE_RANGE
+        if not low < record.value <= high:
+            raise BlockingError(f"Rate {record.value} on {record.day} is outside {low}-{high}%.")
+        key = (record.series, record.day)
+        if key in unique and unique[key].value != record.value:
+            raise BlockingError(f"{record.series} on {record.day} has two values.")
+        unique[key] = record
+    if not unique:
+        raise BlockingError("The file has no rates.")
+    return sorted(unique.values(), key=lambda r: (r.series, r.day))

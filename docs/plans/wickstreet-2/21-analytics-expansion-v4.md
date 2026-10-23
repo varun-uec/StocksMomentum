@@ -22,23 +22,25 @@ A registered field is not a usable dimension. A field counts toward completion o
 |---|---|---|---|
 | C1 Historical peer rankings | Yes | Yes | Survivorship reduced, not removed (§5) |
 | C2 Rolling performance | Yes | Yes | — |
-| C3 Advanced SIP | Yes | Yes | No independent real-data check of the rolling SIP view (G5) |
+| C3 Advanced SIP | Yes | Yes | — |
 | C4 Direct vs regular | NAV part | NAV: yes; TER: no | Cost drag needs E1 |
 | C5 Drawdown | Yes | Yes | — |
 | C6 Risk-return efficiency | Yes | Yes | — |
 | C7 Correlation | Yes | Yes | — |
 | C8 IDCW total return | No | No (E5) | E5 |
 | C9 Classification | Partly | Yes | SEBI 2026 categories (Unclassified 1,102 → 111) and fund type done; categories as filed at past dates have no source |
-| C10 Selection backtesting | Yes | Yes | No independent real-data check (G5) |
+| C10 Selection backtesting | Yes | Yes | — |
 | C11 Investor-level attribution | No | No | Slice 6, E1 |
-| C12–C21 | No | No | E1–E7 ([doc 22](22-e1-e7-source-research.md)) |
+| C12 Benchmark analytics | No | Risk-free: yes; TRI: no | E3 |
+| C13 Risk-free metrics | Yes | Yes (E2, RBI, 2016-07 to 2026-10) | Rates must be imported as RBI publishes them; stale after 35 days |
+| C14–C21 | No | No | E1, E3–E7 ([doc 22](22-e1-e7-source-research.md)) |
 | C22 Tax-aware analysis | Partly | Yes | Rules back to 2018-04-01 done; exit loads (E1), switching costs and post-tax comparison across funds not built |
 | C23 Market regimes | Proxy | Yes | Index regimes need E3 |
 | C24 Deterioration detection | Yes | Yes | — |
 | C25–C28, C30 | No | — | Slice 6 |
 | C29 Explainable rankings | Yes | Yes | — |
 
-Gates for the v4 items: G1, G4, G6 and G8 met. G2: month-end ranks match an independent pandas rebuild from SQL rows, and the §5 limits are stated. G3: per-field coverage and `as_of` on every response; no separate calculation timestamp. G5: independent real-data checks cover C1, C4, C5 and C7; C3, C10 and C23 have golden tests only. G7: measured against the Slice 3 baseline ([as built](../../current/architecture.md#wickstreet-20-nav-analytics-v4)); the event-loop stall grew from 75 ms to about 170 ms.
+Gates for the v4 items: G1, G4, G6 and G8 met. G2: month-end ranks match an independent pandas rebuild from SQL rows, and the §5 limits are stated. G3: per-field coverage and `as_of` on every response; no separate calculation timestamp. G5: independent real-data checks cover C1, C3, C4, C5, C7, C10, C13 and C23. G7: measured against the Slice 3 baseline ([as built](../../current/architecture.md#wickstreet-20-nav-analytics-v4)); the event-loop stall grew from 75 ms to about 170 ms.
 
 ## 2. Capabilities
 

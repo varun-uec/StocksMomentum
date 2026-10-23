@@ -1,6 +1,6 @@
 # Architecture — as built
 
-Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2), the [Slice 3](#wickstreet-20-mf-analytics-v3-slice-3) section on 2026-10-23, and the [v4](#wickstreet-20-nav-analytics-v4) section on 2026-10-23.
+Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2), the [Slice 3](#wickstreet-20-mf-analytics-v3-slice-3) section on 2026-10-23, the [v4](#wickstreet-20-nav-analytics-v4) section on 2026-10-23, and the [E2](#wickstreet-20-risk-free-rate-e2-method-v5) section on 2026-10-23.
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
@@ -173,15 +173,30 @@ Implements the v4 scope of [doc 21](../plans/wickstreet-2/21-analytics-expansion
 | Load and decode | 0.6 s | 0.8 s |
 | Presets | ~18 ms | 30–35 ms |
 | Longest event-loop stall during a compute | 75 ms | ~170 ms (full GC passes; per-group work runs in a thread) |
-| Rank history, transitions or backtest, largest group (Index Funds direct growth, 409 funds) | — | ~1.4 s |
+| Rank history, transitions or backtest, largest group (Index Funds direct growth, 409 funds) | — | 0.67 s on the first call, 17–29 ms after (was 1.4 s) |
 | Backtest, Flexi Cap direct growth | — | 0.37 s |
 | Rolling SIP 5Y, underwater, confidence, regimes, score, frontier | — | 7–94 ms |
 
 Three computes gave the same SHA-256. Of 8,668 active funds, 111 stay Unclassified (v3: 1,102). The opt-in real-data tests check the v4 ranges, current drawdown against SQL, month-end ranks against an independent pandas rebuild, near-duplicates against the compare correlation (1e-12), pair gaps, and a byte-identical recompute.
 
+**Peer-group reads.** `SqlMfReader.series` filters `nav` on `plan_option_id`, so PostgreSQL walks `pk_nav` in order; the earlier filter on `amfi_code` through the join made it scan all 22M rows (1.28 s → 0.26 s in the database). `Research` keeps the month-ends of the last 32 peer groups per snapshot in process; a snapshot never changes, so entries need no invalidation.
+
+**Real-data validation.** Opt-in tests rebuild, with separate code: month-end ranks (pandas from SQL), the backtest month by month (pandas), the rolling SIP (pandas, with XIRR by Newton's method against the code's bisection), and the regime proxy's levels and windows (pandas). All match.
+
 **Not built.** The splice across `plan_option_link` (M16): the table has no rows, and links are curated, never inferred.
 
 **Snapshot row replaced.** The first v4 snapshot (id 6) used an approximate near-duplicate correlation; it was deleted and recomputed as id 7. Snapshots 1, 2 and 5 (v1–v3) stay.
+
+## Wickstreet 2.0 risk-free rate (E2), method v5
+
+Implements dataset E2 of [doc 21](../plans/wickstreet-2/21-analytics-expansion-v4.md) and method v5 ([mf-metrics.md](mf-metrics.md#risk-free-v5)).
+
+- **Source.** RBI's 91-day Treasury Bill auctions: the Handbook of Statistics table "Auctions of 91-Day Government of India Treasury Bills" (editions 2017 to 2026, each about July to June) and the weekly "Treasury Bills: Full Auction Result" press releases for later auctions. DBIE's report viewer failed (its report host serves an invalid certificate), and RBI's file host answers scripts with a bot challenge. So **Wickstreet fetches nothing**: a person downloads the files, and `wickstreet mf import-rates FILE... --url URL...` imports them. Grants 13–16 (`rbi`: storage, display, derived metrics, internal AI processing) record RBI's reuse-with-acknowledgement terms and the owner's direction.
+- **Code.** `mf_data/infrastructure/rbi.py` parses both layouts with the standard library (zip and XML for XLSX). `ImportRates` checks the rates (`check_rates`), keeps the raw file, and publishes one revision per file through `SqlMfStore.publish_rates`. A changed value supersedes; nothing is deleted. Migration `0004` adds `rate_point` (shared reference data) and makes `revision.retrieval_grant_id` nullable: an imported file has no retrieval grant. `History.risk_free` and `MfReader.rates` read the series at the revision; `metrics.RiskFree` turns it into the daily-accruing deposit.
+- **Loaded (2026-10-23).** 529 auctions, 2016-07-05 to 2026-10-14; overlapping files agreed exactly (0 superseded). The 2026-10-21 auction accepted no bids and has no rate. Snapshot v5 at revision 2801: 126 s, 585 MB.
+- **Routes.** `GET /risk-free` (points, method, RBI acknowledgement). Fields `rf_1y`, `rf_3y`, `sharpe_1y`, `sharpe_3y` and `sharpe_3y_cat_*`; `sortino_3y` now measures against the risk-free return.
+- **Checks.** Unit tests on synthetic RBI-shaped files; an import test (storage grant needed, no retrieval grant recorded, unchanged re-import, correction supersedes); a real-data test that rebuilds `rf_3y` and `sharpe_3y` with pandas from SQL (1e-9). The v5 recompute is byte-identical.
+- **Operation.** Rates go stale 35 days after the last stored auction, then risk-free fields become `NA no_risk_free`. New auctions must be imported until the owner decides whether Wickstreet may fetch the weekly releases itself.
 
 ## Data stores
 
