@@ -32,8 +32,12 @@ The earlier proposal added company research, mutual funds, ETFs, a unified scree
 | 13 | Proposed ADRs and methodology decisions | [ADD A2](../../architecture/ADD-amendment-A2.md), [ADR-016](../../architecture/adr/ADR-016-fundamentals-point-in-time.md), [017](../../architecture/adr/ADR-017-funds-etfs-holdings.md), [018](../../architecture/adr/ADR-018-unified-screening.md), [019](../../architecture/adr/ADR-019-portfolio-look-through.md), [020](../../architecture/adr/ADR-020-descriptive-scorecards.md), [021](../../architecture/adr/ADR-021-data-supply-policy.md) |
 | — | **Historical staged implementation plan (Stage A execution instructions superseded)** | [11-wickstreet-2.0.md](11-wickstreet-2.0.md) |
 | — | D0-R data-source research and feasibility (for owner review) | [12-d0r-data-source-research.md](12-d0r-data-source-research.md) |
-| — | **Wickstreet 2.0 (Mutual Funds, ₹199) / 3.0 (Stocks) release plan** (Proposed) | [13-wickstreet-2.0-mf-first-release-plan.md](13-wickstreet-2.0-mf-first-release-plan.md) |
+| — | **Wickstreet 2.0 (Mutual Funds, ₹199) / 3.0 (Stocks) release plan** (canonical; its SaaS scope is Phase 2 under ADR-023) | [13-wickstreet-2.0-mf-first-release-plan.md](13-wickstreet-2.0-mf-first-release-plan.md) |
+| — | **Stage B implementation plan** (Accepted planning baseline; implementation separately gated) | [14-stage-b-implementation-plan.md](14-stage-b-implementation-plan.md) |
+| — | **Stage B0 product proposition and validation gates** (accepted planning baseline; synthetic evidence limits explicit; Discovery, Prototype, fixture-only B1 and Commercial decisions remain separate) | [15-stage-b0-product-and-value-specification.md](15-stage-b0-product-and-value-specification.md) |
+| — | **B0 Discovery Protocol** (Accepted planning method; interviews, account activity and execution remain separately gated) | [16-b0-discovery-protocol.md](16-b0-discovery-protocol.md) |
 | — | **Free MF data feasibility** (research, 2026-10-23): CONDITIONAL GO; AMFI commercial permission blocks live data | [17-mf-free-data-feasibility.md](17-mf-free-data-feasibility.md) |
+| — | **Multilingual research agent: core product** (owner decisions 2026-10-23: agent is core; differentiation first, cost later. Architecture accepted in [ADR-022](../../architecture/adr/ADR-022-multilingual-research-agent.md) and [ADR-023](../../architecture/adr/ADR-023-operating-modes.md)) | [18-multilingual-research-agent.md](18-multilingual-research-agent.md) |
 
 ## Key decisions taken (routine, reversible)
 

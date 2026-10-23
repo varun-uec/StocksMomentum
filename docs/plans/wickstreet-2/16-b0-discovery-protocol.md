@@ -14,6 +14,18 @@ The long-term objective is useful Tickertape-class MF capability, but evidence f
 
 Personalised recommendations, user-specific allocation, suitability and rebalancing instructions remain outside this discovery proposition. Participants describe their own research; Wickstreet does not tell them what to buy.
 
+### 1.1 Owner decision: no-outreach prototype path
+
+> **Superseded in part, 2026-10-23:** [ADR-023](../../architecture/adr/ADR-023-operating-modes.md) replaces the throwaway prototype with the Phase 1 production-evolvable personal application. Saved research uses the tenant-enforced persistence of ADR-023 §2.6 from the first slice, not separate prototype storage. Data follows [ADR-022 §2.11](../../architecture/adr/ADR-022-multilingual-research-agent.md): rights-clean real data, AMFI only within the owner-set personal scope, synthetic fixtures in tests. The no-outreach rule and the completed Tickertape benchmark still apply.
+
+The owner has replaced interview-led discovery as a prerequisite for the initial synthetic prototype. This decision takes precedence over interview/recruitment requirements and Discovery Gate packets elsewhere in this protocol and the B0 baseline for this internal slice only. Interviews, recruitment, surveys and vendor outreach are prohibited under the current scope, not deferred tasks that block prototype development. The accepted six-task Tickertape observations in §5.2 supply the initial functional benchmark; do not repeat completed account research.
+
+Present one concise scope, implementation boundary and acceptance criteria for separate owner approval, then implement that approved slice: discovery/filtering → scheme information and synthetic historical research → consistent fund comparison → metric definitions/provenance → private saved research. Reuse the existing stack/components and design language. Use exclusively fictitious schemes and synthetic observations; no live feed, market-data ingestion or real customer records. Local prototype saves must be isolated from existing stock workspaces and explicitly distinguished from production tenant-safe persistence.
+
+Evaluate internally against the documented Tickertape task coverage, clarity, navigation and reproducibility. Participant-based H2 experiments and statistical demand/price tests are not required for this internal evaluation; developer observations do not validate user usability, actual MF data parity, willingness to pay or conversion. ₹199 remains a hypothesis. Existing interview and matched-condition protocols are retained for a future separately authorized decision, not current prerequisites.
+
+Desk-only review of public MF supplier descriptions, licensing terms and indicative economics may continue without contacting anyone, creating accounts or obtaining datasets. Record source/access date, published terms and costs separately from unknown permissions, minimum commitments and quotations; do not assume commercial rights. Full commercial data, regulatory, tenancy and launch gates remain in force before their corresponding exposure. A3, Stage B structure and all Momentum25/Wickstreet 3.0 capabilities remain protected. This decision authorizes the minimal protocol reconciliation and scope proposal; prototype implementation awaits scope approval. No purchase, deployment, commit or push is authorized.
+
 ## 2. Evidence streams and approval boundary
 
 | Evidence stream | What it can establish | Conditions / approval status |
@@ -142,6 +154,8 @@ Tickertape's observed outputs may inform a workflow benchmark only where access 
 
 ## 7. Preliminary data affordability and unit economics
 
+**No-outreach desk check (2026-10-22):** [AMFI's published terms](https://www.amfiindia.com/terms-of-use) restrict ordinary use to personal/non-commercial purposes and do not establish Wickstreet's SaaS permission. [Accord](https://www.accordfintech.com/static/data-feed-solutions.aspx) publicly describes MF data feeds through FTP/API, but no applicable public tariff or Wickstreet-specific commercial-use grant was established. [CMOTS](https://www.cmots.com/services/market-data-provider)' indexed supplier description mentions 12-month subscriptions; its full page required JavaScript during this check. Current pricing, minimum commitments, coverage, derived-use rights, shared caching and free/paid user display terms remain unverified. Supplier availability is not permission. Use only labelled cost sensitivities until verifiable terms exist; no contact, account creation or dataset retrieval occurred, and these unknowns do not block the synthetic prototype.
+
 Use the [B0 affordability assumption](15-stage-b0-product-and-value-specification.md#6-data-rights-and-199-cost-envelope) only as an initial screen. At ₹199/year including an illustrative 18% GST, the tax-exclusive amount is **₹168.64 per paying subscriber/year** before any operating cost. This rate/treatment is not confirmed for Wickstreet; professional tax classification is required.
 
 For a sensitivity check, allocate 0%, 10%, 20% and 30% of ₹168.64 to data. These are arithmetic scenarios, not approved budget targets or supplier quotes:
@@ -201,9 +215,9 @@ A positive discovery result may support a request for Prototype Gate approval. I
 | Decision | Status |
 |---|---|
 | Accept this protocol as the planning method | Accepted (2026-10-22); no execution authority |
-| Authorize 8–12 qualitative interviews and recruitment | Not authorized |
+| Authorize 8–12 qualitative interviews and recruitment | Prohibited under current no-outreach scope; not a prototype prerequisite |
 | Authorize hands-on Tickertape/alternative account tasks | Six-task Tickertape session completed 2026-10-22 under separate explicit owner authorization; benchmark closed. No alternative-provider or further account testing authorized. |
-| Authorize a synthetic prototype | Not authorized; separate Prototype Gate |
+| Authorize a synthetic prototype | Scope/criteria proposal is the next approval gate under §1.1; implementation awaits separate approval; interviews, surveys and vendor contact are not prerequisites |
 | Authorize fixture-only B1 engineering | Not authorized; separate decision after prototype evidence |
 | Approve data acquisition, channel experiments, spending or price testing | Not authorized; separate approvals |
 

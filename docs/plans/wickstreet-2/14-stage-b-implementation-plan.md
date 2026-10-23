@@ -3,6 +3,8 @@
 > **Status: Accepted as the Stage B planning baseline (2026-10-22).** The owner approved this delivery sequence. It remains a plan only: it does not authorize code changes, migrations, dependency additions, data acquisition or ingestion, provider selection, infrastructure expenditure, deployment, commits or pushes. Each implementation slice and any associated spending requires separate owner authority.
 >
 > **Authority:** [Accepted ADD Amendment A3](../../architecture/ADD-amendment-A3.md) is authoritative for architecture, product boundaries and capability preservation. The [canonical Wickstreet 2.0/3.0 release plan](13-wickstreet-2.0-mf-first-release-plan.md) governs product scope, data-rights requirements and bootstrap economics. This document adds sequencing detail only; it does not supersede either.
+>
+> **Sequencing note, 2026-10-23:** Stage B (initial SaaS) is now Phase 2. Phase 1 personal mode ([ADR-023](../../architecture/adr/ADR-023-operating-modes.md)) comes first. Phase 1 implementation of the MF core and the Research Agent is authorised on that basis; this plan's SaaS slices stay separately gated. The §5 and §9 rules on personal or educational terms apply to SaaS mode; personal-mode AMFI handling follows [ADR-022 §2.11](../../architecture/adr/ADR-022-multilingual-research-agent.md).
 
 ## 1. Stage B outcome
 

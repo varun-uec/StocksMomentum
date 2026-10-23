@@ -332,3 +332,12 @@ This accepted architecture records the following direction:
 7. Preserve ₹0 incremental development hosting, founder-led operations and demand-triggered spending.
 
 **A3 is Accepted:** it is the target architecture for Wickstreet 2.0/3.0, and its specific ADR-010 supersession is effective. No implementation, infrastructure expenditure, data onboarding or deployment is authorized by this acceptance; those actions still require separate owner authority.
+
+## 17. Later accepted extensions (2026-10-23)
+
+This section records owner decisions taken after A3's acceptance. The text above is unchanged.
+
+- **Research Agent.** [ADR-022](adr/ADR-022-multilingual-research-agent.md) adds a Research Agent bounded context to §5. It adds `Research Agent → {Analytics, Scenarios, MF data (read), Workspaces, Rights, Entitlements}` to §6.4; nothing depends on the agent. Model calls are a new egress path, governed by ADR-022 §2.8.
+- **Operating modes and package.** [ADR-023](adr/ADR-023-operating-modes.md) runs one core in personal and SaaS modes. MF code lives in the `wickstreet` package, with its own PostgreSQL schema and Alembic environment. Momentum25 is unchanged (§3.2).
+- **Phase and stage.** Phase 1 personal mode is a Stage A deployment on the owner's machine. It holds the owner's own records and only the data ADR-022 §2.11 permits. It holds no other person's data. Phase 2 SaaS starts at Stage B, and every Stage B gate in §4 still applies.
+- **MF data foundation.** Proposed in the [ADR-017 2.0 realignment](adr/ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-proposed-2026-10-23). It needs owner acceptance before that slice starts.

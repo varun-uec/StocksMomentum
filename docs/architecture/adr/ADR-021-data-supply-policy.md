@@ -22,3 +22,6 @@ The M16 check found that NSE's website terms forbid automated collection and sim
 - **Ship scrapers like many open-source tools:** rejected. It breaches stated terms and exposes the project as distributor.
 - **Depend on an unofficial free API:** rejected. Unknown upstream rights and a single operator.
 - **Wait for a vendor before designing:** rejected. Contracts let design and code proceed.
+
+## Update 2026-10-23
+Accepted [ADR-022](ADR-022-multilingual-research-agent.md) and [ADR-023](ADR-023-operating-modes.md) rely on rules 1, 3, 4 and 6 of this ADR. ADR-022 §2.11 makes one owner exception to rule 2: a disabled-by-default AMFI adapter in personal mode, within `amfi.personal_scope`. Rule 5 is met per dataset by the owner decisions recorded in ADR-022 §2.11. The status stays Proposed. The owner should accept this ADR together with the [ADR-017 realignment](ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-proposed-2026-10-23), because accepted records already depend on it.

@@ -2,6 +2,8 @@
 
 > **Current direction and documentation edits approved, 2026-10-22.** Bootstrapped, founder-operated MF research and user-directed calculators. Implementation, expenditure, real market data ingestion, CAS intake, IA applications, commits, pushes and deployments remain unauthorised. This is the canonical release plan. The accepted [Wickstreet Target Architecture — ADD Amendment A3](../../architecture/ADD-amendment-A3.md) governs the architecture; acceptance does not authorize implementation. See the [blueprint](README.md) and [D0-R research](12-d0r-data-source-research.md).
 
+> **Delivery direction, 2026-10-23 (owner):** Phase 1 builds a complete, self-hosted, single-user personal MF research application with the multilingual Research Agent. Phase 2 evolves the same application into the hosted SaaS described below, after commercial data rights and regulatory requirements are resolved. One core, two operating modes: [ADR-023](../../architecture/adr/ADR-023-operating-modes.md). Agent: [ADR-022](../../architecture/adr/ADR-022-multilingual-research-agent.md). The SaaS scope, economics and gates in this plan apply to Phase 2. Bulk AMFI acquisition stays gated until a legal basis exists ([17](17-mf-free-data-feasibility.md)). **Governing requirement:** the personal application must be production-evolvable; commercialisation adds capabilities, configuration, scale and data rights, without rewriting the MF data foundation, analytics, workstation or agent ([ADR-023 §2.0](../../architecture/adr/ADR-023-operating-modes.md)).
+
 ## Context and decision
 
 **Validate a useful MF research proposition and scale spending progressively.** Tickertape-class MF research remains the long-term benchmark. A paid research workspace is the leading B0 hypothesis, not a selected product or approved feature bundle. Wickstreet calculates consequences of investment choices made by users; it does not prescribe investments. No IA business is a 2.0 launch dependency. The former advisory proposal and earlier budgets are superseded as current strategy; historical owner decisions remain below.
@@ -102,6 +104,8 @@ This retained model is a conditional illustration, not evidence for or against c
 | Free account cost | ₹2/year | Same assumption, measure actual usage |
 | Development hosting | ₹0 incremental | Growth expenditure starts with production exposure |
 | Credits / MF data licence | ₹0 credit benefit / conditional ₹0 licence | Same |
+
+**No inference cost is modelled.** The agent became core on 2026-10-23, and its cost is deferred ([18 §6](18-multilingual-research-agent.md#6-economics-deferred-by-the-owner-2026-10-23), AG-4). The ₹2/year free-account cost covers no model calls. Until per-task cost is measured, this model cannot support a claim that a free-tier agent fits the ₹199 economics.
 
 Payment rate anchor: R9. Merchant acceptance, subscription extras, refunds and settlement timing require confirmation. GST remains a conservative modelling assumption, not a claim that every pre-threshold business must register. Actual registration, invoicing, credit notes and input credits require entity-specific tax review.
 
