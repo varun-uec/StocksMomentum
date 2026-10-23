@@ -65,7 +65,7 @@ Each dataset follows the Slice 1 pattern: an import contract, raw files kept, ap
 
 | Slice | Delivers |
 |---|---|
-| 3 | NAV analytics v3 (§3), composite scores and best-fund rankings, screener v2 (60+ fields, presets, custom formulas over registry fields), calculators (SIP, SWP, STP, lump sum, tax), the status field |
+| 3 | **Built 2026-10-23** ([as built](../../current/architecture.md#wickstreet-20-mf-analytics-v3-slice-3)). NAV analytics v3 (§3), composite scores and best-fund rankings, screener v2 (120 fields, presets, custom formulas over registry fields), calculators (SIP, SWP, STP, lump sum, tax), the status field |
 | 4 | Research workstation UI: screener, fund page tabs, compare, calculators; personal workspace (watchlists, saved screens, notes, alerts, exports) |
 | 5 | Multilingual agent over every service, including recommendations and allocations with their evidence |
 | E1–E4 | One slice per dataset; each adds its fields to the registry, fund page, compare, scores and agent tools |

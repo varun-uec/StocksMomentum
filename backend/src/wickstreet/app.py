@@ -25,6 +25,7 @@ from platform_common.http import (
 )
 from platform_common.log import get_logger
 from wickstreet.analytics.application.research import NoSnapshotError, UnknownFundError
+from wickstreet.analytics.domain.calculators import SimulationError
 from wickstreet.analytics.domain.screening import CursorError, FilterError
 from wickstreet.analytics.interface.http import router as research_router
 from wickstreet.config import WickstreetSettings, get_settings
@@ -154,6 +155,7 @@ _PROBLEMS: tuple[tuple[type[Exception], int, str], ...] = (
     (CursorError, 422, "invalid-cursor"),
     (NoSnapshotError, 404, "no-snapshot"),
     (UnknownFundError, 404, "unknown-fund"),
+    (SimulationError, 422, "invalid-simulation"),
 )
 
 

@@ -295,3 +295,65 @@ async def test_every_cli_publish_path_computes_the_snapshot(
     snapshot = await SqlSnapshotStore(app_database).find(None, METHOD_VERSION)
     assert snapshot is not None
     assert snapshot.revision == await SqlMfReader(app_database).pointer()
+
+
+async def test_slice3_views_presets_formulas_and_calculators(
+    published: FakeSource, app_database: Database, client: TestClient
+) -> None:
+    await _compute(app_database).execute()
+
+    metrics = client.get("/funds/10001/metrics").json()
+    assert metrics["values"]["status"] == "active"
+    assert metrics["values"]["category_basis"] == "amfi"
+    assert metrics["states"]["score"] == {"state": "NA", "reason": "history_too_short"}
+    assert metrics["states"]["ret_1y_cat_rank"] == {"state": "NA", "reason": "too_few_peers"}
+
+    presets = client.get("/screener/presets").json()["presets"]
+    assert len(presets) == 6
+    for preset in presets:
+        run = client.post(
+            "/screener/run",
+            json={"filter": preset["filter"], "sort": preset["sort"], "columns": preset["columns"]},
+        )
+        assert run.status_code == 200, preset["id"]
+
+    formula = client.post(
+        "/screener/run",
+        json={
+            "formulas": {"double": "ret_1y * 2"},
+            "filter": {"field": "double", "op": ">", "value": 0.3},
+            "columns": ["double"],
+        },
+    ).json()
+    assert [r["amfi_code"] for r in formula["rows"]] == ["10001"]
+    assert formula["rows"][0]["values"]["double"] == pytest.approx(0.4, rel=1e-12)
+    bad = client.post("/screener/run", json={"formulas": {"x": "__import__('os')"}})
+    assert bad.status_code == 422
+
+    annual = client.get("/funds/10001/annual").json()
+    assert annual["calendar"] == [{"period": "2026", "return": pytest.approx(0.2), "partial": True}]
+    rolling = client.get("/funds/10001/rolling?window=1y").json()
+    assert rolling["points"] == [["2026-10-22", pytest.approx(0.2, rel=1e-3)]]
+    assert client.get("/funds/10001/rolling?window=2y").status_code == 422
+    assert client.get("/funds/10001/drawdowns").json()["drawdowns"] == []
+
+    lump = client.post(
+        "/calculators/lumpsum",
+        json={"code": "10001", "amount": 1000, "start": "2025-10-22", "end": "2026-10-22"},
+    ).json()
+    value = 1000 * (1 - 0.00005) * 12 / 10
+    assert lump["summary"]["value"] == pytest.approx(value)
+    assert lump["tax"]["tax_class"] == "equity"
+    assert lump["tax"]["total"] == pytest.approx((value - 1000) * 0.2 * 1.04)
+    assert client.post("/calculators/nope", json=lump | {"code": "10001"}).status_code == 422
+    swp = client.post(
+        "/calculators/swp",
+        json={"code": "10001", "amount": 1000, "start": "2025-10-22", "end": "2026-10-22"},
+    )
+    assert swp.status_code == 422
+    assert swp.json()["type"] == "urn:wickstreet:error:invalid-simulation"
+
+    compared = client.get("/compare?code=10001&code=10002").json()
+    assert compared["correlations"] == [
+        {"a": "10001", "b": "10002", "correlation": None, "observations": 2}
+    ]

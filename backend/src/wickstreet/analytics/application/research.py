@@ -8,14 +8,49 @@ rights checks live here, not in HTTP, so every caller inherits them.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from wickstreet.analytics.domain.fields import BY_ID, FIELDS, INDEX, registry_version, row_values
-from wickstreet.analytics.domain.metrics import METHOD_VERSION, Missing, compute, rebase
+from wickstreet.analytics.domain import calculators, views
+from wickstreet.analytics.domain.calculators import Outcome
+from wickstreet.analytics.domain.classify import (
+    CAUTION,
+    NAV_EXCLUDING_PAYOUTS,
+    UNCLASSIFIED,
+    sibling_categories,
+)
+from wickstreet.analytics.domain.fields import (
+    FIELDS,
+    INDEX,
+    Field,
+    attributes,
+    ordered,
+    registry_version,
+)
+from wickstreet.analytics.domain.formulas import compile_formulas, with_formulas
+from wickstreet.analytics.domain.metrics import (
+    ACTIVE,
+    METHOD_VERSION,
+    METRIC_FIELDS,
+    NO_PEER_GROUP,
+    Missing,
+    Value,
+    compute,
+    rebase,
+)
+from wickstreet.analytics.domain.peers import (
+    RANKED_INPUTS,
+    PeerFund,
+    absent_fields,
+    add_group_fields,
+    group_absence,
+)
 from wickstreet.analytics.domain.screening import (
+    REGISTRY,
+    Columns,
     FilterError,
     Group,
     decode_cursor,
@@ -30,16 +65,29 @@ from wickstreet.analytics.domain.screening import (
 )
 from wickstreet.analytics.domain.snapshot import (
     Encoded,
+    Encoder,
     FundRow,
     Snapshot,
     SnapshotStore,
-    assemble,
-    pack,
-    row_json,
 )
+from wickstreet.analytics.domain.tax import (
+    GRANDFATHER_BEFORE,
+    TAX_CLASSES,
+    TaxResult,
+    capital_gains_tax,
+    tax_class_of,
+)
+from wickstreet.analytics.domain.views import correlation
 from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.domain.rights import Use
-from wickstreet.mf_data.domain.reads import FundRecord, History, Link, MfReader, NavPoint
+from wickstreet.mf_data.domain.reads import (
+    FundRecord,
+    FundSeries,
+    History,
+    Link,
+    MfReader,
+    NavPoint,
+)
 
 DEFAULT_COLUMNS = ("category", "plan", "option", "ret_1y", "cagr_3y", "cagr_5y", "vol_3y", "mdd_3y")
 MAX_PAGE = 500
@@ -66,6 +114,12 @@ class ComputeOutcome:
     funds: int = 0
 
 
+async def _turn(count: int) -> None:
+    """Give the event loop a turn every ``_YIELD_EVERY`` funds; much of the work has no I/O."""
+    if count % _YIELD_EVERY == 0:
+        await asyncio.sleep(0)
+
+
 class ComputeSnapshot:
     """Compute the snapshot of the published revision once (MF-11)."""
 
@@ -73,26 +127,72 @@ class ComputeSnapshot:
     async def encode(history: History) -> Encoded:
         """Every fund's fields at the history's revision, encoded; stores nothing.
 
-        Each row is serialised as it is computed, the loop gets a turn every
-        ``_YIELD_EVERY`` funds, and the gzip runs in a thread, so requests keep moving.
+        Pass 1 computes each fund's own metrics from its stream. Pass 2 sets sibling
+        categories and the cross-fund fields (ranks, consistency, score). Pass 3
+        streams the rows through the encoder in plan-option order. The loop gets a
+        turn every ``_YIELD_EVERY`` funds, so requests keep moving.
         """
         as_of = history.as_of.toordinal()
-        rows: list[tuple[int, str]] = []
+        records: list[FundRecord] = []
+        own: list[tuple[tuple[Value, ...], dict[str, str]]] = []
+        # Month-end rolling 3Y of active funds only; no other fund joins a group.
+        monthly: dict[int, tuple[Sequence[int], Sequence[float]]] = {}
         async for series in history.funds:
-            fund = series.fund
             metrics = compute(series.points, as_of)
-            row = FundRow(
-                fund.plan_option_id,
-                fund.amfi_code,
-                fund.nav_name or fund.scheme_name or fund.amfi_code,
-                row_values(fund, metrics),
-                metrics.anchors,
+            records.append(series.fund)
+            own.append((tuple(metrics.values[n] for n in METRIC_FIELDS), metrics.anchors))
+            if metrics.values["status"] == ACTIVE:
+                monthly[series.fund.plan_option_id] = (metrics.month_ends, metrics.rolling_3y)
+            await _turn(len(records))
+        siblings = sibling_categories(records)
+        status_at, input_at = (
+            METRIC_FIELDS.index("status"),
+            [METRIC_FIELDS.index(n) for n in RANKED_INPUTS],
+        )
+        classes: list[dict[str, Value]] = []
+        groups: dict[tuple[str, str, str], list[PeerFund]] = defaultdict(list)
+        grouped: dict[int, PeerFund] = {}
+        for fund, (metric_values, _) in zip(records, own, strict=True):
+            values = attributes(fund, siblings.get(fund.plan_option_id))
+            classes.append(values)
+            status = str(metric_values[status_at])
+            if group_absence(status, str(values["category"]), UNCLASSIFIED) is None:
+                month_ends, rolling_3y = monthly[fund.plan_option_id]
+                inputs = {n: metric_values[i] for n, i in zip(RANKED_INPUTS, input_at, strict=True)}
+                peer = PeerFund(inputs, month_ends, rolling_3y)
+                groups[
+                    (str(values["category"]), str(values["plan"]), str(values["option"]))
+                ].append(peer)
+                grouped[fund.plan_option_id] = peer
+            await _turn(len(classes))
+        monthly.clear()
+        for members in groups.values():
+            add_group_fields(members)
+            await asyncio.sleep(0)
+        encoder = Encoder(METHOD_VERSION, history.revision, history.as_of, history.sources)
+        for done, i in enumerate(
+            sorted(range(len(records)), key=lambda i: records[i].plan_option_id)
+        ):
+            fund, values = records[i], classes[i]
+            metric_values, anchors = own[i]
+            values |= dict(zip(METRIC_FIELDS, metric_values, strict=True))
+            found = grouped.get(fund.plan_option_id)
+            if found is None:
+                absent = group_absence(str(values["status"]), str(values["category"]), UNCLASSIFIED)
+                values |= absent_fields(absent or Missing("NA", NO_PEER_GROUP))
+            else:
+                values |= found.values
+            encoder.add(
+                FundRow(
+                    fund.plan_option_id,
+                    fund.amfi_code,
+                    fund.nav_name or fund.scheme_name or fund.amfi_code,
+                    ordered(values),
+                    anchors,
+                )
             )
-            rows.append((row.plan_option_id, row_json(row)))
-            if len(rows) % _YIELD_EVERY == 0:
-                await asyncio.sleep(0)  # Funds without NAVs arrive with no I/O between them.
-        body = assemble(METHOD_VERSION, history.revision, history.as_of, history.sources, rows)
-        return await asyncio.to_thread(pack, body, len(rows))
+            await _turn(done + 1)
+        return encoder.finish()
 
     def __init__(self, reader: MfReader, snapshots: SnapshotStore, rights: RightsGate) -> None:
         """Compute over ``reader`` into ``snapshots``, under ``rights``."""
@@ -143,6 +243,8 @@ class ScreenRequest:
     size: int = 50
     after: str | None = None
     data_revision: int | None = None
+    # Name -> expression; each name can be filtered, sorted and shown like a field.
+    formulas: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,6 +262,8 @@ class ScreenResult:
     where: Group | None
     # When nothing matches: how many would match without each top-level part.
     relaxations: list[dict[str, Any]]
+    # Field id -> position in the rows' values, formulas included.
+    index: Mapping[str, int]
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,18 +278,34 @@ class FundDetail:
 
 @dataclass(frozen=True, slots=True)
 class Comparison:
-    """Metrics of a few funds and their NAVs rebased to 100 at a common start."""
+    """Metrics of a few funds, their NAVs rebased to 100 at a common start, and correlations."""
 
     envelope: Envelope
     start: date
     rows: list[FundRow]
     series: dict[str, list[tuple[str, float]]]
+    correlations: list[dict[str, Any]]
 
 
-def _columns(columns: Sequence[str] | None) -> tuple[str, ...]:
+@dataclass(frozen=True, slots=True)
+class Simulated:
+    """A calculator's result with its tax estimate."""
+
+    envelope: Envelope
+    outcome: Outcome
+    tax: TaxResult
+    tax_class: str | None
+    cautions: list[str]
+
+
+SIMULATIONS = ("sip", "lumpsum", "swp", "stp")
+ROLLING_WINDOWS = {"1y": 12, "3y": 36, "5y": 60}
+
+
+def _columns(columns: Sequence[str] | None, known: Columns) -> tuple[str, ...]:
     chosen = tuple(columns) if columns is not None else DEFAULT_COLUMNS
     for i, column in enumerate(chosen):
-        if column not in BY_ID:
+        if column not in known:
             raise FilterError(f"columns[{i}]", f"unknown field {column!r}")
     return chosen
 
@@ -264,31 +384,40 @@ class Research:
 
     async def screen(self, request: ScreenRequest) -> ScreenResult:
         """Evaluate a screen; a cursor keeps its pages on the snapshot it started on."""
-        where = parse_filter(request.filter)
-        sort = parse_sort(list(request.sort))
-        columns = _columns(request.columns)
+        # Validate everything before any read; formula positions are set after the read.
+        known: Columns = dict(REGISTRY) | {
+            name: (Field(name, name, "Formula", "number", None, request.formulas[name]), -1)
+            for name in compile_formulas(request.formulas)
+        }
+        where = parse_filter(request.filter, known)
+        sort = parse_sort(list(request.sort), known)
+        columns = _columns(request.columns, known)
         if not 1 <= request.size <= MAX_PAGE:
             raise FilterError("page.size", f"size is 1 to {MAX_PAGE}")
-        request_id = fingerprint(request.filter, list(request.sort))
+        request_id = fingerprint(request.filter, list(request.sort), dict(request.formulas))
         revision, offset = request.data_revision, 0
         if request.after is not None:
             revision, offset = decode_cursor(request.after, request_id)
             if request.data_revision not in (None, revision):
                 raise FilterError("page.after", "cursor does not match this request")
         snapshot, envelope = await self._pinned(revision)
-        where = resolve(where, snapshot.rows)
-        matched = screen(snapshot.rows, where, sort)
+        rows, known, formula_missing = with_formulas(snapshot.rows, request.formulas)
+        # Parse again against the real formula positions.
+        where = resolve(parse_filter(request.filter, known), rows)
+        sort = parse_sort(list(request.sort), known)
+        matched = screen(rows, where, sort)
         end = offset + request.size
         return ScreenResult(
             envelope=envelope,
-            total=len(snapshot.rows),
+            total=len(rows),
             matched=len(matched),
-            excluded_missing=excluded_for_missing(snapshot, where),
+            excluded_missing=excluded_for_missing(snapshot.missing | formula_missing, where),
             columns=columns,
             rows=matched[offset:end],
             next=encode_cursor(snapshot.revision, request_id, end) if end < len(matched) else None,
             where=where,
-            relaxations=relaxations(snapshot.rows, where) if not matched else [],
+            relaxations=relaxations(rows, where) if not matched else [],
+            index={name: position for name, (_, position) in known.items()},
         )
 
     async def search(
@@ -335,16 +464,104 @@ class Research:
             start = max(known) if known else snapshot.as_of
         series = await self._reader.series(codes, snapshot.revision)
         rebased = {s.fund.amfi_code: rebase(s.points, start.toordinal()) for s in series}
-        return Comparison(envelope, start, rows, rebased)
+        since = start.toordinal()
+        windows = {s.fund.amfi_code: [p for p in s.points if p[0] >= since] for s in series}
+        correlations = []
+        for i, a in enumerate(codes):
+            for b in codes[i + 1 :]:
+                value, observations = correlation(windows.get(a, []), windows.get(b, []))
+                correlations.append(
+                    {"a": a, "b": b, "correlation": value, "observations": observations}
+                )
+        return Comparison(envelope, start, rows, rebased, correlations)
+
+    async def _series(
+        self, code: str, revision: int | None
+    ) -> tuple[Envelope, FundRow, FundSeries]:
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        found = await self._reader.series([code], snapshot.revision)
+        return envelope, row, found[0]
+
+    async def annual(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """Calendar-year, financial-year and monthly returns."""
+        envelope, _, series = await self._series(code, revision)
+        return envelope, views.annual(series.points, envelope.as_of.toordinal())
+
+    async def rolling(
+        self, code: str, window: str, revision: int | None = None
+    ) -> tuple[Envelope, list[tuple[str, float]]]:
+        """Annualised rolling returns of one window length."""
+        if window not in ROLLING_WINDOWS:
+            raise FilterError("window", f"window is one of {', '.join(ROLLING_WINDOWS)}")
+        envelope, _, series = await self._series(code, revision)
+        return envelope, views.rolling_series(series.points, ROLLING_WINDOWS[window])
+
+    async def drawdowns(
+        self, code: str, top: int, revision: int | None = None
+    ) -> tuple[Envelope, list[dict[str, Any]]]:
+        """The deepest falls in the stored history."""
+        envelope, _, series = await self._series(code, revision)
+        return envelope, views.drawdowns(series.points, top)
+
+    async def simulate(
+        self,
+        kind: str,
+        codes: Sequence[str],
+        params: Mapping[str, Any],
+        tax_class: str | None = None,
+        slab_rate: float | None = None,
+        revision: int | None = None,
+    ) -> Simulated:
+        """Run a calculator over real NAVs and estimate the tax on its redemptions.
+
+        SIP and lump sum are taxed as if every unit were redeemed on the valuation date.
+        """
+        if kind not in SIMULATIONS:
+            raise FilterError("kind", f"kind is one of {', '.join(SIMULATIONS)}")
+        if tax_class is not None and tax_class not in TAX_CLASSES:
+            raise FilterError("tax_class", f"tax_class is one of {', '.join(TAX_CLASSES)}")
+        if slab_rate is not None and not 0 <= slab_rate <= 1:
+            raise FilterError("slab_rate", "slab_rate is a fraction from 0 to 1")
+        envelope, row, series = await self._series(codes[0], revision)
+        points = series.points
+        if kind == "sip":
+            outcome = calculators.sip(points, **params)
+        elif kind == "lumpsum":
+            outcome = calculators.lumpsum(points, **params)
+        elif kind == "swp":
+            outcome = calculators.swp(points, **params)
+        else:
+            if len(codes) != 2:
+                raise FilterError("codes", "stp needs a source and a target code")
+            _, _, target = await self._series(codes[1], revision)
+            outcome = calculators.stp(points, target.points, **params)
+        sales = outcome.sales
+        chosen = tax_class or tax_class_of(
+            str(cell(row, "category")), str(cell(row, "asset_class"))
+        )
+        series_2018 = calculators.Series.of(points)
+        at = series_2018.on_or_before(GRANDFATHER_BEFORE - 1)
+        nav_2018 = series_2018.navs[at] if at is not None else None
+        tax = capital_gains_tax(sales, chosen, slab_rate, nav_2018)
+        cautions = [
+            "Past NAVs only; the simulation does not forecast returns.",
+            "Exit loads, surcharge and securities transaction tax are not modelled.",
+        ]
+        if cell(row, "return_basis") == NAV_EXCLUDING_PAYOUTS:
+            cautions.append(CAUTION)
+        return Simulated(envelope, outcome, tax, chosen, cautions)
 
 
-def cell(row: FundRow, field: str) -> Any:
+def cell(row: FundRow, field: str, index: Mapping[str, int] = INDEX) -> Any:
     """A field's value, or ``None`` when it is missing."""
-    value = row.values[INDEX[field]]
+    value = row.values[index[field]]
     return None if isinstance(value, Missing) else value
 
 
-def state(row: FundRow, field: str) -> dict[str, str] | None:
+def state(row: FundRow, field: str, index: Mapping[str, int] = INDEX) -> dict[str, str] | None:
     """A missing field's state and reason, or ``None`` when it has a value."""
-    value = row.values[INDEX[field]]
+    value = row.values[index[field]]
     return {"state": value.state, "reason": value.reason} if isinstance(value, Missing) else None

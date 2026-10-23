@@ -176,7 +176,7 @@ def test_excluded_counts_name_the_reasons() -> None:
             ]
         }
     )
-    assert excluded_for_missing(snap, tree) == [
+    assert excluded_for_missing(snap.missing, tree) == [
         {
             "path": "all[0]",
             "field": "ret_1y",

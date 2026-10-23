@@ -10,7 +10,7 @@ from datetime import date, timedelta
 import pytest
 
 from wickstreet.analytics.domain import classify
-from wickstreet.analytics.domain.fields import FIELDS, row_values
+from wickstreet.analytics.domain.fields import FIELDS, attributes, ordered
 from wickstreet.analytics.domain.metrics import (
     ANNUALISE_VOL,
     GAP_AT_START,
@@ -25,6 +25,7 @@ from wickstreet.analytics.domain.metrics import (
     rolling,
     volatility,
 )
+from wickstreet.analytics.domain.peers import absent_fields
 from wickstreet.analytics.domain.snapshot import FundRow, decode, encode
 from wickstreet.mf_data.domain.reads import FundRecord
 
@@ -294,7 +295,8 @@ def test_non_growth_options_are_flagged_as_excluding_payouts() -> None:
 
 def test_the_encoding_is_deterministic_and_round_trips() -> None:
     metrics = compute(series(("2023-06-23", 100.0), ("2024-06-28", 120.0)), o("2024-06-28"))
-    rows = [FundRow(1, "10001", "Example", row_values(FUND, metrics), metrics.anchors)]
+    values = attributes(FUND, None) | metrics.values | absent_fields(Missing("NA", "no_peer_group"))
+    rows = [FundRow(1, "10001", "Example", ordered(values), metrics.anchors)]
     first = encode(1, 7, date(2024, 6, 28), ["tigzig", "amfi"], rows)
     second = encode(1, 7, date(2024, 6, 28), ["amfi", "tigzig"], list(rows))
     assert first == second

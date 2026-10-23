@@ -8,6 +8,7 @@ The same request at the same revision gives the same bytes, except
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import date
 from typing import Annotated, Any
@@ -23,8 +24,10 @@ from wickstreet.analytics.application.research import (
     state,
 )
 from wickstreet.analytics.domain import classify
-from wickstreet.analytics.domain.fields import FIELDS
+from wickstreet.analytics.domain.calculators import SimulationError
+from wickstreet.analytics.domain.fields import FIELDS, INDEX
 from wickstreet.analytics.domain.metrics import Missing
+from wickstreet.analytics.domain.presets import PRESETS
 from wickstreet.analytics.domain.screening import Group, explain
 from wickstreet.analytics.domain.snapshot import FundRow
 from wickstreet.dependencies import Context
@@ -51,13 +54,13 @@ def _envelope(envelope: Envelope) -> dict[str, Any]:
     }
 
 
-def _row(row: FundRow, columns: Any) -> dict[str, Any]:
-    states = {c: s for c in columns if (s := state(row, c)) is not None}
+def _row(row: FundRow, columns: Any, index: Mapping[str, int] = INDEX) -> dict[str, Any]:
+    states = {c: s for c in columns if (s := state(row, c, index)) is not None}
     out = {
         "plan_option_id": row.plan_option_id,
         "amfi_code": row.amfi_code,
         "name": row.name,
-        "values": {c: cell(row, c) for c in columns},
+        "values": {c: cell(row, c, index) for c in columns},
         "states": states,
     }
     if cell(row, "return_basis") == classify.NAV_EXCLUDING_PAYOUTS:
@@ -88,6 +91,7 @@ class ScreenIn(BaseModel):
     columns: list[str] | None = None
     page: PageIn = Field(default_factory=PageIn)
     data_revision: int | None = None
+    formulas: dict[str, str] = Field(default_factory=dict)
 
 
 @router.get("/screener/fields")
@@ -122,6 +126,7 @@ async def screener_run(_: Context, research: ResearchDep, body: ScreenIn) -> dic
             size=body.page.size,
             after=body.page.after,
             data_revision=body.data_revision,
+            formulas=body.formulas,
         )
     )
     return {
@@ -131,7 +136,7 @@ async def screener_run(_: Context, research: ResearchDep, body: ScreenIn) -> dic
         "excluded_missing": result.excluded_missing,
         "columns": list(result.columns),
         "rows": [
-            _row(r, result.columns) | {"conditions": _conditions(result.where, r)}
+            _row(r, result.columns, result.index) | {"conditions": _conditions(result.where, r)}
             for r in result.rows
         ],
         "relaxations": result.relaxations,
@@ -247,4 +252,107 @@ async def compare(
         "start": result.start.isoformat(),
         "funds": [_metrics(r) for r in result.rows],
         "series": {c: [[d, v] for d, v in points] for c, points in result.series.items()},
+        "correlations": result.correlations,
+    }
+
+
+@router.get("/screener/presets")
+async def screener_presets(_: Context) -> dict[str, Any]:
+    """Prebuilt screens; run one by posting its filter, sort and columns."""
+    return {"presets": [asdict(preset) for preset in PRESETS]}
+
+
+@router.get("/funds/{code}/annual")
+async def fund_annual(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """Calendar-year and financial-year returns, partial ends labelled, and monthly returns."""
+    envelope, table = await research.annual(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **table}
+
+
+@router.get("/funds/{code}/rolling")
+async def fund_rolling(
+    _: Context,
+    research: ResearchDep,
+    code: str,
+    window: str = "3y",
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """Annualised rolling returns by window end date (1y, 3y or 5y)."""
+    envelope, points = await research.rolling(code, window, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, "window": window, "points": points}
+
+
+@router.get("/funds/{code}/drawdowns")
+async def fund_drawdowns(
+    _: Context,
+    research: ResearchDep,
+    code: str,
+    top: Annotated[int, Query(ge=1, le=20)] = 5,
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """The deepest falls from a peak, with trough and recovery dates."""
+    envelope, episodes = await research.drawdowns(code, top, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, "drawdowns": episodes}
+
+
+class CalculatorIn(BaseModel):
+    """A simulation over a fund's real NAVs.
+
+    ``amount`` is the monthly instalment (sip) or the initial investment (lumpsum, swp,
+    stp); ``instalment`` is the monthly withdrawal (swp) or transfer (stp).
+    """
+
+    code: str
+    target: str | None = None
+    amount: float
+    instalment: float | None = None
+    day: int = 1
+    start: date
+    end: date
+    step_up: float = 0.0
+    tax_class: str | None = None
+    slab_rate: float | None = None
+    data_revision: int | None = None
+
+
+def _params(kind: str, body: CalculatorIn) -> dict[str, Any]:
+    window = {"start": body.start, "end": body.end}
+    if kind == "sip":
+        return {"amount": body.amount, "day": body.day, "step_up": body.step_up, **window}
+    if kind == "lumpsum":
+        return {"amount": body.amount, **window}
+    if body.instalment is None:
+        raise SimulationError(f"{kind} needs an instalment")
+    if kind == "swp":
+        return {"amount": body.amount, "withdrawal": body.instalment, "day": body.day, **window}
+    return {"amount": body.amount, "transfer": body.instalment, "day": body.day, **window}
+
+
+@router.post("/calculators/{kind}")
+async def calculator(
+    _: Context, research: ResearchDep, kind: str, body: CalculatorIn
+) -> dict[str, Any]:
+    """SIP, lump sum, SWP or STP over real NAVs, with XIRR and a capital-gains estimate."""
+    codes = [body.code] + ([body.target] if body.target else [])
+    result = await research.simulate(
+        kind, codes, _params(kind, body), body.tax_class, body.slab_rate, body.data_revision
+    )
+    tax = result.tax
+    return {
+        **_envelope(result.envelope),
+        "kind": kind,
+        "codes": codes,
+        "summary": result.outcome.summary,
+        "timeline": result.outcome.timeline,
+        "tax": {
+            "rules": tax.rules,
+            "tax_class": result.tax_class,
+            "total": tax.total,
+            "years": tax.years,
+            "sales_not_modelled": tax.not_modelled,
+            "reason": tax.reason,
+        },
+        "cautions": result.cautions,
     }

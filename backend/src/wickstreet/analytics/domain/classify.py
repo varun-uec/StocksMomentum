@@ -10,6 +10,8 @@ them; every other label is ``Unclassified``. Each mapping is listed here and in
 from __future__ import annotations
 
 import re
+from collections import defaultdict
+from collections.abc import Sequence
 
 from wickstreet.mf_data.domain.reads import FundRecord
 
@@ -245,3 +247,25 @@ def plan_of(fund: FundRecord) -> str:
 def return_basis(option: str) -> str:
     """Only a growth option's NAV return is its whole return."""
     return NAV_BASIS if option == GROWTH else NAV_EXCLUDING_PAYOUTS
+
+
+def sibling_categories(funds: Sequence[FundRecord]) -> dict[int, str]:
+    """Categories for Unclassified plan-options, taken from their own scheme (method v3).
+
+    A plan-option whose label maps to no category takes the canonical category of the
+    other plan-options of the same scheme (same AMC and scheme name), when they name
+    exactly one. Returns plan-option id -> category for the ones it resolves.
+    """
+    by_scheme: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for fund in funds:
+        if fund.amc and fund.scheme_name:
+            category = canonical_category(fund.category)
+            if category != UNCLASSIFIED:
+                by_scheme[(fund.amc, fund.scheme_name)].add(category)
+    resolved: dict[int, str] = {}
+    for fund in funds:
+        if canonical_category(fund.category) == UNCLASSIFIED and fund.amc and fund.scheme_name:
+            found = by_scheme.get((fund.amc, fund.scheme_name), set())
+            if len(found) == 1:
+                resolved[fund.plan_option_id] = next(iter(found))
+    return resolved

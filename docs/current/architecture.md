@@ -1,6 +1,6 @@
 # Architecture — as built
 
-Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), and the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2).
+Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2), and the [Slice 3](#wickstreet-20-mf-analytics-v3-slice-3) section on 2026-10-23.
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
@@ -123,6 +123,28 @@ Implements ADR-017 MF-3, MF-11 to MF-13 and ADR-018 for MF, under the method in 
 **Event loop.** A compute shares the app's event loop. Rows are serialised as they are computed, the loop gets a turn every 256 funds, and gzip and SHA-256 run in a thread. Measured over a full real compute: the loop waits 29 ms at p99 and 51 ms at most. After each compute the job decodes the new snapshot (1.2 s, once), so the first request does not wait for it.
 
 **Known limits.** See [mf-metrics.md](mf-metrics.md#known-limits). Every snapshot is kept; pruning is not built.
+
+## Wickstreet 2.0 MF analytics v3 (Slice 3)
+
+Implements [doc 20](../plans/wickstreet-2/20-wickstreet-2.0-complete-mf-scope.md) §3 and the Slice 3 row of §5, under method v3 ([mf-metrics.md](mf-metrics.md)).
+
+| Module (`wickstreet/analytics/domain/`) | Holds |
+|---|---|
+| `metrics.py` | Per-fund v3 metrics: status, annual returns, drawdown episodes, worst periods, downside risk, and the month-end rolling 3Y returns for consistency (compact arrays). |
+| `peers.py` | Category ranks, percentiles, quartiles and medians, consistency and the composite score, one peer group at a time. |
+| `classify.py` | Adds sibling categories. |
+| `formulas.py` | Screen formulas: an `ast` whitelist of numbers, number fields, `+ - * /` and parentheses. |
+| `presets.py` | Six prebuilt screens. |
+| `views.py` | Per-fund views computed on request: annual and monthly returns, rolling series, drawdown episodes, correlation. |
+| `calculators.py`, `tax.py` | SIP, lump sum, SWP and STP over real NAVs, FIFO lots, XIRR, and the `in-2024-07-23` capital-gains rules. |
+
+**Routes** (under `/api/v1/mf`, all pinned like Slice 2): `GET /screener/presets`; `POST /screener/run` accepts `formulas`; `GET /funds/{code}/annual`, `/rolling?window=1y|3y|5y`, `/drawdowns?top=`; `POST /calculators/{sip|lumpsum|swp|stp}`; `GET /compare` adds return correlations. A bad simulation gives 422 `invalid-simulation`.
+
+**Compute.** `ComputeSnapshot.encode` runs in three passes. Pass 1 computes each fund's own metrics from the stream. Pass 2 sets sibling categories and runs each peer group. Pass 3 streams the rows through `snapshot.Encoder`, which gzips and hashes them as they come. The registry has 120 fields. A snapshot stores a missing value as `null` plus a small reason code, and it stores its missing counts, so decoding allocates little.
+
+**Measured on the real store (2026-10-23, revision 2769).** Compute: 102 s, 404 MB peak (a recompute in a child process: 101 s, 388 MB). Payload 9.0 MB gzipped. Load 0.6 s; one decoded snapshot holds 219 MB. The loop waits 75 ms at most during a compute. Presets screen in about 18 ms; a formula over all 40,213 funds screens in 132 ms. Of 8,668 active funds, 4,688 have a score and 4,730 a consistency value; 1,102 stay Unclassified, because no sibling plan-option carries a current label. The opt-in real-data test checks the ranges of every v3 field and recomputes the snapshot byte for byte.
+
+**Snapshot rows replaced.** While the encoding changed on 2026-10-23, the v3 snapshot of revision 2769 was recomputed twice; the superseded rows (ids 3 and 4, derived caches) were deleted with the owner login. Snapshots 1 and 2 (v1, v2) stay.
 
 ## Data stores
 
