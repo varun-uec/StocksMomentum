@@ -171,6 +171,21 @@ async def funds_search(
     }
 
 
+@router.get("/funds/sparklines")
+async def fund_sparklines(
+    _: Context,
+    research: ResearchDep,
+    code: Annotated[list[str], Query()],
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """Month-end NAVs over the last 3 years for 1 to 50 funds, for small trend lines."""
+    envelope, series = await research.sparklines(code, data_revision)
+    return {
+        **_envelope(envelope),
+        "series": {c: [[d, v] for d, v in points] for c, points in series.items()},
+    }
+
+
 @router.get("/funds/{code}")
 async def fund_detail(
     _: Context, research: ResearchDep, code: str, data_revision: Revision = None

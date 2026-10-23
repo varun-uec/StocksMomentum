@@ -55,8 +55,24 @@ def _window(months: int | None) -> str:
     return "Since first NAV" if months is None else _period(months)
 
 
+# The labels of the ranked base fields, so a derived field reads "Sharpe 3Y category
+# rank", not "SHARPE 3Y category rank" (audit F-16).
+_PEER_LABELS = {
+    "ret_1y": "Return 1Y",
+    "cagr_3y": "CAGR 3Y",
+    "cagr_5y": "CAGR 5Y",
+    "vol_3y": "Volatility 3Y",
+    "mdd_3y": "Max drawdown 3Y",
+    "sortino_3y": "Sortino 3Y",
+    "sharpe_3y": "Sharpe 3Y",
+    "ret_risk_3y": "Return per volatility 3Y",
+    "consistency_3y": "Consistency 3Y",
+    "score": "Score",
+}
+
+
 def _peer_label(name: str) -> str:
-    return "Score" if name == "score" else name.replace("_", " ").upper()
+    return _PEER_LABELS[name]
 
 
 _ROLLING_STATS = {
@@ -473,7 +489,7 @@ FIELDS: tuple[Field, ...] = (
     ),
     Field(
         "ret_1y_cat_quartile_1y_ago",
-        "RET 1Y quartile 1Y ago",
+        "Return 1Y quartile 1Y ago",
         "Deterioration",
         "number",
         "quartile",
@@ -492,7 +508,7 @@ FIELDS: tuple[Field, ...] = (
     ),
     Field(
         "quartile_change_1y",
-        "RET 1Y quartile change",
+        "Return 1Y quartile change",
         "Deterioration",
         "number",
         "quartile",

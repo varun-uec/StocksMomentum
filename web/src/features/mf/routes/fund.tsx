@@ -3,19 +3,22 @@
  * `?tab=` deep-links a section; each tab mounts only when opened, so a fund page
  * fetches the reads it shows and no more.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { CompareButton, WatchButton } from '../components/CompareTray';
+import { FundMark } from '../components/FundMark';
 import { Holdings, Profile } from '../components/fund/Profile';
-import { Overview } from '../components/fund/Overview';
+import { FundHeadline, Overview } from '../components/fund/Overview';
 import { Peers } from '../components/fund/Peers';
 import { Performance } from '../components/fund/Performance';
 import { Risk } from '../components/fund/Risk';
 import { I } from '../components/icons';
 import { Badge, Button, Delta, EmptyState, ErrorState, Field, Loading, Sheet, SnapshotNote, TabLinks, buttonClass, inputClass, useTitle } from '../components/ui';
 import { MfApiError } from '../api';
+import { rememberFund } from '../context';
 import { categoryShort, date, enumLabel, isNum, schemeName } from '../format';
 import { useFields, useFund, useMetrics, useNavs } from '../queries';
+import { token } from '../theme/themes';
 import { useRecordMutations, useRecords, type NoteBody } from '../workspace';
 
 const TABS = [
@@ -104,6 +107,10 @@ export default function Fund() {
   const fields = useFields();
   const [notes, setNotes] = useState(false);
   useTitle(metrics.data ? schemeName(metrics.data.name) : 'Fund');
+  const known = !!metrics.data;
+  useEffect(() => {
+    if (known) rememberFund(code);
+  }, [code, known]);
 
   if (!valid || (fund.error instanceof MfApiError && fund.error.status === 404))
     return (
@@ -119,45 +126,56 @@ export default function Fund() {
   const props = { code, metrics: m, fields: fields.byId };
   const status = String(m.values.status);
 
+  const actions = (
+    <>
+      <WatchButton code={code} name={m.name} label />
+      <CompareButton code={code} name={m.name} label />
+      <Link to={`/mf/simulate?code=${code}`} className={buttonClass('secondary', 'sm')}>
+        <I.lab className="h-4 w-4" />
+        Test an investment
+      </Link>
+      <Button size="sm" onClick={() => setNotes(true)}>
+        <I.note className="h-4 w-4" />
+        Notes
+      </Button>
+    </>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 sm:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink">
+        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
           <I.arrowLeft className="h-4 w-4" />
           Back
         </button>
-        <div className="flex flex-wrap gap-2">
-          <WatchButton code={code} name={m.name} label />
-          <CompareButton code={code} name={m.name} label />
-          <Link to={`/mf/simulate?code=${code}`} className={buttonClass('secondary', 'sm')}>
-            <I.lab className="h-4 w-4" />
-            Test an investment
-          </Link>
-          <Button size="sm" onClick={() => setNotes(true)}>
-            <I.note className="h-4 w-4" />
-            Notes
-          </Button>
-        </div>
+        <div className="hidden flex-wrap gap-2 sm:flex">{actions}</div>
       </div>
 
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="font-display text-[28px] leading-tight sm:text-[36px]">{schemeName(m.name)}</h1>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-mf-muted">
-            <span className="font-medium text-mf-ink-soft">{categoryShort(f.category)}</span>
-            <span aria-hidden="true">·</span>
-            <span>{String(m.values.asset_class)}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              {enumLabel(String(m.values.plan))} · {enumLabel(String(m.values.option))}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>{f.amc}</span>
-            <Badge tone={status === 'active' ? 'brand' : 'warning'}>{enumLabel(status)}</Badge>
-          </p>
+      <header className="relative overflow-hidden rounded-[20px] border border-mf-line p-4 shadow-card sm:p-6" style={{ background: `linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 65%)` }}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <FundMark amc={f.amc} size="lg" className="hidden sm:inline-grid" />
+            <div className="min-w-0">
+              <h1 className="font-display text-[26px] leading-tight sm:text-[34px]">{schemeName(m.name)}</h1>
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-mf-muted">
+                <span className="font-medium text-mf-ink-soft">{categoryShort(f.category)}</span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  {enumLabel(String(m.values.plan))} · {enumLabel(String(m.values.option))}
+                </span>
+                <span aria-hidden="true" className="hidden sm:inline">·</span>
+                <span className="hidden sm:inline">{f.amc}</span>
+                <Badge tone={status === 'active' ? 'brand' : 'warning'}>{enumLabel(status)}</Badge>
+              </p>
+            </div>
+          </div>
+          <LastNav code={code} />
         </div>
-        <LastNav code={code} />
+        <FundHeadline code={code} metrics={m} />
       </header>
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex gap-2 overflow-x-auto border-t border-mf-line bg-mf-surface/95 px-3 py-2 backdrop-blur sm:hidden" role="group" aria-label="Fund actions">
+        {actions}
+      </div>
 
       <TabLinks label="Fund sections" active={tab} tabs={TABS.map((t) => ({ id: t.id, label: t.label, to: `?tab=${t.id}` }))} />
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldDef } from './api';
-import { categoryShort, date, formatField, formatValue, inr, missingLabel, pct, schemeName, unitOf } from './format';
+import { categoryShort, date, formatField, formatValue, inr, inrTick, missingLabel, pct, schemeName, unitOf } from './format';
 
 describe('MF formatting', () => {
   it('shows fractions as percentages with a true minus sign', () => {
@@ -55,5 +55,17 @@ describe('MF formatting', () => {
     expect(categoryShort('Equity Scheme - Flexi Cap Fund')).toBe('Flexi Cap');
     expect(categoryShort('Unclassified')).toBe('Unclassified');
     expect(schemeName('Parag Parikh Flexi Cap Fund - Direct Plan - Growth')).toBe('Parag Parikh Flexi Cap Fund');
+    expect(schemeName('HDFC Flexi Cap Fund - Growth Option - Direct Plan')).toBe('HDFC Flexi Cap Fund');
+    expect(schemeName('Motilal Oswal Midcap Fund-Direct Plan-Growth Option')).toBe('Motilal Oswal Midcap Fund');
+    expect(schemeName('Kotak Flexi Cap Fund - Growth')).toBe('Kotak Flexi Cap Fund');
+  });
+});
+
+describe('inrTick', () => {
+  it('is short and exact', () => {
+    expect(inrTick(1_000_000)).toBe('₹10 L');
+    expect(inrTick(25_000_000)).toBe('₹2.5 Cr');
+    expect(inrTick(20_000)).toBe('₹20k');
+    expect(inrTick(0)).toBe('₹0');
   });
 });

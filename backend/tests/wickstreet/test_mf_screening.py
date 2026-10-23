@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any
 
@@ -250,3 +251,9 @@ def test_an_empty_result_reports_each_relaxation() -> None:
         {"path": "all[2]", "matched": 0},
     ]
     assert relaxations(ROWS, parse_filter({"field": "ret_1y", "op": ">", "value": 9})) == []
+
+
+def test_field_labels_read_as_words_not_codes() -> None:
+    """Audit F-16: no derived label repeats an upper-cased field id."""
+    codes = re.compile(r"\b(RET|VOL|MDD|SHARPE|SORTINO|CONSISTENCY|RISK)\b")
+    assert [f.label for f in FIELDS if codes.search(f.label)] == []

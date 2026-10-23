@@ -6,7 +6,10 @@
 import { Link } from 'react-router';
 import type { FieldDef, ScreenRow, SortKey } from '../../api';
 import { categoryShort, formatField, missingLabel, schemeName, tone } from '../../format';
+import { useSparklines } from '../../queries';
+import { Sparkline } from '../charts';
 import { CompareButton, WatchButton } from '../CompareTray';
+import { FundMark } from '../FundMark';
 import { I } from '../icons';
 import { ScoreBadge } from '../ScoreBadge';
 import { cx } from '../ui';
@@ -55,6 +58,11 @@ export function ResultsTable({
   stale?: boolean;
 }) {
   const primary = sort[0];
+  const lines = useSparklines(rows.map((r) => r.amfi_code));
+  const line = (r: ScreenRow) => {
+    const points = lines.data?.series[r.amfi_code];
+    return <div className="w-[84px]">{points && points.length > 1 ? <Sparkline points={points} height={30} label={`${schemeName(r.name)}: month-end NAV over 3 years`} /> : <span className="block h-[30px]" aria-hidden="true" />}</div>;
+  };
   return (
     <div className={cx('transition-opacity duration-150', stale && 'opacity-50')} aria-busy={stale}>
       {/* Wide screens */}
@@ -64,6 +72,9 @@ export function ResultsTable({
             <tr>
               <th scope="col" className="sticky left-0 z-10 bg-mf-sunken px-4 py-3 text-left font-medium">
                 Fund
+              </th>
+              <th scope="col" className="w-[96px] px-2 py-3 text-left font-medium">
+                3Y NAV
               </th>
               {columns.map((c) => {
                 const active = primary?.field === c;
@@ -76,7 +87,7 @@ export function ResultsTable({
                   </th>
                 );
               })}
-              <th scope="col" className="px-3 py-3 text-right font-medium">
+              <th scope="col" className="sticky right-0 z-10 bg-mf-sunken px-3 py-3 text-right font-medium">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -84,20 +95,26 @@ export function ResultsTable({
           <tbody>
             {rows.map((r) => (
               <tr key={r.amfi_code} className="group border-t border-mf-line hover:bg-mf-sunken/50">
-                <th scope="row" className="sticky left-0 w-[240px] max-w-[240px] bg-mf-surface px-4 py-3 text-left font-normal group-hover:bg-mf-sunken">
-                  <Link to={`/mf/funds/${r.amfi_code}`} className="block truncate font-medium text-mf-ink hover:text-mf-brand-strong">
-                    {schemeName(r.name)}
-                  </Link>
-                  <span className="text-xs text-mf-muted">
-                    {r.name.match(/(Direct|Regular)/i)?.[0] ?? ''} · AMFI {r.amfi_code}
-                  </span>
+                <th scope="row" className="sticky left-0 w-[280px] min-w-[220px] max-w-[280px] bg-mf-surface px-4 py-2.5 text-left font-normal transition-colors group-hover:bg-mf-sunken">
+                  <div className="flex items-center gap-2.5">
+                    <FundMark amc={String(r.values.amc ?? '')} size="sm" />
+                    <div className="min-w-0">
+                      <Link to={`/mf/funds/${r.amfi_code}`} className="line-clamp-2 font-medium leading-snug text-mf-ink hover:text-mf-brand-strong" title={r.name}>
+                        {schemeName(r.name)}
+                      </Link>
+                      <span className="text-xs text-mf-muted">
+                        {r.values.category && !columns.includes('category') ? `${categoryShort(String(r.values.category))} · ` : ''}AMFI {r.amfi_code}
+                      </span>
+                    </div>
+                  </div>
                 </th>
+                <td className="w-[96px] px-2 py-2">{line(r)}</td>
                 {columns.map((c) => (
                   <td key={c} className="whitespace-nowrap px-2.5 py-3 text-right">
                     <Cell row={r} column={c} fields={fields} />
                   </td>
                 ))}
-                <td className="px-3 py-2">
+                <td className="sticky right-0 bg-mf-surface px-3 py-2 shadow-[-8px_0_12px_-10px_rgb(var(--mf-ink)/0.25)] transition-colors group-hover:bg-mf-sunken">
                   <div className="flex justify-end gap-1">
                     <WatchButton code={r.amfi_code} name={r.name} />
                     <CompareButton code={r.amfi_code} name={r.name} />
@@ -121,6 +138,7 @@ export function ResultsTable({
                 </Link>
                 <p className="mt-0.5 text-xs text-mf-muted">{r.values.category ? categoryShort(String(r.values.category)) : `AMFI ${r.amfi_code}`}</p>
               </div>
+              <div className="w-20 shrink-0">{line(r)}</div>
             </div>
             <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2">
               {columns

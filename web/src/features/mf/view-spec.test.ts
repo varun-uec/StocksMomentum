@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldDef } from './api';
-import { decodeView, defaultView, describe as describeCondition, encodeView, formulaNameError, fromApi, toApi } from './view-spec';
+import { UNIVERSE, decodeView, defaultView, describe as describeCondition, encodeView, filterOf, formulaNameError, fromApi, mixesCategories, toApi } from './view-spec';
 import { toggleCode } from './workspace';
 
 const fields = new Map<string, FieldDef>([
@@ -58,5 +58,33 @@ describe('watchlist set edits', () => {
     expect(toggleCode(['a', 'b'], 'a', true)).toEqual(['a', 'b']);
     expect(toggleCode(['a', 'b'], 'a', false)).toEqual(['b']);
     expect(toggleCode([], 'x', false)).toEqual([]);
+  });
+});
+
+describe('Match any keeps the universe (audit F-05)', () => {
+  it('ANDs the gates and ORs the other conditions', () => {
+    const view = { ...defaultView([{ field: 'cagr_3y', op: '>=', value: 0.15 }]), mode: 'any' as const };
+    const filter = filterOf(view);
+    expect(filter).toEqual({ all: [...UNIVERSE, { any: [view.conditions[3], view.conditions[4]] }] });
+  });
+
+  it('keeps Match all unchanged and handles a view with only gates', () => {
+    const view = defaultView();
+    expect(filterOf(view)).toEqual({ all: view.conditions });
+    expect(filterOf({ ...view, mode: 'any', conditions: UNIVERSE })).toEqual({ all: UNIVERSE });
+  });
+});
+
+describe('default screen is category-aware (audit F-06)', () => {
+  it('opens on one category sorted by score', () => {
+    const view = defaultView();
+    expect(view.sort[0].field).toBe('score');
+    expect(mixesCategories(view)).toBe(false);
+  });
+
+  it('flags a score sort across categories', () => {
+    const view = defaultView();
+    expect(mixesCategories({ ...view, conditions: UNIVERSE })).toBe(true);
+    expect(mixesCategories({ ...view, conditions: UNIVERSE, sort: [{ field: 'cagr_3y', dir: 'desc' }] })).toBe(false);
   });
 });

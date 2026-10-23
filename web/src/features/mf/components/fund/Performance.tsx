@@ -1,6 +1,7 @@
 /** Fund performance: trailing returns against the category, annual and monthly returns, rolling returns over time. */
 import { useMemo, useState } from 'react';
-import { date, isNum, pct } from '../../format';
+import { pctTick } from '../../axis';
+import { date, isNum, missingLabel, pct } from '../../format';
 import { useAnnual, useRolling } from '../../queries';
 import { seriesColor } from '../../theme/themes';
 import { ChartFrame, MonthHeatmap, PeriodBars, TimeChart, thin } from '../charts';
@@ -18,6 +19,17 @@ const TRAILING: { label: string; id: string; median?: string; pct?: string; annu
   { label: '10 years', id: 'cagr_10y', annualised: true },
   { label: 'Since first NAV', id: 'cagr_since', annualised: true },
 ];
+
+const NO_PEER_FIGURE = 'Category figures cover 1, 3 and 5 years only';
+
+/** A dash with its reason, for screen readers and on hover (audit F-11). */
+function Reason({ text }: { text: string }) {
+  return (
+    <span className="text-mf-muted" title={text}>
+      —<span className="sr-only"> {text}</span>
+    </span>
+  );
+}
 
 function Trailing({ metrics }: Pick<FundTabProps, 'metrics'>) {
   const v = metrics.values;
@@ -42,16 +54,17 @@ function Trailing({ metrics }: Pick<FundTabProps, 'metrics'>) {
                   {t.annualised && <span className="ml-1 text-xs text-mf-muted">a year</span>}
                 </th>
                 <td className="py-2.5 text-right font-medium">
-                  {isNum(v[t.id]) ? <Delta value={v[t.id]} /> : <span className="text-mf-muted">—</span>}
+                  {isNum(v[t.id]) ? <Delta value={v[t.id]} /> : <Reason text={missingLabel(metrics.states[t.id])} />}
                 </td>
-                <td className="py-2.5 text-right tabular text-mf-ink-soft">{t.median ? pct(v[t.median]) : ''}</td>
-                <td className="py-2.5 text-right tabular text-mf-ink-soft">{t.pct && isNum(v[t.pct]) ? (v[t.pct] as number).toFixed(0) : ''}</td>
-                <td className="py-2.5 text-right text-xs text-mf-muted">{t.id === 'cagr_since' ? date(v.since_start) : t.id === 'ret_ytd' ? '' : date(metrics.anchors[t.id])}</td>
+                <td className="py-2.5 text-right tabular text-mf-ink-soft">{t.median ? (isNum(v[t.median]) ? pct(v[t.median]) : <Reason text={missingLabel(metrics.states[t.median])} />) : <Reason text={NO_PEER_FIGURE} />}</td>
+                <td className="py-2.5 text-right tabular text-mf-ink-soft">{t.pct ? (isNum(v[t.pct]) ? (v[t.pct] as number).toFixed(0) : <Reason text={missingLabel(metrics.states[t.pct])} />) : <Reason text={NO_PEER_FIGURE} />}</td>
+                <td className="py-2.5 text-right text-xs text-mf-muted">{t.id === 'cagr_since' ? date(v.since_start) : date(metrics.anchors[t.id])}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="mt-2 text-xs text-mf-muted">— {NO_PEER_FIGURE.toLowerCase()}; hover a dash for its reason.</p>
     </Card>
   );
 }
@@ -67,7 +80,7 @@ function Annual({ code }: { code: string }) {
       controls={<Segmented label="Year basis" value={basis} onChange={setBasis} options={[{ value: 'calendar', label: 'Calendar' }, { value: 'financial', label: 'Financial (Apr–Mar)' }]} />}
       table={{ columns: ['Year', 'Return', 'Part year'], rows: rows.map((r) => [r.period, pct(r.value), r.partial ? 'Yes' : '']) }}
     >
-      {annual.isError ? <ErrorState error={annual.error} compact /> : annual.isLoading ? <Skeleton className="h-[220px]" /> : <PeriodBars label={`${basis} year returns`} rows={rows} format={(x) => pct(x, 0)} />}
+      {annual.isError ? <ErrorState error={annual.error} compact /> : annual.isLoading ? <Skeleton className="h-[220px]" /> : <PeriodBars label={`${basis} year returns`} rows={rows} format={(x) => pct(x, 1)} tick={pctTick} />}
     </ChartFrame>
   );
 }
@@ -99,7 +112,7 @@ function RollingOverTime({ code }: { code: string }) {
       ) : points.length < 2 ? (
         <p className="py-12 text-center text-sm text-mf-muted">The history is too short for this holding period.</p>
       ) : (
-        <TimeChart label={`Rolling ${window} return`} zero area height={240} series={[{ id: 'r', label: 'Rolling return', points, color: seriesColor(0) }]} format={(x) => pct(x, 0)} />
+        <TimeChart label={`Rolling ${window} return`} zero area height={240} series={[{ id: 'r', label: 'Rolling return', points, color: seriesColor(0) }]} format={(x) => pct(x, 1)} tick={pctTick} />
       )}
     </ChartFrame>
   );

@@ -350,3 +350,15 @@ def test_schedule_clamps_to_month_end() -> None:
         "2024-03-31",
         "2024-04-30",
     ]
+
+
+def test_month_end_navs_keep_the_last_valid_nav_of_each_month() -> None:
+    """Sparklines (audit U-05): NAVs as filed, one per month, the last 3 years only."""
+    start = date(2022, 1, 3).toordinal()
+    points = [(start + i, 10.0 + i, None) for i in range(0, 1400, 7)]
+    points.append((points[-1][0] + 1, None, "jump"))
+    line = views.month_end_navs(points, 36)
+    assert len(line) == 37
+    assert line[-1] == (date.fromordinal(points[-2][0]).isoformat(), points[-2][1])
+    assert [d[:7] for d, _ in line] == sorted({d[:7] for d, _ in line})
+    assert views.month_end_navs([], 36) == []

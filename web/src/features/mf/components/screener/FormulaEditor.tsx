@@ -1,11 +1,12 @@
 /**
  * Custom formula columns (ui-ux doc 02, FormulaEditor). The backend evaluates
- * them: numeric registry ids, numbers, + − × ÷ and brackets. The browser only
- * checks the name rule and length; it never evaluates the expression.
+ * them: numeric registry ids, numbers, + − × ÷ and brackets. The browser checks
+ * the name rule and length, then asks the screener to parse the formula before it
+ * joins the view, so a bad formula never replaces the results (audit F-09).
  */
 import { useRef, useState } from 'react';
-import type { FieldDef } from '../../api';
-import { MAX_FORMULAS, formulaNameError } from '../../view-spec';
+import { MfApiError, mfApi, type FieldDef } from '../../api';
+import { MAX_FORMULAS, UNIVERSE, formulaNameError } from '../../view-spec';
 import { I } from '../icons';
 import { Button, Field, Sheet, inputClass } from '../ui';
 
@@ -31,12 +32,31 @@ export function FormulaEditor({
 }) {
   const [name, setName] = useState('');
   const [expr, setExpr] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const exprRef = useRef<HTMLTextAreaElement>(null);
-  const numeric = [...fields.values()].filter((f) => f.type === 'number');
+  const groups = new Map<string, FieldDef[]>();
+  for (const f of fields.values()) if (f.type === 'number') groups.set(f.group, [...(groups.get(f.group) ?? []), f]);
   const nameError = name ? formulaNameError(name, fields, Object.keys(formulas)) : null;
   const exprError = expr.length > MAX_EXPRESSION ? `Use at most ${MAX_EXPRESSION} characters.` : /[^a-z0-9_+\-*/().\s]/.test(expr) ? 'Use field ids, numbers, + - * / and brackets only.' : null;
   const full = Object.keys(formulas).length >= MAX_FORMULAS;
-  const canAdd = name && expr.trim() && !nameError && !exprError && !full;
+  const canAdd = name && expr.trim() && !nameError && !exprError && !full && !checking;
+
+  /** Run a one-row screen with the formula: the backend's parser is the only judge. */
+  const add = async () => {
+    setChecking(true);
+    setServerError(null);
+    try {
+      await mfApi.screen({ filter: { all: UNIVERSE }, sort: [], columns: [name], formulas: { ...formulas, [name]: expr.trim() }, page: { size: 1 } });
+      onChange({ ...formulas, [name]: expr.trim() });
+      setName('');
+      setExpr('');
+    } catch (e) {
+      setServerError(e instanceof MfApiError ? e.detail || e.title : 'The formula could not be checked. Try again.');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const insert = (text: string) => {
     const el = exprRef.current;
@@ -78,10 +98,7 @@ export function FormulaEditor({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!canAdd) return;
-            onChange({ ...formulas, [name]: expr.trim() });
-            setName('');
-            setExpr('');
+            if (canAdd) void add();
           }}
           className="space-y-3 rounded-[12px] border border-mf-line bg-mf-sunken/60 p-4"
         >
@@ -89,22 +106,31 @@ export function FormulaEditor({
             <input className={inputClass} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} aria-invalid={!!nameError} placeholder="edge_3y" />
           </Field>
           <Field label="Expression" hint={exprError ?? `${expr.length}/${MAX_EXPRESSION}`}>
-            <textarea ref={exprRef} className={`${inputClass} h-24 py-2 font-mono`} value={expr} onChange={(e) => setExpr(e.target.value)} aria-invalid={!!exprError} placeholder="cagr_3y - cagr_3y_cat_median" />
+            <textarea ref={exprRef} className={`${inputClass} h-24 py-2 font-mono`} value={expr} onChange={(e) => { setExpr(e.target.value); setServerError(null); }} aria-invalid={!!exprError || !!serverError} placeholder="cagr_3y - cagr_3y_cat_median" />
           </Field>
           <Field label="Insert a field">
             <select className={inputClass} value="" onChange={(e) => e.target.value && insert(e.target.value)}>
               <option value="">Choose a numeric field…</option>
-              {numeric.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label} ({f.id})
-                </option>
+              {[...groups].map(([group, list]) => (
+                <optgroup key={group} label={group}>
+                  {list.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </Field>
+          {serverError && (
+            <p role="alert" className="rounded-[10px] bg-mf-loss-soft p-2.5 text-sm text-mf-loss">
+              Not added: {serverError.replace(/^formulas\.[a-z_]+: /, '')}. The results keep their last good state.
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-mf-muted">{full ? `At most ${MAX_FORMULAS} formulas.` : 'The screener checks the expression when it runs.'}</p>
+            <p className="text-xs text-mf-muted">{full ? `At most ${MAX_FORMULAS} formulas.` : 'The screener checks the expression before it is added.'}</p>
             <Button type="submit" variant="primary" size="sm" disabled={!canAdd}>
-              Add formula
+              {checking ? 'Checking…' : 'Add formula'}
             </Button>
           </div>
         </form>

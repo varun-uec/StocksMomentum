@@ -68,6 +68,8 @@ Journeys covered: J1 (collection → screen → fund → Back restores), J2 (fun
 
 ## Gaps and dependencies
 
+> **23 Oct 2026:** the [audit remediation](remediation-2026-10-23/REPORT.md) fixed F-01 to F-19 and most of U-01 to U-16. Nested filter groups and revision pinning across views stay open, as below.
+
 | Area | State | Needs |
 |---|---|---|
 | Metric alerts | Planned panel; nothing shown as active | W2 evaluator and event log |

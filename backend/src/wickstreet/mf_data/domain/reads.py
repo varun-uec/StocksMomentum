@@ -7,11 +7,30 @@ from the same data while a refresh publishes.
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator, Sequence
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
+
+# Common words investors type for a fund whose AMFI name says something else.
+SEARCH_SYNONYMS = {"bluechip": ("largecap",), "elss": ("taxsaver",), "taxsaver": ("elss",)}
+
+
+def compact(text: str) -> str:
+    """``"Small-Cap Fund"`` → ``"smallcapfund"``: the form search terms match."""
+    return "".join(search_terms(text))
+
+
+def search_terms(query: str) -> list[str]:
+    """``"SBI Small-cap"`` → ``["sbi", "small", "cap"]``.
+
+    A term matches a fund whose name or AMC contains it, or one of its
+    ``SEARCH_SYNONYMS``, once spaces and punctuation are removed, so ``smallcap``
+    finds "Small Cap".
+    """
+    return re.findall(r"[a-z0-9]+", query.lower())
 
 
 @dataclass(frozen=True, slots=True)

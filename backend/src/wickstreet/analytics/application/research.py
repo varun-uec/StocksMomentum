@@ -93,6 +93,7 @@ from wickstreet.analytics.domain.screening import (
     resolve,
     screen,
 )
+from wickstreet.analytics.domain.search import Standing, ranked
 from wickstreet.analytics.domain.snapshot import (
     Encoded,
     Encoder,
@@ -123,6 +124,9 @@ from wickstreet.mf_data.domain.reads import (
 DEFAULT_COLUMNS = ("category", "plan", "option", "ret_1y", "cagr_3y", "cagr_5y", "vol_3y", "mdd_3y")
 MAX_PAGE = 500
 MAX_COMPARE = 5
+MAX_SPARKLINES = 50
+# Search ranks this many term matches; a broader query should add a term.
+SEARCH_CANDIDATES = 500
 # Funds computed between two turns of the event loop.
 # ponytail: full GC passes over the snapshot's objects still stall the loop ~120 ms;
 # run the compute in its own process if request latency during a compute matters.
@@ -544,8 +548,17 @@ class Research:
     ) -> tuple[Envelope, list[tuple[FundRecord, FundRow | None]]]:
         """Plan-options by name, code or ISIN, with or without NAV history."""
         snapshot, envelope = await self._pinned(revision)
-        found = await self._reader.search(query, limit, snapshot.revision)
-        return envelope, [(f, snapshot.by_code.get(f.amfi_code)) for f in found]
+        found = await self._reader.search(query, SEARCH_CANDIDATES, snapshot.revision)
+        standing = {
+            f.amfi_code: Standing(
+                (cell(row, "plan"), cell(row, "option")) == ("direct", "growth"),
+                cell(row, "since_start") or "",
+            )
+            for f in found
+            if (row := snapshot.by_code.get(f.amfi_code)) and cell(row, "status") == "active"
+        }
+        best = ranked(query, found, standing)[:limit]
+        return envelope, [(f, snapshot.by_code.get(f.amfi_code)) for f in best]
 
     async def fund(self, code: str, revision: int | None = None) -> FundDetail:
         """One plan-option's attributes, metrics row and curated links."""
@@ -595,6 +608,17 @@ class Research:
         values = [c["correlation"] for c in correlations if c["correlation"] is not None]
         average = math.fsum(values) / len(values) if len(values) == len(correlations) else None
         return Comparison(envelope, start, rows, rebased, correlations, average)
+
+    async def sparklines(
+        self, codes: Sequence[str], revision: int | None = None
+    ) -> tuple[Envelope, dict[str, list[tuple[str, float]]]]:
+        """Month-end NAVs over 3 years for up to ``MAX_SPARKLINES`` funds; unknown codes drop."""
+        if not 1 <= len(codes) <= MAX_SPARKLINES:
+            raise FilterError("code", f"sparklines take 1 to {MAX_SPARKLINES} codes")
+        snapshot, envelope = await self._pinned(revision)
+        known = [c for c in dict.fromkeys(codes) if c in snapshot.by_code]
+        found = await self._reader.series(known, snapshot.revision) if known else []
+        return envelope, {s.fund.amfi_code: views.month_end_navs(s.points, 36) for s in found}
 
     async def _series(
         self, code: str, revision: int | None

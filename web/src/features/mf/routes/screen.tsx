@@ -17,13 +17,15 @@ import { Badge, Button, Chip, EmptyState, ErrorState, Field, Loading, PageHeader
 import { download, screenCsv } from '../csv';
 import { categoryShort, enumLabel } from '../format';
 import { useFields, usePresets } from '../queries';
-import { decodeView, defaultView, describe, encodeView, filterOf, isCondition, presetView, type ScreenView } from '../view-spec';
+import { DEFAULT_CATEGORY, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, presetView, type ScreenView } from '../view-spec';
 import { isConflict, useRecordMutations, useRecords, type ResearchRecord } from '../workspace';
 import { useDebounced } from '../use-debounced';
 
 const PAGE = 50;
 const EXPORT_PAGE = 500;
 const MAX_COLUMNS = 12;
+// Read with every result row for the fund cell, never shown as columns or exported.
+const ROW_EXTRAS = ['amc', 'category'];
 
 interface ScreenBody {
   view: ScreenView;
@@ -32,6 +34,18 @@ interface ScreenBody {
 
 
 const short = (v: string) => (v.includes(' - ') ? categoryShort(v) : enumLabel(v));
+
+/** The single category a view keeps, if it keeps exactly one. */
+function categoryOf(view: ScreenView): string | null {
+  const c = view.conditions.find((n) => isCondition(n) && n.field === 'category' && n.op === 'in');
+  return c && isCondition(c) && Array.isArray(c.value) && c.value.length === 1 ? String(c.value[0]) : null;
+}
+
+/** The view with one category condition, or none. */
+function withCategory(view: ScreenView, category: string | null): ScreenView {
+  const rest = view.conditions.filter((n) => !(isCondition(n) && n.field === 'category'));
+  return { ...view, conditions: category ? [...rest, { field: 'category', op: 'in', value: [category] } as Condition] : rest };
+}
 
 function requestOf(view: ScreenView): Omit<ScreenRequest, 'page'> {
   return { filter: filterOf(view), sort: view.sort, columns: view.columns, formulas: view.formulas };
@@ -68,7 +82,7 @@ export default function Screen() {
   const request = useMemo<Omit<ScreenRequest, 'page'> | null>(() => (debouncedKey ? JSON.parse(debouncedKey) : null), [debouncedKey]);
   const results = useInfiniteQuery({
     queryKey: ['mf', 'screen-pages', request],
-    queryFn: ({ pageParam, signal }) => mfApi.screen({ ...request!, page: { size: PAGE, ...(pageParam ? { after: pageParam } : {}) } }, signal),
+    queryFn: ({ pageParam, signal }) => mfApi.screen({ ...request!, columns: [...new Set([...request!.columns, ...ROW_EXTRAS])], page: { size: PAGE, ...(pageParam ? { after: pageParam } : {}) } }, signal),
     initialPageParam: '' as string,
     getNextPageParam: (last) => last.next ?? undefined,
     enabled: !!request && !!fields.data,
@@ -115,7 +129,7 @@ export default function Screen() {
     <div className="space-y-6">
       <PageHeader
         title="Mutual fund screener"
-        lead={`Find funds that match your thesis, with ${fields.data.fields.length} analytics fields from the method v${fields.data.method_version} snapshot.`}
+        lead={<span className="hidden sm:inline">Find funds that match your thesis, with {fields.data.fields.length} analytics fields from the method v{fields.data.method_version} snapshot.</span>}
         actions={
           <>
             <div className="mr-2 text-right">
@@ -124,9 +138,9 @@ export default function Screen() {
               </p>
               <p className="text-xs text-mf-muted">of {first?.total.toLocaleString('en-IN') ?? '—'} plan options</p>
             </div>
-            <Button onClick={() => setSaveOpen(true)}>
+            <Button onClick={() => setSaveOpen(true)} aria-label={savedRecord ? 'Save changes' : 'Save screen'}>
               <I.bookmark className="h-4 w-4" />
-              {savedRecord ? 'Save changes' : 'Save screen'}
+              <span className="hidden sm:inline">{savedRecord ? 'Save changes' : 'Save screen'}</span>
             </Button>
             <ExportButton request={request} total={first?.matched} />
           </>
@@ -135,8 +149,8 @@ export default function Screen() {
 
       {/* Presets and saved screens */}
       <div className="mf-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Preset and saved screens">
-        <Chip pressed={!presetId && !savedId && !encoded} onClick={() => choose(new URLSearchParams())}>
-          Default
+        <Chip pressed={!presetId && !savedId && !encoded} onClick={() => choose(new URLSearchParams())} className="shrink-0">
+          {categoryShort(DEFAULT_CATEGORY)} by score
         </Chip>
         {presets.data?.presets.map((p) => (
           <Chip key={p.id} pressed={presetId === p.id && !encoded} onClick={() => choose(new URLSearchParams({ preset: p.id }))} className="shrink-0">
@@ -183,6 +197,7 @@ export default function Screen() {
               {view.conditions.map((c, i) => (
                 <Chip
                   key={i}
+                  className={cx('max-lg:hidden', isGate(c) && 'border-dashed')}
                   onClick={isCondition(c) && byId.has(c.field) ? () => setEditing({ field: byId.get(c.field)!, index: i }) : undefined}
                   onRemove={() => setView({ ...view, conditions: view.conditions.filter((_, j) => j !== i) })}
                 >
@@ -194,11 +209,16 @@ export default function Screen() {
                 Filters ({view.conditions.length})
               </Button>
               {view.conditions.length > 0 && (
-                <button type="button" onClick={() => setView({ ...view, conditions: [] })} className="ml-auto text-xs text-mf-muted hover:text-mf-ink">
+                <button type="button" onClick={() => setView({ ...view, conditions: [] })} className="ml-auto text-xs text-mf-muted hover:text-mf-ink max-lg:hidden">
                   Clear all
                 </button>
               )}
             </div>
+            {view.mode === 'any' && view.conditions.some(isGate) && (
+              <p className="mt-3 text-xs text-mf-muted">
+                The dashed conditions (status, plan, option) still apply to every fund. “Match any” applies to the others.
+              </p>
+            )}
             {excluded.length > 0 && (
               <details className="mt-3 text-xs text-mf-muted">
                 <summary className="cursor-pointer">
@@ -217,6 +237,17 @@ export default function Screen() {
 
           {/* Result controls */}
           <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
+              Category
+              <select className={cx(inputClass, 'h-9 w-auto max-w-[200px]')} value={categoryOf(view) ?? ''} onChange={(e) => setView(withCategory(view, e.target.value || null))}>
+                <option value="">All categories</option>
+                {(fields.byId.get('category')?.values ?? []).filter((c) => c !== 'Unclassified').map((c) => (
+                  <option key={c} value={c}>
+                    {categoryShort(c)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
               Sort by
               <select className={cx(inputClass, 'h-9 w-auto')} value={view.sort[0]?.field ?? ''} onChange={(e) => setView({ ...view, sort: [{ field: e.target.value, dir: view.sort[0]?.dir ?? 'desc' }] })}>
@@ -244,6 +275,17 @@ export default function Screen() {
             </div>
           </div>
 
+          {mixesCategories(view) && (
+            <div role="note" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px] border border-mf-warning/40 bg-mf-warning-soft px-4 py-3 text-sm text-mf-ink">
+              <I.info className="h-4 w-4 shrink-0 text-mf-warning" />
+              <p className="min-w-0 flex-1">
+                The score ranks a fund inside its own category. Across categories, a debt fund at the top of its group can sit above a stronger equity fund. Pick one category, or sort by a return or risk measure.
+              </p>
+              <Button size="sm" onClick={() => setView({ ...view, sort: [{ field: 'cagr_3y', dir: 'desc' }] })}>
+                Sort by CAGR 3Y
+              </Button>
+            </div>
+          )}
           {error && (
             <div className="space-y-2">
               <ErrorState error={error} onRetry={() => results.refetch()} />
@@ -254,7 +296,7 @@ export default function Screen() {
             <Loading label="Running the screen" />
           ) : first && first.matched === 0 ? (
             <EmptyState title="No fund matches every condition">
-              {first.relaxations.length ? (
+              {first.relaxations.length && view.mode === 'all' ? (
                 <div className="mt-2 space-y-2">
                   <p>Removing one condition would match:</p>
                   <ul className="flex flex-wrap justify-center gap-2">
@@ -497,9 +539,9 @@ function ExportButton({ request, total }: { request: Omit<ScreenRequest, 'page'>
     );
   return (
     <>
-      <Button onClick={run} disabled={!request || !total}>
+      <Button onClick={run} disabled={!request || !total} aria-label="Export CSV">
         <I.download className="h-4 w-4" />
-        Export CSV
+        <span className="hidden sm:inline">Export CSV</span>
       </Button>
       {error instanceof MfApiError && <span role="alert" className="text-xs text-mf-loss">Export failed: {error.message}</span>}
     </>

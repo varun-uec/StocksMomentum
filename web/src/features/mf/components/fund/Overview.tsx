@@ -6,9 +6,12 @@
 import { useState } from 'react';
 import type { FundDetail, Metrics } from '../../api';
 import { categoryShort, date, formatField, isNum, missingLabel, pct } from '../../format';
-import { useScore } from '../../queries';
+import { Link } from 'react-router';
+import { useDrawdowns, useFundRegimes, useScore } from '../../queries';
+import { fallVerdict } from '../../verdicts';
+import { ScoreRing } from '../ScoreBadge';
 import { I } from '../icons';
-import { Badge, Card, DependencyPanel, ErrorState, InfoTip, Meter, Segmented, Skeleton, cx } from '../ui';
+import { Badge, Card, Delta, DependencyPanel, ErrorState, InfoTip, Meter, Segmented, Skeleton, cx } from '../ui';
 import { GrowthChart, MetricTile, RollingDistribution, type FundTabProps } from './shared';
 
 const PART_LABELS: Record<string, string> = {
@@ -109,6 +112,55 @@ function Evidence({ metrics, fields }: Pick<FundTabProps, 'metrics' | 'fields'>)
   );
 }
 
+/** The verdict line and the three numbers a first-time investor asks for (audit U-02, U-13). */
+export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics }) {
+  const score = useScore(code);
+  const regimes = useFundRegimes(code);
+  const drawdowns = useDrawdowns(code);
+  const verdict = regimes.data && drawdowns.data ? fallVerdict(regimes.data.windows, drawdowns.data.drawdowns) : null;
+  const v = metrics.values;
+  const category = categoryShort(String(v.category));
+  const s = score.data;
+  return (
+    <div className="mt-5 grid gap-4 border-t border-mf-line pt-4 md:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+      <div className="flex items-center gap-3">
+        <ScoreRing score={s?.score} />
+        <div className="text-sm">
+          <p className="font-medium text-mf-ink">Wickstreet score</p>
+          <p className="text-mf-muted">{s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} scored ${category} funds` : s ? missingLabel(s.state) : 'Loading…'}</p>
+          <Link to="?tab=peers" className="text-xs font-medium text-mf-brand hover:underline">How it ranks</Link>
+        </div>
+      </div>
+      <p className="text-[15px] leading-relaxed text-mf-ink-soft" data-testid="fund-verdict">
+        {verdict ? (
+          <>
+            {verdict.text}{' '}
+            <Link to="?tab=risk#regimes" className="whitespace-nowrap text-sm font-medium text-mf-brand hover:underline">
+              See every fall
+            </Link>
+          </>
+        ) : regimes.isLoading || drawdowns.isLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
+          'This fund has no NAV in a market-proxy fall window yet, so there is no fall to read.'
+        )}
+      </p>
+      <dl className="grid grid-cols-3 gap-2 text-center md:col-span-2 lg:col-span-1 lg:w-[300px]">
+        {[
+          ['1Y return', v.ret_1y, 'ret_1y'],
+          ['3Y CAGR', v.cagr_3y, 'cagr_3y'],
+          ['Worst 3Y fall', v.mdd_3y, 'mdd_3y'],
+        ].map(([label, value, id]) => (
+          <div key={String(id)} className="rounded-[12px] bg-mf-surface/80 px-2 py-2 ring-1 ring-mf-line">
+            <dt className="text-[11px] text-mf-muted">{String(label)}</dt>
+            <dd className="mt-0.5 text-base font-semibold">{isNum(value) ? <Delta value={value} /> : <span className="text-mf-muted" title={missingLabel(metrics.states[String(id)])}>—</span>}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 export function ScoreCard({ code, metrics }: { code: string; metrics: Metrics }) {
   const score = useScore(code);
   const s = score.data;
@@ -135,11 +187,14 @@ export function ScoreCard({ code, metrics }: { code: string; metrics: Metrics })
             <span className="text-base text-mf-muted">/100</span>
           </p>
           <p className="mt-1 text-sm text-mf-ink-soft">
-            {s.rank ? `Rank ${s.rank} of ${s.peers_ranked} in ${category}` : missingLabel(s.state)}
+            {s.rank ? `Rank ${s.rank} of ${s.peers_ranked} scored funds in ${category}` : missingLabel(s.state)}
           </p>
           <div className="mt-3">
             <Meter value={s.score} label="Wickstreet score" />
           </div>
+          <p className="mt-1 text-xs text-mf-muted">
+            A fund is scored only when it has all three parts, so this count can be smaller than the category or a single measure’s peer count.
+          </p>
           <ul className="mt-5 space-y-3">
             {s.parts.map((part) => (
               <li key={part.field}>
@@ -223,14 +278,14 @@ export function Overview({ code, metrics, fields, detail }: FundTabProps & { det
   return (
     <div className="space-y-6">
       <Evidence metrics={metrics} fields={fields} />
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
         <ScoreCard code={code} metrics={metrics} />
         <div className="lg:col-span-2 xl:col-span-1">
           <KeyMetrics metrics={metrics} fields={fields} />
         </div>
         <Essentials detail={detail} metrics={metrics} />
       </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <GrowthChart code={code} metrics={metrics} />
         <RollingDistribution code={code} metrics={metrics} fields={fields} />
       </div>

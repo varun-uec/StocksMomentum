@@ -1,7 +1,8 @@
 /** Widgets every fund tab shares: metric tiles, the growth journey and the rolling-return distribution. */
 import { useMemo, useState } from 'react';
 import type { FieldDef, Metrics } from '../../api';
-import { date, formatField, inr, missingLabel, pct } from '../../format';
+import { pctTick } from '../../axis';
+import { date, formatField, inr, inrTick, missingLabel, pct } from '../../format';
 import { useNavs, useRegimes, useRolling } from '../../queries';
 import { availableWindows, navPoints, rebase, sinceYears, WINDOWS, type WindowKey } from '../../series';
 import { seriesColor, token } from '../../theme/themes';
@@ -60,7 +61,9 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
   const navs = useNavs(code);
   const assetClass = String(metrics.values.asset_class ?? '');
   const withProxy = assetClass === 'Equity' || assetClass === 'Hybrid';
-  const regimes = useRegimes(withProxy);
+  const regimes = useRegimes();
+  const [falls, setFalls] = useState(true);
+  const [log, setLog] = useState(false);
   const points = useMemo(() => navPoints(navs.data?.navs ?? []), [navs.data]);
   const windows = availableWindows(points);
   const [window, setWindow] = useState<WindowKey>('Max');
@@ -74,20 +77,40 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
   const end = fund[fund.length - 1]?.[1];
   const proxyEnd = proxy[proxy.length - 1]?.[1];
   const series = [{ id: 'fund', label: 'This fund', points: fund, color: seriesColor(0) }, ...(proxy.length ? [{ id: 'proxy', label: 'Large-cap proxy', points: proxy, color: token('chart2'), dashed: true }] : [])];
+  // Market-proxy falls in the window, drawn behind the line (audit U-03).
+  const bands = falls && start ? (regimes.data?.windows ?? []).filter((w) => w.kind !== 'recovery' && w.end >= start).map((w) => ({ start: w.start < start ? start : w.start, end: w.end, color: token(w.kind === 'crash' ? 'loss' : 'warning') })) : [];
   return (
     <ChartFrame
       title={title}
       subtitle={start ? `From ${date(start)}, NAV rebased; dividends inside the NAV, before tax` : undefined}
-      controls={<Segmented label="Window" value={active} onChange={setWindow} options={(Object.keys(WINDOWS) as WindowKey[]).map((k) => ({ value: k, label: k, disabled: !windows.includes(k) }))} />}
+      controls={
+        <>
+          <label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-mf-ink-soft">
+            <input type="checkbox" checked={falls} onChange={(e) => setFalls(e.target.checked)} />
+            Market falls
+          </label>
+          <label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-mf-ink-soft">
+            <input type="checkbox" checked={log} onChange={(e) => setLog(e.target.checked)} />
+            Log scale
+          </label>
+          <Segmented label="Window" value={active} onChange={setWindow} options={(Object.keys(WINDOWS) as WindowKey[]).map((k) => ({ value: k, label: k, disabled: !windows.includes(k) }))} />
+        </>
+      }
       legend={
         fund.length > 1 && (
           <>
             <LegendDot color={seriesColor(0)} label={<>This fund <b className="tabular">{inr(end)}</b></>} />
             {proxyEnd !== undefined && <LegendDot color={token('chart2')} dashed label={<>Large-cap proxy <b className="tabular">{inr(proxyEnd)}</b></>} />}
+            {bands.length > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-4 rounded-[3px]" style={{ background: token('warning', 0.3) }} aria-hidden="true" />
+                Proxy fall
+              </span>
+            )}
           </>
         )
       }
-      footnote={withProxy ? 'Proxy: median daily return of large-cap direct growth funds, built from NAVs. Not an official index or the scheme benchmark.' : 'No market proxy for this asset class.'}
+      footnote={`${withProxy ? 'Proxy: median daily return of large-cap direct growth funds, built from NAVs. Not an official index or the scheme benchmark.' : 'No market proxy line for this asset class.'} Drag the handles under the chart to zoom.`}
       table={{ columns: ['Date', 'This fund', ...(proxy.length ? ['Proxy'] : [])], rows: thin(fund, 120).map(([d, v]) => [d, Math.round(v), ...(proxy.length ? [Math.round(proxy.find(([pd]) => pd >= d)?.[1] ?? NaN)] : [])]) }}
     >
       {navs.isError ? (
@@ -97,7 +120,7 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
       ) : fund.length < 2 ? (
         <p className="py-12 text-center text-sm text-mf-muted">Not enough NAV history to draw a journey.</p>
       ) : (
-        <TimeChart label={`${title} chart`} area height={height} series={series} format={(v) => inr(v, true)} />
+        <TimeChart label={`${title} chart`} area zoom log={log} height={height} series={series} bands={bands} format={(v) => inr(v)} tick={inrTick} />
       )}
     </ChartFrame>
   );
@@ -147,7 +170,7 @@ export function RollingDistribution({ code, metrics, fields, initial = '3y' }: F
         <Histogram
           label={`Distribution of rolling ${label} returns`}
           values={values}
-          format={(x) => pct(x, 0)}
+          format={pctTick}
           markers={[
             ...(v('median') != null ? [{ value: v('median')!, label: 'Median', color: token('brandStrong') }] : []),
             { value: 0, label: '0%', color: token('muted') },

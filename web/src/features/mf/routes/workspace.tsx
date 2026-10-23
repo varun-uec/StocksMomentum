@@ -25,18 +25,35 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
-function SaveError({ error, onReload }: { error: unknown; onReload: () => void }) {
+/** A failed save keeps the draft; a conflict offers a copy of it before the latest version replaces it (audit F-10). */
+function SaveError({ error, onReload, draft }: { error: unknown; onReload: () => void; draft?: string }) {
+  const [copied, setCopied] = useState(false);
   if (!error) return null;
   if (isConflict(error))
     return (
-      <div role="alert" className="rounded-[10px] bg-mf-warning-soft p-3 text-sm text-mf-warning">
-        Another window saved this record first, so your change was not saved. Your text is still here.{' '}
-        <button type="button" className="font-medium underline" onClick={onReload}>
-          Load the latest version
-        </button>
+      <div role="alert" className="space-y-2 rounded-[10px] bg-mf-warning-soft p-3 text-sm text-mf-warning">
+        <p>Another window saved this record first, so your change was not saved. Your text is still here.</p>
+        <div className="flex flex-wrap gap-2">
+          {draft !== undefined && (
+            <Button
+              size="sm"
+              onClick={() =>
+                navigator.clipboard?.writeText(draft).then(
+                  () => setCopied(true),
+                  () => setCopied(false),
+                )
+              }
+            >
+              {copied ? 'Copied' : 'Copy my text'}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={onReload}>
+            Load the latest version{draft !== undefined ? ' (replaces your text)' : ''}
+          </Button>
+        </div>
       </div>
     );
-  return <ErrorState error={error} compact />;
+  return <ErrorState error={error} compact title="Could not save. Your draft is kept; try again." />;
 }
 
 function RecordList<B>({ records, selected, onSelect, empty }: { records: ResearchRecord<B>[]; selected?: string; onSelect: (id: string) => void; empty: string }) {
@@ -171,7 +188,7 @@ function NoteDetail({ record }: { record: ResearchRecord<NoteBody> }) {
         </Button>
         <span className="text-xs text-mf-muted" aria-live="polite">{dirty ? 'Unsaved changes' : 'Saved'}</span>
       </div>
-      <SaveError error={save.error} onReload={() => { save.reset(); setText(record.body.text); }} />
+      <SaveError error={save.error} draft={text} onReload={() => { save.reset(); setText(record.body.text); }} />
     </div>
   );
 }

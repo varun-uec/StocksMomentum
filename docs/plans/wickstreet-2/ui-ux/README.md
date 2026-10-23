@@ -20,6 +20,8 @@ This package proposes the UI and its delivery sequence. It does not change accep
 | [06 · Competitive baseline and evaluation](06-competitive-and-validation.md) | Screen-by-screen comparison, source confidence, parity gaps and a measurable usability study |
 | [07 · Interaction flows](07-flows.md) | Local SVG diagrams plus editable Mermaid sources |
 | [08 · Slice 4 implementation](08-slice-4-implementation.md) | What was built at `/mf`, the theme architecture, workspace persistence (W1), test evidence and the remaining dependencies |
+| [Audit, 23 Oct 2026](audit-2026-10-23/REPORT.md) | Independent UI/UX audit: scorecard, defect register (F-01 to F-19), improvements (U-01 to U-16), roadmap |
+| [Audit remediation, 23 Oct 2026](remediation-2026-10-23/REPORT.md) | What each finding became, test evidence, before/after screens and what remains |
 | [Field catalogue](evidence/v5-field-catalogue.md) | All 160 registry fields, types, units, explanations and observed coverage |
 | [Artefact validation](evidence/validation.md) | Browser, XML, accessibility, responsive and link checks; reproduction commands |
 | [Inspection evidence](evidence/inspection.md) | Repository paths, live read observations and limits of this planning exercise |

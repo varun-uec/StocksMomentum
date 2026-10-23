@@ -39,4 +39,11 @@ dialog.mf-dialog { padding: 0; border: 0; background: transparent; max-width: no
 /* Leave room for the phone navigation and the compare tray. */
 @media (max-width: 1023px) {
   .mf-root .mf-main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  /* The compare tray sits above the phone bar; keep the page's last row clear of it. */
+  .mf-root[data-tray] .mf-main { padding-bottom: calc(9.5rem + env(safe-area-inset-bottom)); }
+}
+
+/* Thumb-sized targets on phones (audit U-16): small buttons and chips grow to 44 px. */
+@media (max-width: 639px) {
+  .mf-root .mf-tap { min-height: 44px; }
 }

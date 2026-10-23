@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { NavRow, Point } from './api';
-import { availableWindows, navPoints, rebase, sinceYears } from './series';
+import { availableWindows, navPoints, rebase, sinceYears, compound } from './series';
 
 const points: Point[] = [
   ['2016-10-17', 10],
@@ -38,5 +38,13 @@ describe('chart series', () => {
     expect(availableWindows(points)).toEqual(['1Y', '3Y', '5Y', '10Y', 'Max']);
     expect(availableWindows(points.slice(1))).toEqual(['1Y', '3Y', 'Max']);
     expect(availableWindows([['2026-01-01', 1]])).toEqual(['Max']);
+  });
+});
+
+describe('compound', () => {
+  it('turns monthly returns into a growth line whose end matches the total growth', () => {
+    const line = compound([['2024-01-28', 0.1], ['2024-02-28', -0.05], ['2024-03-28', 0.02]]);
+    expect(line.map(([, v]) => Number(v.toFixed(4)))).toEqual([110, 104.5, 106.59]);
+    expect(line[2][1] / 100 - 1).toBeCloseTo(1.1 * 0.95 * 1.02 - 1, 12);
   });
 });

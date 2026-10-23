@@ -35,3 +35,12 @@ export function availableWindows(points: Point[]): WindowKey[] {
   const years = (Date.parse(points[points.length - 1][0]) - Date.parse(points[0][0])) / (365.25 * 864e5);
   return (Object.keys(WINDOWS) as WindowKey[]).filter((k) => WINDOWS[k] === 99 || WINDOWS[k] <= years + 0.02);
 }
+
+/**
+ * Monthly returns as a growth line that starts at `base`: the display form of the
+ * backtest's own `strategy_growth`, which is the product of (1 + r) over its months.
+ */
+export function compound(points: Point[], base = 100): Point[] {
+  let level = base;
+  return points.map(([d, r]) => [d, (level *= 1 + r)]);
+}

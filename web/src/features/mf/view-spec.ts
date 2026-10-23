@@ -25,10 +25,34 @@ export const UNIVERSE: Condition[] = [
   { field: 'option', op: 'in', value: ['growth'] },
 ];
 
-export const DEFAULT_COLUMNS = ['category', 'score', 'cagr_3y', 'sharpe_3y', 'mdd_3y', 'consistency_3y', 'score_cat_rank'];
+/** Fields that define the starting universe. "Match any" never ORs them (audit F-05). */
+export const UNIVERSE_FIELDS = new Set(['status', 'plan', 'option']);
 
+export const DEFAULT_CATEGORY = 'Equity Scheme - Flexi Cap Fund';
+export const DEFAULT_COLUMNS = ['score', 'cagr_3y', 'sharpe_3y', 'mdd_3y', 'consistency_3y', 'score_cat_rank'];
+
+/**
+ * The opening screen: one category, by score (audit F-06). The score is a
+ * percentile inside a category, so it ranks funds fairly only within one.
+ */
 export function defaultView(extra: Condition[] = []): ScreenView {
-  return { mode: 'all', conditions: [...UNIVERSE, ...extra], sort: [{ field: 'score', dir: 'desc' }], columns: DEFAULT_COLUMNS, formulas: {} };
+  return {
+    mode: 'all',
+    conditions: [...UNIVERSE, { field: 'category', op: 'in', value: [DEFAULT_CATEGORY] }, ...extra],
+    sort: [{ field: 'score', dir: 'desc' }],
+    columns: DEFAULT_COLUMNS,
+    formulas: {},
+  };
+}
+
+/** True when a universe condition (status, plan or option) is a fixed gate. */
+export const isGate = (node: FilterNode): boolean => isCondition(node) && UNIVERSE_FIELDS.has(node.field);
+
+/** Score across several categories mixes percentiles of different peer groups. */
+export function mixesCategories(view: ScreenView): boolean {
+  if (view.sort[0]?.field !== 'score' && view.sort[0]?.field !== 'score_cat_rank') return false;
+  const oneCategory = view.conditions.some((c) => isCondition(c) && c.field === 'category' && c.op === 'in' && Array.isArray(c.value) && c.value.length === 1);
+  return view.mode === 'any' || !oneCategory;
 }
 
 export function presetView(preset: Preset): ScreenView {
@@ -37,11 +61,18 @@ export function presetView(preset: Preset): ScreenView {
   return { mode, conditions, sort: preset.sort, columns: preset.columns, formulas: {} };
 }
 
+/** The API filter. In "Match any" the universe gates still apply to every fund: ALL(gates, ANY(rest)). */
 export function filterOf(view: ScreenView): { all: FilterNode[] } | { any: FilterNode[] } {
-  return view.mode === 'all' ? { all: view.conditions } : { any: view.conditions };
+  if (view.mode === 'all') return { all: view.conditions };
+  const gates = view.conditions.filter(isGate);
+  const rest = view.conditions.filter((c) => !isGate(c));
+  if (!gates.length) return { any: rest };
+  return { all: rest.length ? [...gates, { any: rest }] : gates };
 }
 
-export const isCondition = (node: FilterNode): node is Condition => 'field' in node;
+export function isCondition(node: FilterNode): node is Condition {
+  return 'field' in node;
+}
 
 function toBase64Url(text: string): string {
   const bytes = new TextEncoder().encode(text);

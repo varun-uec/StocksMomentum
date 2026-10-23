@@ -80,7 +80,7 @@ const VARIANTS: Record<Variant, string> = {
 export function buttonClass(variant: Variant = 'secondary', size: 'sm' | 'md' = 'md') {
   return cx(
     'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
-    size === 'sm' ? 'h-8 px-2.5 text-[13px]' : 'h-10 px-4 text-sm',
+    size === 'sm' ? 'mf-tap h-8 px-2.5 text-[13px]' : 'mf-tap h-10 px-4 text-sm',
     VARIANTS[variant],
   );
 }
@@ -109,7 +109,7 @@ export function Chip({
   onRemove?: () => void;
 }) {
   const base = cx(
-    'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150',
+    'mf-tap inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150',
     pressed ? 'border-mf-brand bg-mf-brand-soft text-mf-brand-strong' : 'border-mf-line-strong bg-mf-surface text-mf-ink-soft hover:bg-mf-sunken',
     className,
   );
@@ -335,10 +335,11 @@ export function Loading({ label = 'Loading', className }: { label?: string; clas
   );
 }
 
-export function ErrorState({ error, onRetry, compact }: { error: unknown; onRetry?: () => void; compact?: boolean }) {
+export function ErrorState({ error, onRetry, compact, title: heading }: { error: unknown; onRetry?: () => void; compact?: boolean; title?: string }) {
   const status = error instanceof MfApiError ? error.status : undefined;
   const title =
-    status === 404 ? 'Not found' : status === 422 ? 'The request was not accepted' : status === 403 ? 'Not permitted by the data rights register' : 'Could not load this view';
+    heading ??
+    (status === 404 ? 'Not found' : status === 422 ? 'The request was not accepted' : status === 403 ? 'Not permitted by the data rights register' : 'Could not load this view');
   const detail = error instanceof Error ? error.message : String(error);
   return (
     <div role="alert" className={cx('rounded-[12px] border border-mf-loss/30 bg-mf-loss-soft text-mf-ink', compact ? 'p-3 text-sm' : 'p-5')}>

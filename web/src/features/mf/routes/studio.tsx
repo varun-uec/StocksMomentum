@@ -4,16 +4,20 @@
  * and peer group live in the URL, so a view survives reload and can be saved.
  * Distinct from Momentum25's Strategy Studio at /studio.
  */
-import { useMutation, useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { pctTick } from '../axis';
 import { mfApi, type Backtest, type BacktestPeriod, type PeerGroup } from '../api';
-import { ChartFrame, LegendDot, PeerScatter, TimeChart, thin } from '../components/charts';
+import { ChartFrame, LegendDot, PairBars, PeerScatter, TimeChart, thin } from '../components/charts';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { Badge, Button, Card, Chip, EmptyState, ErrorState, Field, PageHeader, Segmented, Skeleton, SnapshotNote, TabLinks, cx, inputClass, useTitle } from '../components/ui';
 import { categoryShort, date, enumLabel, month, pct, schemeName } from '../format';
 import { useFields, useFrontier, useFundRegimes, useMetrics, useRankHistory, useRegimes, useTransitions } from '../queries';
+import { startingFunds, useRecentFunds } from '../context';
+import { compound } from '../series';
+import { backtestVerdict } from '../verdicts';
 import { heat, seriesColor, token } from '../theme/themes';
 
 const MODES = [
@@ -32,15 +36,20 @@ const REGIME_TONE: Record<string, 'loss' | 'warning' | 'brand'> = { crash: 'loss
 
 function useStudioParams() {
   const [params, setParams] = useSearchParams();
+  const recent = useRecentFunds();
   const mode = (MODES.some((m) => m.id === params.get('mode')) ? params.get('mode') : 'rolling') as Mode;
-  const codes = (params.get('code') ?? '').split(',').filter((c) => /^\d{1,9}$/.test(c)).slice(0, MAX_FUNDS);
+  const chosen = (params.get('code') ?? '').split(',').filter((c) => /^\d{1,9}$/.test(c)).slice(0, MAX_FUNDS);
+  // No fund in the link: start from the funds opened last, or the examples (audit U-01).
+  const start = startingFunds(recent, 2);
+  const codes = params.has('code') ? chosen : start.codes;
+  const example = !params.has('code') && start.example;
   const set = (patch: Record<string, string | null>, push = false) => {
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(patch)) (v === null ? next.delete(k) : next.set(k, v));
     setParams(next, { replace: !push });
   };
   const group: PeerGroup | null = params.get('category') ? { category: params.get('category')!, plan: params.get('plan') ?? 'direct', option: params.get('option') ?? 'growth' } : null;
-  return { mode, codes, group, set, params };
+  return { mode, codes, group, set, params, example };
 }
 
 function FundPicker({ codes, onChange }: { codes: string[]; onChange: (codes: string[]) => void }) {
@@ -118,7 +127,7 @@ function Rolling({ codes }: { codes: string[] }) {
         legend={series.map((s) => <LegendDot key={s.id} color={s.color} label={s.label} />)}
         footnote="Overlapping periods share most of their days; read the range, not a count of wins."
       >
-        {results.some((r) => r.isLoading) ? <Skeleton className="h-[320px]" /> : <TimeChart label="Rolling returns over time" zero height={320} series={series} format={(v) => pct(v, 0)} />}
+        {results.some((r) => r.isLoading) ? <Skeleton className="h-[320px]" /> : <TimeChart label="Rolling returns over time" zero height={320} zoom series={series} format={(v) => pct(v, 1)} tick={pctTick} />}
       </ChartFrame>
       <Card title="Selected statistics" subtitle={`${key.toUpperCase()} rolling, from each fund's metrics`}>
         <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Table; scroll sideways for more columns">
@@ -167,7 +176,7 @@ function Drawdown({ codes }: { codes: string[] }) {
         <LegendDot key={s.id} color={s.color} label={<>{s.label} · now <b className="tabular">{pct(results[i].data?.dd_now)}</b></>} />
       ))}
     >
-      {results.some((r) => r.isLoading) ? <Skeleton className="h-[320px]" /> : <TimeChart label="Underwater chart" height={320} yDomain={['dataMin', 0]} series={series} format={(v) => pct(v, 0)} />}
+      {results.some((r) => r.isLoading) ? <Skeleton className="h-[320px]" /> : <TimeChart label="Underwater chart" height={320} yDomain={['dataMin', 0]} zoom series={series} format={(v) => pct(v, 1)} tick={pctTick} />}
     </ChartFrame>
   );
 }
@@ -234,7 +243,7 @@ function Frontier({ group, highlight }: { group: PeerGroup; highlight?: string }
         {frontier.isError ? <ErrorState error={frontier.error} compact /> : frontier.isLoading ? <Skeleton className="h-[360px]" /> : points.length === 0 ? (
           <p className="py-16 text-center text-sm text-mf-muted">No fund in this group has 3 years of NAVs.</p>
         ) : (
-          <PeerScatter label="Risk-return scatter of peers" points={points} xLabel="Volatility 3Y" yLabel="CAGR 3Y" format={(v) => pct(v, 0)} height={360} onSelect={setSelected} />
+          <PeerScatter label="Risk-return scatter of peers" points={points} xLabel="Volatility 3Y" yLabel="CAGR 3Y" format={(v) => pct(v, 1)} tick={pctTick} height={380} onSelect={setSelected} />
         )}
       </ChartFrame>
       <Card title="Peers by 3Y CAGR" subtitle="Select a fund to mark it on the map">
@@ -328,6 +337,21 @@ function Regimes({ code }: { code?: string }) {
           <TimeChart label="Proxy level with regime windows" height={300} bands={bands} series={[{ id: 'proxy', label: 'Proxy level', points: levels, color: token('ink') }]} format={(v) => v.toFixed(0)} />
         )}
       </ChartFrame>
+      {code && (fundRegimes.data?.windows ?? []).some((w) => w.fund_return !== null) && (
+        <ChartFrame
+          title={metrics.data ? `${schemeName(metrics.data.name)} against the proxy, window by window` : 'Fund against the proxy, window by window'}
+          subtitle="↓ fall window · ↑ recovery window, labelled by start month"
+          legend={<><LegendDot color={token('brand')} label="This fund" /><LegendDot color={token('muted', 0.6)} label="Market proxy" /></>}
+        >
+          <PairBars
+            label="Fund return against the proxy in each regime window"
+            rows={(fundRegimes.data?.windows ?? []).filter((w) => w.fund_return !== null).map((w) => ({ label: `${w.kind === 'recovery' ? '↑' : '↓'} ${w.start.slice(2, 7).replace('-', '/')}`, a: w.fund_return, b: w.proxy_return }))}
+            names={['This fund', 'Market proxy']}
+            format={(v) => pct(v, 1, true)}
+            tick={pctTick}
+          />
+        </ChartFrame>
+      )}
       <Card title={code && metrics.data ? `${schemeName(metrics.data.name)} in each window` : 'Each window'} subtitle={code ? 'Fund return against the proxy in the same window' : 'Add a fund above to see how it behaved in each window'}>
         <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Table; scroll sideways for more columns">
           <table className="w-full min-w-[560px] text-sm">
@@ -362,9 +386,13 @@ function Regimes({ code }: { code?: string }) {
 }
 
 function PeriodCard({ title, period, tone }: { title: string; period: BacktestPeriod | null; tone: 'brand' | 'info' }) {
+  const ahead = period ? period.strategy_annualised >= period.median_annualised : false;
   return (
     <div className={cx('rounded-card border p-4', tone === 'brand' ? 'border-mf-line bg-mf-surface' : 'border-mf-info/30 bg-mf-info-soft/50')}>
-      <p className="text-xs font-semibold uppercase tracking-[0.06em] text-mf-muted">{title}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.06em] text-mf-muted">{title}</p>
+        {period && <Badge tone={ahead ? 'brand' : 'loss'}>{ahead ? 'Ahead of median' : 'Behind median'}</Badge>}
+      </div>
       {!period ? (
         <p className="mt-2 text-sm text-mf-muted">Not enough months.</p>
       ) : (
@@ -385,16 +413,25 @@ function PeriodCard({ title, period, tone }: { title: string; period: BacktestPe
 function BacktestMode({ group }: { group: PeerGroup }) {
   const [signal, setSignal] = useState<'ret_1y' | 'cagr_3y'>('cagr_3y');
   const [top, setTop] = useState(5);
-  const run = useMutation({ mutationFn: (body: Parameters<typeof mfApi.backtest>[0]) => mfApi.backtest(body) });
+  // The default test runs on open, so the mode starts with a result (audit U-01).
+  const [submitted, setSubmitted] = useState({ signal, top });
+  const body = { ...group, ...submitted };
+  const run = useQuery({ queryKey: ['mf', 'backtest', body], queryFn: ({ signal: abort }) => mfApi.backtest(body, abort), staleTime: 300_000 });
   const result: Backtest | undefined = run.data;
-  const inputs = JSON.stringify({ ...group, signal, top });
-  const stale = run.variables && JSON.stringify(run.variables) !== inputs;
+  const stale = submitted.signal !== signal || submitted.top !== top;
   const holdout = result ? String(result.strategy.holdout_from) : '';
-  const months = result?.months ?? [];
+  const months = useMemo(() => result?.months ?? [], [result]);
+  const growth = useMemo(
+    () => ({
+      s: compound(months.map((m) => [`${m.signal_month}-28`, m.strategy])),
+      m: compound(months.map((m) => [`${m.signal_month}-28`, m.median])),
+    }),
+    [months],
+  );
   return (
     <div className="space-y-6">
       <Card title="Each month, buy the top funds by a signal" subtitle="Equal weights, rebalanced monthly, NAV returns net of TER and before tax">
-        <form onSubmit={(e) => { e.preventDefault(); run.mutate({ ...group, signal, top }); }} className="flex flex-wrap items-end gap-3">
+        <form onSubmit={(e) => { e.preventDefault(); setSubmitted({ signal, top }); }} className="flex flex-wrap items-end gap-3">
           <Field label="Signal">
             <select className={inputClass} value={signal} onChange={(e) => setSignal(e.target.value as 'ret_1y' | 'cagr_3y')}>
               <option value="cagr_3y">CAGR 3Y</option>
@@ -404,34 +441,38 @@ function BacktestMode({ group }: { group: PeerGroup }) {
           <Field label="Funds held (1–50)">
             <input className={cx(inputClass, 'w-28')} type="number" min={1} max={50} value={top} onChange={(e) => setTop(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} />
           </Field>
-          <Button type="submit" variant="primary" disabled={run.isPending}>{run.isPending ? 'Running…' : 'Run backtest'}</Button>
+          <Button type="submit" variant="primary" disabled={run.isFetching}>{run.isFetching ? 'Running…' : 'Run backtest'}</Button>
           {stale && <Badge tone="warning">The result below used other inputs</Badge>}
         </form>
       </Card>
-      {run.isError && <ErrorState error={run.error} />}
+      {run.isError && <ErrorState error={run.error} onRetry={() => run.refetch()} />}
+      {run.isLoading && <Skeleton className="h-64" />}
       {result && (
         <div className={cx('space-y-6', stale && 'opacity-60')}>
+          <p className="rounded-card border border-mf-line bg-mf-surface p-4 text-[15px] leading-relaxed text-mf-ink shadow-card" data-testid="backtest-verdict">
+            {backtestVerdict(result)}
+          </p>
           <div className="grid gap-4 md:grid-cols-2">
             <PeriodCard title="Historical research — in-sample" period={result.summary.in_sample} tone="brand" />
             <PeriodCard title={`Out-of-sample evaluation — from ${month(holdout)}`} period={result.summary.holdout} tone="info" />
           </div>
           <ChartFrame
-            title="Monthly return: top-N against the group median"
-            subtitle={`Signal ${result.strategy.signal === 'cagr_3y' ? 'CAGR 3Y' : 'Return 1Y'}, top ${result.strategy.top}, ${result.funds_with_nav} funds with NAVs`}
+            title="Growth of 100: top-N against the group median"
+            subtitle={`Signal ${result.strategy.signal === 'cagr_3y' ? 'CAGR 3Y' : 'Return 1Y'}, top ${result.strategy.top}, ${result.funds_with_nav} funds with NAVs · monthly returns compounded`}
             legend={<><LegendDot color={seriesColor(0)} label="Top-N" /><LegendDot color={seriesColor(1)} dashed label="Group median" /></>}
-            footnote={`The dashed band starts the hold-out (${month(holdout)}); rules were not tuned on it.`}
+            footnote={`The shaded band is the hold-out, from ${month(holdout)}; the rules were not tuned on it.`}
             table={{ columns: ['Signal month', 'Top-N', 'Median', 'Picks'], rows: months.map((m) => [month(m.signal_month), pct(m.strategy), pct(m.median), m.picks.join(' ')]) }}
           >
             <TimeChart
-              label="Monthly returns of the backtest"
-              zero
-              height={260}
-              bands={[{ start: `${holdout}-28`, end: `${months[months.length - 1]?.signal_month ?? holdout}-28`, color: token('info') }]}
+              label="Cumulative growth of the backtest"
+              height={280}
+              bands={[{ start: `${holdout}-01`, end: `${months[months.length - 1]?.signal_month ?? holdout}-28`, color: token('info') }]}
+              markers={[{ date: `${holdout}-01`, label: 'Hold-out', color: token('info') }]}
               series={[
-                { id: 's', label: 'Top-N', points: months.map((m) => [`${m.signal_month}-28`, m.strategy]), color: seriesColor(0) },
-                { id: 'm', label: 'Median', points: months.map((m) => [`${m.signal_month}-28`, m.median]), color: seriesColor(1), dashed: true },
+                { id: 's', label: 'Top-N', points: growth.s, color: seriesColor(0) },
+                { id: 'm', label: 'Median', points: growth.m, color: seriesColor(1), dashed: true },
               ]}
-              format={(v) => pct(v, 0)}
+              format={(v) => v.toFixed(1)}
             />
           </ChartFrame>
           <Card title="Limits of this test">
@@ -448,7 +489,7 @@ function BacktestMode({ group }: { group: PeerGroup }) {
 
 export default function Studio() {
   useTitle('Analytics studio');
-  const { mode, codes, group, set, params } = useStudioParams();
+  const { mode, codes, group, set, params, example } = useStudioParams();
   const first = useMetrics(codes[0]);
   const fields = useFields();
   const fundGroup: PeerGroup | null = first.data ? { category: String(first.data.values.category), plan: String(first.data.values.plan), option: String(first.data.values.option) } : null;
@@ -469,11 +510,16 @@ export default function Studio() {
       <TabLinks label="Studio modes" active={mode} tabs={tabs} />
       {usesFunds && <FundPicker codes={single ? codes.slice(0, 1) : codes} onChange={(c) => set({ code: c.length ? c.slice(0, single ? 1 : MAX_FUNDS).join(',') : null })} />}
       {usesGroup && <GroupPicker group={activeGroup} onChange={setGroup} />}
+      {example && usesFunds && (
+        <p className="text-sm text-mf-muted">
+          Showing example funds so the chart starts with a story. Add your own, or open a fund first: the studio starts from the funds you opened last.
+        </p>
+      )}
       <div key={mode} className="mf-rise">
         {mode === 'rolling' && <Rolling codes={codes} />}
         {mode === 'drawdown' && <Drawdown codes={codes} />}
         {mode === 'ranks' && <Ranks code={codes[0]} />}
-        {mode === 'frontier' && <Frontier group={activeGroup} highlight={params.get('code') ?? undefined} />}
+        {mode === 'frontier' && <Frontier group={activeGroup} highlight={codes[0]} />}
         {mode === 'transitions' && <Transitions group={activeGroup} />}
         {mode === 'regimes' && <Regimes code={codes[0]} />}
         {mode === 'backtest' && <BacktestMode group={activeGroup} />}

@@ -11,7 +11,7 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     await expect(page.getByText(String(fields.fields.length), { exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Category leaders' }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Explore by category' })).toBeVisible();
-    await expect(page.getByText(/median 3Y CAGR · \d+ funds ranked/).first()).toBeVisible();
+    await expect(page.getByText(/median 3Y CAGR of \d+ funds with 3 years of NAVs/).first()).toBeVisible();
     await expect(page.getByRole('img', { name: '91-day T-bill yield over five years' })).toBeVisible();
     await expect(page.locator('main')).toHaveCount(1);
   });
@@ -86,21 +86,30 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     const data = await (await request.get(`/api/v1/mf/compare?code=${FUND}&code=${OTHER}`)).json();
     await page.goto(`/mf/compare?code=${FUND}&code=${OTHER}`);
     await expect(page.getByText(/The growth chart starts on/)).toBeVisible();
-    await expect(page.getByRole('img', { name: 'Rebased growth of the selected funds' })).toBeVisible();
+    await expect(page.getByRole('figure', { name: 'Rebased growth of the selected funds' })).toBeVisible();
     await expect(page.getByText(data.correlations[0].correlation.toFixed(2)).first()).toBeVisible();
     await expect(page.getByText(/does not measure shared holdings/)).toBeVisible();
   });
 
-  test('J4: a historical SIP shows the calculator summary and marks a stale result', async ({ page, request }) => {
+  test('J4: a historical SIP shows the calculator summary on open and follows each input', async ({ page, request }) => {
     await page.goto(`/mf/simulate?code=${FUND}`);
-    const start = await page.getByLabel('Start', { exact: true }).inputValue();
-    const end = await page.getByLabel('End', { exact: true }).inputValue();
-    const api = await (await request.post('/api/v1/mf/calculators/sip', { data: { code: FUND, amount: 10000, day: 1, start, end, step_up: 0, tax_class: 'equity' } })).json();
-    await page.getByRole('button', { name: 'Run historical scenario' }).click();
-    await expect(page.getByText(pct(api.summary.xirr, 2), { exact: true })).toBeVisible();
+    const start = await page.getByRole('textbox', { name: 'Start' }).inputValue();
+    const end = await page.getByRole('textbox', { name: 'End' }).inputValue();
+    const sip = async (amount: number) => (await (await request.post('/api/v1/mf/calculators/sip', { data: { code: FUND, amount, day: 1, start, end, step_up: 0, tax_class: 'equity' } })).json()).summary;
+    const first = await sip(10000);
+    // No button: the default scenario runs on open (audit U-01).
+    await expect(page.getByText(pct(first.xirr, 2), { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tax estimate' })).toBeVisible();
-    await page.getByLabel('Monthly instalment (₹)').fill('12000');
-    await expect(page.getByText(/Previous scenario/)).toBeVisible();
+    await page.getByRole('spinbutton', { name: 'Monthly instalment (₹)' }).fill('12000');
+    const next = await sip(12000);
+    await expect(page.getByText(`₹${Math.round(next.invested).toLocaleString('en-IN')}`, { exact: true })).toBeVisible();
+    await expect(page.getByText('Result is up to date.')).toBeVisible();
+  });
+
+  test('F-12: the default SWP lasts the whole 5-year window', async ({ page }) => {
+    await page.goto(`/mf/simulate?code=${FUND}&kind=swp`);
+    await expect(page.getByText(/60 withdrawals/)).toBeVisible();
+    await expect(page.getByText(/used up the investment/)).toHaveCount(0);
   });
 
   test('studio: frontier, persistence matrix and a hold-out backtest', async ({ page }) => {
@@ -109,7 +118,8 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     await page.getByRole('link', { name: 'Rank persistence' }).click();
     await expect(page.getByRole('row', { name: /^Q1 · \d+/ })).toBeVisible();
     await page.getByRole('link', { name: 'Selection backtest' }).click();
-    await page.getByRole('button', { name: 'Run backtest' }).click();
+    // The default test runs on open and states its verdict in words (audit F-18, U-01).
+    await expect(page.getByTestId('backtest-verdict')).toContainText(/In-sample .* On the hold-out/);
     await expect(page.getByText(/Historical research — in-sample/)).toBeVisible();
     await expect(page.getByText(/Out-of-sample evaluation — from/)).toBeVisible();
   });

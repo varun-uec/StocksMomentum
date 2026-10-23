@@ -7,14 +7,15 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import type { Condition, Preset, ScreenRequest } from '../api';
-import { ChartFrame, TimeChart, thin } from '../components/charts';
+import { ChartFrame, Sparkline, TimeChart, thin } from '../components/charts';
 import { FundSearch } from '../components/FundSearch';
 import { HeroArt } from '../components/HeroArt';
 import { I } from '../components/icons';
 import { ScoreBadge } from '../components/ScoreBadge';
 import { Badge, Card, Chip, Delta, ErrorState, Loading, Segmented, Skeleton, SnapshotNote, buttonClass, cx, useTitle } from '../components/ui';
 import { categoryShort, date, num, pct, schemeName } from '../format';
-import { useFields, useMetrics, usePresets, useRegimes, useRiskFree, useScreen } from '../queries';
+import { EXAMPLES, useRecentFunds } from '../context';
+import { useFields, useMetrics, usePresets, useRegimes, useRiskFree, useScreen, useSparklines } from '../queries';
 import { token } from '../theme/themes';
 import { sinceYears } from '../series';
 import { UNIVERSE, encodeView, filterOf, presetView } from '../view-spec';
@@ -58,8 +59,8 @@ function Hero({ presets }: { presets?: Preset[] }) {
           mutual fund investments.
         </h1>
         <p className="mt-3 text-[15px] text-mf-ink-soft sm:text-base">Deep research. Clear evidence. Confident decisions.</p>
-        <div className="mt-6 max-w-lg sm:hidden">
-          <FundSearch size="lg" placeholder="Search a fund, code or ISIN" />
+        <div className="mt-6 max-w-lg">
+          <FundSearch size="lg" label="Search funds from the home page" placeholder="Try “parag”, “sbi smallcap” or an AMFI code" />
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
           {presets
@@ -108,6 +109,7 @@ function Facts() {
 function Categories() {
   const leaders = useScreen(LEADERS);
   const rows = new Map((leaders.data?.rows ?? []).map((r) => [String(r.values.category), r]));
+  const lines = useSparklines([...rows.values()].map((r) => r.amfi_code));
   return (
     <Card title="Explore by category" subtitle="Active Direct Growth plans · median 3Y CAGR of each category, and its top-scored fund" action={<Link to="/mf/screen" className="text-sm font-medium text-mf-brand hover:underline">Open screener</Link>}>
       {leaders.isError ? (
@@ -120,20 +122,31 @@ function Categories() {
               <li key={c}>
                 <Link
                   to={categoryLink(c)}
-                  className="group block h-full rounded-[12px] border border-mf-line p-4 transition-colors duration-150 hover:border-mf-brand/50"
+                  className="group block h-full rounded-[14px] border border-mf-line p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-mf-brand/50 hover:shadow-raised motion-reduce:hover:translate-y-0"
                   style={{ background: `linear-gradient(160deg, ${token(i % 2 ? 'warningSoft' : 'brandSoft', 0.75)}, ${token('surface')} 70%)` }}
                 >
-                  <p className="text-sm font-semibold text-mf-ink">{categoryShort(c)}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-mf-ink">{categoryShort(c)}</p>
+                    <I.arrowUpRight className="h-4 w-4 text-mf-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+                  </div>
                   {leaders.isLoading ? (
-                    <Skeleton className="mt-3 h-10 w-full" />
+                    <Skeleton className="mt-3 h-24 w-full" />
                   ) : (
                     <>
-                      <p className="mt-2 text-[22px] font-semibold leading-none tabular text-mf-ink">{pct(row?.values.cagr_3y_cat_median)}</p>
-                      <p className="mt-1 text-xs text-mf-muted">median 3Y CAGR · {row?.values.cagr_3y_cat_count ?? '—'} funds ranked</p>
+                      <p className="mt-2 text-[24px] font-semibold leading-none tabular text-mf-ink">{pct(row?.values.cagr_3y_cat_median)}</p>
+                      <p className="mt-1 text-xs text-mf-muted">median 3Y CAGR of {row?.values.cagr_3y_cat_count ?? '—'} funds with 3 years of NAVs</p>
                       {row && (
-                        <p className="mt-3 truncate border-t border-mf-line pt-2 text-xs text-mf-ink-soft">
-                          Top score: <span className="font-medium">{schemeName(row.name)}</span>
-                        </p>
+                        <div className="mt-3 border-t border-mf-line pt-2">
+                          <div className="h-[34px]">
+                            {lines.data?.series[row.amfi_code] && <Sparkline points={lines.data.series[row.amfi_code]} height={34} label={`${schemeName(row.name)}: month-end NAV over 3 years`} />}
+                          </div>
+                          <p className="mt-1 flex items-center gap-2 text-xs text-mf-ink-soft">
+                            <ScoreBadge score={row.values.score as number | null} size="sm" />
+                            <span className="min-w-0 truncate">
+                              Top score · <span className="font-medium">{schemeName(row.name)}</span>
+                            </span>
+                          </p>
+                        </div>
                       )}
                     </>
                   )}
@@ -147,7 +160,12 @@ function Categories() {
   );
 }
 
-function Ideas({ presets }: { presets?: Preset[] }) {
+/** Equity collections first: most first-time investors start there (audit 3.1). */
+const IDEA_ORDER = ['calm_equity', 'consistent_large_caps', 'ten_year_compounders', 'shallow_drawdown_hybrids', 'category_leaders', 'steady_debt'];
+
+function Ideas({ presets: all }: { presets?: Preset[] }) {
+  const rank = (id: string) => (IDEA_ORDER.includes(id) ? IDEA_ORDER.indexOf(id) : IDEA_ORDER.length);
+  const presets = all && [...all].sort((a, b) => rank(a.id) - rank(b.id));
   const [active, setActive] = useState(0);
   const preset = presets?.[active];
   const body = useMemo<ScreenRequest | null>(() => {
@@ -157,8 +175,9 @@ function Ideas({ presets }: { presets?: Preset[] }) {
     return { filter: filterOf(view), sort: view.sort, columns, page: { size: 4 } };
   }, [preset]);
   const screen = useScreen(body);
+  const lines = useSparklines((screen.data?.rows ?? []).map((r) => r.amfi_code));
   return (
-    <Card title="Ideas to research" subtitle={preset?.purpose} action={preset && <Link to={`/mf/screen?preset=${preset.id}`} className="text-sm font-medium text-mf-brand hover:underline">See all {screen.data ? screen.data.matched : ''}</Link>}>
+    <Card title="Ideas to research" subtitle={preset && <>Why these funds: {preset.purpose.charAt(0).toLowerCase() + preset.purpose.slice(1)}</>} action={preset && <Link to={`/mf/screen?preset=${preset.id}`} className="text-sm font-medium text-mf-brand hover:underline">See all {screen.data ? screen.data.matched : ''}</Link>}>
       <div className="mf-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {presets?.map((p, i) => (
           <Chip key={p.id} pressed={i === active} onClick={() => setActive(i)} className="shrink-0">
@@ -185,6 +204,9 @@ function Ideas({ presets }: { presets?: Preset[] }) {
                       {categoryShort(String(r.values.category))} · <span className="tabular">{pct(r.values.cagr_3y)}</span> 3Y CAGR · Sharpe <span className="tabular">{num(r.values.sharpe_3y)}</span>
                       {r.values.score_cat_rank != null && ` · rank ${r.values.score_cat_rank}/${r.values.score_cat_count}`}
                     </p>
+                  </div>
+                  <div className="hidden w-24 shrink-0 sm:block">
+                    {lines.data?.series[r.amfi_code] && <Sparkline points={lines.data.series[r.amfi_code]} height={30} label={`${schemeName(r.name)}: month-end NAV over 3 years`} />}
                   </div>
                   <I.chevronRight className="h-4 w-4 text-mf-muted" />
                 </Link>
@@ -254,9 +276,9 @@ function WatchRow({ code }: { code: string }) {
   const m = metrics.data;
   if (!m) return <Skeleton className="my-2 h-10" />;
   return (
-    <Link to={`/mf/funds/${code}`} className="flex items-center gap-3 py-2.5">
+    <Link to={`/mf/funds/${code}`} className="group flex items-center gap-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{schemeName(m.name)}</p>
+        <p className="truncate text-sm font-medium group-hover:text-mf-brand-strong">{schemeName(m.name)}</p>
         <p className="text-xs text-mf-muted">{categoryShort(String(m.values.category))}</p>
       </div>
       <div className="text-right text-xs">
@@ -273,14 +295,32 @@ function WatchRow({ code }: { code: string }) {
 
 function YourResearch() {
   const watch = useWatchlist();
+  const recent = useRecentFunds();
   return (
-    <Card title="Your watchlist" action={<Link to="/mf/workspace?tab=watchlists" className="text-sm font-medium text-mf-brand hover:underline">Open</Link>}>
+    <Card title="Your research" subtitle={`${watch.codes.length} watched · ${recent.length} opened recently`} action={<Link to="/mf/workspace?tab=watchlists" className="text-sm font-medium text-mf-brand hover:underline">Open workspace</Link>}>
       {watch.loading ? (
         <Loading label="Loading watchlist" />
       ) : watch.codes.length === 0 ? (
-        <p className="py-4 text-sm text-mf-muted">
-          Star a fund from its page or from the screener. Your watchlist is saved on this machine’s server and comes back after a restart.
-        </p>
+        recent.length ? (
+          <>
+            <p className="pb-1 text-xs font-medium uppercase tracking-[0.06em] text-mf-muted">Opened recently</p>
+            <div className="divide-y divide-mf-line">
+              {recent.slice(0, 5).map((code) => (
+                <WatchRow key={code} code={code} />
+              ))}
+            </div>
+            <p className="pt-3 text-xs text-mf-muted">Star a fund to keep it here for good.</p>
+          </>
+        ) : (
+          <div className="py-2">
+            <p className="text-sm text-mf-ink-soft">Nothing here yet. Start with one of these:</p>
+            <div className="mt-2 divide-y divide-mf-line">
+              {EXAMPLES.map((e) => (
+                <WatchRow key={e.code} code={e.code} />
+              ))}
+            </div>
+          </div>
+        )
       ) : (
         <div className="divide-y divide-mf-line">
           {watch.codes.slice(0, 6).map((code) => (

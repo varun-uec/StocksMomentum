@@ -3,23 +3,27 @@
  * recovered. An open drawdown says "not recovered"; it never implies a recovery.
  * Regime rows compare the fund with the NAV-built proxy, never an official index.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router';
+import { pctTick } from '../../axis';
 import { date, formatField, pct } from '../../format';
 import { useDrawdowns, useFundRegimes, useRiskFree, useUnderwater } from '../../queries';
 import { token } from '../../theme/themes';
-import { ChartFrame, TimeChart, thin } from '../charts';
+import { ChartFrame, LegendDot, PairBars, TimeChart, thin } from '../charts';
 import { Badge, Card, Delta, ErrorState, Skeleton } from '../ui';
 import { MetricTile, type FundTabProps } from './shared';
 
-const RISK_TILES: { id: string; label?: string; median?: string; rank?: string }[] = [
+const RISK_TILES: { id: string; label?: string; median?: string; rank?: string; plain?: string }[] = [
   { id: 'vol_3y', label: 'Volatility 3Y', median: 'vol_3y_cat_median' },
   { id: 'downside_dev_3y', label: 'Downside deviation 3Y' },
   { id: 'sharpe_3y', rank: 'sharpe_3y_cat_rank' },
   { id: 'sortino_3y', rank: 'sortino_3y_cat_rank' },
   { id: 'var95_3y', label: '1-day loss passed on 5% of days (VaR)' },
   { id: 'cvar95_3y', label: 'Average loss on the worst 5% of days' },
-  { id: 'worst_1m', label: 'Worst month' },
-  { id: 'worst_1y', label: 'Worst year (rolling)' },
+  // Rolling windows, not calendar periods (audit F-07). The 1-year figure is the
+  // same rolling 1Y minimum the Performance tab charts.
+  { id: 'worst_1m', label: 'Worst 1-month window', plain: 'any 1-month span, not a calendar month' },
+  { id: 'rolling_1y_min', label: 'Worst 1-year window', plain: 'same figure as the rolling 1Y charts' },
 ];
 
 function UnderwaterChart({ code }: { code: string }) {
@@ -49,7 +53,7 @@ function UnderwaterChart({ code }: { code: string }) {
       ) : uw.isLoading ? (
         <Skeleton className="h-[240px]" />
       ) : (
-        <TimeChart label="Drawdown from peak over time" area height={240} yDomain={['dataMin', 0]} series={[{ id: 'uw', label: 'Below peak', points, color: token('loss') }]} format={(v) => pct(v, 0)} />
+        <TimeChart label="Drawdown from peak over time" area height={240} yDomain={['dataMin', 0]} series={[{ id: 'uw', label: 'Below peak', points, color: token('loss') }]} format={(v) => pct(v, 1)} tick={pctTick} />
       )}
     </ChartFrame>
   );
@@ -137,13 +141,32 @@ function Recovery({ code }: { code: string }) {
 
 function Regimes({ code }: { code: string }) {
   const regimes = useFundRegimes(code);
+  const { hash } = useLocation();
+  const ref = useRef<HTMLDivElement>(null);
+  const ready = !!regimes.data;
+  useEffect(() => {
+    if (hash === '#regimes' && ready) ref.current?.scrollIntoView({ block: 'start' });
+  }, [hash, ready]);
+  const bars = (regimes.data?.windows ?? []).filter((w) => w.fund_return !== null).map((w) => ({ label: `${w.kind === 'recovery' ? '↑' : '↓'} ${w.start.slice(2, 7).replace('-', '/')}`, a: w.fund_return, b: w.proxy_return }));
   return (
+    <div ref={ref} id="regimes" className="scroll-mt-24">
     <Card title="Through market falls and recoveries" subtitle={regimes.data?.proxy_label ?? 'NAV-built large-cap proxy, not an official index'}>
       {regimes.isError ? (
         <ErrorState error={regimes.error} compact />
       ) : !regimes.data ? (
         <Skeleton className="h-40" />
       ) : (
+        <>
+        {bars.length > 0 && (
+          <div className="mb-4">
+            <div className="mb-2 flex flex-wrap gap-4 text-xs text-mf-ink-soft">
+              <LegendDot color={token('brand')} label="This fund" />
+              <LegendDot color={token('muted', 0.6)} label="Market proxy" />
+              <span className="text-mf-muted">↓ fall window · ↑ recovery window, by start month</span>
+            </div>
+            <PairBars label="Fund return against the proxy in each market window" rows={bars} names={['This fund', 'Market proxy']} format={(v) => pct(v, 1, true)} tick={pctTick} height={220} />
+          </div>
+        )}
         <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Table; scroll sideways for more columns">
           <table className="w-full min-w-[600px] text-sm">
             <thead className="text-xs text-mf-muted">
@@ -173,8 +196,10 @@ function Regimes({ code }: { code: string }) {
           </table>
           <p className="mt-2 text-xs text-mf-muted">Capture is the fund’s return as a share of the proxy’s in that window. Below 100% in a fall means the fund fell less.</p>
         </div>
+        </>
       )}
     </Card>
+    </div>
   );
 }
 

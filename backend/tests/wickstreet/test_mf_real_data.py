@@ -530,3 +530,28 @@ async def test_v5_risk_free_and_sharpe_match_pandas(real: Database) -> None:
         assert cell(row, "sharpe_3y") == pytest.approx(sharpe, rel=1e-9), code
         checked += 1
     assert checked >= 30
+
+
+# ---- fund search (audit F-04)
+
+SEARCH_EXPECTED = {
+    "parag": "Parag Parikh Flexi Cap Fund - Direct Plan - Growth",
+    "ppfas": "Parag Parikh Flexi Cap Fund - Direct Plan - Growth",
+    "sbi smallcap": "SBI Small Cap Fund - Direct Plan - Growth",
+    "hdfc midcap": "HDFC Mid Cap Fund - Growth Option - Direct Plan",
+    "axis bluechip": "Axis Large Cap Fund - Direct Plan - Growth",
+    "quant small": "quant Small Cap Fund - Growth Option - Direct Plan",
+    "motilal midcap": "Motilal Oswal Midcap Fund-Direct Plan-Growth Option",
+    "kotak flexi": "Kotak Flexi Cap Fund - Growth - Direct",
+    "uti nifty 50": "UTI Nifty 50 Index Fund - Growth Option- Direct",
+    "122639": "Parag Parikh Flexi Cap Fund - Direct Plan - Growth",
+}
+
+
+async def test_search_finds_the_fund_a_beginner_means_in_the_top_3(real: Database) -> None:
+    research = _research(real)
+    for query, expected in SEARCH_EXPECTED.items():
+        _, found = await research.search(query, 3)
+        assert expected in [f.nav_name for f, _ in found], query
+    _, found = await research.search("parag", 1)
+    assert found[0][0].nav_name == SEARCH_EXPECTED["parag"]

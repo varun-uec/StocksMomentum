@@ -4,17 +4,20 @@
  * computes nothing: it collects inputs, shows the service's result, and labels an
  * old result "Previous scenario" once the inputs change.
  */
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useId, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { pctTick } from '../axis';
 import { mfApi, type CalculatorKind, type CalculatorRequest, type Simulation, type TaxClass } from '../api';
 import { ChartFrame, Histogram, LegendDot, TimeChart } from '../components/charts';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { Badge, Button, Card, DependencyPanel, ErrorState, Field, PageHeader, Segmented, Skeleton, SnapshotNote, Stat, cx, inputClass, useTitle } from '../components/ui';
-import { date, enumLabel, inr, pct, schemeName } from '../format';
+import { date, enumLabel, inr, inrTick, pct, schemeName } from '../format';
 import { useMetrics } from '../queries';
 import { seriesColor, token } from '../theme/themes';
+import { startingFunds, useRecentFunds } from '../context';
+import { useDebounced } from '../use-debounced';
 import { useRecordMutations } from '../workspace';
 
 const KINDS: { value: CalculatorKind; label: string; lead: string }[] = [
@@ -134,7 +137,7 @@ function Result({ sim, stale }: { sim: Simulation; stale: boolean }) {
           legend={series.map((x) => <LegendDot key={x.id} color={x.color} dashed={x.dashed} label={x.label} />)}
           table={{ columns: ['Date', ...keys.map((k) => SERIES_LABELS[k] ?? k)], rows: sim.timeline.map((r) => [date(String(r.date)), ...keys.map((k) => inr(Number(r[k])))]) }}
         >
-          <TimeChart label="Scenario value over time" height={280} series={series} format={(v) => inr(v, true)} />
+          <TimeChart label="Scenario value over time" height={280} series={series} format={(v) => inr(v)} tick={inrTick} />
         </ChartFrame>
       ) : (
         <Card title="One purchase">
@@ -202,61 +205,102 @@ function RollingSip({ code }: { code: string }) {
       {q.isError ? <ErrorState error={q.error} compact /> : q.isLoading ? <Skeleton className="h-[220px]" /> : xirrs.length < 3 ? (
         <p className="py-10 text-center text-sm text-mf-muted">The history is too short for {tenor.toUpperCase()} SIPs from many start months.</p>
       ) : (
-        <Histogram label="Distribution of SIP XIRR by start month" values={xirrs} bins={18} format={(x) => pct(x, 0)} markers={d?.summary.median_xirr != null ? [{ value: d.summary.median_xirr, label: 'Median', color: token('brandStrong') }] : []} />
+        <Histogram label="Distribution of SIP XIRR by start month" values={xirrs} format={pctTick} markers={d?.summary.median_xirr != null ? [{ value: d.summary.median_xirr, label: 'Median', color: token('brandStrong') }] : []} />
       )}
     </ChartFrame>
+  );
+}
+
+/** Starting amounts per kind: an SWP or STP must outlast a 5-year window on a typical equity fund (audit F-12). */
+const KIND_DEFAULTS: Record<CalculatorKind, Pick<Inputs, 'amount' | 'instalment'>> = {
+  sip: { amount: '10000', instalment: '5000' },
+  lumpsum: { amount: '100000', instalment: '5000' },
+  swp: { amount: '1000000', instalment: '6000' },
+  stp: { amount: '500000', instalment: '10000' },
+};
+
+const RANGES: Record<'monthly' | 'corpus', [number, number, number]> = { monthly: [500, 100_000, 500], corpus: [10_000, 5_000_000, 10_000] };
+
+/** A rupee amount as a slider and a number box; the box takes any value, the slider a common range. */
+function MoneyField({ label, value, onChange, range }: { label: string; value: string; onChange: (v: string) => void; range: 'monthly' | 'corpus' }) {
+  const [min, max, step] = RANGES[range];
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1 flex items-baseline justify-between text-[13px] font-medium text-mf-ink-soft">
+        {label}
+        <span className="text-xs font-normal text-mf-muted">{Number(value) > 0 ? inr(Number(value), true) : ''}</span>
+      </label>
+      <input id={id} className={inputClass} type="number" inputMode="numeric" min={1} value={value} onChange={(e) => onChange(e.target.value)} />
+      <input type="range" className="mt-2 h-6 w-full" min={min} max={max} step={step} value={Math.min(max, Math.max(min, Number(value) || min))} onChange={(e) => onChange(e.target.value)} aria-label={`${label}, slider`} />
+    </div>
   );
 }
 
 export default function Simulate() {
   useTitle('Investment lab');
   const [params] = useSearchParams();
-  const [inputs, setInputs] = useState<Inputs>({
-    kind: (KINDS.some((k) => k.value === params.get('kind')) ? params.get('kind') : 'sip') as CalculatorKind,
-    code: /^\d{1,9}$/.test(params.get('code') ?? '') ? params.get('code')! : '',
-    target: '',
-    amount: '10000',
-    instalment: '5000',
+  const recent = useRecentFunds();
+  const linked = /^\d{1,9}$/.test(params.get('code') ?? '') ? params.get('code')! : '';
+  const initialKind = (KINDS.some((k) => k.value === params.get('kind')) ? params.get('kind') : 'sip') as CalculatorKind;
+  const [inputs, setInputs] = useState<Inputs>(() => ({
+    kind: initialKind,
+    code: linked || startingFunds(recent, 1).codes[0],
+    target: startingFunds(recent, 2).codes.find((c) => c !== (linked || startingFunds(recent, 1).codes[0])) ?? '',
+    ...KIND_DEFAULTS[initialKind],
     day: '1',
     start: yearsAgo(5),
     end: today,
     stepUp: '0',
     taxClass: 'equity',
     slab: '30',
-  });
+  }));
+  const example = !linked && !recent.includes(inputs.code);
   const set = (patch: Partial<Inputs>) => setInputs((i) => ({ ...i, ...patch }));
-  const run = useMutation({ mutationFn: ({ kind, body }: { kind: CalculatorKind; body: CalculatorRequest }) => mfApi.calculate(kind, body) });
   const { create } = useRecordMutations<{ kind: CalculatorKind; request: CalculatorRequest; summary: Simulation['summary'] }>('scenario');
   const fund = useMetrics(inputs.code || undefined);
   const { body, error } = toRequest(inputs);
-  const stale = !!run.variables && JSON.stringify(run.variables) !== JSON.stringify({ kind: inputs.kind, body });
+  // Results follow the inputs: the request runs 400 ms after the last change.
+  const key = useDebounced(body ? JSON.stringify({ kind: inputs.kind, body }) : '', 400);
+  const run = useQuery({
+    queryKey: ['mf', 'calculate', key],
+    queryFn: ({ signal }) => {
+      const r = JSON.parse(key) as { kind: CalculatorKind; body: CalculatorRequest };
+      return mfApi.calculate(r.kind, r.body, signal);
+    },
+    enabled: !!key,
+    staleTime: 300_000,
+    placeholderData: keepPreviousData,
+  });
+  const stale = run.isPlaceholderData || (!!body && key !== JSON.stringify({ kind: inputs.kind, body }));
   const kind = KINDS.find((k) => k.value === inputs.kind)!;
   const amountLabel = inputs.kind === 'sip' ? 'Monthly instalment (₹)' : 'Initial investment (₹)';
 
   return (
     <div className="space-y-6">
       <PageHeader title="Investment lab" lead="Test an investment habit on real past NAVs: what happened, month by month, and the tax it would have created." />
+      {example && (
+        <p className="rounded-[12px] border border-mf-info/30 bg-mf-info-soft/60 px-4 py-2.5 text-sm text-mf-ink-soft">
+          Showing an example fund so you can see a result at once. Change the fund below, or open any fund and choose “Test an investment”.
+        </p>
+      )}
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <Card title="Scenario" className="self-start lg:sticky lg:top-24">
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (body) run.mutate({ kind: inputs.kind, body });
-            }}
-          >
-            <Segmented label="Investment kind" size="md" value={inputs.kind} onChange={(k) => set({ kind: k })} options={KINDS.map((k) => ({ value: k.value, label: k.label }))} />
+        <Card title="Scenario" subtitle="Results update as you change an input" className="self-start lg:sticky lg:top-24">
+          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <Segmented label="Investment kind" size="md" value={inputs.kind} onChange={(k) => set({ kind: k, ...KIND_DEFAULTS[k] })} options={KINDS.map((k) => ({ value: k.value, label: k.label }))} />
             <p className="text-xs text-mf-muted">{kind.lead}</p>
             <FundChoice code={inputs.code} onChange={(code) => set({ code })} label={inputs.kind === 'stp' ? 'Transfer from' : 'Fund'} />
             {inputs.kind === 'stp' && <FundChoice code={inputs.target} onChange={(target) => set({ target })} label="Transfer into" />}
-            <Field label={amountLabel}>
-              <input className={inputClass} type="number" inputMode="numeric" min={1} value={inputs.amount} onChange={(e) => set({ amount: e.target.value })} />
-            </Field>
+            <MoneyField label={amountLabel} value={inputs.amount} onChange={(amount) => set({ amount })} range={inputs.kind === 'sip' ? 'monthly' : 'corpus'} />
             {(inputs.kind === 'swp' || inputs.kind === 'stp') && (
-              <Field label={inputs.kind === 'swp' ? 'Monthly withdrawal (₹)' : 'Monthly transfer (₹)'}>
-                <input className={inputClass} type="number" inputMode="numeric" min={1} value={inputs.instalment} onChange={(e) => set({ instalment: e.target.value })} />
-              </Field>
+              <MoneyField label={inputs.kind === 'swp' ? 'Monthly withdrawal (₹)' : 'Monthly transfer (₹)'} value={inputs.instalment} onChange={(instalment) => set({ instalment })} range="monthly" />
             )}
+            <Segmented
+              label="Start"
+              value={[1, 3, 5, 10].map((n) => yearsAgo(n)).includes(inputs.start) && inputs.end === today ? inputs.start : ''}
+              onChange={(start) => set({ start, end: today })}
+              options={[1, 3, 5, 10].map((n) => ({ value: yearsAgo(n), label: `${n}Y ago` }))}
+            />
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start">
                 <input className={inputClass} type="date" max={today} value={inputs.start} onChange={(e) => set({ start: e.target.value })} />
@@ -290,9 +334,7 @@ export default function Simulate() {
               </Field>
             )}
             {error && inputs.code && <p role="alert" className="text-sm text-mf-loss">{error}</p>}
-            <Button type="submit" variant="primary" className="w-full" disabled={!body || run.isPending}>
-              {run.isPending ? 'Running…' : 'Run historical scenario'}
-            </Button>
+            <p className="text-xs text-mf-muted" aria-live="polite">{run.isFetching ? 'Running the scenario…' : run.data && !stale ? 'Result is up to date.' : ''}</p>
             {run.data && body && (
               <Button
                 className="w-full"
@@ -308,14 +350,14 @@ export default function Simulate() {
 
         <div className="min-w-0 space-y-6">
           {run.isError && <ErrorState error={run.error} />}
-          {run.isPending && !run.data && <Skeleton className="h-64" />}
+          {run.isLoading && <Skeleton className="h-64" />}
           {run.data ? (
             <Result sim={run.data} stale={stale} />
           ) : (
-            !run.isPending && (
+            !run.isLoading && (
               <div className="rounded-card border border-dashed border-mf-line-strong bg-mf-surface/60 p-8 text-center">
                 <I.lab className="mx-auto mb-3 h-8 w-8 text-mf-brand" />
-                <p className="font-display text-xl">Set up a scenario and run it</p>
+                <p className="font-display text-xl">Choose a fund to see a result</p>
                 <p className="mx-auto mt-1 max-w-md text-sm text-mf-muted">Results use each instalment date’s real NAV, stamp duty and the tax rules in force on each sale date. Nothing here forecasts returns.</p>
               </div>
             )

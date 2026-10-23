@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
 import { DEFAULT_THEME, THEMES, themeCss, type ThemeId } from '../theme/themes';
+import { useCompareTray } from '../workspace';
 import { CompareTray } from './CompareTray';
 import { FundSearch } from './FundSearch';
 import { I } from './icons';
@@ -127,14 +128,14 @@ function AppearanceSettings({ palette, setPalette }: { palette: ThemeId; setPale
               <input type="radio" name="mf-palette" checked={palette === id} onChange={() => setPalette(id)} />
               <span className="flex gap-1" aria-hidden="true">
                 {(['brand', 'brandAlt', 'paper', 'loss'] as const).map((role) => (
-                  <span key={role} className="h-5 w-5 rounded-full border border-black/10" style={{ background: THEMES[id].light[role] }} />
+                  <span key={role} className="h-5 w-5 rounded-full border border-mf-line-strong" style={{ background: THEMES[id].light[role] }} />
                 ))}
               </span>
               <span className="text-sm">{THEMES[id].label}</span>
             </label>
           ))}
         </div>
-        <p className="mt-2 text-xs text-mf-muted">Themes live in one file, src/features/mf/theme/themes.ts. Adding one needs no component change.</p>
+        <p className="mt-2 text-xs text-mf-muted">Your choice is kept in this browser.</p>
       </fieldset>
     </div>
   );
@@ -154,6 +155,7 @@ export function MfShell({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState(false);
   const { pathname } = useLocation();
+  const tray = useCompareTray().funds.length > 0 && !pathname.startsWith('/mf/compare') && !pathname.startsWith('/mf/funds/');
 
   // ScrollRestoration owns the scroll position, so Back returns to the same row.
   useEffect(() => {
@@ -162,7 +164,7 @@ export function MfShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="mf-root">
+    <div className="mf-root" data-tray={tray || undefined}>
       <style>{themeCss(THEMES[palette])}</style>
       <a href="#mf-main" className="sr-only z-[100] rounded bg-mf-surface px-3 py-2 focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
         Skip to content

@@ -38,6 +38,14 @@ export function inr(value: unknown, compact = false): string {
   return signed(text, value, false);
 }
 
+/** A rupee axis tick, short and exact: `₹5 L`, `₹2.5 Cr`, `₹20k`, `₹500`. */
+export function inrTick(value: number): string {
+  const abs = Math.abs(value);
+  const trim = (x: number) => String(Number(x.toFixed(2)));
+  const text = abs >= 1e7 ? `₹${trim(abs / 1e7)} Cr` : abs >= 1e5 ? `₹${trim(abs / 1e5)} L` : abs >= 1e3 ? `₹${trim(abs / 1e3)}k` : `₹${trim(abs)}`;
+  return value < 0 ? `${MINUS}${text}` : text;
+}
+
 /** `2026-10-22` → `22 Oct 2026`. */
 export function date(iso: unknown): string {
   if (typeof iso !== 'string' || iso.length < 10) return '—';
@@ -154,5 +162,5 @@ export function tone(value: unknown): 'gain' | 'loss' | 'flat' {
 
 /** `Parag Parikh Flexi Cap Fund - Direct Plan - Growth` → scheme name only. */
 export function schemeName(name: string): string {
-  return name.split(/ - (Direct|Regular)/i)[0].trim();
+  return name.split(/\s*-\s*(?=(Direct|Regular|Growth|IDCW)\b)/i)[0].trim();
 }

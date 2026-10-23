@@ -20,7 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncResult
 
 from platform_common.database import Database
 from wickstreet.mf_data.domain.model import TBILL_91
-from wickstreet.mf_data.domain.reads import FundRecord, FundSeries, History, Link, NavPoint
+from wickstreet.mf_data.domain.reads import (
+    SEARCH_SYNONYMS,
+    FundRecord,
+    FundSeries,
+    History,
+    Link,
+    NavPoint,
+    search_terms,
+)
 
 
 class NothingPublishedError(RuntimeError):
@@ -173,16 +181,35 @@ class SqlMfReader:
                 yield History(revision, as_of, sources, _grouped(records, rows), risk_free)
 
     async def search(self, query: str, limit: int, revision: int) -> list[FundRecord]:
-        """Match an AMFI code or ISIN exactly, or a name by substring."""
-        like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        """Match an AMFI code or ISIN exactly, or every term of a name or AMC.
+
+        A term matches the name or AMC with spaces and punctuation removed. Up to
+        ``limit`` matches return, Direct Growth plans first; the caller ranks them.
+        """
+        words = search_terms(query)
+        if not words:
+            return []
+        compact = (
+            "regexp_replace(lower(coalesce(f.nav_name, '') || ' ' || coalesce(f.scheme_name, '') "
+            "|| ' ' || coalesce(f.amc, '')), '[^a-z0-9]', '', 'g')"
+        )
+        bound: dict[str, str] = {}
+        clauses = []
+        for i, word in enumerate(words):
+            options = (word, *SEARCH_SYNONYMS.get(word, ()))
+            bound |= {f"t{i}_{j}": f"%{o}%" for j, o in enumerate(options)}
+            clauses.append(" OR ".join(f"{compact} LIKE :t{i}_{j}" for j in range(len(options))))
+        match = " AND ".join(f"({c})" for c in clauses)
         sql = text(
             f"SELECT * FROM ({_funds_sql('TRUE')}) f(id, amfi_code, amc, scheme_name, nav_name, "
             "scheme_type, category, plan, option, isin_growth, isin_reinvest, launch_date) "
-            "WHERE f.amfi_code = :q OR f.isin_growth = :q OR f.isin_reinvest = :q "
-            "OR f.nav_name ILIKE :like OR f.scheme_name ILIKE :like "
-            "ORDER BY f.amfi_code = :q DESC, f.nav_name, f.amfi_code LIMIT :limit"
+            f"WHERE upper(f.amfi_code) = :q OR f.isin_growth = :q OR f.isin_reinvest = :q "
+            f"OR ({match}) "
+            "ORDER BY upper(f.amfi_code) = :q OR f.isin_growth = :q OR f.isin_reinvest = :q DESC, "
+            "(f.plan = 'direct' AND f.option = 'growth') DESC, f.nav_name, f.amfi_code "
+            "LIMIT :limit"
         )
-        rows = await self._rows(sql, r=revision, q=query, like=like, limit=limit)
+        rows = await self._rows(sql, r=revision, q=query.strip().upper(), limit=limit, **bound)
         return [_record(row) for row in rows]
 
     async def _funds(self, codes: Sequence[str], revision: int) -> list[FundRecord]:

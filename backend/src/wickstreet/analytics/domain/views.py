@@ -117,6 +117,25 @@ def rolling_series(points: Points, months: int) -> list[tuple[str, float]]:
     return [(_iso(dates[j]), value) for j, value in window_points(dates, navs, months, True)]
 
 
+def month_end_navs(points: Points, months: int) -> list[tuple[str, float]]:
+    """The last valid NAV of each calendar month, for the last ``months`` months.
+
+    A small trend line for cards and table rows: NAVs as filed, nothing derived.
+    """
+    dates, navs, _, _ = valid_series(points)
+    if not dates:
+        return []
+    last = date.fromordinal(dates[-1])
+    first_key = last.year * 12 + last.month - 1 - months
+    found: dict[int, tuple[str, float]] = {}
+    for day, nav in zip(dates, navs, strict=True):
+        moment = date.fromordinal(day)
+        key = moment.year * 12 + moment.month - 1
+        if key >= first_key:
+            found[key] = (moment.isoformat(), nav)
+    return [found[k] for k in sorted(found)]
+
+
 def drawdowns(points: Points, top: int) -> list[dict[str, Any]]:
     """The ``top`` deepest falls from a peak, each with its trough and recovery (or none)."""
     dates, navs, _, _ = valid_series(points)

@@ -424,6 +424,8 @@ export const mfApi = {
   screen: (body: ScreenRequest, signal?: AbortSignal) => post<ScreenResponse>('/screener/run', body, signal),
   search: (q: string, limit = 8, signal?: AbortSignal) =>
     get<Envelope & { funds: FundHit[] }>(`/funds${qs({ q, limit })}`, signal),
+  sparklines: (codes: string[], signal?: AbortSignal) =>
+    get<Envelope & { series: Record<string, Point[]> }>(`/funds/sparklines${qs({ code: codes })}`, signal),
   fund: (code: string, signal?: AbortSignal) => get<FundDetail>(`/funds/${code}`, signal),
   metrics: (code: string, signal?: AbortSignal) => get<Metrics>(`/funds/${code}/metrics`, signal),
   score: (code: string, signal?: AbortSignal) => get<Score>(`/funds/${code}/score`, signal),

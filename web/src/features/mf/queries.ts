@@ -75,3 +75,15 @@ export const useFrontier = (group: PeerGroup | null) =>
   useQuery({ queryKey: ['mf', 'frontier', group], queryFn: ({ signal }) => mfApi.frontier(group!, signal), enabled: !!group, staleTime: FRESH });
 export const useTransitions = (group: PeerGroup | null) =>
   useQuery({ queryKey: ['mf', 'transitions', group], queryFn: ({ signal }) => mfApi.transitions(group!, signal), enabled: !!group, staleTime: FRESH });
+
+/** Month-end NAVs over 3 years for a set of funds, in one request (at most 50 codes). */
+export const useSparklines = (codes: string[]) => {
+  const key = [...new Set(codes)].slice(0, 50).sort();
+  return useQuery({
+    queryKey: ['mf', 'sparklines', key],
+    queryFn: ({ signal }) => mfApi.sparklines(key, signal),
+    enabled: key.length > 0,
+    staleTime: FRESH,
+    placeholderData: keepPreviousData,
+  });
+};
