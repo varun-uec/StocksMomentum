@@ -25,6 +25,7 @@ import wickstreet.analytics.infrastructure.tables  # noqa: F401 - registers the 
 import wickstreet.data_rights.infrastructure.tables  # noqa: F401
 import wickstreet.identity.infrastructure.tables  # noqa: F401
 import wickstreet.mf_data.infrastructure.tables  # noqa: F401
+import wickstreet.workspace.infrastructure.tables  # noqa: F401
 from tests.wickstreet.conftest import Urls, alembic_config
 from tests.wickstreet.tenant_cases import CASES
 from wickstreet.persistence.database import SCHEMA, include_mf_schema, metadata
@@ -180,4 +181,4 @@ async def test_mf_migrations_run_alone_and_leave_momentum25_untouched(
     await admin.dispose()
     assert before[0]
     assert after == before
-    assert mf_version == "0004_reference_rates"
+    assert mf_version == "0005_research_records"

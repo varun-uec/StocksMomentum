@@ -20,7 +20,7 @@ from starlette.requests import Request
 from momentum25.infrastructure.persistence.models import Base
 from platform_common.database import Database
 from tests.wickstreet.conftest import Urls
-from tests.wickstreet.tenant_cases import CASES
+from tests.wickstreet.tenant_cases import CASES, record_id
 from wickstreet.app import create_app
 from wickstreet.config import WickstreetSettings
 from wickstreet.context import TenantContext
@@ -32,6 +32,7 @@ from wickstreet.persistence.database import (
     tenant_transaction,
 )
 from wickstreet.persistence.roles import ensure_roles
+from wickstreet.workspace.infrastructure.tables import research_record
 
 Tenants = tuple[TenantContext, TenantContext]
 _RLS = "row-level security"
@@ -39,11 +40,24 @@ _RLS = "row-level security"
 
 @pytest.fixture
 async def tenants(app_database: Database) -> Tenants:
-    """Two synthetic tenants, each with one user, registered as the runtime role."""
+    """Two synthetic tenants, each with one user and one record, saved as the runtime role."""
     pair = (TenantContext(uuid4(), uuid4()), TenantContext(uuid4(), uuid4()))
     for context in pair:
         async with tenant_transaction(app_database, context.tenant_id) as session:
             await RegisterPrincipal(SqlPrincipalRegistry(session)).execute(context)
+            await session.execute(
+                research_record.insert().values(
+                    id=record_id(context),
+                    tenant_id=context.tenant_id,
+                    owner_id=context.user_id,
+                    kind="note",
+                    name="Isolation probe",
+                    body={},
+                    schema_version=1,
+                    version=1,
+                    archived=False,
+                )
+            )
     return pair
 
 

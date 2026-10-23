@@ -134,6 +134,7 @@ containers = [
     "wickstreet.data_rights",
     "wickstreet.mf_data",
     "wickstreet.analytics",
+    "wickstreet.workspace",
 ]
 layers = ["(interface)", "application", "domain"]
 

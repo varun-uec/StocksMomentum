@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 from wickstreet.context import TenantContext
 
@@ -24,6 +24,11 @@ class TenantCase:
     forged_row: Callable[[TenantContext], dict[str, UUID]]
 
 
+def record_id(context: TenantContext) -> UUID:
+    """The id of the one research record the isolation fixture saves for a tenant."""
+    return uuid5(context.tenant_id, "research_record")
+
+
 CASES: dict[str, TenantCase] = {
     "tenant": TenantCase(
         tenant_column="id",
@@ -34,5 +39,14 @@ CASES: dict[str, TenantCase] = {
         tenant_column="tenant_id",
         key=lambda c: {"id": c.user_id},
         forged_row=lambda victim: {"id": uuid4(), "tenant_id": victim.tenant_id},
+    ),
+    "research_record": TenantCase(
+        tenant_column="tenant_id",
+        key=lambda c: {"id": record_id(c)},
+        forged_row=lambda victim: {
+            "id": uuid4(),
+            "tenant_id": victim.tenant_id,
+            "owner_id": victim.user_id,
+        },
     ),
 }

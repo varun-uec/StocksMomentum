@@ -40,6 +40,12 @@ from wickstreet.mf_data.domain.model import AMFI, REFRESH
 from wickstreet.mf_data.infrastructure.scheduler import IST, RefreshScheduler, refresh_due
 from wickstreet.persistence.database import check_runtime_role, tenant_transaction
 from wickstreet.wiring import Analytics, Ingestion, build_analytics, build_ingestion
+from wickstreet.workspace.domain.records import (
+    InvalidRecordError,
+    UnknownRecordError,
+    VersionConflictError,
+)
+from wickstreet.workspace.interface.http import router as workspace_router
 
 _logger = get_logger("wickstreet.startup")
 _ERROR_NAMESPACE = "wickstreet"
@@ -144,6 +150,7 @@ def create_app(settings: WickstreetSettings | None = None) -> FastAPI:
     app.state.research = app.state.analytics.research
     app.include_router(identity_router)
     app.include_router(research_router)
+    app.include_router(workspace_router)
     for error, status, title in _PROBLEMS:
         app.add_exception_handler(error, _problem(status, title))
     return app
@@ -156,6 +163,9 @@ _PROBLEMS: tuple[tuple[type[Exception], int, str], ...] = (
     (NoSnapshotError, 404, "no-snapshot"),
     (UnknownFundError, 404, "unknown-fund"),
     (SimulationError, 422, "invalid-simulation"),
+    (InvalidRecordError, 422, "invalid-record"),
+    (UnknownRecordError, 404, "unknown-record"),
+    (VersionConflictError, 412, "version-conflict"),
 )
 
 

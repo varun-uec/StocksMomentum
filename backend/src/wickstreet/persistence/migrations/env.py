@@ -19,6 +19,7 @@ import wickstreet.analytics.infrastructure.tables  # noqa: F401 - registers the 
 import wickstreet.data_rights.infrastructure.tables  # noqa: F401
 import wickstreet.identity.infrastructure.tables  # noqa: F401
 import wickstreet.mf_data.infrastructure.tables  # noqa: F401
+import wickstreet.workspace.infrastructure.tables  # noqa: F401
 from wickstreet.config import get_settings
 from wickstreet.persistence.database import SCHEMA, include_mf_schema, metadata
 
