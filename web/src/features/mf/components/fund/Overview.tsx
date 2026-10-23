@@ -8,7 +8,7 @@ import type { FundDetail, Metrics } from '../../api';
 import { categoryShort, date, formatField, isNum, missingLabel, pct } from '../../format';
 import { Link } from 'react-router';
 import { useDrawdowns, useFundRegimes, useScore } from '../../queries';
-import { fallVerdict } from '../../verdicts';
+import { fallVerdict, recentVerdict } from '../../verdicts';
 import { ScoreRing } from '../ScoreBadge';
 import { I } from '../icons';
 import { Badge, Card, Delta, DependencyPanel, ErrorState, InfoTip, Meter, Segmented, Skeleton, cx } from '../ui';
@@ -118,6 +118,7 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
   const regimes = useFundRegimes(code);
   const drawdowns = useDrawdowns(code);
   const verdict = regimes.data && drawdowns.data ? fallVerdict(regimes.data.windows, drawdowns.data.drawdowns) : null;
+  const recent = recentVerdict(metrics.values);
   const v = metrics.values;
   const category = categoryShort(String(v.category));
   const s = score.data;
@@ -131,21 +132,29 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
           <Link to="?tab=peers" className="text-xs font-medium text-mf-brand hover:underline">How it ranks</Link>
         </div>
       </div>
-      <p className="text-[15px] leading-relaxed text-mf-ink-soft" data-testid="fund-verdict">
+      <div className="order-2 space-y-2 text-[14px] leading-relaxed text-mf-ink-soft sm:text-[15px] md:order-none" data-testid="fund-verdict">
+        {recent && (
+          <p>
+            <span className="mr-1.5 inline-block rounded-full bg-mf-sunken px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-mf-muted">Recent</span>
+            {recent}
+          </p>
+        )}
         {verdict ? (
-          <>
+          <p>
+            <span className="mr-1.5 inline-block rounded-full bg-mf-loss-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-mf-loss">Worst fall</span>
             {verdict.text}{' '}
             <Link to="?tab=risk#regimes" className="whitespace-nowrap text-sm font-medium text-mf-brand hover:underline">
               See every fall
             </Link>
-          </>
+          </p>
         ) : regimes.isLoading || drawdowns.isLoading ? (
           <Skeleton className="h-10 w-full" />
         ) : (
-          'This fund has no NAV in a market-proxy fall window yet, so there is no fall to read.'
+          <p>This fund has no NAV in a market-proxy fall window yet, so there is no fall to read.</p>
         )}
-      </p>
-      <dl className="grid grid-cols-3 gap-2 text-center md:col-span-2 lg:col-span-1 lg:w-[300px]">
+      </div>
+      {/* On phones the three numbers come before the narrative, so they stay on the first screen. */}
+      <dl className="order-1 grid grid-cols-3 gap-2 text-center md:order-none md:col-span-2 lg:col-span-1 lg:w-[300px]">
         {[
           ['1Y return', v.ret_1y, 'ret_1y'],
           ['3Y CAGR', v.cagr_3y, 'cagr_3y'],

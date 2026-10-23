@@ -34,7 +34,7 @@ from wickstreet.analytics.domain.peers import (
     group_absence,
 )
 from wickstreet.analytics.domain.screening import FilterError, parse_filter, parse_sort, screen
-from wickstreet.analytics.domain.tax import Sale, capital_gains_tax, tax_class_of
+from wickstreet.analytics.domain.tax import Sale, capital_gains_tax, held_over, tax_class_of
 
 
 def o(text: str) -> int:
@@ -324,6 +324,30 @@ def test_equity_tax_rates_exemption_and_grandfathering() -> None:
     old = capital_gains_tax([sale("2017-01-01", "2024-08-01", 100, 400)], "equity", None, 150.0)
     assert old.years[0]["long_term"] == 250
     assert old.total == 0
+
+
+def test_holding_periods_use_calendar_anniversaries() -> None:
+    # Independent audit A-03: 24 Jul 2023 -> 24 Jul 2024 is 366 days but exactly
+    # 12 months, so it is short term (20% + cess), not long term.
+    gain = 376_182.5337657018
+    on = capital_gains_tax([sale("2023-07-24", "2024-07-24", 0, gain)], "equity", None, None)
+    assert on.years[0]["short_term"] == pytest.approx(gain)
+    assert on.total == pytest.approx(78_245.97, abs=0.01)
+    after = capital_gains_tax([sale("2023-07-24", "2024-07-25", 0, gain)], "equity", None, None)
+    assert after.years[0]["long_term"] == pytest.approx(gain)
+    assert held_over(o("2023-07-24"), o("2024-07-23"), 12) is False
+    assert held_over(o("2023-07-24"), o("2024-07-24"), 12) is False
+    assert held_over(o("2023-07-24"), o("2024-07-25"), 12) is True
+    # A leap-day purchase reaches its anniversary on the month's last day.
+    assert held_over(o("2024-02-29"), o("2025-02-28"), 12) is False
+    assert held_over(o("2024-02-29"), o("2025-03-01"), 12) is True
+    assert held_over(o("2023-01-31"), o("2025-01-31"), 24) is False
+    assert held_over(o("2023-01-31"), o("2025-02-01"), 24) is True
+    assert held_over(o("2019-03-01"), o("2022-03-01"), 36) is False
+    assert held_over(o("2019-03-01"), o("2022-03-02"), 36) is True
+    # Debt bought before April 2023 and sold on its 24-month anniversary stays at slab.
+    debt = capital_gains_tax([sale("2022-08-01", "2024-08-01", 0, 10_000)], "debt", 0.3, None)
+    assert debt.years[0]["slab"] == pytest.approx(10_000)
 
 
 def test_debt_and_other_tax_and_reasons() -> None:

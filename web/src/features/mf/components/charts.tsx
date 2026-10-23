@@ -10,7 +10,6 @@ import {
   AreaChart,
   Bar,
   BarChart,
-  Brush,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -18,6 +17,7 @@ import {
   Line,
   LineChart,
   ReferenceArea,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -161,11 +161,31 @@ export function mergeSeries(series: Series[]): Record<string, number | string>[]
   return [...rows.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 
-/** Keep every n-th row so a long table stays readable; the last row is always kept. */
+const rowValues = (row: unknown): [string, unknown][] => Object.entries(Array.isArray(row) ? row.slice(1) : (row as object));
+
+/**
+ * About `max` rows for drawing or a table, without losing what matters. The rows
+ * split into buckets; each bucket keeps its first row and the rows that hold each
+ * value's lowest and highest point, so a deepest fall or a peak survives on its
+ * own date (independent audit A-02). The first and last rows are always kept.
+ */
 export function thin<T>(rows: T[], max = 400): T[] {
   if (rows.length <= max) return rows;
-  const step = Math.ceil(rows.length / max);
-  return rows.filter((_, i) => i % step === 0 || i === rows.length - 1);
+  const size = Math.ceil((rows.length * 3) / max);
+  const keep = new Set<number>([0, rows.length - 1]);
+  for (let start = 0; start < rows.length; start += size) {
+    keep.add(start);
+    const lo = new Map<string, [number, number]>();
+    const hi = new Map<string, [number, number]>();
+    for (let i = start; i < Math.min(start + size, rows.length); i++)
+      for (const [k, v] of rowValues(rows[i])) {
+        if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+        if (!(v >= (lo.get(k)?.[1] ?? Infinity))) lo.set(k, [i, v]);
+        if (!(v <= (hi.get(k)?.[1] ?? -Infinity))) hi.set(k, [i, v]);
+      }
+    for (const [i] of [...lo.values(), ...hi.values()]) keep.add(i);
+  }
+  return [...keep].sort((a, b) => a - b).map((i) => rows[i]);
 }
 
 type Bound = number | 'auto' | 'dataMin' | 'dataMax';
@@ -193,6 +213,7 @@ export function TimeChart({
   label,
   bands,
   markers,
+  dots,
   yDomain,
   zoom = false,
   log = false,
@@ -208,17 +229,21 @@ export function TimeChart({
   label: string;
   bands?: { start: string; end: string; color: string; label?: string }[];
   markers?: { date: string; label: string; color?: string }[];
+  /** A point worth naming on the line, such as the deepest fall; drawn at its own date and value. */
+  dots?: { date: string; value: number; label: string; color?: string }[];
   yDomain?: [Bound, Bound];
   zoom?: boolean;
   /** A log value axis: equal heights mean equal percentage moves. Positive series only. */
   log?: boolean;
 }) {
-  // Thin after merging, so every series keeps the same dates; a date one series lacks is joined across.
-  const data = useMemo(() => thin(mergeSeries(series), 700).map((r) => ({ ...r, t: toTime(String(r.date)) }) as Record<string, number | string>), [series]);
+  // Every row at full resolution; a zoom thins only the rows in view, so it shows detail
+  // the full view had to merge. Thin after merging, so every series keeps the same dates.
+  const full = useMemo(() => mergeSeries(series).map((r) => ({ ...r, t: toTime(String(r.date)) }) as Record<string, number | string>), [series]);
   const [range, setRange] = useState<[number, number] | null>(null);
-  useEffect(() => setRange(null), [data]);
-  const [from, to] = range && range[1] < data.length ? range : [0, data.length - 1];
-  const visible = data.slice(from, to + 1);
+  useEffect(() => setRange(null), [full]);
+  const [from, to] = range && range[1] < full.length ? range : [0, full.length - 1];
+  const visible = useMemo(() => thin(full.slice(from, to + 1), 700), [full, from, to]);
+  const data = visible;
   const shown = visible.flatMap((r) => series.map((s) => r[s.id]).filter((v): v is number => typeof v === 'number'));
   const positive = shown.length > 0 && Math.min(...shown) > 0;
   const y =
@@ -230,8 +255,9 @@ export function TimeChart({
   const Chart = area ? AreaChart : LineChart;
   const axisText = tick ?? format;
   return (
-    // A zoomable chart holds the brush's focusable handles, so it is a figure, not an image.
-    <div role={zoom ? 'figure' : 'img'} aria-label={label} style={{ height: height + (zoom ? 34 : 0) }}>
+    // A zoomable chart holds the range handles, so it is a figure, not an image.
+    <div role={zoom ? 'figure' : 'img'} aria-label={label}>
+      <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <Chart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
           <defs>
@@ -250,6 +276,9 @@ export function TimeChart({
           {markers?.map((m) => (
             <ReferenceLine key={m.date + m.label} x={toTime(m.date)} stroke={m.color ?? token('inkSoft')} strokeDasharray="3 3" ifOverflow="hidden" label={{ value: m.label, position: 'insideTopLeft', fontSize: 11, fill: m.color ?? token('inkSoft') }} />
           ))}
+          {dots?.map((d) => (
+            <ReferenceDot key={d.date + d.label} x={toTime(d.date)} y={d.value} r={5} fill={d.color ?? token('ink')} stroke={token('surface')} strokeWidth={2} ifOverflow="hidden" label={{ value: d.label, position: 'right', offset: 10, fontSize: 11, fontWeight: 600, fill: d.color ?? token('ink') }} />
+          ))}
           <Tooltip
             {...tooltipStyle}
             labelFormatter={(_, payload) => date(String(payload?.[0]?.payload?.date ?? ''))}
@@ -262,21 +291,50 @@ export function TimeChart({
               <Line key={s.id} type="monotone" dataKey={s.id} stroke={s.color ?? seriesColor(i)} strokeWidth={i === 0 ? 2.2 : 1.6} strokeDasharray={s.dashed ? '5 4' : undefined} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} connectNulls />
             ),
           )}
-          {zoom && data.length > 20 && (
-            <Brush
-              dataKey="t"
-              height={26}
-              travellerWidth={10}
-              stroke={token('lineStrong')}
-              fill={token('surface')}
-              tickFormatter={(t: number) => timeLabel(t, true)}
-              startIndex={from}
-              endIndex={to}
-              onChange={(r) => r.startIndex !== undefined && r.endIndex !== undefined && setRange([r.startIndex, r.endIndex])}
-            />
-          )}
         </Chart>
       </ResponsiveContainer>
+      </div>
+      {zoom && full.length > 20 && <RangeBrush rows={full} first={series[0]?.id} from={from} to={to} onChange={setRange} label={label} />}
+    </div>
+  );
+}
+
+/**
+ * The zoom control: two native range inputs over an overview line. Each handle is
+ * a labelled slider whose value reads as a date, so it works with keys, touch and
+ * screen readers (audit A-12). Arrows move a day; Page Up/Down move further.
+ */
+function RangeBrush({ rows, first, from, to, onChange, label }: { rows: Record<string, number | string>[]; first?: string; from: number; to: number; onChange: (r: [number, number] | null) => void; label: string }) {
+  const last = rows.length - 1;
+  const overview = useMemo(() => {
+    const pts = thin(rows.map((r) => [Number(r.t), r[first ?? ''] as number] as [number, number]).filter(([, v]) => typeof v === 'number'), 160);
+    const vs = pts.map(([, v]) => v);
+    const [lo, hi] = [Math.min(...vs), Math.max(...vs)];
+    const [t0, t1] = [Number(rows[0].t), Number(rows[last].t)];
+    return pts.map(([t, v]) => `${(((t - t0) / (t1 - t0 || 1)) * 100).toFixed(2)},${(26 - ((v - lo) / (hi - lo || 1)) * 22).toFixed(2)}`).join(' ');
+  }, [rows, first, last]);
+  const day = (i: number) => date(String(rows[i]?.date ?? ''));
+  const at = (i: number) => `${(i / last) * 100}%`;
+  const zoomed = from > 0 || to < last;
+  return (
+    <div className="mt-2">
+      <div className="relative h-8 rounded-[6px] border border-mf-line bg-mf-sunken/60">
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points={overview} fill="none" stroke={token('muted')} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <div className="absolute inset-y-0 rounded-[4px] bg-mf-brand/15 ring-1 ring-mf-brand/40" style={{ left: at(from), right: `calc(100% - ${at(to)})` }} aria-hidden="true" />
+        <input type="range" className="mf-range" min={0} max={last} value={from} aria-label={`${label}: start date`} aria-valuetext={day(from)} onChange={(e) => onChange([Math.min(Number(e.target.value), to - 1), to])} />
+        <input type="range" className="mf-range" min={0} max={last} value={to} aria-label={`${label}: end date`} aria-valuetext={day(to)} onChange={(e) => onChange([from, Math.max(Number(e.target.value), from + 1)])} />
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-mf-muted tabular">
+        <span>{day(from)}</span>
+        {zoomed && (
+          <button type="button" className="mf-tap rounded px-2 font-medium text-mf-brand-strong hover:underline" onClick={() => onChange(null)}>
+            Show all dates
+          </button>
+        )}
+        <span>{day(to)}</span>
+      </div>
     </div>
   );
 }
@@ -428,7 +486,8 @@ export function PeerScatter({
   label,
   height = 320,
 }: {
-  points: { id: string; name: string; x: number; y: number; highlight?: boolean; frontier?: boolean }[];
+  /** `color` gives a highlighted point the colour its series has elsewhere on the page. */
+  points: { id: string; name: string; x: number; y: number; highlight?: boolean; frontier?: boolean; color?: string }[];
   xLabel: string;
   yLabel: string;
   format: (v: number) => string;
@@ -442,7 +501,7 @@ export function PeerScatter({
   const groups = [
     { key: 'peer', data: points.filter((p) => !p.highlight && !p.frontier).map((p) => ({ ...p, z: 1 })), color: token('muted', 0.45), line: false },
     { key: 'frontier', data: points.filter((p) => p.frontier).map((p) => ({ ...p, z: 2 })).sort((a, b) => a.x - b.x), color: token('brandAlt'), line: true },
-    { key: 'this', data: points.filter((p) => p.highlight).map((p) => ({ ...p, z: 3, short: schemeName(p.name).replace(/ Fund$/, '') })), color: token('chart2'), line: false },
+    { key: 'this', data: points.filter((p) => p.highlight).map((p) => ({ ...p, z: 3, short: shortName(p.name) })), color: token('chart2'), line: false },
   ];
   return (
     <div role="img" aria-label={label} style={{ height }}>
@@ -479,12 +538,36 @@ export function PeerScatter({
               cursor={onSelect ? 'pointer' : undefined}
               shape="circle"
             >
-              {g.key === 'this' && <LabelList dataKey="short" position="top" offset={10} style={{ fontSize: 11, fill: token('ink'), fontWeight: 600 }} />}
+              {g.key === 'this' && g.data.map((p) => <Cell key={p.id} fill={p.color ?? g.color} stroke={token('surface')} strokeWidth={1.5} />)}
+              {g.key === 'this' && <LabelList dataKey="short" content={ScatterLabel} />}
             </Scatter>
           ))}
         </ScatterChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/** A fund name short enough for a chart label: no plan words, at most 22 characters. */
+export function shortName(name: string): string {
+  const short = schemeName(name).replace(/ Fund$/, '');
+  return short.length > 22 ? `${short.slice(0, 21)}…` : short;
+}
+
+/**
+ * One line of text beside a highlighted point. Recharts wraps a label to a width,
+ * which stacked long names word by word (audit U-12); alternate points sit below
+ * their mark, so neighbours rarely collide.
+ */
+function ScatterLabel(props: { x?: number | string; y?: number | string; value?: unknown; index?: number }) {
+  const x = Number(props.x);
+  const y = Number(props.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const below = (props.index ?? 0) % 2 === 1;
+  return (
+    <text x={x} y={below ? y + 22 : y - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill={token('ink')} stroke={token('surface')} strokeWidth={3} paintOrder="stroke" style={{ whiteSpace: 'pre' }}>
+      {String(props.value ?? '')}
+    </text>
   );
 }
 

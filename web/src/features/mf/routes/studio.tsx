@@ -16,7 +16,7 @@ import { Badge, Button, Card, Chip, EmptyState, ErrorState, Field, PageHeader, S
 import { categoryShort, date, enumLabel, month, pct, schemeName } from '../format';
 import { useFields, useFrontier, useFundRegimes, useMetrics, useRankHistory, useRegimes, useTransitions } from '../queries';
 import { startingFunds, useRecentFunds } from '../context';
-import { compound } from '../series';
+import { growthByMonth, monthEnd } from '../series';
 import { backtestVerdict } from '../verdicts';
 import { heat, seriesColor, token } from '../theme/themes';
 
@@ -422,10 +422,7 @@ function BacktestMode({ group }: { group: PeerGroup }) {
   const holdout = result ? String(result.strategy.holdout_from) : '';
   const months = useMemo(() => result?.months ?? [], [result]);
   const growth = useMemo(
-    () => ({
-      s: compound(months.map((m) => [`${m.signal_month}-28`, m.strategy])),
-      m: compound(months.map((m) => [`${m.signal_month}-28`, m.median])),
-    }),
+    () => ({ s: growthByMonth(months, months.map((m) => m.strategy)), m: growthByMonth(months, months.map((m) => m.median)) }),
     [months],
   );
   return (
@@ -460,14 +457,14 @@ function BacktestMode({ group }: { group: PeerGroup }) {
             title="Growth of 100: top-N against the group median"
             subtitle={`Signal ${result.strategy.signal === 'cagr_3y' ? 'CAGR 3Y' : 'Return 1Y'}, top ${result.strategy.top}, ${result.funds_with_nav} funds with NAVs · monthly returns compounded`}
             legend={<><LegendDot color={seriesColor(0)} label="Top-N" /><LegendDot color={seriesColor(1)} dashed label="Group median" /></>}
-            footnote={`The shaded band is the hold-out, from ${month(holdout)}; the rules were not tuned on it.`}
-            table={{ columns: ['Signal month', 'Top-N', 'Median', 'Picks'], rows: months.map((m) => [month(m.signal_month), pct(m.strategy), pct(m.median), m.picks.join(' ')]) }}
+            footnote={`Each point is a holding month’s end: funds picked at the end of a signal month earn the next month’s return. The shaded band is the hold-out, returns earned from the end of ${month(holdout)}; the rules were not tuned on it.`}
+            table={{ columns: ['Signal month', 'Return earned to', 'Top-N', 'Median', 'Picks'], rows: months.map((m) => [month(m.signal_month), date(monthEnd(m.signal_month, 1)), pct(m.strategy), pct(m.median), m.picks.join(' ')]) }}
           >
             <TimeChart
               label="Cumulative growth of the backtest"
               height={280}
-              bands={[{ start: `${holdout}-01`, end: `${months[months.length - 1]?.signal_month ?? holdout}-28`, color: token('info') }]}
-              markers={[{ date: `${holdout}-01`, label: 'Hold-out', color: token('info') }]}
+              bands={[{ start: monthEnd(holdout), end: monthEnd(months[months.length - 1]?.signal_month ?? holdout, 1), color: token('info') }]}
+              markers={[{ date: monthEnd(holdout), label: 'Hold-out', color: token('info') }]}
               series={[
                 { id: 's', label: 'Top-N', points: growth.s, color: seriesColor(0) },
                 { id: 'm', label: 'Median', points: growth.m, color: seriesColor(1), dashed: true },

@@ -2,18 +2,20 @@
  * Investment lab (ui-ux doc 03 §06): SIP, lump sum, SWP and STP over real past
  * NAVs, with XIRR and a tax estimate from the backend calculators. The browser
  * computes nothing: it collects inputs, shows the service's result, and labels an
- * old result "Previous scenario" once the inputs change.
+ * old result "Previous scenario" once the inputs change. A saved scenario reopens
+ * with every input, on its saved snapshot or the latest (audit A-05).
  */
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { pctTick } from '../axis';
 import { mfApi, type CalculatorKind, type CalculatorRequest, type Simulation, type TaxClass } from '../api';
+import { KIND_DEFAULTS, defaultInputs, inputsFromSearch, revisionFromSearch, toRequest, today, yearsAgo, type Inputs, type ScenarioProvenance } from '../scenario';
 import { ChartFrame, Histogram, LegendDot, TimeChart } from '../components/charts';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { Badge, Button, Card, DependencyPanel, ErrorState, Field, PageHeader, Segmented, Skeleton, SnapshotNote, Stat, cx, inputClass, useTitle } from '../components/ui';
-import { date, enumLabel, inr, inrTick, pct, schemeName } from '../format';
+import { categoryShort, date, enumLabel, inr, inrTick, pct, schemeName } from '../format';
 import { useMetrics } from '../queries';
 import { seriesColor, token } from '../theme/themes';
 import { startingFunds, useRecentFunds } from '../context';
@@ -35,25 +37,10 @@ const SERIES_LABELS: Record<string, string> = {
   source_value: 'Source fund value',
   target_value: 'Target fund value',
 };
+const TAX_LABEL: Record<string, string> = { equity: 'Equity-oriented', debt: 'Debt-oriented', other: 'Other (hybrid, FoF, gold…)' };
+
 const PLOTTED = ['value', 'invested', 'source_value', 'target_value'];
 const SERIES_COLOR: Record<string, string> = { value: seriesColor(0), target_value: seriesColor(0), source_value: seriesColor(1), invested: token('muted') };
-
-const today = new Date().toISOString().slice(0, 10);
-const yearsAgo = (n: number) => `${Number(today.slice(0, 4)) - n}${today.slice(4, 8)}01`;
-
-interface Inputs {
-  kind: CalculatorKind;
-  code: string;
-  target: string;
-  amount: string;
-  instalment: string;
-  day: string;
-  start: string;
-  end: string;
-  stepUp: string;
-  taxClass: TaxClass;
-  slab: string;
-}
 
 function FundChoice({ code, onChange, label }: { code: string; onChange: (code: string) => void; label: string }) {
   const m = useMetrics(code || undefined);
@@ -66,7 +53,7 @@ function FundChoice({ code, onChange, label }: { code: string; onChange: (code: 
             <p className="truncate text-sm font-medium">{m.data ? schemeName(m.data.name) : `AMFI ${code}`}</p>
             {m.data && <p className="text-xs text-mf-muted">{enumLabel(String(m.data.values.plan))} · {enumLabel(String(m.data.values.option))} · AMFI {code}</p>}
           </div>
-          <button type="button" onClick={() => onChange('')} aria-label={`Change ${label.toLowerCase()}`} className="grid h-8 w-8 place-items-center rounded-full text-mf-muted hover:bg-mf-line">
+          <button type="button" onClick={() => onChange('')} aria-label={`Change ${label.toLowerCase()}`} className="relative grid h-8 w-8 place-items-center rounded-full text-mf-muted before:absolute before:-inset-1.5 before:content-[''] hover:bg-mf-line">
             <I.x className="h-4 w-4" />
           </button>
         </div>
@@ -77,41 +64,65 @@ function FundChoice({ code, onChange, label }: { code: string; onChange: (code: 
   );
 }
 
-/** Inputs → a calculator request, or the first problem to fix. */
-function toRequest(i: Inputs): { body?: CalculatorRequest; error?: string } {
-  const amount = Number(i.amount);
-  if (!i.code) return { error: 'Choose a fund.' };
-  if (!(amount > 0)) return { error: 'The amount must be more than zero.' };
-  if (!i.start || !i.end || i.start >= i.end) return { error: 'The start date must be before the end date.' };
-  if (i.end > today) return { error: 'The end date cannot be in the future: this is a historical simulation.' };
-  const day = Number(i.day);
-  if (i.kind !== 'lumpsum' && !(day >= 1 && day <= 28)) return { error: 'Pick a day of the month from 1 to 28.' };
-  const body: CalculatorRequest = { code: i.code, amount, start: i.start, end: i.end, tax_class: i.taxClass };
-  if (i.kind !== 'lumpsum') body.day = day;
-  if (i.kind === 'sip' && i.stepUp) {
-    const s = Number(i.stepUp);
-    if (!(s >= 0 && s <= 100)) return { error: 'The step-up is a yearly percentage from 0 to 100.' };
-    body.step_up = s / 100;
-  }
-  if (i.kind === 'swp' || i.kind === 'stp') {
-    const inst = Number(i.instalment);
-    if (!(inst > 0)) return { error: `The monthly ${i.kind === 'swp' ? 'withdrawal' : 'transfer'} must be more than zero.` };
-    body.instalment = inst;
-  }
-  if (i.kind === 'stp') {
-    if (!i.target) return { error: 'Choose the fund to transfer into.' };
-    if (i.target === i.code) return { error: 'The target fund must differ from the source fund.' };
-    body.target = i.target;
-  }
-  if (i.taxClass !== 'equity' && i.slab) {
-    const slab = Number(i.slab);
-    if (!(slab >= 0 && slab <= 50)) return { error: 'The slab rate is a percentage from 0 to 50.' };
-    body.slab_rate = slab / 100;
-  }
-  return { body };
+const TAX_REASONS: Record<string, string> = {
+  tax_class_needed: 'This fund’s category does not settle how it is taxed (for example index funds, fund of funds, gold and dynamic hybrids). Choose a tax class in the scenario to see an estimate.',
+  slab_rate_needed: 'Some gains are taxed at your income-tax slab. Enter your slab rate to see an estimate.',
+};
+
+/** What the tax figure covers, which differs by kind (independent audit, Lab section). */
+function taxScope(sim: Simulation): string {
+  const on = date(String(sim.summary.valued_on));
+  if (sim.kind === 'swp') return `Only the units sold for withdrawals. Units still held on ${on} are not taxed here.`;
+  if (sim.kind === 'stp') return `Only the source units sold for transfers. Units still held on ${on} are not taxed here.`;
+  return `As if you redeemed every unit on ${on}. No tax is due until you sell.`;
 }
 
-function Result({ sim, stale }: { sim: Simulation; stale: boolean }) {
+function TaxCard({ sim, chosen, slab }: { sim: Simulation; chosen: boolean; slab: string }) {
+  const tax = sim.tax!;
+  const cls = tax.tax_class ? TAX_LABEL[tax.tax_class] : null;
+  const source = chosen ? 'your choice' : 'from the fund’s category';
+  return (
+    <Card title="Tax estimate" subtitle={taxScope(sim)}>
+      <div className="space-y-3">
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          {cls ? <Badge tone="neutral">{cls} · {source}</Badge> : <Badge tone="warning">Tax class needed</Badge>}
+          {tax.tax_class && tax.tax_class !== 'equity' && <Badge tone="neutral">Slab {slab || '—'}%</Badge>}
+          <span className="text-xs text-mf-muted">Rules in force on each sale date ({tax.rules})</span>
+        </p>
+        {tax.reason ? (
+          <p role="status" className="rounded-[10px] bg-mf-warning-soft p-3 text-sm text-mf-warning">{TAX_REASONS[tax.reason] ?? tax.reason}</p>
+        ) : (
+          <>
+            <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Tax by financial year; scroll sideways for more columns">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead className="text-xs text-mf-muted">
+                  <tr className="border-b border-mf-line">
+                    {['Financial year', 'Short-term gain', 'Long-term gain', 'Slab-taxed gain', 'Tax'].map((h, i) => <th key={h} scope="col" className={cx('py-2 font-medium', i ? 'text-right' : 'text-left')}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tax.years.map((y) => (
+                    <tr key={y.year} className="border-b border-mf-line last:border-0">
+                      <th scope="row" className="py-2 text-left font-normal">{y.year}</th>
+                      <td className="py-2 text-right tabular">{inr(y.short_term)}</td>
+                      <td className="py-2 text-right tabular">{inr(y.long_term)}</td>
+                      <td className="py-2 text-right tabular">{inr(y.slab)}</td>
+                      <td className="py-2 text-right font-medium tabular">{inr(y.tax)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm">Estimated total tax <b className="tabular">{inr(tax.total)}</b>{tax.sales_not_modelled ? ` · ${tax.sales_not_modelled} sales before April 2018 not modelled` : ''}</p>
+          </>
+        )}
+        <p className="text-xs text-mf-muted">Holding periods count calendar months: a unit sold on its 12-month anniversary is still short term. Includes 4% cess. Not included: exit loads, surcharge and securities transaction tax.</p>
+      </div>
+    </Card>
+  );
+}
+
+function Result({ sim, stale, chosen, slab }: { sim: Simulation; stale: boolean; chosen: boolean; slab: string }) {
   const s = sim.summary;
   const keys = Object.keys(sim.timeline[0] ?? {}).filter((k) => k !== 'date');
   const plotted = keys.filter((k) => PLOTTED.includes(k));
@@ -144,35 +155,7 @@ function Result({ sim, stale }: { sim: Simulation; stale: boolean }) {
           <p className="text-sm text-mf-ink-soft">A lump sum has no instalments, so there is no path to draw: {inr(n('invested'))} bought {n('units')?.toFixed(3)} units on {date(String(s.bought_on))}, worth {inr(n('value'))} on {date(String(s.valued_on))}.</p>
         </Card>
       )}
-      {sim.tax && (
-        <Card title="Tax estimate" subtitle={`Tax class ${sim.tax.tax_class} · rules ${sim.tax.rules} · on gains from units sold or valued`}>
-          {sim.tax.reason ? (
-            <p className="text-sm text-mf-warning">{sim.tax.reason}</p>
-          ) : (
-            <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Table; scroll sideways for more columns">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead className="text-xs text-mf-muted">
-                  <tr className="border-b border-mf-line">
-                    {['Financial year', 'Short-term gain', 'Long-term gain', 'Slab-taxed gain', 'Tax'].map((h, i) => <th key={h} scope="col" className={cx('py-2 font-medium', i ? 'text-right' : 'text-left')}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sim.tax.years.map((y) => (
-                    <tr key={y.year} className="border-b border-mf-line last:border-0">
-                      <th scope="row" className="py-2 text-left font-normal">{y.year}</th>
-                      <td className="py-2 text-right tabular">{inr(y.short_term)}</td>
-                      <td className="py-2 text-right tabular">{inr(y.long_term)}</td>
-                      <td className="py-2 text-right tabular">{inr(y.slab)}</td>
-                      <td className="py-2 text-right font-medium tabular">{inr(y.tax)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="mt-3 text-sm">Estimated total tax <b className="tabular">{inr(sim.tax.total)}</b>{sim.tax.sales_not_modelled ? ` · ${sim.tax.sales_not_modelled} sales not modelled` : ''}</p>
-        </Card>
-      )}
+      {sim.tax && <TaxCard sim={sim} chosen={chosen} slab={slab} />}
       <ul className="space-y-1 text-xs text-mf-muted">
         {sim.cautions.map((c) => <li key={c}>· {c}</li>)}
         <li>· The expense ratio is already inside the NAV; it is not deducted again.</li>
@@ -211,14 +194,6 @@ function RollingSip({ code }: { code: string }) {
   );
 }
 
-/** Starting amounts per kind: an SWP or STP must outlast a 5-year window on a typical equity fund (audit F-12). */
-const KIND_DEFAULTS: Record<CalculatorKind, Pick<Inputs, 'amount' | 'instalment'>> = {
-  sip: { amount: '10000', instalment: '5000' },
-  lumpsum: { amount: '100000', instalment: '5000' },
-  swp: { amount: '1000000', instalment: '6000' },
-  stp: { amount: '500000', instalment: '10000' },
-};
-
 const RANGES: Record<'monthly' | 'corpus', [number, number, number]> = { monthly: [500, 100_000, 500], corpus: [10_000, 5_000_000, 10_000] };
 
 /** A rupee amount as a slider and a number box; the box takes any value, the slider a common range. */
@@ -242,24 +217,20 @@ export default function Simulate() {
   const [params] = useSearchParams();
   const recent = useRecentFunds();
   const linked = /^\d{1,9}$/.test(params.get('code') ?? '') ? params.get('code')! : '';
-  const initialKind = (KINDS.some((k) => k.value === params.get('kind')) ? params.get('kind') : 'sip') as CalculatorKind;
-  const [inputs, setInputs] = useState<Inputs>(() => ({
-    kind: initialKind,
-    code: linked || startingFunds(recent, 1).codes[0],
-    target: startingFunds(recent, 2).codes.find((c) => c !== (linked || startingFunds(recent, 1).codes[0])) ?? '',
-    ...KIND_DEFAULTS[initialKind],
-    day: '1',
-    start: yearsAgo(5),
-    end: today,
-    stepUp: '0',
-    taxClass: 'equity',
-    slab: '30',
-  }));
+  const [inputs, setInputs] = useState<Inputs>(() => {
+    const first = linked || startingFunds(recent, 1).codes[0];
+    const target = startingFunds(recent, 2).codes.find((c) => c !== first) ?? '';
+    return inputsFromSearch(params, defaultInputs('sip', first, target));
+  });
+  // A saved scenario can replay on the snapshot it ran on; any edit or "latest" unpins it.
+  const [pinned, setPinned] = useState(() => revisionFromSearch(params));
+  const now = today();
   const example = !linked && !recent.includes(inputs.code);
   const set = (patch: Partial<Inputs>) => setInputs((i) => ({ ...i, ...patch }));
-  const { create } = useRecordMutations<{ kind: CalculatorKind; request: CalculatorRequest; summary: Simulation['summary'] }>('scenario');
+  const { create } = useRecordMutations<{ kind: CalculatorKind; request: CalculatorRequest; summary: Simulation['summary']; provenance: ScenarioProvenance }>('scenario');
   const fund = useMetrics(inputs.code || undefined);
-  const { body, error } = toRequest(inputs);
+  const { body: request, error } = toRequest(inputs, now);
+  const body = request && pinned != null ? { ...request, data_revision: pinned } : request;
   // Results follow the inputs: the request runs 400 ms after the last change.
   const key = useDebounced(body ? JSON.stringify({ kind: inputs.kind, body }) : '', 400);
   const run = useQuery({
@@ -275,6 +246,26 @@ export default function Simulate() {
   const stale = run.isPlaceholderData || (!!body && key !== JSON.stringify({ kind: inputs.kind, body }));
   const kind = KINDS.find((k) => k.value === inputs.kind)!;
   const amountLabel = inputs.kind === 'sip' ? 'Monthly instalment (₹)' : 'Initial investment (₹)';
+  const category = fund.data ? String(fund.data.values.category) : '';
+  const save = () =>
+    run.data &&
+    request &&
+    create.mutate({
+      name: `${kind.label} · ${fund.data ? schemeName(fund.data.name) : inputs.code} · ${inputs.start}`.slice(0, 120),
+      body: {
+        kind: inputs.kind,
+        request,
+        summary: run.data.summary,
+        provenance: {
+          data_revision: run.data.data_revision,
+          method_version: run.data.method_version,
+          as_of: run.data.as_of,
+          calculator_version: Number(run.data.summary.calculator_version),
+          tax_class: run.data.tax?.tax_class ?? null,
+          tax_class_source: inputs.taxClass ? 'chosen' : 'category',
+        },
+      },
+    });
 
   return (
     <div className="space-y-6">
@@ -284,12 +275,19 @@ export default function Simulate() {
           Showing an example fund so you can see a result at once. Change the fund below, or open any fund and choose “Test an investment”.
         </p>
       )}
+      {pinned != null && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-[12px] border border-mf-line-strong bg-mf-sunken px-4 py-2.5 text-sm">
+          <span>Replaying a saved scenario on snapshot <b className="tabular">{pinned}</b>, the data it ran on.</span>
+          <Button size="sm" variant="secondary" onClick={() => setPinned(undefined)}>Rerun on the latest snapshot</Button>
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <Card title="Scenario" subtitle="Results update as you change an input" className="self-start lg:sticky lg:top-24">
+        <Card title="Scenario" subtitle="Results update as you change an input" className="order-2 self-start lg:order-1 lg:sticky lg:top-24" id="scenario-inputs">
           <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
             <Segmented label="Investment kind" size="md" value={inputs.kind} onChange={(k) => set({ kind: k, ...KIND_DEFAULTS[k] })} options={KINDS.map((k) => ({ value: k.value, label: k.label }))} />
             <p className="text-xs text-mf-muted">{kind.lead}</p>
-            <FundChoice code={inputs.code} onChange={(code) => set({ code })} label={inputs.kind === 'stp' ? 'Transfer from' : 'Fund'} />
+            {/* A new fund needs its own tax decision: a class chosen for the old one does not carry over. */}
+            <FundChoice code={inputs.code} onChange={(code) => set({ code, taxClass: '' })} label={inputs.kind === 'stp' ? 'Transfer from' : 'Fund'} />
             {inputs.kind === 'stp' && <FundChoice code={inputs.target} onChange={(target) => set({ target })} label="Transfer into" />}
             <MoneyField label={amountLabel} value={inputs.amount} onChange={(amount) => set({ amount })} range={inputs.kind === 'sip' ? 'monthly' : 'corpus'} />
             {(inputs.kind === 'swp' || inputs.kind === 'stp') && (
@@ -297,16 +295,16 @@ export default function Simulate() {
             )}
             <Segmented
               label="Start"
-              value={[1, 3, 5, 10].map((n) => yearsAgo(n)).includes(inputs.start) && inputs.end === today ? inputs.start : ''}
-              onChange={(start) => set({ start, end: today })}
-              options={[1, 3, 5, 10].map((n) => ({ value: yearsAgo(n), label: `${n}Y ago` }))}
+              value={[1, 3, 5, 10].map((n) => yearsAgo(n, now)).includes(inputs.start) && inputs.end === now ? inputs.start : ''}
+              onChange={(start) => set({ start, end: now })}
+              options={[1, 3, 5, 10].map((n) => ({ value: yearsAgo(n, now), label: `${n}Y ago` }))}
             />
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start">
-                <input className={inputClass} type="date" max={today} value={inputs.start} onChange={(e) => set({ start: e.target.value })} />
+                <input className={inputClass} type="date" max={now} value={inputs.start} onChange={(e) => set({ start: e.target.value })} />
               </Field>
               <Field label="End">
-                <input className={inputClass} type="date" max={today} value={inputs.end} onChange={(e) => set({ end: e.target.value })} />
+                <input className={inputClass} type="date" max={now} value={inputs.end} onChange={(e) => set({ end: e.target.value })} />
               </Field>
             </div>
             {inputs.kind !== 'lumpsum' && (
@@ -321,38 +319,55 @@ export default function Simulate() {
                 )}
               </div>
             )}
-            <Field label="Tax class" hint="Choose how the fund is taxed; Wickstreet does not guess it from the name.">
-              <select className={inputClass} value={inputs.taxClass} onChange={(e) => set({ taxClass: e.target.value as TaxClass })}>
-                <option value="equity">Equity-oriented</option>
-                <option value="debt">Debt-oriented</option>
-                <option value="other">Other (hybrid, FoF, gold…)</option>
+            <Field
+              label="Tax class"
+              hint={inputs.taxClass ? 'Your choice. It resets when you change the fund.' : category ? `Taken from the category, ${categoryShort(category)}, where it settles the class.` : 'Taken from the fund’s category where it settles the class.'}
+            >
+              <select className={inputClass} value={inputs.taxClass} onChange={(e) => set({ taxClass: e.target.value as TaxClass | '' })}>
+                <option value="">From the fund’s category</option>
+                <option value="equity">{TAX_LABEL.equity}</option>
+                <option value="debt">{TAX_LABEL.debt}</option>
+                <option value="other">{TAX_LABEL.other}</option>
               </select>
             </Field>
             {inputs.taxClass !== 'equity' && (
-              <Field label="Your income-tax slab (%)">
+              <Field label="Your income-tax slab (%)" hint="Used only for gains taxed at the slab rate">
                 <input className={inputClass} type="number" min={0} max={50} step="any" value={inputs.slab} onChange={(e) => set({ slab: e.target.value })} />
               </Field>
             )}
             {error && inputs.code && <p role="alert" className="text-sm text-mf-loss">{error}</p>}
             <p className="text-xs text-mf-muted" aria-live="polite">{run.isFetching ? 'Running the scenario…' : run.data && !stale ? 'Result is up to date.' : ''}</p>
-            {run.data && body && (
-              <Button
-                className="w-full"
-                disabled={create.isPending || stale}
-                onClick={() => create.mutate({ name: `${kind.label} · ${fund.data ? schemeName(fund.data.name) : inputs.code} · ${inputs.start}`.slice(0, 120), body: { kind: inputs.kind, request: body, summary: run.data.summary } })}
-              >
+            {run.data && request && (
+              <Button className="w-full" disabled={create.isPending || stale} onClick={save}>
                 <I.bookmark className="h-4 w-4" />
-                {create.isSuccess ? 'Saved to your workspace' : 'Save scenario'}
+                {create.isPending ? 'Saving…' : create.isSuccess ? 'Saved to your workspace' : 'Save scenario'}
               </Button>
             )}
+            {create.isError && <ErrorState error={create.error} compact title="Could not save the scenario. Your inputs are kept; try again." />}
           </form>
         </Card>
 
-        <div className="min-w-0 space-y-6">
-          {run.isError && <ErrorState error={run.error} />}
-          {run.isLoading && <Skeleton className="h-64" />}
+        {/* The result column keeps its height while a run loads, so nothing below it jumps (audit 9, Lab CLS). */}
+        <div className="order-1 min-w-0 space-y-6 lg:order-2 lg:min-h-[760px]">
+          {run.data && (
+            <a href="#scenario-inputs" className="flex items-center justify-between gap-3 rounded-[12px] border border-mf-line bg-mf-surface px-4 py-2.5 text-sm lg:hidden">
+              <span className="min-w-0 truncate">
+                <b>{kind.label}</b> · {inr(Number(inputs.amount), true)} · {date(inputs.start)} – {date(inputs.end)}
+              </span>
+              <span className="shrink-0 font-medium text-mf-brand-strong">Edit inputs ↓</span>
+            </a>
+          )}
+          {run.isError && (
+            <ErrorState
+              error={run.error}
+              title={pinned != null ? `Snapshot ${pinned} could not be replayed. It may no longer be stored.` : undefined}
+              onRetry={pinned != null ? () => setPinned(undefined) : undefined}
+              retryLabel="Rerun on the latest snapshot"
+            />
+          )}
+          {run.isLoading && <Skeleton className="h-[560px]" />}
           {run.data ? (
-            <Result sim={run.data} stale={stale} />
+            <Result sim={run.data} stale={stale} chosen={!!inputs.taxClass} slab={inputs.slab} />
           ) : (
             !run.isLoading && (
               <div className="rounded-card border border-dashed border-mf-line-strong bg-mf-surface/60 p-8 text-center">

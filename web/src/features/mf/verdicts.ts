@@ -2,7 +2,7 @@
  * Plain-language readings of service results (audit F-18, U-02). Each sentence
  * restates numbers the API returned; it computes no new measure and gives no advice.
  */
-import type { Backtest, BacktestPeriod, Drawdown, FundRegimes } from './api';
+import type { Backtest, BacktestPeriod, Drawdown, FundRegimes, Metrics } from './api';
 import { date, month, pct } from './format';
 
 /** The backtest in one plain sentence: did the signal beat the median in-sample, and did it hold on the hold-out? (audit F-18) */
@@ -61,4 +61,25 @@ export function fallVerdict(windows: FundRegimes['windows'], drawdowns: Drawdown
   const move = fund < 0 ? `lost ${pct(-fund)}` : `gained ${pct(fund)}`;
   const text = `In the deepest market fall it lived through (${date(w.start)} to ${date(w.end)}), it ${move}, ${compare} the market proxy's ${pct(-w.proxy_return)} fall${tail}`;
   return { start: w.start, end: w.end, fund, proxy: w.proxy_return, recoveryDays, recovered, text };
+}
+
+/**
+ * The fund's recent record in one sentence, so a historical crash never stands
+ * alone above a weak recent year (independent audit 5.3). Null without a 1Y return.
+ */
+export function recentVerdict(values: Metrics['values']): string | null {
+  const num = (k: string) => (typeof values[k] === 'number' ? (values[k] as number) : null);
+  const ret = num('ret_1y');
+  if (ret === null) return null;
+  const median = num('ret_1y_cat_median');
+  const rank = num('ret_1y_cat_pct');
+  const dd = num('dd_now');
+  const versus = median === null ? '' : `, ${ret >= median ? 'ahead of' : 'behind'} the category median of ${pct(median, 1, true)}${rank === null ? '' : ` (${ordinal(Math.round(rank))} percentile)`}`;
+  const now = dd === null ? '' : dd < 0 ? ` It is ${pct(-dd)} below its last peak.` : ' It is at its peak NAV.';
+  return `Over the last year it returned ${pct(ret, 1, true)}${versus}.${now}`;
+}
+
+function ordinal(n: number): string {
+  const tail = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th';
+  return `${n}${tail}`;
 }

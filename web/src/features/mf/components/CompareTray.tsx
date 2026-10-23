@@ -56,7 +56,15 @@ export function CompareTray() {
                 </li>
               ))}
             </ul>
-            <button type="button" onClick={clearTray} className="hidden text-xs text-mf-muted hover:text-mf-ink sm:inline">
+            {/* Phones show no chips, so Clear is their only way to empty the tray (audit 5.9). */}
+            <button
+              type="button"
+              onClick={() => {
+                clearTray();
+                setMessage('Cleared the comparison');
+              }}
+              className="relative px-1 text-xs text-mf-muted before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:text-mf-ink"
+            >
               Clear
             </button>
             {funds.length >= 2 ? (
@@ -100,18 +108,30 @@ export function CompareButton({ code, name, size = 'sm', label }: { code: string
 export function WatchButton({ code, name, size = 'sm', label }: { code: string; name: string; size?: 'sm' | 'md'; label?: boolean }) {
   const watch = useWatchlist();
   const on = watch.isWatched(code);
+  const failed = watch.failed?.code === code;
   return (
-    <Button
-      size={size}
-      variant="secondary"
-      aria-pressed={on}
-      disabled={watch.loading || watch.pending}
-      aria-label={label ? undefined : `${on ? 'Remove' : 'Add'} ${name} ${on ? 'from' : 'to'} watchlist`}
-      onClick={() => watch.toggle(code)}
-      className={cx(on && 'text-mf-brand-strong')}
-    >
-      <I.star className={cx('h-4 w-4', on && 'fill-current')} />
-      {label && (on ? 'Watching' : 'Add to watchlist')}
-    </Button>
+    <span className="relative inline-flex">
+      <Button
+        size={size}
+        variant="secondary"
+        aria-pressed={on}
+        disabled={watch.loading || watch.pending}
+        aria-label={label ? undefined : `${on ? 'Remove' : 'Add'} ${name} ${on ? 'from' : 'to'} ${watch.destination}`}
+        title={`Saves to “${watch.destination}”`}
+        onClick={() => watch.toggle(code)}
+        className={cx(on && 'text-mf-brand-strong')}
+      >
+        <I.star className={cx('h-4 w-4', on && 'fill-current')} />
+        {label && (on ? 'Watching' : 'Add to watchlist')}
+      </Button>
+      {failed && (
+        <span role="alert" className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-[10px] border border-mf-loss/30 bg-mf-surface p-2.5 text-xs text-mf-ink shadow-raised">
+          Could not update “{watch.destination}”. Nothing changed.{' '}
+          <button type="button" className="font-medium text-mf-brand-strong underline" onClick={watch.retry}>
+            Try again
+          </button>
+        </span>
+      )}
+    </span>
   );
 }

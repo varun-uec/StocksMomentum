@@ -31,10 +31,20 @@ dialog.mf-dialog { padding: 0; border: 0; background: transparent; max-width: no
 .mf-root input[type='range'] { accent-color: rgb(var(--mf-brand)); }
 .mf-root input[type='checkbox'], .mf-root input[type='radio'] { accent-color: rgb(var(--mf-brand)); }
 
-/* Recharts: theme the text and remove its focus box (charts have their own focus ring). */
+/* Recharts: theme the text. A pointer click shows no focus box; keyboard focus does (audit A-12). */
 .mf-root .recharts-text { fill: rgb(var(--mf-muted)); font-size: 11px; }
 .mf-root .recharts-cartesian-grid line { stroke: rgb(var(--mf-chart-grid)); }
-.mf-root .recharts-wrapper:focus, .mf-root .recharts-surface:focus { outline: none; }
+.mf-root .recharts-wrapper:focus:not(:focus-visible), .mf-root .recharts-surface:focus:not(:focus-visible) { outline: none; }
+
+/* Zoom handles: two stacked range inputs; only the thumbs take the pointer. */
+.mf-root .mf-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: transparent; appearance: none; -webkit-appearance: none; pointer-events: none; }
+.mf-root .mf-range::-webkit-slider-runnable-track { background: transparent; height: 100%; }
+.mf-root .mf-range::-moz-range-track { background: transparent; }
+.mf-root .mf-range::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 14px; height: 30px; border-radius: 5px; background: rgb(var(--mf-surface)); border: 2px solid rgb(var(--mf-brand)); cursor: ew-resize; box-shadow: var(--mf-shadow-card); }
+.mf-root .mf-range::-moz-range-thumb { pointer-events: auto; width: 10px; height: 26px; border-radius: 5px; background: rgb(var(--mf-surface)); border: 2px solid rgb(var(--mf-brand)); cursor: ew-resize; }
+.mf-root .mf-range:focus-visible { outline: none; }
+.mf-root .mf-range:focus-visible::-webkit-slider-thumb { outline: 3px solid rgb(var(--mf-focus)); outline-offset: 1px; }
+.mf-root .mf-range:focus-visible::-moz-range-thumb { outline: 3px solid rgb(var(--mf-focus)); outline-offset: 1px; }
 
 /* Leave room for the phone navigation and the compare tray. */
 @media (max-width: 1023px) {

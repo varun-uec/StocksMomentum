@@ -8,11 +8,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
 import { DEFAULT_THEME, THEMES, themeCss, type ThemeId } from '../theme/themes';
+import { useScreenRevisions } from '../queries';
 import { useCompareTray } from '../workspace';
 import { CompareTray } from './CompareTray';
 import { FundSearch } from './FundSearch';
 import { I } from './icons';
-import { Badge, Segmented, Sheet, cx } from './ui';
+import { Badge, Button, Segmented, Sheet, cx } from './ui';
 
 const PALETTE_KEY = 'mf-palette';
 
@@ -232,6 +233,7 @@ export function MfShell({ children }: { children: ReactNode }) {
         </header>
 
         <main id="mf-main" tabIndex={-1} className="mf-main mx-auto max-w-[1440px] px-4 py-6 outline-none sm:px-6 lg:px-8 lg:pb-28 lg:pt-8">
+          <MixedSnapshots />
           {children}
         </main>
       </div>
@@ -284,6 +286,23 @@ export function MfShell({ children }: { children: ReactNode }) {
       <Sheet open={settings} onClose={() => setSettings(false)} title="Appearance">
         <AppearanceSettings palette={palette} setPalette={setPalette} />
       </Sheet>
+    </div>
+  );
+}
+
+/** A warning when this page's sections came from different daily snapshots (audit A-15). */
+function MixedSnapshots() {
+  const { revisions, refresh } = useScreenRevisions();
+  if (revisions.length < 2) return null;
+  return (
+    <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 rounded-[12px] border border-mf-warning/40 bg-mf-warning-soft px-4 py-3 text-sm text-mf-ink">
+      <I.info className="h-4 w-4 shrink-0 text-mf-warning" />
+      <p className="min-w-0 flex-1">
+        New data was published while this page loaded. Its sections mix snapshots {revisions.join(' and ')}, so figures may not agree. Refresh to put every section on snapshot {revisions[revisions.length - 1]}.
+      </p>
+      <Button size="sm" variant="primary" onClick={refresh}>
+        Refresh every section
+      </Button>
     </div>
   );
 }

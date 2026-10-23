@@ -4,17 +4,18 @@
  * version it read; a save that lost a race says so and keeps the draft.
  * Alerts need an evaluator service (W2) and show as planned, never "active".
  */
-import { useQueries } from '@tanstack/react-query';
+import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { mfApi } from '../api';
+import { mfApi, type CalculatorKind, type CalculatorRequest } from '../api';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { Badge, Button, Delta, DependencyPanel, EmptyState, ErrorState, Field, Loading, PageHeader, TabLinks, buttonClass, cx, inputClass, useTitle } from '../components/ui';
 import { categoryShort, date, inr, pct, schemeName } from '../format';
 import { useFields } from '../queries';
+import { scenarioHref, type ScenarioProvenance } from '../scenario';
 import { describe, encodeView, type ScreenView } from '../view-spec';
-import { isConflict, toggleCode, useRecordMutations, useRecords, type NoteBody, type RecordKind, type ResearchRecord, type WatchlistBody } from '../workspace';
+import { isConflict, saveToggle, useDraft, useDraftIds, useRecordMutations, useRecords, type NoteBody, type RecordKind, type ResearchRecord, type WatchlistBody } from '../workspace';
 
 const TABS = [
   { id: 'watchlists', label: 'Watchlists', kind: 'watchlist' },
@@ -25,14 +26,22 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
-/** A failed save keeps the draft; a conflict offers a copy of it before the latest version replaces it (audit F-10). */
-function SaveError({ error, onReload, draft }: { error: unknown; onReload: () => void; draft?: string }) {
+/**
+ * A failed save keeps the draft. A conflict shows the other window's version and
+ * offers a copy of yours; only an explicit choice replaces your draft (audit A-09).
+ */
+function SaveError({ error, onReload, draft, theirs, what = 'text', onRetry }: { error: unknown; onReload: () => void; draft?: string; theirs?: string; what?: string; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false);
   if (!error) return null;
   if (isConflict(error))
     return (
       <div role="alert" className="space-y-2 rounded-[10px] bg-mf-warning-soft p-3 text-sm text-mf-warning">
-        <p>Another window saved this record first, so your change was not saved. Your text is still here.</p>
+        <p>Another window saved this record first, so your change was not saved. Your {what} is still here.</p>
+        {theirs !== undefined && (
+          <p className="text-mf-ink-soft">
+            Their version: <q className="break-words">{theirs.length > 140 ? `${theirs.slice(0, 140)}…` : theirs}</q>
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {draft !== undefined && (
             <Button
@@ -44,19 +53,29 @@ function SaveError({ error, onReload, draft }: { error: unknown; onReload: () =>
                 )
               }
             >
-              {copied ? 'Copied' : 'Copy my text'}
+              {copied ? 'Copied' : `Copy my ${what}`}
+            </Button>
+          )}
+          {onRetry && (
+            <Button size="sm" variant="primary" onClick={onRetry}>
+              Save mine over theirs
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={onReload}>
-            Load the latest version{draft !== undefined ? ' (replaces your text)' : ''}
+            Use their version{draft !== undefined ? ` (discards my ${what})` : ''}
           </Button>
         </div>
       </div>
     );
-  return <ErrorState error={error} compact title="Could not save. Your draft is kept; try again." />;
+  return (
+    <div className="space-y-2">
+      <ErrorState error={error} compact title={`Could not save. Your ${what} is kept.`} onRetry={onRetry} />
+    </div>
+  );
 }
 
 function RecordList<B>({ records, selected, onSelect, empty }: { records: ResearchRecord<B>[]; selected?: string; onSelect: (id: string) => void; empty: string }) {
+  const drafted = useDraftIds();
   if (!records.length) return <p className="px-2 py-6 text-sm text-mf-muted">{empty}</p>;
   return (
     <ul className="space-y-1">
@@ -64,7 +83,10 @@ function RecordList<B>({ records, selected, onSelect, empty }: { records: Resear
         <li key={r.id}>
           <button type="button" onClick={() => onSelect(r.id)} aria-current={r.id === selected ? 'true' : undefined} className={cx('w-full rounded-[10px] px-3 py-2.5 text-left', r.id === selected ? 'bg-mf-brand-soft' : 'hover:bg-mf-sunken')}>
             <p className="truncate text-sm font-medium">{r.name}</p>
-            <p className="text-xs text-mf-muted">Saved {date(r.updated_at)} · v{r.version}</p>
+            <p className="flex items-center gap-1.5 text-xs text-mf-muted">
+              Saved {date(r.updated_at)} · v{r.version}
+              {drafted.has(r.id) && <Badge tone="warning">Unsaved draft</Badge>}
+            </p>
           </button>
         </li>
       ))}
@@ -72,11 +94,12 @@ function RecordList<B>({ records, selected, onSelect, empty }: { records: Resear
   );
 }
 
-function Header<B>({ record, kind, extra }: { record: ResearchRecord<B>; kind: RecordKind; extra?: React.ReactNode }) {
+function Header<B>({ record, kind, extra, status }: { record: ResearchRecord<B>; kind: RecordKind; extra?: React.ReactNode; status?: React.ReactNode }) {
   const { save } = useRecordMutations<B>(kind);
-  const [name, setName] = useState(record.name);
-  useEffect(() => setName(record.name), [record.name]);
+  // The proposed name lives in the draft store, so a refetch after a conflict cannot replace it.
+  const [name, setName, discard] = useDraft(`${record.id}:name`, record.name);
   const dirty = name.trim() !== record.name;
+  const rename = () => save.mutate({ record, draft: { name: name.trim(), body: record.body } }, { onSuccess: discard });
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-end gap-2">
@@ -84,7 +107,7 @@ function Header<B>({ record, kind, extra }: { record: ResearchRecord<B>; kind: R
           <input className={inputClass} value={name} maxLength={120} onChange={(e) => setName(e.target.value)} />
         </Field>
         {dirty && (
-          <Button variant="primary" disabled={!name.trim() || save.isPending} onClick={() => save.mutate({ record, draft: { name: name.trim(), body: record.body } })}>
+          <Button variant="primary" disabled={!name.trim() || save.isPending} onClick={rename}>
             Rename
           </Button>
         )}
@@ -94,22 +117,35 @@ function Header<B>({ record, kind, extra }: { record: ResearchRecord<B>; kind: R
         </Button>
       </div>
       <p className="text-xs text-mf-muted" aria-live="polite">
-        {save.isPending ? 'Saving…' : dirty ? 'Unsaved name' : `Saved · version ${record.version} · ${date(record.updated_at)}`}
+        {save.isPending ? 'Saving…' : status ?? (dirty ? `Unsaved name · last saved version ${record.version}` : `Saved · version ${record.version} · ${date(record.updated_at)}`)}
       </p>
-      <SaveError error={save.error} onReload={() => save.reset()} />
+      <SaveError
+        error={save.error}
+        what="name"
+        draft={dirty ? name : undefined}
+        theirs={isConflict(save.error) ? record.name : undefined}
+        onRetry={dirty && name.trim() ? () => { save.reset(); rename(); } : undefined}
+        onReload={() => { save.reset(); discard(); }}
+      />
     </div>
   );
 }
 
 function WatchlistDetail({ record }: { record: ResearchRecord<WatchlistBody> }) {
-  const { save } = useRecordMutations<WatchlistBody>('watchlist');
+  const client = useQueryClient();
+  const toggle = useMutation({
+    mutationFn: ({ code, on }: { code: string; on: boolean }) => saveToggle(record, code, on),
+    onSettled: () => client.invalidateQueries({ queryKey: ['mf', 'workspace'] }),
+  });
   const codes = record.body.codes ?? [];
   const metrics = useQueries({ queries: codes.map((code) => ({ queryKey: ['mf', 'fund', code, 'metrics'], queryFn: ({ signal }: { signal: AbortSignal }) => mfApi.metrics(code, signal), staleTime: 300_000 })) });
-  const setCodes = (next: string[]) => save.mutate({ record, draft: { name: record.name, body: { codes: next } } });
+  const failed = toggle.isError ? toggle.variables : undefined;
+  const status = failed ? `Not saved: ${failed.on ? 'adding' : 'removing'} AMFI ${failed.code} · last saved version ${record.version}` : undefined;
   return (
     <div className="space-y-5">
-      <Header record={record} kind="watchlist" extra={codes.length >= 2 && codes.length <= 5 && <Link className={buttonClass('secondary')} to={`/mf/compare?${codes.map((c) => `code=${c}`).join('&')}`}>Compare all</Link>} />
-      <FundSearch label="Add a fund to this watchlist" placeholder="Add a fund" onPick={(f) => setCodes(toggleCode(codes, f.amfi_code, true))} />
+      <Header record={record} kind="watchlist" status={status} extra={codes.length >= 2 && codes.length <= 5 && <Link className={buttonClass('secondary')} to={`/mf/compare?${codes.map((c) => `code=${c}`).join('&')}`}>Compare all</Link>} />
+      {failed && <ErrorState error={toggle.error} compact title={`Could not ${failed.on ? 'add' : 'remove'} AMFI ${failed.code}. The list below is the last saved version.`} onRetry={() => toggle.mutate(failed)} />}
+      <FundSearch label="Add a fund to this watchlist" placeholder="Add a fund" onPick={(f) => toggle.mutate({ code: f.amfi_code, on: true })} />
       {codes.length === 0 ? (
         <p className="text-sm text-mf-muted">No funds yet. Add one above, or star a fund on its page.</p>
       ) : (
@@ -134,7 +170,7 @@ function WatchlistDetail({ record }: { record: ResearchRecord<WatchlistBody> }) 
                     <td className="py-2.5 text-right tabular text-mf-loss">{pct(m?.values.mdd_3y)}</td>
                     <td className="py-2.5 text-right tabular">{typeof m?.values.score === 'number' ? Math.round(m.values.score) : '—'}</td>
                     <td className="py-2.5 text-right">
-                      <Button size="sm" variant="ghost" aria-label={`Remove ${m?.name ?? code}`} disabled={save.isPending} onClick={() => setCodes(toggleCode(codes, code, false))}>
+                      <Button size="sm" variant="ghost" aria-label={`Remove ${m?.name ?? code}`} disabled={toggle.isPending} onClick={() => toggle.mutate({ code, on: false })}>
                         <I.x className="h-4 w-4" />
                       </Button>
                     </td>
@@ -171,38 +207,56 @@ function ScreenDetail({ record }: { record: ResearchRecord<{ view: ScreenView; p
 
 function NoteDetail({ record }: { record: ResearchRecord<NoteBody> }) {
   const { save } = useRecordMutations<NoteBody>('note');
-  const [text, setText] = useState(record.body.text);
-  // Re-sync only when another note opens: a refetch after a failed save must not wipe the draft.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setText(record.body.text), [record.id]);
+  // Kept per note: opening another note and coming back finds the draft (audit A-11).
+  const [text, setText, discard] = useDraft(`${record.id}:text`, record.body.text);
   const dirty = text !== record.body.text;
+  const submit = () => save.mutate({ record, draft: { name: record.name, body: { ...record.body, text } } }, { onSuccess: discard });
   return (
     <div className="space-y-4">
       <Header record={record} kind="note" extra={record.body.code && <Link className={buttonClass('secondary')} to={`/mf/funds/${record.body.code}`}>Open fund</Link>} />
       <Field label="Note">
         <textarea className={`${inputClass} h-56 py-2`} value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
-      <div className="flex items-center gap-3">
-        <Button variant="primary" disabled={!dirty || save.isPending} onClick={() => save.mutate({ record, draft: { name: record.name, body: { ...record.body, text } } })}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="primary" disabled={!dirty || save.isPending} onClick={submit}>
           {save.isPending ? 'Saving…' : 'Save note'}
         </Button>
-        <span className="text-xs text-mf-muted" aria-live="polite">{dirty ? 'Unsaved changes' : 'Saved'}</span>
+        {dirty && !save.isPending && (
+          <Button variant="ghost" onClick={discard}>
+            Discard changes
+          </Button>
+        )}
+        <span className="text-xs text-mf-muted" aria-live="polite">{dirty ? 'Unsaved changes. They stay here if you open another note.' : 'Saved'}</span>
       </div>
-      <SaveError error={save.error} draft={text} onReload={() => { save.reset(); setText(record.body.text); }} />
+      <SaveError
+        error={save.error}
+        draft={text}
+        theirs={isConflict(save.error) ? record.body.text : undefined}
+        onRetry={dirty ? () => { save.reset(); submit(); } : undefined}
+        onReload={() => { save.reset(); discard(); }}
+      />
     </div>
   );
 }
 
-function ScenarioDetail({ record }: { record: ResearchRecord<{ kind: string; request: { code: string; start: string; end: string; amount: number }; summary: Record<string, unknown> }> }) {
+function ScenarioDetail({ record }: { record: ResearchRecord<{ kind: CalculatorKind; request: CalculatorRequest; summary: Record<string, unknown>; provenance?: ScenarioProvenance }> }) {
   const b = record.body;
   const s = b.summary ?? {};
+  const r = b.request;
+  const saved = b.provenance;
   return (
     <div className="space-y-4">
-      <Header record={record} kind="scenario" extra={<Link className={buttonClass('primary')} to={`/mf/simulate?kind=${b.kind}&code=${b.request?.code}`}>Open in the lab</Link>} />
+      <Header record={record} kind="scenario" extra={<Link className={buttonClass('primary')} to={scenarioHref(b.kind, r)}>Rerun on the latest snapshot</Link>} />
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         {[
           ['Kind', String(b.kind).toUpperCase()],
-          ['Dates', `${date(b.request?.start)} – ${date(b.request?.end)}`],
+          ['Dates', `${date(r?.start)} – ${date(r?.end)}`],
+          [b.kind === 'sip' ? 'Monthly' : 'Amount', inr(r?.amount)],
+          ...(r?.day != null ? [['Day of month', String(r.day)]] : []),
+          ...(r?.step_up ? [['Yearly step-up', pct(r.step_up, 0)]] : []),
+          ...(r?.instalment != null ? [[b.kind === 'swp' ? 'Monthly withdrawal' : 'Monthly transfer', inr(r.instalment)]] : []),
+          ['Tax class', saved?.tax_class ? `${saved.tax_class}${saved.tax_class_source === 'category' ? ' (from category)' : ''}` : r?.tax_class ?? 'from category'],
+          ...(r?.slab_rate != null ? [['Slab', pct(r.slab_rate, 0)]] : []),
           ['Invested', inr(s.invested)],
           ['Value then', inr(s.value)],
           ['Gain', inr(s.gain)],
@@ -214,7 +268,14 @@ function ScenarioDetail({ record }: { record: ResearchRecord<{ kind: string; req
           </div>
         ))}
       </dl>
-      <p className="text-xs text-mf-muted">Saved as it ran. Opening it in the lab reruns it on the latest snapshot.</p>
+      {saved ? (
+        <div className="flex flex-wrap items-center gap-3 text-xs text-mf-muted">
+          <span>Ran on snapshot {saved.data_revision} · NAVs to {date(saved.as_of)} · method v{saved.method_version} · calculator v{saved.calculator_version}.</span>
+          <Link className="font-medium text-mf-brand-strong hover:underline" to={scenarioHref(b.kind, r, saved.data_revision)}>Replay on that snapshot</Link>
+        </div>
+      ) : (
+        <p className="text-xs text-mf-muted">Saved before snapshot details were kept, so it can only rerun on the latest snapshot.</p>
+      )}
     </div>
   );
 }
@@ -249,6 +310,14 @@ export default function Workspace() {
   const selectedId = params.get('id') ?? list[0]?.id;
   const selected = list.find((r) => r.id === selectedId);
   const select = (id: string) => setParams((p) => { p.set('id', id); return p; }, { replace: true });
+  // Drafts survive moving around the app, not a reload: warn before the page goes.
+  const drafted = useDraftIds().size > 0;
+  useEffect(() => {
+    if (!drafted) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [drafted]);
 
   return (
     <div className="space-y-6">

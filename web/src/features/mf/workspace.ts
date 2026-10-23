@@ -71,6 +71,20 @@ export function useRecords<B = Record<string, unknown>>(kind?: RecordKind, archi
   });
 }
 
+/**
+ * Add or remove one code. A set edit cannot lose another window's change, so a
+ * conflict re-reads the record and re-applies itself once.
+ */
+export async function saveToggle(record: ResearchRecord<WatchlistBody>, code: string, on: boolean) {
+  const apply = (r: ResearchRecord<WatchlistBody>) => workspaceApi.save(r, { name: r.name, body: { codes: toggleCode(r.body.codes ?? [], code, on) } });
+  try {
+    return await apply(record);
+  } catch (error) {
+    if (!isConflict(error)) throw error;
+    return apply(await workspaceApi.get<WatchlistBody>(record.id));
+  }
+}
+
 /** Create, save and archive records; every change refreshes the lists. */
 export function useRecordMutations<B>(kind: RecordKind) {
   const client = useQueryClient();
@@ -96,29 +110,66 @@ export function useWatchlist() {
   const codes = list?.body.codes ?? [];
 
   const mutation = useMutation({
-    mutationFn: async ({ code, on }: { code: string; on: boolean }) => {
-      const apply = (record: ResearchRecord<WatchlistBody>) =>
-        workspaceApi.save(record, { name: record.name, body: { codes: toggleCode(record.body.codes ?? [], code, on) } });
-      if (!list) return workspaceApi.create<WatchlistBody>('watchlist', { name: DEFAULT_WATCHLIST, body: { codes: on ? [code] : [] } });
-      try {
-        return await apply(list);
-      } catch (error) {
-        if (!isConflict(error)) throw error;
-        return apply(await workspaceApi.get<WatchlistBody>(list.id));
-      }
-    },
+    mutationFn: async ({ code, on }: { code: string; on: boolean }) =>
+      list ? saveToggle(list, code, on) : workspaceApi.create<WatchlistBody>('watchlist', { name: DEFAULT_WATCHLIST, body: { codes: on ? [code] : [] } }),
     onSettled: () => client.invalidateQueries({ queryKey: ['mf', 'workspace'] }),
   });
 
   return {
     list,
+    /** Where a star saves: the first watchlist, or the one the first star creates. */
+    destination: list?.name ?? DEFAULT_WATCHLIST,
     codes,
     loading: lists.isLoading,
     error: lists.error ?? mutation.error,
+    /** The failed change, kept so it can be retried as asked. */
+    failed: mutation.isError ? mutation.variables : undefined,
+    retry: () => mutation.variables && mutation.mutate(mutation.variables),
     pending: mutation.isPending,
     isWatched: (code: string) => codes.includes(code),
     toggle: (code: string) => mutation.mutate({ code, on: !codes.includes(code) }),
   };
+}
+
+// ── Unsaved drafts: kept per record and field while you move around the app (audit A-09, A-11) ──
+
+const drafts = new Map<string, string>();
+const draftListeners = new Set<() => void>();
+let draftVersion = 0;
+const notifyDrafts = () => {
+  draftVersion += 1;
+  draftListeners.forEach((listener) => listener());
+};
+const subscribeDrafts = (onChange: () => void) => {
+  draftListeners.add(onChange);
+  return () => draftListeners.delete(onChange);
+};
+
+/**
+ * An edit to one field of one record (`key` = `${id}:${field}`) that outlives the
+ * component: switching records or pages keeps it until it is saved or discarded.
+ * Returns the shown value, a setter and `discard`.
+ */
+export function useDraft(key: string, saved: string): [string, (value: string) => void, () => void] {
+  const draft = useSyncExternalStore(subscribeDrafts, () => drafts.get(key));
+  const set = useCallback(
+    (value: string) => {
+      if (value === saved) drafts.delete(key);
+      else drafts.set(key, value);
+      notifyDrafts();
+    },
+    [key, saved],
+  );
+  const discard = useCallback(() => {
+    if (drafts.delete(key)) notifyDrafts();
+  }, [key]);
+  return [draft ?? saved, set, discard];
+}
+
+/** Record ids with an unsaved draft, for the record list and the leave-page warning. */
+export function useDraftIds(): Set<string> {
+  useSyncExternalStore(subscribeDrafts, () => draftVersion);
+  return new Set([...drafts.keys()].map((k) => k.split(':')[0]));
 }
 
 // ── Compare tray: up to five public fund codes for this tab (sessionStorage) ──

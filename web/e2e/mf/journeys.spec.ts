@@ -8,7 +8,8 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     const fields = await (await request.get('/api/v1/mf/screener/fields')).json();
     await page.goto('/mf');
     await expect(page.getByRole('heading', { name: /Find better/ })).toBeVisible();
-    await expect(page.getByText(String(fields.fields.length), { exact: true })).toBeVisible();
+    await expect(page.getByText(`${fields.fields.length} fields · method v${fields.method_version}`)).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Market today' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Category leaders' }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Explore by category' })).toBeVisible();
     await expect(page.getByText(/median 3Y CAGR of \d+ funds with 3 years of NAVs/).first()).toBeVisible();
@@ -68,7 +69,7 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     await page.getByRole('link', { name: 'Risk' }).click();
     await expect(page).toHaveURL(/tab=risk/);
     await expect(page.getByRole('heading', { name: 'How far below its peak' })).toBeVisible();
-    await expect(page.getByRole('img', { name: 'Drawdown from peak over time' })).toBeVisible();
+    await expect(page.getByRole('figure', { name: 'Drawdown from peak over time' })).toBeVisible();
     await expect(page.getByText(/Sharpe uses the RBI 91-day T-bill/)).toBeVisible();
     await page.getByRole('link', { name: 'Holdings' }).click();
     await expect(page.getByText('Planned').first()).toBeVisible();
@@ -165,6 +166,7 @@ test.describe('workspace (in-memory mock; the real store is never written)', () 
 test.describe('theme and layout', () => {
   test('dark mode and a second palette change tokens, not components', async ({ page }) => {
     await page.goto('/mf');
+    await expect(page.locator('.mf-root')).toBeVisible();
     const brand = () => page.evaluate(() => getComputedStyle(document.querySelector('.mf-root')!).getPropertyValue('--mf-brand').trim());
     expect(await brand()).toBe('23 107 85');
     await page.getByRole('button', { name: 'Use dark theme' }).click();

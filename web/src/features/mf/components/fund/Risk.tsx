@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { pctTick } from '../../axis';
+import type { Drawdown } from '../../api';
 import { date, formatField, pct } from '../../format';
 import { useDrawdowns, useFundRegimes, useRiskFree, useUnderwater } from '../../queries';
 import { token } from '../../theme/themes';
@@ -28,15 +29,23 @@ const RISK_TILES: { id: string; label?: string; median?: string; rank?: string; 
 
 function UnderwaterChart({ code }: { code: string }) {
   const uw = useUnderwater(code);
-  const points = useMemo(() => thin(uw.data?.series ?? [], 800), [uw.data]);
+  const dd = useDrawdowns(code);
   const d = uw.data;
+  const points = d?.series ?? [];
+  // The service's deepest episode marks its own trough date, so a reader sees the true low at every zoom.
+  const deepest = dd.data?.drawdowns.reduce<Drawdown | undefined>((m, e) => (!m || e.depth < m.depth ? e : m), undefined);
   return (
     <ChartFrame
       title="How far below its peak"
-      subtitle="Underwater chart: the fall from the highest NAV so far, every day"
+      subtitle="Underwater chart: the fall from the highest NAV so far, every trading day. Drag the handles to zoom in."
       legend={
         d && (
           <>
+            {deepest && (
+              <span>
+                Deepest <b className="tabular text-mf-loss">{pct(deepest.depth)}</b> on {date(deepest.trough)}
+              </span>
+            )}
             <span>
               Now <b className="tabular text-mf-loss">{pct(d.dd_now)}</b> for {d.dd_now_days ?? '—'} days
             </span>
@@ -46,6 +55,7 @@ function UnderwaterChart({ code }: { code: string }) {
           </>
         )
       }
+      footnote="The table keeps every fall’s lowest day; it shows about 150 of the daily rows."
       table={{ columns: ['Date', 'Below peak'], rows: thin(points, 150).map(([day, v]) => [date(day), pct(v)]) }}
     >
       {uw.isError ? (
@@ -53,7 +63,17 @@ function UnderwaterChart({ code }: { code: string }) {
       ) : uw.isLoading ? (
         <Skeleton className="h-[240px]" />
       ) : (
-        <TimeChart label="Drawdown from peak over time" area height={240} yDomain={['dataMin', 0]} series={[{ id: 'uw', label: 'Below peak', points, color: token('loss') }]} format={(v) => pct(v, 1)} tick={pctTick} />
+        <TimeChart
+          label="Drawdown from peak over time"
+          area
+          zoom
+          height={240}
+          yDomain={['dataMin', 0]}
+          series={[{ id: 'uw', label: 'Below peak', points, color: token('loss') }]}
+          dots={deepest ? [{ date: deepest.trough, value: deepest.depth, label: `Deepest ${pct(deepest.depth, 1)} · ${date(deepest.trough)}`, color: token('loss') }] : undefined}
+          format={(v) => pct(v, 2)}
+          tick={pctTick}
+        />
       )}
     </ChartFrame>
   );
@@ -207,12 +227,13 @@ export function Risk({ code, metrics, fields }: FundTabProps) {
   const riskFree = useRiskFree();
   return (
     <div className="space-y-6">
+      {/* The fall itself first, then the measures that summarise it (audit 5.3). */}
+      <UnderwaterChart code={code} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {RISK_TILES.map((t) => (
           <MetricTile key={t.id} metrics={metrics} fields={fields} {...t} />
         ))}
       </div>
-      <UnderwaterChart code={code} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Episodes code={code} />
         <Recovery code={code} />

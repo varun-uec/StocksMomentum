@@ -8,7 +8,11 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
-            retry: 1,
+            // A 4xx is the server's final answer: retrying only delays the error.
+            retry: (failures, error) => {
+              const status = (error as { status?: unknown }).status;
+              return failures < 1 && !(typeof status === 'number' && status < 500);
+            },
             // Refocusing the window must not refetch and reflow a table the
             // reader is part-way through scrolling.
             refetchOnWindowFocus: false,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Backtest, Drawdown, FundRegimes } from './api';
-import { backtestVerdict, fallVerdict } from './verdicts';
+import { backtestVerdict, fallVerdict, recentVerdict } from './verdicts';
 
 const period = (first: string, last: string, s: number, m: number) => ({ months: 12, first_signal: first, last_signal: last, strategy_growth: 0, median_growth: 0, strategy_annualised: s, median_annualised: m, beat_share: 0.5 });
 
@@ -42,5 +42,18 @@ describe('fallVerdict (audit U-02)', () => {
 
   it('is empty without a fall window the fund lived through', () => {
     expect(fallVerdict([{ ...windows[0], fund_return: null }], [])).toBeNull();
+  });
+});
+
+describe('recentVerdict puts the last year beside the history (audit 5.3)', () => {
+  it('states a weak year against the category', () => {
+    expect(recentVerdict({ ret_1y: -0.057, ret_1y_cat_median: 0.012, ret_1y_cat_pct: 44, dd_now: -0.066 })).toBe(
+      'Over the last year it returned −5.7%, behind the category median of +1.2% (44th percentile). It is 6.6% below its last peak.',
+    );
+  });
+  it('handles a fund at its peak, missing figures and ordinals', () => {
+    expect(recentVerdict({ ret_1y: 0.1, dd_now: 0, ret_1y_cat_median: 0.05, ret_1y_cat_pct: 92 })).toContain('(92nd percentile). It is at its peak NAV.');
+    expect(recentVerdict({ ret_1y: 0.1, ret_1y_cat_median: 0.05, ret_1y_cat_pct: 11 })).toContain('11th');
+    expect(recentVerdict({ ret_1y: null })).toBeNull();
   });
 });

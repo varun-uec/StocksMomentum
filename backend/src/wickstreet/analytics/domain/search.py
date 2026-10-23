@@ -1,9 +1,11 @@
 """Fund search order: a beginner sees the plan most people mean first.
 
 The reader matches terms (``mf_data.domain.reads.search_terms``). This module
-orders the matches: an exact code or ISIN, then names that contain the whole
-query as one phrase, then active Direct Growth plans, then the longest NAV history
-(an AMC's flagship fund is usually its oldest), then the name.
+orders the matches: an exact code or ISIN, then current plans before historical
+ones (independent audit A-07: a broad AMC query must not open on closed IDCW
+series), then names that contain the whole query as one phrase, then Direct
+Growth plans, then the longest NAV history (an AMC's flagship fund is usually its
+oldest), then the name.
 """
 
 from __future__ import annotations
@@ -32,9 +34,9 @@ def ranked(
         known = standing.get(fund.amfi_code)
         return (
             exact not in {fund.amfi_code, fund.isin_growth, fund.isin_reinvest},
+            known is None,
             phrase not in compact(fund.nav_name or ""),
             not (known and known.direct_growth),
-            known is None,
             known.since if known else "",
             fund.nav_name or "",
             fund.amfi_code,

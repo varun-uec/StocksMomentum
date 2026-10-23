@@ -1,6 +1,6 @@
 /** React Query hooks over `mfApi`. A snapshot changes once a day, so reads stay fresh for 5 minutes. */
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { keepPreviousData, useQuery, useQueryClient, type Query } from '@tanstack/react-query';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { mfApi, type FieldDef, type PeerGroup, type ScreenRequest } from './api';
 
 const FRESH = 5 * 60_000;
@@ -87,3 +87,33 @@ export const useSparklines = (codes: string[]) => {
     placeholderData: keepPreviousData,
   });
 };
+
+/** The snapshot revision a read came from; a paged screen reports its first page. */
+function revisionOf(query: Query): number | undefined {
+  const data = query.state.data as { data_revision?: unknown; pages?: { data_revision?: unknown }[] } | undefined;
+  const revision = data?.data_revision ?? data?.pages?.[0]?.data_revision;
+  return typeof revision === 'number' ? revision : undefined;
+}
+
+/**
+ * The snapshot revisions behind the reads on screen. More than one means a daily
+ * publication landed between reads, so sections would mix data (independent audit
+ * A-15). A read pinned on purpose (a scenario replay names `data_revision`) is left out.
+ */
+export function useScreenRevisions(): { revisions: number[]; refresh: () => void } {
+  const client = useQueryClient();
+  const cache = client.getQueryCache();
+  const key = useSyncExternalStore(
+    useCallback((onChange) => cache.subscribe(onChange), [cache]),
+    () => {
+      const seen = new Set<number>();
+      for (const q of cache.findAll({ queryKey: ['mf'], type: 'active' })) {
+        const revision = revisionOf(q);
+        if (revision !== undefined && !q.queryHash.includes('data_revision')) seen.add(revision);
+      }
+      return [...seen].sort((a, b) => a - b).join(',');
+    },
+  );
+  const refresh = useCallback(() => void client.invalidateQueries({ queryKey: ['mf'], type: 'active' }), [client]);
+  return { revisions: key ? key.split(',').map(Number) : [], refresh };
+}

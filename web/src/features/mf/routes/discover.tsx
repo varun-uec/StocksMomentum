@@ -48,34 +48,41 @@ export const categoryLink = (category: string) =>
     formulas: {},
   })}`;
 
+const REGIME_WORDS: Record<string, string> = { crash: 'crash', correction: 'correction', recovery: 'recovery' };
+
+/**
+ * The first viewport answers a question (audit 5.1): search and collections on the
+ * left, today's market evidence on the right, and the registry facts as one line.
+ */
 function Hero({ presets }: { presets?: Preset[] }) {
   return (
     <section className="relative overflow-hidden rounded-[20px] border border-mf-line bg-mf-surface shadow-card">
-      <HeroArt className="absolute inset-0 h-full w-full" />
-      <div className="relative max-w-2xl px-6 py-8 sm:px-10 sm:py-11">
-        <h1 className="font-display text-[34px] leading-[1.08] text-mf-ink sm:text-[46px]">
-          Find better
-          <br />
-          mutual fund investments.
-        </h1>
-        <p className="mt-3 text-[15px] text-mf-ink-soft sm:text-base">Deep research. Clear evidence. Confident decisions.</p>
-        <div className="mt-6 max-w-lg">
-          <FundSearch size="lg" label="Search funds from the home page" placeholder="Try “parag”, “sbi smallcap” or an AMFI code" />
+      <HeroArt className="absolute inset-0 h-full w-full opacity-70" />
+      <div className="relative grid gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,1fr)] lg:items-center">
+        <div className="min-w-0">
+          <h1 className="font-display text-[30px] leading-[1.08] text-mf-ink sm:text-[40px]">Find better mutual fund investments.</h1>
+          <p className="mt-2 text-[15px] text-mf-ink-soft">Ten years of real NAVs, explained. Search a fund, or start from a question.</p>
+          <div className="mt-5 max-w-xl">
+            <FundSearch size="lg" label="Search funds from the home page" placeholder="Try “parag”, “sbi smallcap” or an AMFI code" />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {presets
+              ? presets.map((p) => (
+                  <Link key={p.id} to={`/mf/screen?preset=${p.id}`} title={p.purpose} className="mf-tap inline-flex min-h-9 items-center rounded-full border border-mf-line-strong bg-mf-surface/85 px-3.5 text-[13px] text-mf-ink-soft backdrop-blur transition-colors hover:border-mf-brand hover:text-mf-brand-strong">
+                    {p.name}
+                  </Link>
+                ))
+              : Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-9 w-28 rounded-full" />)}
+          </div>
+          <Facts />
         </div>
-        <div className="mt-6 flex flex-wrap gap-2">
-          {presets
-            ? presets.map((p) => (
-                <Link key={p.id} to={`/mf/screen?preset=${p.id}`} title={p.purpose} className="inline-flex min-h-9 items-center rounded-full border border-mf-line-strong bg-mf-surface/85 px-3.5 text-[13px] text-mf-ink-soft backdrop-blur hover:border-mf-brand hover:text-mf-brand-strong">
-                  {p.name}
-                </Link>
-              ))
-            : Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-9 w-28 rounded-full" />)}
-        </div>
+        <MarketPulse />
       </div>
     </section>
   );
 }
 
+/** The registry in one line: what the numbers on this site rest on. */
 function Facts() {
   const fields = useFields();
   const regimes = useRegimes();
@@ -83,26 +90,57 @@ function Facts() {
   const category = fields.byId.get('category');
   const first = regimes.data?.proxy.levels[0]?.[0];
   const facts = [
-    { value: status ? status.coverage.values.toLocaleString('en-IN') : null, label: 'Plan options', sub: 'Every AMFI scheme plan', icon: I.layers },
-    { value: category ? String((category.values ?? []).filter((c) => c !== 'Unclassified').length) : null, label: 'Categories', sub: 'SEBI categories (AMFI labels)', icon: I.grid },
-    { value: first && fields.data ? `${Number(fields.data.as_of.slice(0, 4)) - Number(first.slice(0, 4))} years` : null, label: 'NAV history', sub: first ? `${date(first)} onward` : '', icon: I.calendar },
-    { value: fields.data ? String(fields.data.fields.length) : null, label: 'Analytics fields', sub: fields.data ? `Method v${fields.data.method_version}` : '', icon: I.studio },
-  ];
+    status && `${status.coverage.values.toLocaleString('en-IN')} plan options`,
+    category && `${(category.values ?? []).filter((c) => c !== 'Unclassified').length} SEBI categories`,
+    first && `NAVs from ${date(first)}`,
+    fields.data && `${fields.data.fields.length} fields · method v${fields.data.method_version}`,
+  ].filter(Boolean);
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {facts.map((f) => (
-        <div key={f.label} className="flex items-start justify-between gap-2 rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
-          <div className="min-w-0">
-            {f.value === null ? <Skeleton className="h-7 w-20" /> : <p className="text-[24px] font-semibold leading-tight tabular">{f.value}</p>}
-            <p className="mt-1 text-sm text-mf-ink-soft">{f.label}</p>
-            <p className="truncate text-xs text-mf-muted">{f.sub}</p>
-          </div>
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-mf-brand-soft text-mf-brand">
-            <f.icon />
-          </span>
+    <p className="mt-5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-mf-muted">
+      {facts.length ? facts.map((f, i) => <span key={i} className="tabular">{i > 0 && <span aria-hidden="true" className="mr-3">·</span>}{f}</span>) : <Skeleton className="h-4 w-72" />}
+    </p>
+  );
+}
+
+/** Today's market evidence: the proxy's current phase, its last year, and the risk-free rate. */
+function MarketPulse() {
+  const regimes = useRegimes();
+  const riskFree = useRiskFree();
+  const year = useMemo(() => sinceYears(regimes.data?.proxy.levels ?? [], 1), [regimes.data]);
+  const phase = regimes.data?.windows[regimes.data.windows.length - 1];
+  const rate = riskFree.data?.points[riskFree.data.points.length - 1];
+  return (
+    <aside aria-label="Market today" className="rounded-[16px] border border-mf-line bg-mf-surface/90 p-4 shadow-card backdrop-blur sm:p-5">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-mf-muted">Market today</p>
+        {regimes.data && <span className="text-[11px] text-mf-muted">NAVs to {date(regimes.data.as_of)}</span>}
+      </div>
+      {regimes.isLoading ? (
+        <Skeleton className="mt-3 h-[150px]" />
+      ) : regimes.isError ? (
+        <ErrorState error={regimes.error} compact />
+      ) : (
+        <>
+          {phase && (
+            <p className="mt-2 text-[15px] leading-snug text-mf-ink">
+              {phase.ongoing ? <>Large caps are in a <b>{REGIME_WORDS[phase.kind] ?? phase.kind}</b> phase since {date(phase.start)}: </> : <>The last large-cap <b>{REGIME_WORDS[phase.kind] ?? phase.kind}</b> ran {date(phase.start)} to {date(phase.end)}: </>}
+              <b className={cx('tabular', phase.proxy_return < 0 ? 'text-mf-loss' : 'text-mf-brand-strong')}>{pct(phase.proxy_return, 1, true)}</b>.
+            </p>
+          )}
+          <div className="mt-3 h-[84px]">{year.length > 1 && <Sparkline points={year} height={84} label="Large-cap proxy level over the last year" />}</div>
+          <p className="mt-1 text-[11px] text-mf-muted">Large-cap proxy, last 12 months. Built from fund NAVs; not an official index.</p>
+        </>
+      )}
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-mf-line pt-3">
+        <div>
+          <p className="text-[11px] text-mf-muted">Risk-free rate (91-day T-bill)</p>
+          <p className="text-lg font-semibold tabular text-mf-ink">{rate ? `${rate[1].toFixed(2)}%` : '—'}</p>
         </div>
-      ))}
-    </div>
+        <a href="#mf-market" className="text-sm font-medium text-mf-brand-strong hover:underline">
+          Market context ↓
+        </a>
+      </div>
+    </aside>
   );
 }
 
@@ -111,7 +149,7 @@ function Categories() {
   const rows = new Map((leaders.data?.rows ?? []).map((r) => [String(r.values.category), r]));
   const lines = useSparklines([...rows.values()].map((r) => r.amfi_code));
   return (
-    <Card title="Explore by category" subtitle="Active Direct Growth plans · median 3Y CAGR of each category, and its top-scored fund" action={<Link to="/mf/screen" className="text-sm font-medium text-mf-brand hover:underline">Open screener</Link>}>
+    <Card title="Explore by category" subtitle="Active Direct Growth plans · each category's median 3Y CAGR, and the NAV of its top-scored fund (not a category average)" action={<Link to="/mf/screen" className="text-sm font-medium text-mf-brand hover:underline">Open screener</Link>}>
       {leaders.isError ? (
         <ErrorState error={leaders.error} onRetry={() => leaders.refetch()} compact />
       ) : (
@@ -137,8 +175,9 @@ function Categories() {
                       <p className="mt-1 text-xs text-mf-muted">median 3Y CAGR of {row?.values.cagr_3y_cat_count ?? '—'} funds with 3 years of NAVs</p>
                       {row && (
                         <div className="mt-3 border-t border-mf-line pt-2">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-mf-muted">Top fund’s NAV, 3 years</p>
                           <div className="h-[34px]">
-                            {lines.data?.series[row.amfi_code] && <Sparkline points={lines.data.series[row.amfi_code]} height={34} label={`${schemeName(row.name)}: month-end NAV over 3 years`} />}
+                            {lines.data?.series[row.amfi_code] && <Sparkline points={lines.data.series[row.amfi_code]} height={34} label={`${schemeName(row.name)}, the category's top-scored fund: month-end NAV over 3 years. Not a category average.`} />}
                           </div>
                           <p className="mt-1 flex items-center gap-2 text-xs text-mf-ink-soft">
                             <ScoreBadge score={row.values.score as number | null} size="sm" />
@@ -340,12 +379,11 @@ export default function Discover() {
     <div className="space-y-6">
       <h1 className="sr-only">Discover</h1>
       <Hero presets={presets.data?.presets} />
-      <Facts />
-      <Categories />
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Ideas presets={presets.data?.presets} />
         <YourResearch />
       </div>
+      <Categories />
       <section aria-labelledby="mf-market">
         <div className="mb-3 flex items-center gap-2">
           <h2 id="mf-market" className="font-display text-2xl text-mf-ink">

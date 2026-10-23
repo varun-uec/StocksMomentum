@@ -61,13 +61,21 @@ export function presetView(preset: Preset): ScreenView {
   return { mode, conditions, sort: preset.sort, columns: preset.columns, formulas: {} };
 }
 
-/** The API filter. In "Match any" the universe gates still apply to every fund: ALL(gates, ANY(rest)). */
+/**
+ * The API filter. In "Match any" the universe gates still apply to every fund:
+ * ALL(gates, ANY(rest)). The API allows two group levels, so a saved group must
+ * not gain a third (independent audit A-08): an ANY group merges into the ANY, and
+ * when an ALL group is among the rest the gates move inside each alternative,
+ * ANY(ALL(gates, …), …), which selects the same funds.
+ */
 export function filterOf(view: ScreenView): { all: FilterNode[] } | { any: FilterNode[] } {
   if (view.mode === 'all') return { all: view.conditions };
   const gates = view.conditions.filter(isGate);
-  const rest = view.conditions.filter((c) => !isGate(c));
+  const rest = view.conditions.filter((c) => !isGate(c)).flatMap((c) => (!isCondition(c) && 'any' in c ? c.any : [c]));
   if (!gates.length) return { any: rest };
-  return { all: rest.length ? [...gates, { any: rest }] : gates };
+  if (!rest.length) return { all: gates };
+  if (rest.every(isCondition)) return { all: [...gates, { any: rest }] };
+  return { any: rest.map((c) => ({ all: [...gates, ...(!isCondition(c) && 'all' in c ? c.all : [c])] })) };
 }
 
 export function isCondition(node: FilterNode): node is Condition {

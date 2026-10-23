@@ -44,3 +44,19 @@ export function compound(points: Point[], base = 100): Point[] {
   let level = base;
   return points.map(([d, r]) => [d, (level *= 1 + r)]);
 }
+
+/** The last day of month `ym` ('2019-10') moved on by `add` months, as an ISO date. */
+export function monthEnd(ym: string, add = 0): string {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m + add, 0)).toISOString().slice(0, 10);
+}
+
+/**
+ * Monthly backtest returns as growth of `base`. A signal month's return is earned
+ * over the next month, so each point sits on that holding month's end, and the
+ * line starts at `base` on the first signal month's end (independent audit A-14).
+ */
+export function growthByMonth(months: { signal_month: string }[], returns: number[], base = 100): Point[] {
+  if (!months.length) return [];
+  return [[monthEnd(months[0].signal_month), base], ...compound(months.map((m, i) => [monthEnd(m.signal_month, 1), returns[i]]), base)];
+}

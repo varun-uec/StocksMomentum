@@ -205,8 +205,12 @@ class SqlMfReader:
             "scheme_type, category, plan, option, isin_growth, isin_reinvest, launch_date) "
             f"WHERE upper(f.amfi_code) = :q OR f.isin_growth = :q OR f.isin_reinvest = :q "
             f"OR ({match}) "
-            "ORDER BY upper(f.amfi_code) = :q OR f.isin_growth = :q OR f.isin_reinvest = :q DESC, "
-            "(f.plan = 'direct' AND f.option = 'growth') DESC, f.nav_name, f.amfi_code "
+            # A missing ISIN or listing makes a test NULL, which DESC would sort first.
+            "ORDER BY upper(f.amfi_code) = :q OR f.isin_growth = :q OR f.isin_reinvest = :q "
+            "DESC NULLS LAST, "
+            # Listings spell these "Direct Plan" and "Growth Option"; names mix cases.
+            "(lower(f.plan) LIKE 'direct%' AND lower(f.option) LIKE 'growth%') DESC NULLS LAST, "
+            "lower(f.nav_name), f.amfi_code "
             "LIMIT :limit"
         )
         rows = await self._rows(sql, r=revision, q=query.strip().upper(), limit=limit, **bound)

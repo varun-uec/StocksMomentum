@@ -555,3 +555,9 @@ async def test_search_finds_the_fund_a_beginner_means_in_the_top_3(real: Databas
         assert expected in [f.nav_name for f, _ in found], query
     _, found = await research.search("parag", 1)
     assert found[0][0].nav_name == SEARCH_EXPECTED["parag"]
+    # Independent audit A-07: a broad AMC query opens on current Direct Growth plans,
+    # not on closed series whose missing listing sorted them first.
+    _, found = await research.search("nippon india", 8)
+    rows = [row for _, row in found if row is not None]
+    assert all(cell(row, "status") == "active" for row in rows)
+    assert (cell(rows[0], "plan"), cell(rows[0], "option")) == ("direct", "growth")

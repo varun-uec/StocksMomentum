@@ -296,7 +296,7 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}
-        className="grid h-5 w-5 place-items-center rounded-full text-mf-muted hover:text-mf-brand"
+        className="relative grid h-5 w-5 place-items-center rounded-full text-mf-muted before:absolute before:-inset-3 before:content-[''] hover:text-mf-brand"
       >
         <I.info className="h-3.5 w-3.5" />
       </button>
@@ -335,7 +335,7 @@ export function Loading({ label = 'Loading', className }: { label?: string; clas
   );
 }
 
-export function ErrorState({ error, onRetry, compact, title: heading }: { error: unknown; onRetry?: () => void; compact?: boolean; title?: string }) {
+export function ErrorState({ error, onRetry, retryLabel = 'Try again', compact, title: heading }: { error: unknown; onRetry?: () => void; retryLabel?: string; compact?: boolean; title?: string }) {
   const status = error instanceof MfApiError ? error.status : undefined;
   const title =
     heading ??
@@ -347,7 +347,7 @@ export function ErrorState({ error, onRetry, compact, title: heading }: { error:
       {detail && <p className="mt-1 text-sm text-mf-ink-soft">{detail}</p>}
       {onRetry && (
         <Button size="sm" className="mt-3" onClick={onRetry}>
-          Try again
+          {retryLabel}
         </Button>
       )}
     </div>

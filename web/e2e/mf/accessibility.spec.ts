@@ -52,6 +52,8 @@ test('MF routes pass axe in light and dark', async ({ page }) => {
 
 test('keyboard: "/" focuses fund search, arrows pick a result, Enter opens it', async ({ page }) => {
   await page.goto('/mf');
+  // Routes load as separate chunks: wait for the shell before using its shortcut.
+  await expect(page.getByRole('combobox', { name: 'Search funds', exact: true })).toBeVisible();
   await page.keyboard.press('/');
   await page.keyboard.type('parag parikh flexi');
   const option = page.getByRole('option').first();

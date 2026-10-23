@@ -102,6 +102,9 @@ export interface FundHit {
   plan: string;
   option: string;
   nav_available: boolean;
+  /** 'active' or 'historical'; null for a plan with no NAVs. Optional for older servers. */
+  status?: string | null;
+  last_nav_date?: string | null;
 }
 
 export interface FundDetail extends Envelope {
@@ -255,6 +258,7 @@ export interface RegimeWindow {
   end: string;
   kind: string;
   proxy_return: number;
+  ongoing?: boolean;
 }
 
 export interface Regimes extends Envelope {
@@ -328,8 +332,11 @@ export interface CalculatorRequest {
   step_up?: number;
   instalment?: number;
   target?: string;
-  tax_class: TaxClass;
+  /** Omitted: the server takes the class from the fund's category, or asks for it. */
+  tax_class?: TaxClass;
   slab_rate?: number;
+  /** Pins the run to a saved snapshot instead of the latest. */
+  data_revision?: number;
 }
 
 export interface Simulation extends Envelope {
@@ -339,7 +346,7 @@ export interface Simulation extends Envelope {
   timeline: Record<string, number | string>[];
   tax: {
     rules: string;
-    tax_class: string;
+    tax_class: string | null;
     total: number | null;
     years: { year: string; short_term: number; long_term: number; slab: number; tax: number }[];
     sales_not_modelled: number;

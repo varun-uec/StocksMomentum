@@ -76,6 +76,9 @@ test("F-04: search finds the flagship fund and common spellings", async ({
     ).toContain(name);
   }
   await page.goto("/mf");
+  await expect(
+    page.getByRole("combobox", { name: "Search funds", exact: true }),
+  ).toBeVisible();
   await page.keyboard.press("/");
   await page.keyboard.type("parag");
   await expect(page.getByRole("option").first()).toContainText(

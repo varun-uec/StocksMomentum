@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { NavRow, Point } from './api';
-import { availableWindows, navPoints, rebase, sinceYears, compound } from './series';
+import { availableWindows, compound, growthByMonth, monthEnd, navPoints, rebase, sinceYears } from './series';
 
 const points: Point[] = [
   ['2016-10-17', 10],
@@ -46,5 +46,20 @@ describe('compound', () => {
     const line = compound([['2024-01-28', 0.1], ['2024-02-28', -0.05], ['2024-03-28', 0.02]]);
     expect(line.map(([, v]) => Number(v.toFixed(4)))).toEqual([110, 104.5, 106.59]);
     expect(line[2][1] / 100 - 1).toBeCloseTo(1.1 * 0.95 * 1.02 - 1, 12);
+  });
+});
+
+describe('backtest growth sits on realised dates (audit A-14)', () => {
+  it('starts at 100 on the signal month end and books each return at the next month end', () => {
+    const g = growthByMonth([{ signal_month: '2019-10' }, { signal_month: '2019-11' }, { signal_month: '2020-01' }], [0.00591268, 0.01, -0.02]);
+    expect(g[0]).toEqual(['2019-10-31', 100]);
+    expect(g[1][0]).toBe('2019-11-30');
+    expect(g[1][1]).toBeCloseTo(100.591268, 6);
+    expect(g[2][0]).toBe('2019-12-31');
+    expect(g[3][0]).toBe('2020-02-29');
+  });
+  it('handles December and an empty run', () => {
+    expect(monthEnd('2019-12', 1)).toBe('2020-01-31');
+    expect(growthByMonth([], [])).toEqual([]);
   });
 });

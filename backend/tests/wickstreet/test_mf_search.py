@@ -36,6 +36,22 @@ def test_exact_code_then_phrase_then_direct_growth_then_oldest() -> None:
     assert ranked("4", funds, standing)[0].amfi_code == "4"
 
 
+def test_current_plans_come_before_historical_phrase_matches() -> None:
+    # Independent audit A-07: "nippon india" opened on eight closed IDCW series.
+    funds = [
+        _fund("144891", "NIPPON INDIA - INDIA OPPORTUNITIES FUND - SERIES A - DIRECT Plan - IDCW"),
+        _fund("141898", "NIPPON INDIA CAPITAL BUILDER FUND IV - SERIES B - DIRECT Plan - IDCW"),
+        _fund("118778", "Nippon India Small Cap Fund - Direct Plan Growth Plan - Growth Option"),
+        _fund("118650", "Reliance Growth - Direct Growth"),
+    ]
+    standing = {"118778": Standing(True, "2013-01-01"), "118650": Standing(True, "2013-01-01")}
+    order = [f.amfi_code for f in ranked("nippon india", funds, standing)]
+    assert order[:2] == ["118778", "118650"]
+    assert set(order[2:]) == {"144891", "141898"}
+    # An exact code still opens a historical plan first.
+    assert ranked("144891", funds, standing)[0].amfi_code == "144891"
+
+
 def test_a_phrase_match_beats_an_older_fund() -> None:
     funds = [
         _fund("1", "HDFC Large & Mid Cap Fund - Direct"),

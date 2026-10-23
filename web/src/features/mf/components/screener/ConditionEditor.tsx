@@ -163,7 +163,7 @@ function EditorBody({ field, initial, onSave, onClose }: { field: FieldDef; init
 
       {(field.type === 'number' || field.type === 'date') && op !== 'is_available' && op !== 'is_missing' && (
         <div className={op === 'between' ? 'grid grid-cols-2 gap-3' : ''}>
-          <Field label={op === 'between' ? 'Minimum' : percentOp ? 'Top or bottom share' : 'Value'} hint={percentOp ? 'Share of all funds with a value, before other conditions apply.' : unit && `In ${unit}`}>
+          <Field label={op === 'between' ? 'Minimum' : percentOp ? 'Top or bottom share' : 'Value'} hint={percentOp ? 'Share of every fund in the snapshot with a value, across all categories, before other conditions apply. For a standing among category peers, filter a “category percentile” field instead.' : unit && `In ${unit}`}>
             <input className={inputClass} type={field.type === 'date' ? 'date' : 'number'} step="any" inputMode="decimal" value={a} onChange={(e) => setA(e.target.value)} autoFocus />
           </Field>
           {op === 'between' && (

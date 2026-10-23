@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FieldDef } from './api';
+import type { FieldDef, FilterNode } from './api';
 import { UNIVERSE, decodeView, defaultView, describe as describeCondition, encodeView, filterOf, formulaNameError, fromApi, mixesCategories, toApi } from './view-spec';
 import { toggleCode } from './workspace';
 
@@ -72,6 +72,30 @@ describe('Match any keeps the universe (audit F-05)', () => {
     const view = defaultView();
     expect(filterOf(view)).toEqual({ all: view.conditions });
     expect(filterOf({ ...view, mode: 'any', conditions: UNIVERSE })).toEqual({ all: UNIVERSE });
+  });
+});
+
+describe('Match any never nests deeper than the API allows (audit A-08)', () => {
+  type Fund = Record<string, number | string>;
+  // A tiny evaluator mirroring the API's operators used here, to check meaning is kept.
+  const test = (n: FilterNode, f: Fund): boolean =>
+    'all' in n ? n.all.every((c) => test(c, f)) : 'any' in n ? n.any.some((c) => test(c, f)) : n.op === 'in' ? (n.value as unknown[]).includes(f[n.field]) : n.op === '>' ? Number(f[n.field]) > Number(n.value) : Number(f[n.field]) < Number(n.value);
+  const depth = (n: FilterNode): number => ('field' in n ? 0 : 1 + Math.max(...('all' in n ? n.all : n.any).map(depth)));
+  const fast: FilterNode = { field: 'cagr_3y', op: '>', value: 0.15 };
+  const calm: FilterNode = { field: 'vol_3y', op: '<', value: 0.12 };
+  const cheap: FilterNode = { field: 'ter', op: '<', value: 0.01 };
+  const funds: Fund[] = [0, 1].flatMap((a) => [0.1, 0.2].flatMap((c) => [0.1, 0.2].flatMap((v) => [0.005, 0.02].map((t) => ({ status: a ? 'active' : 'historical', plan: 'direct', option: 'growth', cagr_3y: c, vol_3y: v, ter: t })))));
+  const meaning = (n: FilterNode) => funds.map((f) => test(n, f));
+
+  it.each<[string, FilterNode[]]>([
+    ['a saved ANY group', [{ any: [fast, calm] }]],
+    ['a saved ALL group beside a condition', [{ all: [fast, calm] }, cheap]],
+    ['both kinds of group', [{ any: [fast, cheap] }, { all: [fast, calm] }]],
+  ])('%s', (_, extra) => {
+    const view = { ...defaultView(), conditions: [...UNIVERSE, ...extra], mode: 'any' as const };
+    const filter = filterOf(view) as FilterNode;
+    expect(depth(filter)).toBeLessThanOrEqual(2);
+    expect(meaning(filter)).toEqual(meaning({ all: [...UNIVERSE, { any: extra }] }));
   });
 });
 

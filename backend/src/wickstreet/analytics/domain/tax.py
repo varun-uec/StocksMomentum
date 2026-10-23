@@ -18,10 +18,16 @@ the highest rate first. Within a financial year, short-term and slab losses offs
 long-term gains, highest rate first; a long-term loss offsets only long-term gains.
 Nothing carries forward. Health and education cess of 4% is added. Surcharge, exit
 loads and STT are not modelled. Sales before 2018-04-01 are counted as not modelled.
+
+Holding periods are calendar months, as the Income-tax Act defines them. A unit held
+"over 12 months" is sold after the 12-month anniversary of its purchase date, so a sale
+on the anniversary itself is short term. A purchase on a day the anniversary month
+lacks (29 Feb, 31st) uses that month's last day.
 """
 
 from __future__ import annotations
 
+import calendar
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -103,18 +109,28 @@ def _financial_year(ordinal: int) -> str:
     return f"FY{start}-{(start + 1) % 100:02d}"
 
 
+def held_over(bought: int, sold: int, months: int) -> bool:
+    """Whether a unit bought on ``bought`` and sold on ``sold`` was held over ``months``."""
+    start = date.fromordinal(bought)
+    year, month = divmod(start.month - 1 + months, 12)
+    year += start.year
+    day = min(start.day, calendar.monthrange(year, month + 1)[1])
+    return sold > date(year, month + 1, day).toordinal()
+
+
 def _treatment(sale: Sale, tax_class: TaxClass) -> tuple[str, float | None, bool]:
     """(term, rate or ``None`` for the slab rate, indexed) for one sale."""
-    held, new = sale.sold - sale.bought, sale.sold >= FINANCE_ACT_2024
+    new = sale.sold >= FINANCE_ACT_2024
     if tax_class == "equity":
-        if held > 365:
+        if held_over(sale.bought, sale.sold, 12):
             return LONG, 0.125 if new else 0.10, False
         return SHORT, 0.20 if new else 0.15, False
     if tax_class == "debt" and sale.bought >= DEBT_SLAB_FROM:
         return SLAB, None, False
     if new:
-        return (LONG, 0.125, False) if held > 730 else (SLAB, None, False)
-    return (LONG, 0.20, True) if held > 1095 else (SLAB, None, False)
+        long = held_over(sale.bought, sale.sold, 24)
+        return (LONG, 0.125, False) if long else (SLAB, None, False)
+    return (LONG, 0.20, True) if held_over(sale.bought, sale.sold, 36) else (SLAB, None, False)
 
 
 def _gain(sale: Sale, tax_class: TaxClass, indexed: bool, nav_2018_01_31: float | None) -> float:

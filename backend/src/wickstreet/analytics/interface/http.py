@@ -165,6 +165,8 @@ async def funds_search(
                 "plan": None if row is None else cell(row, "plan"),
                 "option": None if row is None else cell(row, "option"),
                 "nav_available": row is not None and cell(row, "nav") is not None,
+                "status": None if row is None else cell(row, "status"),
+                "last_nav_date": None if row is None else cell(row, "last_nav_date"),
             }
             for fund, row in found
         ],

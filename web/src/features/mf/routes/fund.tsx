@@ -13,7 +13,8 @@ import { Peers } from '../components/fund/Peers';
 import { Performance } from '../components/fund/Performance';
 import { Risk } from '../components/fund/Risk';
 import { I } from '../components/icons';
-import { Badge, Button, Delta, EmptyState, ErrorState, Field, Loading, Sheet, SnapshotNote, TabLinks, buttonClass, inputClass, useTitle } from '../components/ui';
+import { Badge, Button, Delta, EmptyState, ErrorState, Field, Loading, Sheet, SnapshotNote, TabLinks, buttonClass, cx, inputClass, useTitle } from '../components/ui';
+import { ScoreBadge } from '../components/ScoreBadge';
 import { MfApiError } from '../api';
 import { rememberFund } from '../context';
 import { categoryShort, date, enumLabel, isNum, schemeName } from '../format';
@@ -31,7 +32,22 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 
-function LastNav({ code }: { code: string }) {
+function Identity({ category, plan, option, amc, status }: { category: string; plan: string; option: string; amc: string; status: string }) {
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-mf-muted">
+      <span className="font-medium text-mf-ink-soft">{categoryShort(category)}</span>
+      <span aria-hidden="true">·</span>
+      <span>
+        {enumLabel(plan)} · {enumLabel(option)}
+      </span>
+      <span aria-hidden="true" className="hidden sm:inline">·</span>
+      <span className="hidden sm:inline">{amc}</span>
+      <Badge tone={status === 'active' ? 'brand' : 'warning'}>{enumLabel(status)}</Badge>
+    </p>
+  );
+}
+
+function LastNav({ code, compact }: { code: string; compact?: boolean }) {
   const navs = useNavs(code);
   const rows = navs.data?.navs.filter((r) => !r.anomaly) ?? [];
   const last = rows[rows.length - 1];
@@ -40,8 +56,8 @@ function LastNav({ code }: { code: string }) {
   const change = prev ? Number(last.nav) / Number(prev.nav) - 1 : null;
   return (
     <div className="text-left sm:text-right">
-      <p className="text-[30px] font-semibold leading-none tabular">₹{Number(last.nav).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</p>
-      <p className="mt-1 text-sm">
+      <p className={cx('font-semibold leading-none tabular', compact ? 'text-lg' : 'text-[26px] sm:text-[30px]')}>₹{Number(last.nav).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</p>
+      <p className={cx('mt-1', compact ? 'text-xs' : 'text-sm')}>
         {isNum(change) && (
           <>
             <Delta value={change} digits={2} /> <span className="text-mf-muted">1D · </span>
@@ -151,28 +167,37 @@ export default function Fund() {
         <div className="hidden flex-wrap gap-2 sm:flex">{actions}</div>
       </div>
 
-      <header className="relative overflow-hidden rounded-[20px] border border-mf-line p-4 shadow-card sm:p-6" style={{ background: `linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 65%)` }}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-            <FundMark amc={f.amc} size="lg" className="hidden sm:inline-grid" />
-            <div className="min-w-0">
-              <h1 className="font-display text-[26px] leading-tight sm:text-[34px]">{schemeName(m.name)}</h1>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-mf-muted">
-                <span className="font-medium text-mf-ink-soft">{categoryShort(f.category)}</span>
-                <span aria-hidden="true">·</span>
-                <span>
-                  {enumLabel(String(m.values.plan))} · {enumLabel(String(m.values.option))}
-                </span>
-                <span aria-hidden="true" className="hidden sm:inline">·</span>
-                <span className="hidden sm:inline">{f.amc}</span>
-                <Badge tone={status === 'active' ? 'brand' : 'warning'}>{enumLabel(status)}</Badge>
-              </p>
+      {tab === 'overview' ? (
+        <header className="relative overflow-hidden rounded-[20px] border border-mf-line p-4 shadow-card sm:p-6" style={{ background: `linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 65%)` }}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+              <FundMark amc={f.amc} size="lg" className="hidden sm:inline-grid" />
+              <div className="min-w-0">
+                <h1 className="font-display text-[24px] leading-tight sm:text-[34px]">{schemeName(m.name)}</h1>
+                <Identity category={f.category} plan={String(m.values.plan)} option={String(m.values.option)} amc={f.amc} status={status} />
+              </div>
             </div>
+            <LastNav code={code} />
           </div>
-          <LastNav code={code} />
-        </div>
-        <FundHeadline code={code} metrics={m} />
-      </header>
+          <FundHeadline code={code} metrics={m} />
+        </header>
+      ) : (
+        // Other tabs keep the identity and NAV in one strip, so their first chart sits high (audit 5.3).
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[16px] border border-mf-line bg-mf-surface px-4 py-3 shadow-card">
+          <FundMark amc={f.amc} size="md" className="hidden sm:inline-grid" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate font-display text-[20px] leading-tight sm:text-[24px]">{schemeName(m.name)}</h1>
+            <Identity category={f.category} plan={String(m.values.plan)} option={String(m.values.option)} amc={f.amc} status={status} />
+          </div>
+          {isNum(m.values.score) && (
+            <Link to="?tab=peers" className="flex items-center gap-2 text-xs text-mf-muted hover:text-mf-ink">
+              <ScoreBadge score={m.values.score} />
+              <span className="sr-only sm:not-sr-only">Wickstreet score</span>
+            </Link>
+          )}
+          <LastNav code={code} compact />
+        </header>
+      )}
       <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex gap-2 overflow-x-auto border-t border-mf-line bg-mf-surface/95 px-3 py-2 backdrop-blur sm:hidden" role="group" aria-label="Fund actions">
         {actions}
       </div>

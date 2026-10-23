@@ -2,11 +2,13 @@
  * Fund search: name, AMFI code or ISIN → an exact plan-option (ui-ux doc 02,
  * ResearchSearch). An ARIA combobox: arrows move, Enter opens, Escape closes.
  * Requests wait 250 ms after typing and a newer query cancels the older one.
+ * Results of an older query stay visible but cannot be chosen until the current
+ * query answers (independent audit A-06). Historical plans sit in their own section.
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { FundHit } from '../api';
-import { categoryShort, enumLabel } from '../format';
+import { categoryShort, date, enumLabel } from '../format';
 import { useFundSearch } from '../queries';
 import { I } from './icons';
 import { Badge, cx } from './ui';
@@ -39,6 +41,9 @@ export function FundSearch({
   const query = useDebounced(text.trim(), 250);
   const search = useFundSearch(query);
   const results = query.length >= 2 ? (search.data?.funds ?? []) : [];
+  // Typing ahead of the debounce, or a response still pending, leaves the list showing an older query.
+  const current = query === text.trim() && !search.isPlaceholderData && !search.isFetching;
+  const firstHistorical = results.findIndex((f) => f.status === 'historical');
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const statusId = useId();
@@ -65,7 +70,7 @@ export function FundSearch({
   };
 
   const showList = open && query.length >= 2;
-  const status = search.isFetching ? 'Searching' : `${results.length} fund${results.length === 1 ? '' : 's'} found`;
+  const status = !current ? 'Searching' : `${results.length} fund${results.length === 1 ? '' : 's'} found`;
 
   return (
     <div className={cx('relative', className)}>
@@ -82,7 +87,7 @@ export function FundSearch({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-describedby={statusId}
-          aria-activedescendant={showList && results[active] ? `${listId}-${active}` : undefined}
+          aria-activedescendant={showList && current && results[active] ? `${listId}-${active}` : undefined}
           autoComplete="off"
           spellCheck={false}
           autoFocus={autoFocus}
@@ -102,9 +107,9 @@ export function FundSearch({
             } else if (e.key === 'ArrowUp') {
               e.preventDefault();
               setActive((i) => Math.max(i - 1, 0));
-            } else if (e.key === 'Enter' && results[active]) {
+            } else if (e.key === 'Enter') {
               e.preventDefault();
-              pick(results[active]);
+              if (current && results[active]) pick(results[active]);
             } else if (e.key === 'Escape') {
               setOpen(false);
             }
@@ -122,22 +127,28 @@ export function FundSearch({
         {query.length >= 2 ? status : ''}
       </p>
       {showList && (
-        <ul id={listId} role="listbox" aria-label="Funds" className="mf-scroll absolute left-0 right-0 top-full z-50 mt-1.5 max-h-[60vh] overflow-y-auto rounded-[12px] border border-mf-line bg-mf-surface p-1 shadow-raised">
+        <ul id={listId} role="listbox" aria-label="Funds" aria-busy={!current} className="mf-scroll absolute left-0 right-0 top-full z-50 mt-1.5 max-h-[60vh] overflow-y-auto rounded-[12px] border border-mf-line bg-mf-surface p-1 shadow-raised">
           {results.length === 0 && (
             <li className="px-3 py-3 text-sm text-mf-muted" role="presentation">
-              {search.isFetching ? 'Searching…' : search.isError ? 'Search failed. Try again.' : 'No fund matches that name, code or ISIN.'}
+              {!current ? 'Searching…' : search.isError ? 'Search failed. Try again.' : 'No fund matches that name, code or ISIN.'}
             </li>
           )}
-          {results.map((fund, i) => (
+          {results.map((fund, i) => [
+            i === firstHistorical && (
+              <li key="historical" role="presentation" className="mt-1 border-t border-mf-line px-3 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-mf-muted">
+                Historical plans · no longer published
+              </li>
+            ),
             <li
               key={fund.amfi_code}
               id={`${listId}-${i}`}
               role="option"
-              aria-selected={i === active}
+              aria-selected={current && i === active}
+              aria-disabled={!current || undefined}
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setActive(i)}
-              onClick={() => pick(fund)}
-              className={cx('cursor-pointer rounded-[8px] px-3 py-2', i === active && 'bg-mf-brand-soft')}
+              onClick={() => current && pick(fund)}
+              className={cx('rounded-[8px] px-3 py-2', current ? 'cursor-pointer' : 'cursor-wait opacity-50', current && i === active && 'bg-mf-brand-soft')}
             >
               <p className="truncate text-sm font-medium text-mf-ink">{fund.name}</p>
               <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-mf-muted">
@@ -149,9 +160,10 @@ export function FundSearch({
                 <span aria-hidden="true">·</span>
                 <span>AMFI {fund.amfi_code}</span>
                 {!fund.nav_available && <Badge tone="warning">No NAV history</Badge>}
+                {fund.status === 'historical' && <Badge tone="neutral">Historical{fund.last_nav_date ? ` · last NAV ${date(fund.last_nav_date)}` : ''}</Badge>}
               </p>
-            </li>
-          ))}
+            </li>,
+          ])}
         </ul>
       )}
     </div>

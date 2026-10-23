@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { pctTick } from '../axis';
-import { ChartFrame, LegendDot, PeerScatter, TimeChart, thin } from '../components/charts';
+import { ChartFrame, LegendDot, PeerScatter, TimeChart, mergeSeries, thin } from '../components/charts';
 import { startingFunds, useRecentFunds } from '../context';
 import { rebase } from '../series';
 import { FundSearch } from '../components/FundSearch';
@@ -182,7 +182,8 @@ export default function Compare() {
             legend={series.map((s) => (
               <LegendDot key={s.id} color={s.color} label={<>{s.label} <b className="tabular">{inr(((s.points[s.points.length - 1]?.[1] ?? NaN) / 100) * 10_000)}</b></>} />
             ))}
-            table={{ columns: ['Date', ...series.map((s) => s.label)], rows: thin(series[0]?.points ?? [], 100).map(([d]) => [date(d), ...series.map((s) => (s.points.find(([pd]) => pd >= d)?.[1] ?? NaN).toFixed(1))]) }}
+            // Same unit as the plot: rupees from ₹10,000 (audit A-13).
+            table={{ columns: ['Date', ...series.map((s) => s.label)], rows: thin(mergeSeries(series), 120).map((r) => [date(String(r.date)), ...series.map((s) => (typeof r[s.id] === 'number' ? inr(((r[s.id] as number) / 100) * 10_000) : '—'))]) }}
           >
             <TimeChart label="Rebased growth of the selected funds" height={320} zoom series={series} format={(v) => inr((v / 100) * 10_000)} tick={(v) => inrTick((v / 100) * 10_000)} />
           </ChartFrame>
@@ -195,7 +196,7 @@ export default function Compare() {
             >
               <PeerScatter
                 label="Return against volatility of the selected funds"
-                points={funds.filter((f) => isNum(f.values.vol_3y) && isNum(f.values.cagr_3y)).map((f) => ({ id: f.amfi_code, name: f.name, x: f.values.vol_3y as number, y: f.values.cagr_3y as number, highlight: true }))}
+                points={funds.map((f, i) => ({ f, color: seriesColor(i) })).filter(({ f }) => isNum(f.values.vol_3y) && isNum(f.values.cagr_3y)).map(({ f, color }) => ({ id: f.amfi_code, name: f.name, x: f.values.vol_3y as number, y: f.values.cagr_3y as number, highlight: true, color }))}
                 xLabel="Volatility 3Y"
                 yLabel="CAGR 3Y"
                 format={(v) => pct(v, 1)}
