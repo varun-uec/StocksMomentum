@@ -38,13 +38,14 @@ dev = [
 
 [project.scripts]
 momentum25 = "momentum25.interface.cli.main:main"
+wickstreet = "wickstreet.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/momentum25", "src/wickstreet", "src/platform_common"]
+packages = ["src/momentum25", "src/wickstreet", "src/platform_common", "src/apphost"]
 
 [tool.ruff]
 line-length = 100
@@ -58,6 +59,7 @@ ignore = ["D203", "D213"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D"]
 "src/momentum25/infrastructure/persistence/migrations/*" = ["D"]
+"src/wickstreet/persistence/migrations/*" = ["D"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -99,7 +101,7 @@ env = [
 ]
 
 [tool.importlinter]
-root_packages = ["momentum25", "wickstreet", "platform_common"]
+root_packages = ["momentum25", "wickstreet", "platform_common", "apphost"]
 
 # Wickstreet 2.0 is a separate application in this repository (ADR-023 §2.8, OM-11).
 [[tool.importlinter.contracts]]
@@ -112,7 +114,42 @@ modules = ["momentum25", "wickstreet"]
 name = "platform_common imports neither application"
 type = "forbidden"
 source_modules = ["platform_common"]
-forbidden_modules = ["momentum25", "wickstreet"]
+forbidden_modules = ["momentum25", "wickstreet", "apphost"]
+
+# The host is the only module that imports both applications (ADR-023 U1).
+[[tool.importlinter.contracts]]
+name = "Nothing imports the host"
+type = "forbidden"
+source_modules = ["momentum25", "wickstreet", "platform_common"]
+forbidden_modules = ["apphost"]
+
+# Every wickstreet context is layered like momentum25 (OM-11). A new context is
+# added to `containers`; tests/wickstreet/test_boundaries.py fails until it is.
+[[tool.importlinter.contracts]]
+name = "Wickstreet contexts: dependencies point inward"
+type = "layers"
+containers = ["wickstreet.identity"]
+layers = ["interface", "application", "domain"]
+
+[[tool.importlinter.contracts]]
+name = "Wickstreet domain and application never import infrastructure, interface or wiring"
+type = "forbidden"
+source_modules = ["wickstreet.*.domain", "wickstreet.*.application"]
+forbidden_modules = [
+    "wickstreet.*.infrastructure",
+    "wickstreet.*.interface",
+    "wickstreet.app",
+    "wickstreet.cli",
+    "wickstreet.dependencies",
+    "wickstreet.persistence",
+]
+
+# OM-1: the mode lives in settings, which domain and application code never read.
+[[tool.importlinter.contracts]]
+name = "Wickstreet domain and application never read the operating mode"
+type = "forbidden"
+source_modules = ["wickstreet.*.domain", "wickstreet.*.application"]
+forbidden_modules = ["wickstreet.config"]
 
 [[tool.importlinter.contracts]]
 name = "Clean architecture layering (dependencies point inward)"

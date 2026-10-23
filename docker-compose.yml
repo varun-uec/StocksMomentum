@@ -52,6 +52,13 @@ services:
       # Paths inside the image; they override any local-run values in .env.
       M25_STRATEGY_DIR: /app/strategies
       M25_WEB_DIST_DIR: /app/web
+      # Wickstreet 2.0 (ADR-023): the runtime role, under row-level security (U3).
+      WICKSTREET_DATABASE_URL: postgresql+asyncpg://wickstreet_app:${WICKSTREET_APP_DB_PASSWORD:-wickstreet_app}@db:5432/${POSTGRES_DB:-momentum25}
+      # Personal mode binds every interface of the container and refuses to start
+      # unless the published address below is loopback (U8).
+      WICKSTREET_BIND_HOST: 0.0.0.0
+      WICKSTREET_IN_CONTAINER: "true"
+      WICKSTREET_PUBLISHED_BIND: ${APP_BIND:-127.0.0.1}
     # Loopback only. APP_BIND=0.0.0.0 exposes an unauthenticated app to the LAN;
     # that instance is not secure, and every reachable browser has full access.
     # Use an authenticating proxy for network exposure and list its host in M25_ALLOWED_HOSTS.
@@ -62,11 +69,37 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      wickstreet-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     mem_limit: 2g
     cpus: 2
-    # Runs migrations then starts the API. Override for production.
-    command: ["sh", "-c", "alembic upgrade head && uvicorn momentum25.main:app --host 0.0.0.0 --port 8000"]
+    # Runs Momentum25 migrations, then starts the host that serves Momentum25 at /
+    # and Wickstreet 2.0 at /api/v1/mf (ADR-023 U1). Override for production.
+    command: ["sh", "-c", "alembic upgrade head && python -m apphost"]
+
+  # Wickstreet 2.0 database setup, a step of its own (ADR-023 U3, A3 §7.3): creates
+  # the wickstreet_owner and wickstreet_app roles and the wickstreet schema, then
+  # runs the MF migrations as the owner. It changes no Momentum25 table.
+  wickstreet-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_ID: ${BUILD_ID:-}
+    env_file: .env
+    environment:
+      WICKSTREET_ADMIN_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-momentum25}:${POSTGRES_PASSWORD:-momentum25}@db:5432/${POSTGRES_DB:-momentum25}
+      WICKSTREET_MIGRATION_DATABASE_URL: postgresql+asyncpg://wickstreet_owner:${WICKSTREET_OWNER_DB_PASSWORD:-wickstreet_owner}@db:5432/${POSTGRES_DB:-momentum25}
+      WICKSTREET_DATABASE_URL: postgresql+asyncpg://wickstreet_app:${WICKSTREET_APP_DB_PASSWORD:-wickstreet_app}@db:5432/${POSTGRES_DB:-momentum25}
+      WICKSTREET_PUBLISHED_BIND: ${APP_BIND:-127.0.0.1}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    mem_limit: 512m
+    cpus: 0.5
+    command: ["sh", "-c", "wickstreet db-roles && alembic -c alembic-wickstreet.ini upgrade head"]
 
   # ---- Development tooling (profile: dev) ----
   adminer:

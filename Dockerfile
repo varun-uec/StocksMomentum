@@ -45,7 +45,9 @@ ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     PYTHONPATH=/app/src \
     M25_STRATEGY_DIR=/app/strategies \
-    M25_WEB_DIST_DIR=/app/web
+    M25_WEB_DIST_DIR=/app/web \
+    WICKSTREET_BIND_HOST=0.0.0.0 \
+    WICKSTREET_IN_CONTAINER=true
 WORKDIR /app
 
 # Install only runtime system dependencies.
@@ -59,7 +61,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application source, migration config, strategy configs and the web build.
 COPY backend/src ./src
-COPY backend/alembic.ini ./
+COPY backend/alembic.ini backend/alembic-wickstreet.ini ./
 COPY docs/architecture/strategies ./strategies
 COPY --from=web /web/dist ./web
 
@@ -81,5 +83,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live')"
 
 # One process: the scheduler (ADR-007) and Studio evaluations run inside it, and a
-# second worker would run them twice. docker-compose adds the migration step.
-CMD ["uvicorn", "momentum25.main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "100"]
+# second worker would run them twice. docker-compose adds the migration steps.
+# The host serves Momentum25 and Wickstreet 2.0 (ADR-023 U1). Personal mode refuses
+# to start unless WICKSTREET_PUBLISHED_BIND names a loopback address (U8).
+CMD ["python", "-m", "apphost"]

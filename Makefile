@@ -1,7 +1,7 @@
 # Momentum25 India — developer convenience targets.
 # Most workflows run through Docker Compose; backend targets assume `cd backend`.
 
-.PHONY: help up up-dev down logs migrate revision backend-install api-dev lint format typecheck test web-install web-dev clean e2e-db test-db test-infra-down web-test
+.PHONY: help up up-dev down logs migrate mf-migrate revision backend-install api-dev host-dev lint format typecheck test web-install web-dev clean e2e-db test-db test-infra-down web-test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -21,6 +21,9 @@ logs: ## Tail all logs
 migrate: ## Apply DB migrations inside the api container
 	docker compose run --rm api alembic upgrade head
 
+mf-migrate: ## Create the Wickstreet 2.0 roles and schema, then apply MF migrations (ADR-023 U3)
+	docker compose run --rm wickstreet-migrate
+
 revision: ## Autogenerate a migration: make revision m="message"
 	cd backend && alembic revision --autogenerate -m "$(m)"
 
@@ -29,6 +32,9 @@ backend-install: ## Install backend deps locally (uv)
 
 api-dev: ## Run the API locally on loopback (matches docker-compose)
 	cd backend && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port 8000 --app-dir src --reload
+
+host-dev: ## Run Momentum25 and Wickstreet 2.0 together on loopback (needs mf-migrate)
+	cd backend && PYTHONPATH=src .venv/bin/python -m apphost
 
 lint: ## Ruff lint
 	cd backend && ruff check src tests

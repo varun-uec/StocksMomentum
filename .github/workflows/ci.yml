@@ -110,6 +110,9 @@ jobs:
     env:
       M25_DATABASE_URL: postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_migrations
       M25_ENVIRONMENT: test
+      WICKSTREET_ADMIN_DATABASE_URL: postgresql+asyncpg://momentum25:momentum25@localhost:5432/momentum25_migrations
+      WICKSTREET_MIGRATION_DATABASE_URL: postgresql+asyncpg://wickstreet_owner:wickstreet_owner@localhost:5432/momentum25_migrations
+      WICKSTREET_DATABASE_URL: postgresql+asyncpg://wickstreet_app:wickstreet_app@localhost:5432/momentum25_migrations
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -123,6 +126,13 @@ jobs:
         run: uv run alembic upgrade head
       - name: Fail if the models differ from the migrations
         run: uv run alembic check
+      # Wickstreet 2.0: own roles, schema and Alembic environment (ADR-023 U3, OM-12).
+      - name: Create the MF roles and schema
+        run: uv run wickstreet db-roles
+      - name: Migrate the MF schema to head as its owner
+        run: uv run alembic -c alembic-wickstreet.ini upgrade head
+      - name: Fail if the MF models differ from the MF migrations
+        run: uv run alembic -c alembic-wickstreet.ini check
 
   lint-web:
     name: Lint (Web)
