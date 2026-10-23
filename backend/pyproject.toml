@@ -129,7 +129,12 @@ forbidden_modules = ["apphost"]
 [[tool.importlinter.contracts]]
 name = "Wickstreet contexts: dependencies point inward"
 type = "layers"
-containers = ["wickstreet.identity", "wickstreet.data_rights", "wickstreet.mf_data"]
+containers = [
+    "wickstreet.identity",
+    "wickstreet.data_rights",
+    "wickstreet.mf_data",
+    "wickstreet.analytics",
+]
 layers = ["(interface)", "application", "domain"]
 
 [[tool.importlinter.contracts]]

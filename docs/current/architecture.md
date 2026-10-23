@@ -1,6 +1,6 @@
 # Architecture — as built
 
-Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), and the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1).
+Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. The host, enforcement and [Wickstreet 2.0 platform](#wickstreet-20-platform-slice-0) sections were verified on 2026-10-23 (Slice 0), the [MF data](#wickstreet-20-mf-data-slice-1) section on 2026-10-23 (Slice 1), and the [MF analytics](#wickstreet-20-mf-analytics-slice-2) section on 2026-10-23 (Slice 2).
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
@@ -48,7 +48,7 @@ All nine pass (2026-10-23). The Momentum25 contracts do not cover `infrastructur
 
 ## Wickstreet 2.0 platform (Slice 0)
 
-Implements the platform items of [ADR-023](../architecture/adr/ADR-023-operating-modes.md) §7 (U1–U3, U6, U8). Slice 0 added no MF data; [Slice 1](#wickstreet-20-mf-data-slice-1) adds it. No analytics, agent or UI exists yet.
+Implements the platform items of [ADR-023](../architecture/adr/ADR-023-operating-modes.md) §7 (U1–U3, U6, U8). Slice 0 added no MF data; [Slice 1](#wickstreet-20-mf-data-slice-1) adds it and [Slice 2](#wickstreet-20-mf-analytics-slice-2) the analytics and read API. No agent or UI exists yet.
 
 | Package | Holds |
 |---|---|
@@ -94,6 +94,31 @@ Implements ADR-017 MF-2 to MF-11, ADR-021 rule 1 and ADR-022 §2.11–§2.12 und
 **Known limits.** AMFI's history report restates current scheme names and categories for past dates, so attributes stored from the backfill are those of 2026-10-23, and name history accumulates from the daily refresh on. TigZig's archive has the filed name per row, but it is not stored. Archive NAVs before 2023-04-01 have 4 decimals. MFAPI and TigZig differ on 30 values, mostly before 2023, that no direct AMFI file can settle.
 
 **Operations.** `wickstreet mf backfill`, `mf archive`, `mf crosscheck`, `mf refresh`, `mf reparse` and `mf report` (see `backend/README.md`). `mf reparse` re-derives published AMFI dates from their kept raw files after a parser fix; it checks each file against its recorded SHA-256 and publishes changed values as a new revision under the new adapter version. The daily refresh re-reads the master and the last 7 days, or every date since the last stored one after downtime. With `WICKSTREET_REFRESH_ENABLED=true` (Compose sets it) the app runs it at 11:30 IST, and at startup when the day's run is due. If `SSL_CERT_FILE` points at an older CA bundle, AMFI's Sectigo R46 chain fails; unset it or point it at certifi's bundle.
+
+## Wickstreet 2.0 MF analytics (Slice 2)
+
+Implements ADR-017 MF-3, MF-11 to MF-13 and ADR-018 for MF, under the method in [mf-metrics.md](mf-metrics.md) (v2). Plan: [19-slice-2-mf-analytics.md](../plans/wickstreet-2/19-slice-2-mf-analytics.md).
+
+| Package | Holds |
+|---|---|
+| `wickstreet/mf_data/domain/reads.py` | The read contract MF data publishes: `FundRecord`, `FundSeries`, `History`, `NavPoint`, `Link` and the `MfReader` port. Analytics reads MF data through it only. |
+| `wickstreet/mf_data/infrastructure/reader.py` | `SqlMfReader`. `history()` reads every series in one repeatable-read, read-only transaction and streams the NAV rows through a server-side cursor in (plan-option, date) order, one fund at a time. Every other read applies the MF-5 rule at an explicit revision. Also `record_link` (owner login). |
+| `wickstreet/analytics/domain/` | `metrics.py` (method v2, pure functions over date ordinals), `classify.py` (plan, option, category), `fields.py` (the registry, generated from the metric tables; `registry_version` is a SHA-256), `screening.py` (filter tree, operators, sort, cursor), `snapshot.py` (deterministic encoding, the `SnapshotStore` port). |
+| `wickstreet/analytics/application/research.py` | `ComputeSnapshot` (requires `derived_metrics` for each source; a no-op when the pointer's snapshot exists) and `Research` (requires `display` for each source of the snapshot it reads). The rights checks sit here, so Slice 4's agent tools inherit them. |
+| `wickstreet/analytics/infrastructure/` | `metric_snapshot` table and `SqlSnapshotStore` (keeps the two newest decoded snapshots in process; a snapshot never changes). |
+| `wickstreet/analytics/interface/http.py` | `GET /screener/fields`, `POST /screener/run`, `GET /funds?q=`, `GET /funds/{code}`, `GET /funds/{code}/metrics`, `GET /funds/{code}/navs`, `GET /compare?code=…`, under `/api/v1/mf`. |
+
+**Storage (migration `0003_mf_analytics`).** `metric_snapshot` holds one row per (revision, method version): as-of date, fund count, sources, the `derived_metrics` grant ids, the SHA-256 of the JSON body and the gzipped body (5.2 MB for 40,213 funds). `plan_option_link` holds curated merger, code-change and segregated-portfolio links (MF-3); the owner login writes them (`wickstreet mf link add`) and the app only reads them. Method v2 never splices across links.
+
+**Revision pinning.** Every read resolves one snapshot: the caller's `data_revision`, or the latest. Metrics, screens, fund detail, search, NAV ranges and comparisons all read at that revision. A screen cursor carries the snapshot revision and a SHA-256 of the filter and sort, so its pages stay on one snapshot and a cursor reused with another request is refused (422). Every response carries `data_revision`, `latest_revision` (the live pointer), `method_version`, `as_of` and `sources`. The same request at the same revision gives the same bytes, except `latest_revision`.
+
+**When snapshots are computed.** The app's 11:30 IST job refreshes when the day's slot is due, then computes; startup runs the job once. Every CLI publish path (`mf backfill`, `archive`, `reparse`, `refresh`) computes after a run that published. `wickstreet mf metrics` computes on demand. A failed compute is logged and does not stop the app.
+
+**Errors.** RFC-7807 `application/problem+json`: `rights-denied` (403), `invalid-request` and `invalid-cursor` (422, with the path of the bad filter node), `no-snapshot` and `unknown-fund` (404).
+
+**Measured on the real store (2026-10-23, revision 2769, 22.27M NAV rows).** Compute: 82 s wall time, 297 MB peak RSS, 40,213 funds (targets 300 s and 1 GB). Snapshot load: 1.2 s. Screen evaluation over 40,213 rows: 17 ms for a 5-condition filter, 18 ms for 10 conditions; `POST /screener/run` 27–41 ms end to end in the container. The opt-in test `tests/wickstreet/test_mf_real_data.py` (`WICKSTREET_REAL_DATA_URL`) recomputes `ret_1y`, `cagr_3y` and `cagr_5y` for 50 fixed sample funds from independent SQL anchors (equal within 1e-12), checks the range of every value, and recomputes the snapshot byte for byte. Coverage of the 8,668 active plan-options: `ret_1y` 7,887, `cagr_3y` 6,366, `cagr_5y` 4,874, `cagr_10y` 3,175; `mdd_since` is `NM` (a gap over 7 days) for 141. Options: 4,551 IDCW, 3,693 growth, 354 unknown, 70 bonus. 1,102 are Unclassified (AMFI's pre-2018 debt labels and broad labels).
+
+**Known limits.** See [mf-metrics.md](mf-metrics.md#known-limits). The CPU part of a compute runs on the app's event loop between cursor batches, so requests slow during the 80-second compute after a refresh. Every snapshot is kept; pruning is not built.
 
 ## Data stores
 

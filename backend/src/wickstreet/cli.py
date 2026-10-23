@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import resource
+import sys
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from datetime import date, datetime, timedelta
@@ -20,16 +23,19 @@ from wickstreet.data_rights.infrastructure.register import (
 )
 from wickstreet.mf_data.application.ingest import Outcome, Summary
 from wickstreet.mf_data.domain.model import AMFI
+from wickstreet.mf_data.infrastructure.reader import SqlMfReader, record_link
 from wickstreet.mf_data.infrastructure.report import coverage_report
 from wickstreet.mf_data.infrastructure.scheduler import IST
 from wickstreet.persistence.roles import ensure_roles
-from wickstreet.wiring import Ingestion, build_ingestion
+from wickstreet.wiring import Ingestion, build_analytics, build_ingestion
 
 app = typer.Typer(help="Wickstreet 2.0 operational CLI.", no_args_is_help=True)
 rights_app = typer.Typer(help="Data-rights register; writes use the owner login.")
 mf_app = typer.Typer(help="MF data acquisition and verification.")
+link_app = typer.Typer(help="Curated plan-option links (MF-3); writes use the owner login.")
 app.add_typer(rights_app, name="rights")
 app.add_typer(mf_app, name="mf")
+mf_app.add_typer(link_app, name="link")
 
 
 @app.callback()
@@ -151,7 +157,33 @@ def _run[T](settings: WickstreetSettings, work: Callable[[Ingestion], Awaitable[
 
 
 def _ingest(settings: WickstreetSettings, work: Callable[[Ingestion], Awaitable[Summary]]) -> None:
-    _summary(_run(settings, work))
+    summary = _run(settings, work)
+    _summary(summary)
+    # Every publish path brings the snapshot up to the new pointer (MF-11).
+    if summary.statuses["published"]:
+        _compute(settings)
+
+
+def _compute(settings: WickstreetSettings) -> None:
+    started = time.perf_counter()
+    outcome = _with_database(
+        settings.database_url, lambda db: build_analytics(settings, db).compute.execute()
+    )
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # ru_maxrss is bytes on macOS and kilobytes on Linux.
+    peak_mb = peak / 2**20 if sys.platform == "darwin" else peak / 2**10
+    typer.echo(
+        json.dumps(
+            {
+                "snapshot": outcome.status,
+                "revision": outcome.revision,
+                "snapshot_id": outcome.snapshot_id,
+                "funds": outcome.funds,
+                "seconds": round(time.perf_counter() - started, 1),
+                "peak_rss_mb": round(peak_mb),
+            }
+        )
+    )
 
 
 def _history_start(settings: WickstreetSettings, today: date) -> date:
@@ -258,6 +290,44 @@ def mf_report() -> None:
     """Print coverage, gaps, anomalies and reconciliation as JSON."""
     report = _with_database(get_settings().database_url, coverage_report)
     typer.echo(json.dumps(report, indent=2, default=str))
+
+
+@mf_app.command("metrics")
+def mf_metrics() -> None:
+    """Compute the metric snapshot of the published revision; a no-op when it exists."""
+    _compute(get_settings())
+
+
+@link_app.command("add")
+def link_add(
+    from_code: str = typer.Argument(..., help="AMFI code the link starts from."),
+    to_code: str = typer.Argument(..., help="AMFI code the link goes to."),
+    kind: str = typer.Option(..., help="merger, code_change or segregated_portfolio."),
+    effective: str = typer.Option(..., help="Effective date, YYYY-MM-DD."),
+    evidence: str = typer.Option(..., help="Where the link is documented."),
+    recorded_by: str = typer.Option(..., "--by", help="Who records the link."),
+) -> None:
+    """Record a curated link between two plan-options; never inferred."""
+    recorded = _with_database(
+        get_settings().migration_database_url,
+        lambda db: record_link(
+            db,
+            from_code=from_code,
+            to_code=to_code,
+            kind=kind,
+            effective_date=date.fromisoformat(effective),
+            evidence=evidence,
+            recorded_by=recorded_by,
+        ),
+    )
+    typer.echo("recorded" if recorded else "not recorded: unknown code or already recorded")
+
+
+@link_app.command("list")
+def link_list(code: str) -> None:
+    """List the links from or to one plan-option."""
+    for link in _with_database(get_settings().database_url, lambda db: SqlMfReader(db).links(code)):
+        typer.echo(json.dumps(asdict(link), default=str))
 
 
 def main() -> None:

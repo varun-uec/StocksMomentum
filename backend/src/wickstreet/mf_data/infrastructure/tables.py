@@ -154,3 +154,21 @@ plan_option_master = Table(
     Column("isin_reinvest", Text),
     Index("ix_plan_option_master_plan_option_id", "plan_option_id", "effective_from"),
 )
+
+# A curated link between two plan-options (MF-3): written by the owner, never inferred.
+plan_option_link = Table(
+    "plan_option_link",
+    metadata,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("from_plan_option_id", Integer, ForeignKey(plan_option.c.id), nullable=False),
+    Column("to_plan_option_id", Integer, ForeignKey(plan_option.c.id), nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("effective_date", Date, nullable=False),
+    Column("evidence", Text, nullable=False),
+    Column("recorded_by", Text, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint("kind IN ('merger', 'code_change', 'segregated_portfolio')", name="kind"),
+    UniqueConstraint(
+        "from_plan_option_id", "to_plan_option_id", "kind", name="uq_plan_option_link"
+    ),
+)

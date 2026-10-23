@@ -21,7 +21,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
-import wickstreet.data_rights.infrastructure.tables  # noqa: F401 - registers the tables
+import wickstreet.analytics.infrastructure.tables  # noqa: F401 - registers the tables
+import wickstreet.data_rights.infrastructure.tables  # noqa: F401
 import wickstreet.identity.infrastructure.tables  # noqa: F401
 import wickstreet.mf_data.infrastructure.tables  # noqa: F401
 from tests.wickstreet.conftest import Urls, alembic_config
@@ -41,6 +42,8 @@ SHARED_REFERENCE_TABLES = frozenset(
         "nav",
         "plan_option_listing",
         "plan_option_master",
+        "plan_option_link",
+        "metric_snapshot",
     }
 )
 _POLICY_SETTING = "current_setting('wickstreet.tenant_id'"
@@ -176,4 +179,4 @@ async def test_mf_migrations_run_alone_and_leave_momentum25_untouched(
     await admin.dispose()
     assert before[0]
     assert after == before
-    assert mf_version == "0002_mf_data_foundation"
+    assert mf_version == "0003_mf_analytics"

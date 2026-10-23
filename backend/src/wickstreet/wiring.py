@@ -1,4 +1,4 @@
-"""Builds the MF ingestion graph across contexts; the CLI and the app share it.
+"""Builds the MF ingestion and analytics graphs across contexts; the CLI and the app share them.
 
 Cross-context wiring lives here, at the composition level, so no context reaches
 into another context's adapters (A3 §5.1).
@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from platform_common.database import Database
+from wickstreet.analytics.application.research import ComputeSnapshot, Research
+from wickstreet.analytics.infrastructure.snapshots import SqlSnapshotStore
 from wickstreet.config import WickstreetSettings
 from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.infrastructure.register import SqlRightsRegister
@@ -25,6 +27,7 @@ from wickstreet.mf_data.application.ingest import (
 from wickstreet.mf_data.infrastructure.amfi import AmfiAdapter
 from wickstreet.mf_data.infrastructure.mfapi import MfapiAdapter
 from wickstreet.mf_data.infrastructure.raw_store import FileRawStore
+from wickstreet.mf_data.infrastructure.reader import SqlMfReader
 from wickstreet.mf_data.infrastructure.store import SqlMfStore
 from wickstreet.mf_data.infrastructure.tigzig import TigzigAdapter
 
@@ -81,4 +84,23 @@ def build_ingestion(settings: WickstreetSettings, database: Database) -> Ingesti
         ),
         crosscheck=CrossCheck(mfapi, store, raw_store, rights),
         reparse=Reparse(day, store),
+    )
+
+
+@dataclass(frozen=True)
+class Analytics:
+    """Snapshot computation and research reads over one reader and snapshot store."""
+
+    compute: ComputeSnapshot
+    research: Research
+
+
+def build_analytics(settings: WickstreetSettings, database: Database) -> Analytics:
+    """Wire the MF reader, the snapshot store and the rights gate for the mode."""
+    rights = RightsGate(SqlRightsRegister(database, settings.mode))
+    reader = SqlMfReader(database)
+    snapshots = SqlSnapshotStore(database)
+    return Analytics(
+        compute=ComputeSnapshot(reader, snapshots, rights),
+        research=Research(reader, snapshots, rights),
     )

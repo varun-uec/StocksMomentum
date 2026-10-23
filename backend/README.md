@@ -47,6 +47,15 @@ uv run wickstreet mf reparse     # after a parser fix: re-derive AMFI dates from
 uv run wickstreet mf report      # coverage, gaps, anomalies and conflicts as JSON
 ```
 
+MF analytics (Slice 2). The owner also grants `derived_metrics` and `display` for each source.
+Every publishing command above computes the snapshot after it; these run it by hand.
+```bash
+uv run wickstreet mf metrics     # compute the snapshot of the published revision; no-op if current
+uv run wickstreet mf link add FROM TO --kind merger --effective 2026-01-01 --evidence "..." --by owner
+uv run wickstreet mf link list CODE
+WICKSTREET_REAL_DATA_URL=... uv run pytest tests/wickstreet/test_mf_real_data.py  # opt-in, read-only
+```
+
 ## Quality
 ```bash
 uv run ruff check src tests      # lint
