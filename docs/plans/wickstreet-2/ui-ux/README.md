@@ -2,6 +2,8 @@
 
 **UI/UX master plan · 23 October 2026 · Planning proposal for Slice 4 and the complete MF product.**
 
+> **Status, 23 October 2026 (later):** the Slice 4 workstation is now built at `/mf`. Where this package says "unbuilt", read [08 · Slice 4 implementation](08-slice-4-implementation.md) for what shipped and what still depends on a service or dataset.
+
 Start with [the visual gallery](wireframes/index.html). Open it in a browser; it is a local, self-contained design document. Choose any of ten experiences, inspect desktop and mobile artboards, and read its capability and interaction notes. The individual SVGs open in browsers and vector editors. [The overview contact sheet](wireframes/contact-sheet.svg) shows all twenty main artboards. Six additional artboards specify error, explanation, CAS review, analytical matrices and post-import portfolio states.
 
 This package proposes the UI and its delivery sequence. It does not change accepted financial methodology, existing ADRs or application code. It records the inspected implementation, not a promise that future services already exist. All work stays local. No account, data import, hosted board, deployment or push is part of this delivery.
@@ -17,6 +19,7 @@ This package proposes the UI and its delivery sequence. It does not change accep
 | [05 · Implementation milestones](05-slice-4-delivery-plan.md) | Independently deliverable milestones, tasks, dependencies, tests and exit evidence |
 | [06 · Competitive baseline and evaluation](06-competitive-and-validation.md) | Screen-by-screen comparison, source confidence, parity gaps and a measurable usability study |
 | [07 · Interaction flows](07-flows.md) | Local SVG diagrams plus editable Mermaid sources |
+| [08 · Slice 4 implementation](08-slice-4-implementation.md) | What was built at `/mf`, the theme architecture, workspace persistence (W1), test evidence and the remaining dependencies |
 | [Field catalogue](evidence/v5-field-catalogue.md) | All 160 registry fields, types, units, explanations and observed coverage |
 | [Artefact validation](evidence/validation.md) | Browser, XML, accessibility, responsive and link checks; reproduction commands |
 | [Inspection evidence](evidence/inspection.md) | Repository paths, live read observations and limits of this planning exercise |

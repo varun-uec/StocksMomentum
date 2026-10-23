@@ -1,0 +1,42 @@
+/* MF workstation base styles. Every colour reads a --mf-* variable from theme/themes.ts. */
+.mf-root {
+  min-height: 100dvh;
+  background: rgb(var(--mf-paper));
+  color: rgb(var(--mf-ink));
+  font-family: var(--mf-font-sans);
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  -webkit-font-smoothing: antialiased;
+}
+.mf-root .font-display { font-family: var(--mf-font-display); font-weight: 500; letter-spacing: -0.01em; }
+.mf-root :focus-visible { outline: 3px solid rgb(var(--mf-focus)); outline-offset: 2px; border-radius: 6px; }
+.mf-root ::selection { background: rgb(var(--mf-brand-soft)); }
+.mf-root .tabular { font-variant-numeric: tabular-nums; }
+.mf-root a, .mf-root button { -webkit-tap-highlight-color: transparent; }
+
+/* Scroll areas: thin, theme-coloured. Positioned, so an absolute child (an sr-only label) is clipped with them. */
+.mf-root .mf-scroll { scrollbar-width: thin; scrollbar-color: rgb(var(--mf-line-strong)) transparent; }
+.mf-root :is(.overflow-x-auto, .overflow-auto):not(.absolute):not(.fixed) { position: relative; }
+
+/* Entry motion: short, and off under prefers-reduced-motion (globals.css). */
+@keyframes mf-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.mf-root .mf-rise { animation: mf-rise 220ms ease-out both; }
+@keyframes mf-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.mf-root .mf-skeleton { background: rgb(var(--mf-sunken)); animation: mf-pulse 1.4s ease-in-out infinite; border-radius: 8px; }
+
+/* Native dialogs used as sheets and drawers. */
+.mf-root dialog::backdrop, dialog.mf-dialog::backdrop { background: rgb(var(--mf-scrim, 10 20 16) / 0.45); backdrop-filter: blur(2px); }
+dialog.mf-dialog { padding: 0; border: 0; background: transparent; max-width: none; max-height: none; }
+
+/* Range inputs: the brand colour on the track. */
+.mf-root input[type='range'] { accent-color: rgb(var(--mf-brand)); }
+.mf-root input[type='checkbox'], .mf-root input[type='radio'] { accent-color: rgb(var(--mf-brand)); }
+
+/* Recharts: theme the text and remove its focus box (charts have their own focus ring). */
+.mf-root .recharts-text { fill: rgb(var(--mf-muted)); font-size: 11px; }
+.mf-root .recharts-cartesian-grid line { stroke: rgb(var(--mf-chart-grid)); }
+.mf-root .recharts-wrapper:focus, .mf-root .recharts-surface:focus { outline: none; }
+
+/* Leave room for the phone navigation and the compare tray. */
+@media (max-width: 1023px) {
+  .mf-root .mf-main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+}

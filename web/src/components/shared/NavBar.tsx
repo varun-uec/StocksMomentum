@@ -125,6 +125,7 @@ const RESEARCH_TOOLS = [
 
 // The ☰ app menu: the workflows first, then help and settings.
 const APP_ROUTES: NavItem[] = [
+  { href: '/mf', label: 'Mutual funds', icon: Icons.analytics },
   { href: '/chart', label: 'Chart', icon: Icons.chart },
   { href: '/', label: 'Screener', icon: Icons.dashboard },
   { href: '/market', label: 'Markets', icon: Icons.market },

@@ -15,6 +15,8 @@ const databaseUrl = E2E_DATABASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
+  // The MF workstation has its own config (playwright.mf.config.ts): it reads the live MF API.
+  testIgnore: ['mf/**'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
