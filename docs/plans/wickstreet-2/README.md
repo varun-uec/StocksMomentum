@@ -33,6 +33,7 @@ The earlier proposal added company research, mutual funds, ETFs, a unified scree
 | — | **Historical staged implementation plan (Stage A execution instructions superseded)** | [11-wickstreet-2.0.md](11-wickstreet-2.0.md) |
 | — | D0-R data-source research and feasibility (for owner review) | [12-d0r-data-source-research.md](12-d0r-data-source-research.md) |
 | — | **Wickstreet 2.0 (Mutual Funds, ₹199) / 3.0 (Stocks) release plan** (Proposed) | [13-wickstreet-2.0-mf-first-release-plan.md](13-wickstreet-2.0-mf-first-release-plan.md) |
+| — | **Free MF data feasibility** (research, 2026-10-23): CONDITIONAL GO; AMFI commercial permission blocks live data | [17-mf-free-data-feasibility.md](17-mf-free-data-feasibility.md) |
 
 ## Key decisions taken (routine, reversible)
 
