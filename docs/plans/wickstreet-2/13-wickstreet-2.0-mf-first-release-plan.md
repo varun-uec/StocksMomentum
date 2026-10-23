@@ -1,8 +1,10 @@
 # Wickstreet 2.0 (Mutual Funds, ₹199) / 3.0 (Stocks) — Release Plan
 
-> **Current direction and documentation edits approved, 2026-10-22.** Bootstrapped, founder-operated MF research and user-directed calculators. Implementation, expenditure, real market data ingestion, CAS intake, IA applications, commits, pushes and deployments remain unauthorised. This is the canonical release plan. The accepted [Wickstreet Target Architecture — ADD Amendment A3](../../architecture/ADD-amendment-A3.md) governs the architecture; acceptance does not authorize implementation. See the [blueprint](README.md) and [D0-R research](12-d0r-data-source-research.md).
+> **Current direction and documentation edits approved, 2026-10-22.** Bootstrapped, founder-operated MF research and user-directed calculators. For the SaaS phase, implementation, expenditure, real market data ingestion, CAS intake, IA applications and deployments remain unauthorised. Personal mode is governed by the owner decisions of 2026-10-23 below. This is the canonical release plan. The accepted [Wickstreet Target Architecture — ADD Amendment A3](../../architecture/ADD-amendment-A3.md) governs the architecture; acceptance does not authorize implementation. See the [blueprint](README.md) and [D0-R research](12-d0r-data-source-research.md).
 
 > **Delivery direction, 2026-10-23 (owner):** Phase 1 builds a complete, self-hosted, single-user personal MF research application with the multilingual Research Agent. Phase 2 evolves the same application into the hosted SaaS described below, after commercial data rights and regulatory requirements are resolved. One core, two operating modes: [ADR-023](../../architecture/adr/ADR-023-operating-modes.md). Agent: [ADR-022](../../architecture/adr/ADR-022-multilingual-research-agent.md). The SaaS scope, economics and gates in this plan apply to Phase 2. Bulk AMFI acquisition stays gated until a legal basis exists ([17](17-mf-free-data-feasibility.md)). **Governing requirement:** the personal application must be production-evolvable; commercialisation adds capabilities, configuration, scale and data rights, without rewriting the MF data foundation, analytics, workstation or agent ([ADR-023 §2.0](../../architecture/adr/ADR-023-operating-modes.md)).
+
+> **Operating modes (owner decision, 2026-10-23, [ADR-023 U13](../../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).** Wickstreet 2.0 is a local, single-user personal MF research and investment intelligence workstation. Personal mode has the complete feature set: real MF data, real CAS imports, and personalised guidance (fund recommendations, best-fund rankings, suggested allocations, rebalancing, optimisation). This plan (A1 capabilities and UX safeguards, A2 regulatory classification, A4a stages, A5 decisions including OD-9 and OD-13) applies to the future SaaS phase only, before public deployment; it does not restrict personal-mode development.
 
 ## Context and decision
 
@@ -22,6 +24,8 @@ Binding assumptions:
 
 ## A1. Free and Pro capabilities
 
+*SaaS mode. Personal mode has every capability below, plus personalised guidance ([ADR-023 U13](../../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).*
+
 **All paywall allocations below are provisional.** The [B0 proposition](15-stage-b0-product-and-value-specification.md#4-candidate-free-and-pro-proposition) governs their evaluation. Basic calculators are supporting/free candidates, not the assumed paid differentiator. The workspace, advanced filters, analytical depth and scenario continuity are hypotheses to test; no exact limits, entitlements or first-release bundle are approved. This commercial reconciliation retains A3 and Stages A–D.
 
 | Capability | Free hypothesis | Pro hypothesis — ₹199/year initially | Earliest stage | Boundary |
@@ -39,11 +43,13 @@ Binding assumptions:
 
 A goal calculator may state the contribution required under the user's return assumption. It must not choose the return, fund or risk allocation. A rebalance simulator may calculate differences from a user-selected target; it must not prescribe that target or tell the user to transact.
 
-**UX safeguards:** no profile-selected defaults, automatic fund replacements, optimisation, “best for you” rankings, “rebalance now” nudges, or historical CAGR prefilled as a future return. Neutral form examples must be visibly hypothetical and require explicit adoption; they must not contain a default investable portfolio. User-selected sorting is labelled with its criterion and period. Factual drift alerts are opt-in and use user-defined thresholds. Reports preserve the same boundary as the UI.
+**UX safeguards (SaaS mode):** no profile-selected defaults, automatic fund replacements, optimisation, “best for you” rankings, “rebalance now” nudges, or historical CAGR prefilled as a future return. Neutral form examples must be visibly hypothetical and require explicit adoption; they must not contain a default investable portfolio. User-selected sorting is labelled with its criterion and period. Factual drift alerts are opt-in and use user-defined thresholds. Reports preserve the same boundary as the UI.
 
 Use “simulate”, “your selected allocation”, “calculated outcome” and “compare”. Avoid “recommended”, “ideal portfolio” and “you should invest”. Disclose assumptions, methods, data dates, missing coverage and historical limitations. Disclaimers support truthful behaviour; they do not change its classification.
 
 ## A2. Regulatory classification and gates
+
+*SaaS mode, before public deployment. Personal mode is the owner's own tool, not a publicly offered advisory service; it has personalised guidance ([ADR-023 U13](../../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).*
 
 **Working classification, not a SEBI approval:** genuine user-controlled calculations need neither IA registration nor advisory onboarding merely because they concern mutual funds. PRO-0 reviews actual workflows for IA **and** RA exposure. A feature that becomes advice is removed/redesigned or enters the separately approved future Personalised Guidance pathway; registration is not imposed on the whole product by default.
 
@@ -215,7 +221,7 @@ Tests planned for later authorised work: cash/unit conservation; SIP timing and 
 
 **D0-MF:** per dataset, establish commercial retrieval, storage, display, simulation/history, derived report and export permissions in writing before publication/ingestion. R8 does not establish those rights by public availability. Retain source/date/permission evidence and fail closed per use; no aggregator workaround. User-entered hypothetical calculators can proceed on fixtures without a market feed. Historical simulations and the full research product wait for rights; narrow or hold affected capabilities if permission fails.
 
-**CAS baseline (Stage C only):** process untrusted files in a dedicated bounded worker/container, even at low volume. Quarantine private uploads; enforce allowlisted format and file/page limits; run non-root with CPU/memory/time/temp-disk limits, read-only base filesystem, no general internet egress, only narrowly allowlisted private object/job endpoints, and no general application DB credentials. Validate normalized output before tenant-scoped commit. Never put real CAS in development fixtures or logs; define raw-file retention/deletion, consent, encryption and backup handling before intake. This worker is a security boundary, not a general queue or microservice commitment.
+**CAS baseline (SaaS Stage C):** process untrusted files in a dedicated bounded worker/container, even at low volume. Quarantine private uploads; enforce allowlisted format and file/page limits; run non-root with CPU/memory/time/temp-disk limits, read-only base filesystem, no general internet egress, only narrowly allowlisted private object/job endpoints, and no general application DB credentials. Validate normalized output before tenant-scoped commit. Never put real CAS in development fixtures or logs; define raw-file retention/deletion, consent, encryption and backup handling before intake. This worker is a security boundary, not a general queue or microservice commitment.
 
 **Provider boundary:** official Kite documentation identifies read-only MF holdings and says MF order placement cannot be done through those APIs (R10). Groww public equity holdings APIs do not establish an MF connector. No claimed Groww MF sync until written approval. No broker credentials scraping, execution or commission-funded business model.
 
@@ -241,6 +247,8 @@ Tests planned for later authorised work: cash/unit conservation; SIP timing and 
 
 ### A4a. Staged sequence and launch gates
 
+*SaaS mode. Personal mode builds the complete product now, including CAS and guidance ([doc 20](20-wickstreet-2.0-complete-mf-scope.md)).*
+
 The capability stages below are product phases, not service boundaries. All work needs separate implementation/expenditure authority. Stage B explicitly precedes CAS; Stage C adds portfolio-linked features after its isolation/security gate.
 
 | Stage | Deliverable | Gate |
@@ -256,6 +264,8 @@ The capability stages below are product phases, not service boundaries. All work
 
 ## A5. Current owner decision register
 
+*These decisions govern the SaaS phase. Personal-mode scope: [doc 20](20-wickstreet-2.0-complete-mf-scope.md).*
+
 | ID | Current decision / status | Still required |
 |---|---|---|
 | OD-1/2 | MF 2.0 / stocks 3.0 split retained; W0 investment retained; W1 belongs to 3.0 | No rewrite of historical Gate 0 or implemented code |
@@ -264,10 +274,10 @@ The capability stages below are product phases, not service boundaries. All work
 | OD-5/8 | Bounded discovery and a narrow synthetic prototype recommended; execution remains separately gated | Customer task, channel, first-year contribution and renewal evidence; no outreach/prototype authority |
 | OD-6/15 | Useful free research retained; Free/Pro tables provisional; ₹199 unvalidated; paid research workspace leads the hypotheses; Personalised Guidance future-only | Exact bundle/paywalls after evidence; consider ₹399–₹499 tests only after task/bundle definition and separate approval; actual-flow review before publication |
 | OD-7 | Architecture scope in [ADD Amendment A3](../../architecture/ADD-amendment-A3.md) accepted, 2026-10-22 | Implementation still requires separate authority |
-| OD-9 | Stage B MF research/basic calculators before CAS; Stage C portfolio capabilities require isolated parsing and scoped independent security review | Assessment quote and findings closure before real CAS |
+| OD-9 | SaaS mode: Stage B MF research/basic calculators before CAS (personal mode imports real CAS now, ADR-023 U13); Stage C portfolio capabilities require isolated parsing and scoped independent security review | Assessment quote and findings closure before real CAS |
 | OD-10 | Replace old funding claims with stage/cohort model; development hosting ₹0 incremental | Validate review costs, actual production costs and own living runway; no spend authority |
 | OD-11/12 | Founder-managed hosting; credits optional; spending follows measured demand | Appropriate production setup, bill alerts and restore evidence |
-| OD-13 | Personalised Guidance is a separate future capability; no IA business model or registration route is selected | Fresh workflow classification, eligibility, operating model, economics and owner approval before any advice feature |
+| OD-13 | SaaS mode: Personalised Guidance is a separate future capability (personal mode has it, ADR-023 U13); no IA business model or registration route is selected | Fresh workflow classification, eligibility, operating model, economics and owner approval before any advice feature |
 | OD-14 | CAS-first, optional approved read-only connectors; no execution or commissions | Provider permissions and separate integration approval |
 | OD-16 | Simulation calculation/version/input contract proposed | Owner approves exact timing, rounding and rebalance rules |
 | OD-17 | Founder support/incident limits must be explicit before scaling | Measured workload, intake cap and fallback access/runbooks |

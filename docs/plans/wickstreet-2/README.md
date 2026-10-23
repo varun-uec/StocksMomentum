@@ -39,6 +39,7 @@ The earlier proposal added company research, mutual funds, ETFs, a unified scree
 | — | **Free MF data feasibility** (research, 2026-10-23): CONDITIONAL GO; AMFI commercial permission blocks live data | [17-mf-free-data-feasibility.md](17-mf-free-data-feasibility.md) |
 | — | **Multilingual research agent: core product** (owner decisions 2026-10-23: agent is core; differentiation first, cost later. Architecture accepted in [ADR-022](../../architecture/adr/ADR-022-multilingual-research-agent.md) and [ADR-023](../../architecture/adr/ADR-023-operating-modes.md)) | [18-multilingual-research-agent.md](18-multilingual-research-agent.md) |
 | — | **Slice 2: MF analytics engine, screener and read API** (Built 2026-10-23 after the owner's final plan review; method v2) | [19-slice-2-mf-analytics.md](19-slice-2-mf-analytics.md) |
+| — | **Complete MF platform: scope and slice sequence** (Accepted 2026-10-23: owner decisions; the governing scope and roadmap for 2.0) | [20-wickstreet-2.0-complete-mf-scope.md](20-wickstreet-2.0-complete-mf-scope.md) |
 
 ## Key decisions taken (routine, reversible)
 
@@ -50,7 +51,7 @@ The earlier proposal added company research, mutual funds, ETFs, a unified scree
 | Three value states: value, `NM`, `NA` | No silent zeros (NFR-16) |
 | Portfolio holdings derived from transactions | One source of truth |
 | XIRR by bisection | Deterministic |
-| No composite score; scorecards are descriptive | No unearned claims |
+| SaaS: no composite score; personal mode has composite scores and rankings (ADR-023 U13) | No unearned claims in SaaS; the owner's own tool in personal mode |
 | No new single-letter shortcuts | A typed letter opens symbol search ([keyboard shortcuts](../../current/reference/keyboard-shortcuts.md)) |
 
 ## Owner decisions

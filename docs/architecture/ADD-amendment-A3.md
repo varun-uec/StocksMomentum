@@ -1,6 +1,6 @@
 # ADD Amendment A3 — Wickstreet Target Architecture
 
-> **Status: Accepted 2026-10-22.** The owner approved this target architecture subject to the C1 egress-wording correction in §14; that correction has been applied and verified. This is the single target architecture for Wickstreet 2.0/3.0. Acceptance does not authorize implementation, infrastructure expenditure, data ingestion, CAS intake, registration, commits or pushes.
+> **Status: Accepted 2026-10-22.** The owner approved this target architecture subject to the C1 egress-wording correction in §14; that correction has been applied and verified. This is the single target architecture for Wickstreet 2.0/3.0. Acceptance does not authorize implementation, infrastructure expenditure, data ingestion, CAS intake, registration, commits or pushes. **Operating modes (owner decision, 2026-10-23, [ADR-023 U13](adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)):** the stage gates, the advice boundary and the CAS isolation gate below govern the future SaaS phase before public deployment. Wickstreet 2.0 personal mode is the complete local product, built now (§17).
 >
 > **Authority:** This amendment governs Wickstreet's product boundary, staged capability delivery and deployment direction. Existing Momentum25 and stock-market capabilities remain protected by the Capability Preservation Invariant in §3.2. A3 does not rewrite historical ADRs. The scoped ADR-010 supersession in §13 is effective upon this acceptance.
 
@@ -8,7 +8,7 @@
 
 Wickstreet should evolve as a **modular monolith** using the existing Python/FastAPI backend, React/TypeScript frontend, PostgreSQL database and Docker-based development topology. Maintain domain boundaries in the current codebase; do not introduce microservices, Kubernetes or a message broker without measured workload or isolation requirements.
 
-Wickstreet 2.0 delivers mutual-fund research and user-directed calculators before CAS integration. CAS processing, portfolio-linked analytics and advanced rebalancing simulations form a later capability stage. Personalised investment guidance is a separately gated future capability. Wickstreet 3.0 retains existing stock intelligence, charts, Momentum25, Strategy Studio, screening, research and backtesting capabilities.
+Wickstreet 2.0 delivers mutual-fund research and user-directed calculators before CAS integration. CAS processing, portfolio-linked analytics and advanced rebalancing simulations form a later capability stage. In SaaS mode, personalised investment guidance is a separately gated future capability; in personal mode it is part of 2.0 (§17). Wickstreet 3.0 retains existing stock intelligence, charts, Momentum25, Strategy Studio, screening, research and backtesting capabilities.
 
 Development continues on existing infrastructure and synthetic fixtures at **₹0 incremental hosting cost**. Founder-led operations and staged infrastructure spend follow actual customers, traffic, data volume, legal duties and support load. A service boundary is not a requirement to create a separate process or service today.
 
@@ -31,9 +31,11 @@ The clean domain core, deterministic run/evaluation history, same-origin chart w
 
 ### 3.1 Wickstreet 2.0 product boundary
 
-The platform may calculate the consequences of choices made by the user: chosen schemes, allocation weights, amounts, timing, goals, return assumptions and rebalancing rules. It must not choose those inputs for the user, select a fund as suitable, prescribe a target allocation or issue buy/sell/switch instructions.
+**This boundary applies to SaaS mode.** Personal mode has no such boundary: it gives the owner recommendations, rankings, suggested allocations, rebalancing and optimisation (§17, ADR-023 U13).
 
-For 2.0, avoid profile-selected defaults, automated fund replacement, optimisation, “best for you” rankings, recommended portfolios, and action nudges. State assumptions, calculation method/version, data dates, missing coverage and limitations. Disclaimers do not change the product's actual classification.
+In SaaS mode, the platform may calculate the consequences of choices made by the user: chosen schemes, allocation weights, amounts, timing, goals, return assumptions and rebalancing rules. It must not choose those inputs for the user, select a fund as suitable, prescribe a target allocation or issue buy/sell/switch instructions.
+
+For SaaS 2.0, avoid profile-selected defaults, automated fund replacement, optimisation, “best for you” rankings, recommended portfolios, and action nudges. State assumptions, calculation method/version, data dates, missing coverage and limitations. Disclaimers do not change the product's actual classification.
 
 ### 3.2 Capability Preservation Invariant
 
@@ -43,7 +45,7 @@ Keep current stock code, data and migration history, strategy identities includi
 
 ### 3.3 Personalised Guidance extension point
 
-Reserve a separate **Personalised Guidance** bounded context at the product and API boundary. It is not part of the MF research/simulation launch, and no recommendation engine, recommendation endpoint, profile-based allocation or regulated workflow is implemented by A3.
+Reserve a separate **Personalised Guidance** bounded context at the product and API boundary. **Personal mode builds it in 2.0** for the owner's use (ADR-023 U13); the rest of this section governs SaaS mode. It is not part of the SaaS MF research/simulation launch, and no recommendation engine, recommendation endpoint, profile-based allocation or regulated workflow is implemented by A3.
 
 If pursued later, Guidance consumes approved read interfaces for user-authorized profile/portfolio facts and market analytics, then returns a separately governed advice artifact. It must not be smuggled into Simulation or Analytics. Before any live guidance, the owner must approve a fresh workflow-level IA/RA classification, commercial model, applicable registration/partner arrangement, eligibility, compliance and operational cost, user agreements and launch gate. No IA path or cost is presumed by this architecture.
 
@@ -53,12 +55,12 @@ These stages describe product capability and operational exposure. They do not r
 
 | Stage | Product and architecture scope | Required gate before exposure |
 |---|---|---|
-| **A — Development** | Existing infrastructure, synthetic fixtures, existing code and ₹0 incremental hosting. Build/test new MF calculations on fixtures only. No production customer data. | None beyond repository controls and approved methodology for future implementation. |
+| **A — Development** | Existing infrastructure, synthetic fixtures, existing code and ₹0 incremental hosting. Automated tests and benchmarks use synthetic fixtures. Personal mode runs on real MF data and the owner's own CAS statements (ADR-023 U13). No other person's data. | None beyond repository controls and approved methodology for future implementation. |
 | **B — Initial SaaS** | Authenticated MF discovery, factual comparison and permitted datasets; subscription/entitlement boundary; basic user-directed SIP/lumpsum/goal calculators with user-entered fund and assumptions. | Written commercial data permissions per use before affected data is ingested/published; real identity, privacy, billing, security and recovery controls before customer accounts or payments. |
 | **C — Portfolio Intelligence** | CAS upload/import, accounting, XIRR and diagnostics, portfolio-linked scenarios, saved comparisons and advanced user-authored rebalancing. Optional provider-approved read-only portfolio connections remain separate. | Dedicated isolated CAS parser worker, tenant controls, consent/retention/deletion, secure backup/restore and scoped independent security review before real CAS. Provider permission and separate approval before integrations. |
 | **D — Growth and Wickstreet 3.0** | Evidence-driven capacity changes; existing stock intelligence, charting, Momentum25, Strategy Studio, screening, research and backtesting remain available and preserved. | Service or data-store separation only for measured scaling, security, reliability or ownership need. Existing capabilities require regression verification for any integration. |
 
-Personalised Guidance is a separate future gate and is **not** a Stage D commitment. It may only proceed after its own regulatory, commercial and product approval.
+In SaaS mode, Personalised Guidance is a separate future gate and is **not** a Stage D commitment. It may only proceed after its own regulatory, commercial and product approval.
 
 ### 4.1 Release and paywall rules
 
@@ -82,7 +84,7 @@ Each module owns its domain rules, public application interfaces and persistence
 | **Provider integrations** | OIDC, payments and optional read-only broker adapters, credentials and provider event processing. | Vendor contracts sit behind adapters. OAuth scopes are least-privilege; tokens are encrypted. Provider failures do not corrupt portfolio state. | High due to separate secrets, rate limits and external failure modes. |
 | **User research and workspaces** | Saved research/scenarios and preferences not owned by another module. | Tenant-scoped use cases and optimistic revision checks. | Medium; combine with owning capability until ownership proves otherwise. |
 | **Stocks / Momentum25 (3.0)** | Existing market ingestion, charts, screeners, strategies, research and run history. | Existing APIs and persistence remain under current ownership. Any cross-release read is an explicit contract. | Future option only; no extraction required for MF 2.0. |
-| **Personalised Guidance (future)** | Separately governed profile assessment and advice artifacts, if approved. | Not implemented. If approved, its own application interface, policy and compliance workflow; may call read-only Portfolio/Analytics interfaces. | Could be isolated for regulatory and audit boundaries, but no service commitment now. |
+| **Personalised Guidance** | Recommendations, rankings, suggested allocations, rebalancing and optimisation. | Personal mode: built in 2.0 (§17, ADR-023 U13). SaaS mode: before exposure, its own application interface, policy and compliance workflow; may call read-only Portfolio/Analytics interfaces. | Could be isolated for regulatory and audit boundaries, but no service commitment now. |
 
 ### 5.1 Dependency and communication rules
 
@@ -106,7 +108,7 @@ flowchart LR
   IdP["OIDC identity provider"]
   Pay["Payment provider"]
   Broker["Optional approved read-only providers"]
-  Guidance["Personalised Guidance<br/>future, separately gated"]
+  Guidance["Personalised Guidance<br/>personal: 2.0; SaaS: gated"]
   Investor --> Product
   Operator --> Product
   Market --> Product
@@ -164,7 +166,7 @@ flowchart TB
   Portfolio --> Analytics
   Portfolio --> Scenarios
   Providers["Provider adapters"] --> Portfolio
-  Analytics -. read-only boundary .-> Guidance["Personalised Guidance<br/>future gate"]
+  Analytics -. read-only boundary .-> Guidance["Personalised Guidance<br/>personal: 2.0; SaaS: gated"]
   Portfolio -. read-only boundary .-> Guidance
   Stocks["Stocks / Momentum25 3.0"] -. preserved module; no persistence imports .-> Identity
 ```
@@ -235,7 +237,7 @@ This dedicated worker is mandatory for CAS even at low throughput. It is a secur
 
 ### Stage A — Development
 
-Use existing local infrastructure and synthetic fixtures at ₹0 incremental hosting cost. Do not use real customer CAS or production credentials. Preserve founder-owned architecture/security operations and legally supervised intern work on synthetic data.
+Use existing local infrastructure and synthetic fixtures at ₹0 incremental hosting cost. Do not use real customer CAS or production credentials. The owner's own CAS in the personal application is not customer data; it stays local and out of the repository, logs and fixtures (ADR-023 U13). Preserve founder-owned architecture/security operations and legally supervised intern work on synthetic data.
 
 ### Stage B — Initial SaaS
 
@@ -300,18 +302,18 @@ No item below authorizes implementation. Each milestone requires its own explici
 | **A0 — architecture baseline** | A3 accepted; as-built module, API and persistence inventory linked to current code; ADR-010 supersession effective; preservation invariant recorded. |
 | **A1 — module contracts** | Ownership map for MF, portfolio, analytics, simulation, identity, billing and existing stocks; no cross-module ORM imports; layer/module rules enforced in CI; API/OpenAPI contract generated. |
 | **B1 — SaaS foundation** | Production auth and session handling; no client-selected tenant authorization; cross-tenant tests cover reads/writes/exports; subscription webhooks are verified/idempotent; security review scope and backup/restore evidence approved before applicable exposure. |
-| **B2 — MF research and basic calculators** | Synthetic tests reproduce calculations; permitted data records source/use/cutoff; no recommendations/defaults; billing entitlements tested; performance baseline and owner-approved SLO recorded. |
+| **B2 — MF research and basic calculators** | Synthetic tests reproduce calculations; permitted data records source/use/cutoff; no recommendations/defaults exposed in SaaS mode; billing entitlements tested; performance baseline and owner-approved SLO recorded. |
 | **C1 — CAS isolation** | Parser runs in a dedicated bounded environment with no unrestricted or public internet egress, only explicitly allowlisted private endpoints, and no general application database credentials. Acceptance also verifies malformed/oversized/adversarial fixtures fail safely, deletion and retention flows, and no raw content in logs. |
 | **C2 — portfolio and advanced simulations** | Ledger/XIRR reconciles to reviewed examples; tenant isolation and transaction boundaries pass; scenarios persist method/input/data revisions and replay deterministically; reconciliation and correction cases documented. |
 | **D1 — scale or extraction review** | Evidence of sustained SLO/resource/security need, tested module contract, migration/rollback, cost and named operator. No service extraction based solely on subscriber targets. |
 | **D2 — Wickstreet 3.0 integration** | Regression evidence for existing APIs, domain engines, persistence, charts, strategies, research, screening, backtesting and saved workspaces; no removal/deactivation; separate owner approval for any deprecation. |
-| **Future Guidance gate** | Separate legal/regulatory classification, operating model, economics, product owner approval and compliance launch gates. No recommendation code/API before approval. |
+| **Future Guidance gate (SaaS)** | Separate legal/regulatory classification, operating model, economics, product owner approval and compliance launch gates before SaaS mode exposes recommendations. Personal mode already has them (ADR-023 U13). |
 
 ## 15. Risks and mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Advice emerges through defaults, ranking, wording or nudges | Keep simulator user-controlled; review actual UI, API, notifications and reports. Guidance has a separate future gate. |
+| SaaS mode: advice emerges through defaults, ranking, wording or nudges | Keep simulator user-controlled; review actual UI, API, notifications and reports. Guidance has a separate future gate. |
 | Tenant leakage through unscoped legacy queries | Do not expose legacy single-user paths to SaaS until scoped; derive tenant from identity; test all private paths; use RLS as additional defense. |
 | CAS parser compromise or resource exhaustion | Isolated worker, no general internet egress/DB secrets, bounded resources, strict schema validation, quarantine and short retention. |
 | MF source permission does not cover commercial display/history | Rights register with use-specific evidence and fail-closed publication; support fixture-only calculators and feature narrowing. |
@@ -324,10 +326,10 @@ No item below authorizes implementation. Each milestone requires its own explici
 This accepted architecture records the following direction:
 
 1. Keep the existing stack and modular monolith.
-2. Deliver MF research and basic user-directed calculators before CAS.
-3. Require isolated CAS parsing before Stage C file intake.
+2. In SaaS mode, deliver MF research and basic user-directed calculators before CAS.
+3. In SaaS mode, require isolated CAS parsing before Stage C file intake.
 4. Treat load figures as test scenarios; set production objectives from measured baseline and approved service needs.
-5. Keep Personalised Guidance future-only and separately gated.
+5. Keep Personalised Guidance future-only and separately gated in SaaS mode; personal mode has it (§17).
 6. Preserve all stock/Momentum25 capabilities under the invariant in §3.2.
 7. Preserve ₹0 incremental development hosting, founder-led operations and demand-triggered spending.
 
@@ -339,5 +341,6 @@ This section records owner decisions taken after A3's acceptance. The text above
 
 - **Research Agent.** [ADR-022](adr/ADR-022-multilingual-research-agent.md) adds a Research Agent bounded context to §5. It adds `Research Agent → {Analytics, Scenarios, MF data (read), Workspaces, Rights, Entitlements}` to §6.4; nothing depends on the agent. Model calls are a new egress path, governed by ADR-022 §2.8.
 - **Operating modes and package.** [ADR-023](adr/ADR-023-operating-modes.md) runs one core in personal and SaaS modes. MF code lives in the `wickstreet` package, with its own PostgreSQL schema and Alembic environment. Momentum25 is unchanged (§3.2).
-- **Phase and stage.** Phase 1 personal mode is a Stage A deployment on the owner's machine. It holds the owner's own records and only the data ADR-022 §2.11 permits. It holds no other person's data. Phase 2 SaaS starts at Stage B, and every Stage B gate in §4 still applies.
+- **Phase and stage.** Phase 1 personal mode is a Stage A deployment on the owner's machine. It holds the owner's own records, including real CAS statements, and the MF data recorded in the rights register. It holds no other person's data. Phase 2 SaaS starts at Stage B, and every Stage B gate in §4 still applies.
 - **MF data foundation.** The [ADR-017 2.0 realignment](adr/ADR-017-funds-etfs-holdings.md#wickstreet-20-realignment-accepted-2026-10-23), accepted by the owner on 2026-10-23.
+- **Personal mode is the complete product (owner decisions, 2026-10-23).** [ADR-023 U13](adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23): Wickstreet 2.0 is a local, single-user MF research and investment intelligence workstation with the complete feature set: real MF data, real CAS import and analysis, personalised recommendations, best-fund rankings, suggested allocations, rebalancing and optimisation. Synthetic data is only for automated tests and benchmarks. §3.1, §3.3, the Stage B–C gates of §4 and §14, §9.1 and §15's advice risk govern the SaaS phase before public deployment. Personal mode keeps ordinary privacy and security: CAS files and passwords never enter the repository, logs, fixtures or telemetry, and a malformed or oversized file fails safely. All MF capabilities, including holdings, TRI and Tickertape MF parity, belong to 2.0 ([doc 20](../plans/wickstreet-2/20-wickstreet-2.0-complete-mf-scope.md)).

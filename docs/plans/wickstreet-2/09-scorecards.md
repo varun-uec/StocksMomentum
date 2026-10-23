@@ -6,7 +6,7 @@
 
 - A scorecard says **where an instrument sits among its peers** on one dimension, at one date, from named inputs. It is descriptive.
 - It is **not** a forecast, a buy signal or a rating. No scorecard claims that a high score predicts returns. Such a claim needs a research proposal with walk-forward and hold-out validation under the existing research rules, and that is not part of this blueprint.
-- There is **no composite score**. Dimensions are shown side by side. A composite needs an explicit formula, a calibration method and owner approval (prompt §7), and none is proposed.
+- In SaaS mode there is **no composite score**; personal mode has composite scores and best-fund rankings ([ADR-020](../../architecture/adr/ADR-020-descriptive-scorecards.md) point 4). Dimensions are shown side by side. A composite needs an explicit formula, a calibration method and owner approval (prompt §7), and none is proposed.
 - **Momentum25 stays independent.** The Momentum dimension on a stock scorecard *displays* the existing Momentum25 result (qualified, rank, momentum score) from the production run. It computes nothing new and changes no weight.
 
 ## 2. Common method

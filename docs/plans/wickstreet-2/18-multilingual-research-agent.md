@@ -65,7 +65,7 @@ The candidates below are **hypotheses**. Each needs the competitor check in [01]
 | Preserve research | "Save this and tell me what changed since my last review" | Workspace + diff | P1 + storage | Factual diff |
 | Hinglish | "इन funds का 5-year return compare करो" | As above | As above | As above |
 
-**Out of scope (unchanged from [13 A1](13-wickstreet-2.0-mf-first-release-plan.md)):** "which fund should I buy", rankings presented as advice, allocation instructions, suitability, and any personalised scheme selection. The agent answers these with the factual comparison and a plain statement that it does not recommend. A multilingual interface does not change IA/RA obligations ([13 A2](13-wickstreet-2.0-mf-first-release-plan.md), [SEBI RA FAQ, July 2025](https://www.sebi.gov.in/sebi_data/attachdocs/jul-2025/1753268710217.pdf)). Conversational comparison is harder to keep factual than a table. It needs its own feature-level IA/RA review before launch.
+**Personal mode ([ADR-023 U13](../../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)):** the agent answers "which fund should I buy" with a recommendation, ranking or suggested allocation, citing its data and method. **SaaS mode, out of scope ([13 A1](13-wickstreet-2.0-mf-first-release-plan.md)):** "which fund should I buy", rankings presented as advice, allocation instructions, suitability, and any personalised scheme selection. The agent answers these with the factual comparison and a plain statement that it does not recommend. A multilingual interface does not change IA/RA obligations ([13 A2](13-wickstreet-2.0-mf-first-release-plan.md), [SEBI RA FAQ, July 2025](https://www.sebi.gov.in/sebi_data/attachdocs/jul-2025/1753268710217.pdf)). Conversational comparison is harder to keep factual than a table. It needs its own feature-level IA/RA review before launch.
 
 **Free hypothesis that does not depend on P1:** the concept glossary, workstation operation, and SIP/lumpsum/goal calculators on user-entered assumptions. These can be prototyped and tested on synthetic fixtures today ([14 §5](14-stage-b-implementation-plan.md#5-data-acquisition-and-permissions-gate)). That tests language and tool-use quality without real fund data.
 
@@ -135,7 +135,7 @@ Steps 2 and 4 on synthetic fixtures do not depend on P1. ADR-022 now authorises 
 | AG-8 | Lead signature capability (§2.1) | SC-1 "What changed in my fund?" with SC-3 and SC-4 |
 | AG-5 | Add AI processing and model-provider transmission to the P1 permission scope | Yes; the owner sends any request |
 | AG-6 | Language providers to evaluate (BHASHINI, commercial LLMs, open models) | Desk evaluation of terms first; no accounts without approval |
-| AG-7 | IA/RA review of conversational comparison and the advice-refusal policy | Required before any public agent |
+| AG-7 | IA/RA review of conversational comparison and the advice-refusal policy | Required before any public (SaaS) agent; not for personal mode |
 
 ## Sources (accessed 2026-10-23)
 

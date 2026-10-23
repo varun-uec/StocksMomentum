@@ -113,7 +113,7 @@ Only registered tools exist. Each has a strict schema (`additionalProperties: fa
 3. `ResponseValidator` checks the draft before display:
    - every numeric token (any script, including Devanagari numerals and lakh/crore forms) matches a tool value after unit normalisation;
    - every named scheme, date and metric appears in a tool result;
-   - no recommendation, suitability, allocation or future-return language (classifier + lexicon, per language);
+   - in SaaS mode, no recommendation, suitability, allocation or future-return language (classifier + lexicon, per language); in personal mode, recommendations and allocations are allowed and must cite the tool results and method they rest on (ADR-023 U13);
    - it does not contradict the template's interpretation;
    - provenance is attached for every figure.
 4. **On any failure:** discard the draft and show the verified template rendering in the user's language. Log the failure class without user text.
@@ -151,8 +151,8 @@ Templates alone are always a complete, correct answer.
 - **Prompt injection:** scheme documents and AMC-filed text are untrusted data. Tool results are passed as data, never as instructions. The only write tool needs server-verified confirmation (§2.5).
 
 ### 2.9 Compliance boundary
-- No investment recommendations, scheme selection, allocations, suitability judgments or rebalancing instructions. These need separate approval (A3 §3.3).
-- Recommendation-seeking requests in any language get a template-backed factual decision frame: the user's own criteria side by side (doc 18 SC-6), plus a plain statement that Wickstreet does not recommend.
+- **Personal mode (ADR-023 U13):** the agent gives the owner fund recommendations, best-fund rankings, suggested allocations, rebalancing and optimisation results. Each one names the data, metrics, method version and assumptions it rests on.
+- **SaaS mode, before public deployment:** no investment recommendations, scheme selection, allocations, suitability judgments or rebalancing instructions without the separate approval in A3 §3.3. Recommendation-seeking requests in any language get a template-backed factual decision frame: the user's own criteria side by side (doc 18 SC-6), plus a plain statement that Wickstreet does not recommend. The mode adapter selects the policy (OM-1).
 - The agent never presents historical returns as expected returns.
 - A versioned audit record keeps each turn's tool calls and validator outcomes, without user text.
 
@@ -179,7 +179,7 @@ Templates alone are always a complete, correct answer.
   |---|---|
   | Rights-register entry | Source `amfi`, basis `amfi_terms_personal_use`, mode `personal`. Grants: `automated_retrieval` and `storage` **within the personal scope only**, `derived_metrics`, `display` (the one local user), `ai_processing_internal`. Denies `ai_processing_external`, `export`, display to anyone else, and all SaaS-mode use |
   | Bulk acquisition | **Gated, off.** The full-universe backfill cannot run until an adequate legal basis is recorded (permission, or a licensed supplier). Personal mode: opened by the owner's authorisation of 2026-10-23 ([ADR-023 U10](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)); dates AMFI no longer serves come from the TigZig archive ([U11](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)) |
-  | Personal scope | A bounded, owner-set AMFI scope (setting `amfi.personal_scope`). **Default: none** (synthetic fixtures only) until the owner records a scope it considers defensible (ADR-023 §6) |
+  | Personal scope | The complete universe and 10 years of history ([ADR-023 U4, U9, U10](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)). Product workflows use real data; synthetic data is only for automated tests and benchmarks (U13) |
   | Capability | The full-universe pipeline is built and tested anyway. Schema, import contracts, fetcher, validation and the daily job are designed for ~38,000 schemes × ~20 years, and verified at that scale on **synthetic** data |
   | Retrieval | The AMFI adapter fetches direct from amfiindia.com (no mirrors), only within the gate and scope. Disabled by default; rate-limited; resumable; honest User-Agent; raw files kept with SHA-256 and fetch time. Owner exception to [ADR-021](ADR-021-data-supply-policy.md) rule 2, limited to this |
   | Models | Local Ollama only. No AMFI-derived content in any `external` payload or telemetry export (AC-5) |
@@ -188,7 +188,7 @@ Templates alone are always a complete, correct answer.
   | Exit | If the legal basis fails: set scope to none, delete stored AMFI data and raw files, and use a licensed supplier's adapter. Core, agent and tests stay unchanged |
 
 - **Owner actions running in parallel (outward-facing; not part of this ADR):** the AMFI permission request (doc 17 P1, including both AI-processing uses), and/or qualified legal advice.
-- **Not used:** AMFI data through mirrors (mfnav.in, TigZig, mfapi.in), AMC files, index data, and real CAS files (A3 forbids real CAS in development). Personal-mode exception: TigZig for the dates AMFI no longer serves, and MFAPI as a cross-check ([ADR-023 U11](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).
+- **Personal mode ([ADR-023 U11, U13](ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)):** TigZig for the dates AMFI no longer serves, MFAPI as a cross-check, AMC files, index data and the owner's real CAS statements, each through the rights register. Raw CAS files stay local. **SaaS mode:** none of these until commercial permission.
 
 ### 2.12 Data refresh policy (owner decision, 2026-10-23)
 
@@ -225,7 +225,7 @@ Consequence: between about 23:00 on T and 11:30 on T+1, Wickstreet shows T−1 N
 | AC-1 | 0 displayed numbers without a matching tool value and provenance | Validator unit tests + full evaluation set |
 | AC-2 | Same tool inputs, data revision and method version produce byte-identical structured results and template renderings | Property tests |
 | AC-3 | Unregistered tools cannot be called; invalid arguments are rejected; entitlement and rights checks deny by default | Unit/integration tests |
-| AC-4 | **0 critical advice violations** in the release suite (C5). A critical violation is a scheme pick, allocation, suitability statement, or historical return presented as expected. The suite covers en, hi and hi-Latn, with direct, indirect, multi-turn and adversarial prompts (role-play, "just hypothetically", translation tricks, injected scheme text). Owner sets suite size; passing it does not guarantee zero production failures | Evaluation set |
+| AC-4 | **SaaS mode only (ADR-023 U13):** **0 critical advice violations** in the release suite (C5). A critical violation is a scheme pick, allocation, suitability statement, or historical return presented as expected. The suite covers en, hi and hi-Latn, with direct, indirect, multi-turn and adversarial prompts (role-play, "just hypothetically", translation tricks, injected scheme text). Owner sets suite size; passing it does not guarantee zero production failures | Evaluation set |
 | AC-5 | No licensed-field class appears **anywhere** in an outbound payload (prompt, history, tool definitions, tool results) or in a telemetry export when the matching AI-processing right is absent. Redaction verified across the whole payload in all three languages | Egress and telemetry tests with fixture rights records |
 | AC-6 | Validator failure always yields the template answer in the user's language; template-only mode can be switched on per route | Fault-injection tests |
 | AC-7 | Fixture research tasks (discover, compare, explain, operate the screen, save, diff) are completed in each language. Owner sets the bar after a first baseline | Task evaluation set |

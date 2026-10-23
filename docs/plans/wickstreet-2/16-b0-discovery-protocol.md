@@ -4,6 +4,8 @@
 >
 > **Authority:** [Accepted B0 planning baseline](15-stage-b0-product-and-value-specification.md), the [Stage B implementation plan](14-stage-b-implementation-plan.md), and [ADD Amendment A3](../../architecture/ADD-amendment-A3.md). This protocol does not change release scope, architecture, the ₹199 price hypothesis, or the separate B0/B1 approval gates.
 
+> **Operating modes (owner decision, 2026-10-23, [ADR-023 U13](../../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).** Wickstreet 2.0 is a local, single-user personal MF research and investment intelligence workstation. Personal mode has the complete feature set: real MF data, real CAS imports, and personalised guidance (fund recommendations, best-fund rankings, suggested allocations, rebalancing, optimisation). This discovery protocol applies to the future SaaS phase only, before public deployment; it does not restrict personal-mode development.
+
 ## 1. Purpose and boundaries
 
 Discover which mutual-fund research tasks self-directed investors struggle with, compare those tasks with publicly visible and—only after approval—hands-on alternatives, and identify a credible first research-workstation proposition at ₹199/year. Explore customer value, lawful data economics and low-cost distribution together. Do not select the final Free/Pro bundle or infer market demand from a small qualitative sample.

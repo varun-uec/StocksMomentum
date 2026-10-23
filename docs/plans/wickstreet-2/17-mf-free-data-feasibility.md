@@ -4,6 +4,8 @@
 > Scope: the hosted, commercial MF research SaaS in [13](13-wickstreet-2.0-mf-first-release-plan.md) (free tier + ₹199/yr Pro). It rechecks the personal-use findings of [12](12-d0r-data-source-research.md) in a commercial frame and adds new sources.
 > No outreach, accounts, purchases, bulk downloads, scraping, ingestion, code changes or commits.
 
+> **Operating modes (owner decision, 2026-10-23, [ADR-023 U13](../../architecture/adr/ADR-023-operating-modes.md#7-architecture-review-update-2026-10-23)).** Wickstreet 2.0 is a local, single-user personal MF research and investment intelligence workstation. Personal mode has the complete feature set: real MF data, real CAS imports, and personalised guidance (fund recommendations, best-fund rankings, suggested allocations, rebalancing, optimisation). This commercial feasibility study applies to the future SaaS phase only, before public deployment; it does not restrict personal-mode development.
+
 ## Summary
 
 | Question | Answer |
