@@ -319,7 +319,7 @@ export function Benchmark({ code, metrics, fields }: FundTabProps) {
           b.proxy ? (
             <>
               Stand-in for {b.proxy.benchmark}:{' '}
-              <Link className="text-mf-brand-strong underline-offset-2 hover:underline" to={`/mf/funds/${b.proxy.code}`}>
+              <Link className="text-mf-brand-strong underline underline-offset-2" to={`/mf/funds/${b.proxy.code}`}>
                 {b.proxy.name}
               </Link>
               {isNum(b.proxy.tracking_error) ? `, filed tracking error ${b.proxy.tracking_error.toFixed(2)}%` : ''}
