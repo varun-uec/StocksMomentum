@@ -14,9 +14,12 @@ def compact(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower().replace("&", "and"))
 
 
-# AMFI's scheme list adds this note to a name; AMC files and reports leave it out.
+# AMFI's scheme list adds these notes to a name; AMC files and reports leave them out:
+# "(Existing number of Segregated Portfolios - 1)", "(erstwhile Bluechip Fund)",
+# "(Formerly Known as Principal Hybrid Equity Fund)".
 _SEGREGATED_NOTE = re.compile(
-    r"\s*\(existing\s+number\s+of\s+segregated\s+portfolios?[^()]*\)", re.I
+    r"\s*\((?:existing\s+number\s+of\s+segregated\s+portfolios?|erstwhile|formerly)[^()]*\)",
+    re.I,
 )
 
 
@@ -25,8 +28,8 @@ def scheme_keys(
 ) -> tuple[dict[str, int], dict[str, int]]:
     """SEBI code to scheme id, and name to scheme id. A name two schemes share joins neither.
 
-    A name AMFI lists with a segregated-portfolio note also joins without it, unless
-    another scheme has that shorter name.
+    A name AMFI lists with a segregated-portfolio or former-name note also joins
+    without it, unless another scheme has that shorter name.
     """
     codes = {compact(code): sd_id for sd_id, code in sebi_codes.items()}
 

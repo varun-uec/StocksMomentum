@@ -271,6 +271,8 @@ def test_a_segregated_portfolio_note_is_optional_in_a_name() -> None:
     assert names["creditriskfund"] == 1
     assert names["mediumtermfund"] == 3  # the shorter name is its own scheme
     assert names["mediumtermfundexistingnumberofsegregatedportfolios2"] == 2
+    renamed = [SchemeRef(4, 9, "ICICI Prudential Large Cap Fund (erstwhile Bluechip Fund)")]
+    assert scheme_keys(renamed, {})[1]["iciciprudentiallargecapfund"] == 4
 
 
 @pytest.mark.parametrize(
