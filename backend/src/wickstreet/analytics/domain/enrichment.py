@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 import re
+from bisect import bisect_left
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -652,24 +653,29 @@ def change_points(points: Sequence[tuple[date, object]]) -> list[tuple[date, obj
     return found
 
 
-def _reinvested(daily: DailyNavs, payouts: Sequence[tuple[int, float]], start: int) -> float | None:
-    """Growth from the first NAV on or after ``start`` to the last, payouts reinvested."""
+def _reinvested(daily: DailyNavs, payouts: Sequence[tuple[int, float]], start: int) -> float:
+    """Growth from a trailing-return anchor ``start`` to the last NAV, payouts reinvested."""
     days, levels = daily.days, daily.levels
-    first = next((i for i, d in enumerate(days) if d >= start), None)
-    if first is None or start - days[0] < 0 or days[first] - start > MAX_GAP_DAYS:
-        return None
+    first = bisect_left(days, start)
     growth = levels[-1] / levels[first]
     for day, rate in payouts:
         if days[first] < day <= days[-1]:
-            at = next(i for i, d in enumerate(days) if d >= day)
-            growth *= 1 + rate / levels[at]
+            growth *= 1 + rate / levels[bisect_left(days, day)]
     return growth
 
 
 def idcw_fields(
-    option: str, payouts: Sequence[tuple[int, float]], daily: DailyNavs | None, as_of: int
+    option: str,
+    payouts: Sequence[tuple[int, float]],
+    daily: DailyNavs | None,
+    as_of: int,
+    anchors: Mapping[str, str],
 ) -> dict[str, Value]:
-    """IDCW payouts in the last year and returns with them reinvested (M13: sourced only)."""
+    """IDCW payouts in the last year and returns with them reinvested (M13: sourced only).
+
+    The returns use the windows of ``ret_1y`` and ``cagr_3y``: their start anchors, the
+    last NAV, and for 3Y the same annualisation.
+    """
     ids = [f.id for f in IDCW_FIELDS]
     if option != "idcw":
         return dict.fromkeys(ids, Missing("NM", NOT_IDCW))
@@ -679,13 +685,18 @@ def idcw_fields(
     paid = math.fsum(r for _, r in year)
     nav = daily.levels[-1] if daily is not None and daily.levels else None
     short = Missing("NA", HISTORY_TOO_SHORT)
-    one = _reinvested(daily, payouts, as_of - 365) if daily is not None else None
-    three = _reinvested(daily, payouts, as_of - 1096) if daily is not None else None
+    one = three = None
+    if daily is not None and daily.days:
+        if "ret_1y" in anchors:
+            one = _reinvested(daily, payouts, date.fromisoformat(anchors["ret_1y"]).toordinal())
+        if "cagr_3y" in anchors:
+            start = date.fromisoformat(anchors["cagr_3y"]).toordinal()
+            three = _reinvested(daily, payouts, start) ** (YEAR_DAYS / (daily.days[-1] - start))
     return {
         "idcw_last": date.fromordinal(payouts[-1][0]).isoformat(),
         "idcw_count_1y": len(year),
         "idcw_1y": paid,
         "idcw_yield_1y": paid / nav if nav else short,
         "ret_1y_with_idcw": one - 1 if one is not None else short,
-        "cagr_3y_with_idcw": three ** (YEAR_DAYS / 1096) - 1 if three is not None else short,
+        "cagr_3y_with_idcw": three - 1 if three is not None else short,
     }

@@ -283,7 +283,8 @@ class ComputeSnapshot:
         groups: dict[tuple[str, str, str], list[tuple[int, PeerFund]]] = defaultdict(list)
         grouped: dict[int, PeerFund] = {}
         pair_keys: dict[int, tuple[str, str, str, str]] = {}
-        for fund, (metric_values, _) in zip(records, own, strict=True):
+        anchors_of: dict[int, dict[str, str]] = {}
+        for fund, (metric_values, anchors) in zip(records, own, strict=True):
             values = attributes(fund, siblings.get(fund.plan_option_id))
             classes.append(values)
             status = str(metric_values[status_at])
@@ -291,6 +292,7 @@ class ComputeSnapshot:
             facts = facts_of(history.facts, pid, str(values["plan"]), str(values["fund_type"]))
             extra[pid] = fact_fields(facts, str(values["option"]), as_of)
             options[pid] = str(values["option"])
+            anchors_of[pid] = anchors
             portfolio = history.facts.portfolios.get(facts.sd_id) if facts else None
             extra[pid] |= (
                 holding_fields(portfolio, history.facts.caps)
@@ -345,7 +347,7 @@ class ComputeSnapshot:
                 values |= proxy_fields(daily.get(pid), daily[proxy.pid], risk_free)
                 values["bench_proxy_gap_3y"] = proxy.gap_3y
             payouts = history.facts.distributions.get(pid, ())
-            values |= idcw_fields(options[pid], payouts, daily.get(pid), as_of)
+            values |= idcw_fields(options[pid], payouts, daily.get(pid), as_of, anchors_of[pid])
             for name in FACT_FIELD_IDS:
                 values.setdefault(name, Missing("NA", NO_PEER_GROUP))
             extra[pid] = finite(values)

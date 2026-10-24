@@ -668,7 +668,8 @@ async def test_v6_proxy_statistics_match_pandas(real: Database) -> None:
 
 
 async def test_v7_idcw_reinvested_return_matches_pandas(real: Database) -> None:
-    """ret_1y_with_idcw: NAV growth with each payout bought back at its record-date NAV."""
+    """ret_1y_with_idcw: NAV growth from the ret_1y anchor, each payout bought back at its
+    record-date NAV."""
     import pandas as pd
 
     snapshot = await _snapshot(real)
@@ -691,7 +692,7 @@ async def test_v7_idcw_reinvested_return_matches_pandas(real: Database) -> None:
             ).all()
             as_of = pd.Timestamp(snapshot.as_of)
             last = navs.index[-1]
-            window = navs[navs.index >= as_of - pd.Timedelta(days=365)]
+            window = navs[navs.index >= pd.Timestamp(row.anchors["ret_1y"])]
             growth = window.iloc[-1] / window.iloc[0]
             for day, rate in paid:
                 day = pd.Timestamp(day)

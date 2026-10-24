@@ -197,7 +197,7 @@ Sources: AMC monthly portfolio disclosures (PPFAS and DSP fetched; any AMC's fil
 Source: AMFI's IDCW history per scheme (record date, ₹ per unit, per plan-option code).
 
 - `idcw_last`, `idcw_count_1y`, `idcw_1y` (₹ per unit with a record date in the last 365 days), `idcw_yield_1y` = `idcw_1y` ÷ latest NAV.
-- `ret_1y_with_idcw`, `cagr_3y_with_idcw`: NAV growth with each payout reinvested at the NAV of its record date: growth = (NAVₑₙ𝒹 ÷ NAVₛₜₐᵣₜ) × ∏ (1 + payout ÷ NAV on the record date). The window rules of `ret_1y` and `cagr_3y` apply.
+- `ret_1y_with_idcw`, `cagr_3y_with_idcw`: NAV growth from the start anchor of `ret_1y` (or `cagr_3y`) to the last NAV, with each payout in the window reinvested at the NAV of its record date: growth = (NAV_end ÷ NAV_start) × ∏ (1 + payout ÷ NAV on the record date). The 3Y figure is annualised over the same days as `cagr_3y`. Both need the fund's 3Y daily window, so an IDCW option under 3 years old gets `NA history_too_short`.
 
 ## Point-in-time peers (v4)
 

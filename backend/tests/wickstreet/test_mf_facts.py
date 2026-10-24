@@ -465,8 +465,19 @@ def test_returns_with_idcw_reinvest_each_payout_at_its_record_date_nav() -> None
     days, levels = _series(date(2025, 8, 1), np.zeros(300))  # NAV flat at 100, over a year
     as_of = days[-1]
     payout_day = days[200]
-    got = e.idcw_fields("idcw", [(payout_day, 2.0)], DailyNavs(1, days, levels), as_of)
+    start = date.fromordinal(days[0]).isoformat()
+    anchors = {"ret_1y": start, "cagr_3y": start}
+    got = e.idcw_fields("idcw", [(payout_day, 2.0)], DailyNavs(1, days, levels), as_of, anchors)
     assert got["idcw_count_1y"] == 1
     assert got["idcw_yield_1y"] == pytest.approx(0.02)
     assert got["ret_1y_with_idcw"] == pytest.approx(0.02)
-    assert e.idcw_fields("growth", [], None, as_of)["idcw_1y"] == Missing("NM", "not_idcw_option")
+    # Annualised over the anchor-to-last span, as cagr_3y is.
+    span = days[-1] - days[0]
+    assert got["cagr_3y_with_idcw"] == pytest.approx(1.02 ** (365.25 / span) - 1)
+    # Without a 3Y anchor (a fund under 3 years old) the 3Y figure is missing.
+    young = e.idcw_fields(
+        "idcw", [(payout_day, 2.0)], DailyNavs(1, days, levels), as_of, {"ret_1y": start}
+    )
+    assert young["cagr_3y_with_idcw"] == Missing("NA", "history_too_short")
+    growth = e.idcw_fields("growth", [], None, as_of, {})
+    assert growth["idcw_1y"] == Missing("NM", "not_idcw_option")
