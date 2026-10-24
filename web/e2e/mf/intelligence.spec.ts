@@ -2,9 +2,14 @@
  * Fund facts, benchmark, holdings, overlap and portfolio screens (doc 21 C12, C14–C16,
  * C25). Each test reads the live API first and checks the screen shows the same value.
  */
-import { FUND, expect, test } from './fixtures';
+import { FUND, OTHER, expect, test } from './fixtures';
 
 const pct = (v: number, digits = 1) => `${v < 0 ? '−' : ''}${Math.abs(v * 100).toFixed(digits)}%`;
+const filedDate = (value: unknown) => {
+  if (typeof value !== 'string') return '—';
+  const [year, month, day] = value.slice(0, 10).split('-');
+  return `${Number(day)} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(month) - 1]} ${year}`;
+};
 const DSP_FLEXI = '119076'; // DSP Flexi Cap Fund Direct Growth: DSP files its portfolio monthly
 
 test('Facts & costs shows AMFI’s TER and the fund managers as filed', async ({ page, request }) => {
@@ -13,8 +18,22 @@ test('Facts & costs shows AMFI’s TER and the fund managers as filed', async ({
   await page.goto(`/mf/funds/${FUND}?tab=facts`);
   await expect(page.getByText('Expense ratio', { exact: true }).first()).toBeVisible();
   await expect(page.getByText(pct(metrics.values.ter, 2)).first()).toBeVisible();
+  await expect(page.getByText(`AMFI as of ${filedDate(profile.summary.ter_as_of)}`, { exact: false })).toBeVisible();
+  expect(Date.parse(profile.riskometer_as_of)).toBeGreaterThan(Date.parse(profile.riskometer.at(-1)[0]));
+  await expect(page.getByText(`AMFI as of ${filedDate(profile.riskometer_as_of)}`, { exact: false })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Expense ratio over time' })).toBeVisible();
   await expect(page.getByText(profile.managers[0].name).first()).toBeVisible();
+});
+
+test('Compare includes TER and states the NAV snapshot date', async ({ page, request }) => {
+  const comparison = await (await request.get(`/api/v1/mf/compare?code=${FUND}&code=${OTHER}`)).json();
+  await page.goto(`/mf/compare?code=${FUND}&code=${OTHER}`);
+  await expect(page.getByRole('region', { name: 'Metric comparison' })).toBeVisible();
+  await page.getByText('Costs and size', { exact: true }).scrollIntoViewIfNeeded();
+  const terRow = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'TER', exact: true }) });
+  await expect(terRow).toContainText(pct(comparison.funds[0].values.ter, 2));
+  await expect(terRow).toContainText(pct(comparison.funds[1].values.ter, 2));
+  await expect(page.getByText(`NAV data as of ${filedDate(comparison.as_of)}`, { exact: false })).toBeVisible();
 });
 
 test('Benchmark labels its proxy and links to the index fund behind it', async ({ page, request }) => {

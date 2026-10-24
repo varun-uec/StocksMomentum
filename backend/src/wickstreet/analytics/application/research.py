@@ -1131,6 +1131,8 @@ class Research:
 
         managers = by.get(("ssd:Fund_Manager_From_Date", ""))
         starts = manager_starts(managers[-1].txt or "") if managers else []
+        riskometer_facts = by.get(("riskometer", ""), [])
+        riskometer_as_of = max((fact.as_of for fact in riskometer_facts), default=None)
         ter_days = [f.as_of for f in by.get(("ter", plan), [])]
         notes = [
             "Figures are as AMFI publishes them. TER is % a year of daily net assets.",
@@ -1159,10 +1161,9 @@ class Research:
             "aum_cr": numbers("aum_cr", ""),
             "riskometer": [
                 [d.isoformat(), v]
-                for d, v in change_points(
-                    [(f.as_of, f.txt) for f in by.get(("riskometer", ""), [])]
-                )
+                for d, v in change_points([(f.as_of, f.txt) for f in riskometer_facts])
             ],
+            "riskometer_as_of": riskometer_as_of.isoformat() if riskometer_as_of else None,
             "idcw": [[d.isoformat(), v] for d, v in scheme.payouts],
             "source": "AMFI: TER, fund performance, scheme summary documents and IDCW history",
             "notes": notes,

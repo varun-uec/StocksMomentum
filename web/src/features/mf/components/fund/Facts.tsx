@@ -147,12 +147,12 @@ export function FactsAndCosts({ code, metrics, fields }: FundTabProps) {
         <Stat
           label="Expense ratio"
           value={isNum(v.ter) ? pct(v.ter, 2) : '—'}
-          sub={isNum(v.ter) ? `${p.plan} plan · base ${pct(v.ter_base, 2)}${isNum(otherTer) ? ` · ${other} ${otherTer.toFixed(2)}%` : ''}` : missingLabel(metrics.states.ter)}
+          sub={isNum(v.ter) ? `${p.plan} plan · base ${pct(v.ter_base, 2)}${isNum(otherTer) ? ` · ${other} ${otherTer.toFixed(2)}%` : ''} · AMFI as of ${date(p.summary?.ter_as_of)}` : missingLabel(metrics.states.ter)}
           help={fields.get('ter')?.description}
         />
         {tile('ter_cat_pct', 'Cheaper than peers', isNum(v.ter_cat_median) ? `category median ${pct(v.ter_cat_median, 2)}` : undefined)}
         {tile('aum_cr', 'AUM', isNum(v.aum_change_1y) ? `${pct(v.aum_change_1y, 1, true)} in a year · ${date(v.aum_as_of)}` : `as of ${date(v.aum_as_of)}`)}
-        <Stat label="Riskometer" value={typeof v.riskometer === 'string' ? v.riskometer : '—'} sub={isNum(v.riskometer_level) ? `level ${v.riskometer_level} of 6` : missingLabel(metrics.states.riskometer)} />
+        <Stat label="Riskometer" value={typeof v.riskometer === 'string' ? v.riskometer : '—'} sub={`${isNum(v.riskometer_level) ? `level ${v.riskometer_level} of 6` : missingLabel(metrics.states.riskometer)}${p.riskometer_as_of ? ` · AMFI as of ${date(p.riskometer_as_of)}` : ''}`} />
         {tile('manager_tenure_y', 'Longest manager tenure', isNum(v.manager_count) ? `${v.manager_count} managers in the SSD` : undefined)}
         {tile('min_sip', 'Minimum SIP', isNum(v.min_lumpsum) ? `lump sum ₹${v.min_lumpsum.toLocaleString('en-IN')}` : undefined)}
       </div>
