@@ -6,12 +6,14 @@ import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-rou
 import RootLayout from './app/layout';
 import { mfRoute } from './features/mf/route';
 import { page } from './lib/lazy-page';
+import { RouteErrorBoundary } from './lib/RouteErrorBoundary';
 import { importLocalDrawings, importLocalPresentation } from './lib/local-import';
 
 const routes: RouteObject[] = [
   mfRoute,
   {
     element: <RootLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, ...page(() => import('./app/page')) },
       { path: 'chart', ...page(() => import('./app/chart/page')) },

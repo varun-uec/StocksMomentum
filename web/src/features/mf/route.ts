@@ -1,10 +1,13 @@
 import type { RouteObject } from 'react-router';
+import { createElement } from 'react';
 import { page } from '@/lib/lazy-page';
+import { RouteErrorBoundary } from '@/lib/RouteErrorBoundary';
 
 /** Wickstreet 2.0 mutual funds: its own shell, so no stock chrome or stock queries mount. */
 export const mfRoute: RouteObject = {
   path: 'mf',
   ...page(() => import('./routes/layout')),
+  errorElement: createElement(RouteErrorBoundary),
   // The shell loads lazily; nothing renders until it arrives.
   HydrateFallback: () => null,
   children: [
