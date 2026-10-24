@@ -54,7 +54,7 @@ export function ChartFrame({
   const [showTable, setShowTable] = useState(false);
   const headingId = useId();
   return (
-    <section id={id} aria-labelledby={headingId} className={cx('min-w-0 scroll-mt-24 rounded-card border border-mf-line bg-mf-surface p-5 shadow-card', className)}>
+    <section id={id} aria-labelledby={headingId} className={cx('min-w-0 scroll-mt-24 rounded-card border border-mf-line bg-mf-surface p-3 shadow-card sm:p-5', className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id={headingId} className="text-[15px] font-semibold text-mf-ink">

@@ -123,16 +123,18 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
   const category = categoryShort(String(v.category));
   const s = score.data;
   return (
-    <div className="mt-5 grid gap-4 border-t border-mf-line pt-4 md:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
-      <div className="flex items-center gap-3">
-        <ScoreRing score={s?.score} />
+    <div className="mt-2 grid gap-2 border-t border-mf-line pt-2 sm:mt-5 sm:gap-4 sm:pt-4 md:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <span className="sm:hidden"><ScoreRing score={s?.score} size={44} /></span>
+        <span className="hidden sm:inline-flex"><ScoreRing score={s?.score} /></span>
         <div className="text-sm">
           <p className="font-medium text-mf-ink">Wickstreet score</p>
-          <p className="text-mf-muted">{s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} scored ${category} funds` : s ? missingLabel(s.state) : 'Loading…'}</p>
+          <p className="hidden text-mf-muted sm:block">{s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} scored ${category} funds` : s ? missingLabel(s.state) : 'Loading…'}</p>
+          <p className="text-mf-muted sm:hidden">{s?.rank ? `Rank ${s.rank} / ${s.peers_ranked} · ${category}` : s ? missingLabel(s.state) : 'Loading…'}</p>
           <Link to="?tab=peers" className="text-xs font-medium text-mf-brand hover:underline">How it ranks</Link>
         </div>
       </div>
-      <div className="order-2 space-y-2 text-[14px] leading-relaxed text-mf-ink-soft sm:text-[15px] md:order-none" data-testid="fund-verdict">
+      <div className="hidden space-y-2 text-[14px] leading-relaxed text-mf-ink-soft sm:text-[15px] md:order-none md:block" data-testid="fund-verdict">
         {recent && (
           <p>
             <span className="mr-1.5 inline-block rounded-full bg-mf-sunken px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-mf-muted">Recent</span>
@@ -154,7 +156,12 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
         )}
       </div>
       {/* On phones the three numbers come before the narrative, so they stay on the first screen. */}
-      <dl className="order-1 grid grid-cols-3 gap-2 text-center md:order-none md:col-span-2 lg:col-span-1 lg:w-[300px]">
+      <p className="order-1 text-xs font-medium tabular text-mf-ink-soft sm:hidden">
+        1Y {isNum(v.ret_1y) ? <Delta value={v.ret_1y} /> : '—'}
+        <span className="mx-1 text-mf-muted">·</span>3Y {isNum(v.cagr_3y) ? <Delta value={v.cagr_3y} /> : '—'}
+        <span className="mx-1 text-mf-muted">·</span>Worst 3Y {isNum(v.mdd_3y) ? <Delta value={v.mdd_3y} /> : '—'}
+      </p>
+      <dl className="hidden grid-cols-3 gap-2 text-center sm:order-none sm:grid md:col-span-2 lg:col-span-1 lg:w-[300px]">
         {[
           ['1Y return', v.ret_1y, 'ret_1y'],
           ['3Y CAGR', v.cagr_3y, 'cagr_3y'],
@@ -289,16 +296,16 @@ export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: M
 
 export function Overview({ code, metrics, fields, detail }: FundTabProps & { detail: FundDetail }) {
   return (
-    <div className="space-y-6">
-      <Evidence metrics={metrics} fields={fields} />
-      <div className="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <div className="order-2 lg:order-1"><Evidence metrics={metrics} fields={fields} /></div>
+      <div className="order-3 grid items-start gap-6 lg:order-2 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
         <ScoreCard code={code} metrics={metrics} />
         <div className="lg:col-span-2 xl:col-span-1">
           <KeyMetrics metrics={metrics} fields={fields} />
         </div>
         <Essentials detail={detail} metrics={metrics} />
       </div>
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="order-1 grid items-start gap-6 lg:order-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <GrowthChart code={code} metrics={metrics} />
         <RollingDistribution code={code} metrics={metrics} fields={fields} />
       </div>

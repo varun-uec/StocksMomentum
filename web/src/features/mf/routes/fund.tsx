@@ -162,8 +162,8 @@ export default function Fund() {
   );
 
   return (
-    <div className="space-y-6 pb-16 sm:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-col gap-3 pb-16 sm:gap-6 sm:pb-0">
+      <div className="order-0 flex flex-wrap items-center justify-between gap-2">
         <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
           <I.arrowLeft className="h-4 w-4" />
           Back
@@ -172,7 +172,7 @@ export default function Fund() {
       </div>
 
       {tab === 'overview' ? (
-        <header className="relative overflow-hidden rounded-[20px] border border-mf-line p-4 shadow-card sm:p-6" style={{ background: `linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 65%)` }}>
+        <header className="order-1 relative overflow-hidden rounded-[20px] border border-mf-line p-3 shadow-card sm:p-6" style={{ background: `linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 65%)` }}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="flex min-w-0 items-start gap-3 sm:gap-4">
               <FundMark amc={f.amc} size="lg" className="hidden sm:inline-grid" />
@@ -187,7 +187,7 @@ export default function Fund() {
         </header>
       ) : (
         // Other tabs keep the identity and NAV in one strip, so their first chart sits high (audit 5.3).
-        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[16px] border border-mf-line bg-mf-surface px-4 py-3 shadow-card">
+        <header className="order-1 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[16px] border border-mf-line bg-mf-surface px-4 py-3 shadow-card">
           <FundMark amc={f.amc} size="md" className="hidden sm:inline-grid" />
           <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-[20px] leading-tight sm:text-[24px]">{schemeName(m.name)}</h1>
@@ -206,9 +206,11 @@ export default function Fund() {
         {actions}
       </div>
 
-      <TabLinks label="Fund sections" active={tab} tabs={TABS.map((t) => ({ id: t.id, label: t.label, to: `?tab=${t.id}` }))} />
+      <div className="order-2">
+        <TabLinks label="Fund sections" active={tab} tabs={TABS.map((t) => ({ id: t.id, label: t.label, to: `?tab=${t.id}` }))} />
+      </div>
 
-      <div key={tab} className="mf-rise">
+      <div key={tab} className="order-3 mf-rise">
         {tab === 'overview' && <Overview {...props} detail={fund.data} />}
         {tab === 'performance' && <Performance {...props} />}
         {tab === 'risk' && <Risk {...props} />}
@@ -219,7 +221,7 @@ export default function Fund() {
         {tab === 'profile' && <Profile code={code} detail={fund.data} />}
       </div>
 
-      <SnapshotNote asOf={m.as_of} revision={m.data_revision} method={m.method_version} extra={` · ${m.since_label}. Past performance does not predict future returns.`} />
+      <div className="order-4"><SnapshotNote asOf={m.as_of} revision={m.data_revision} method={m.method_version} extra={` · ${m.since_label}. Past performance does not predict future returns.`} /></div>
       <NoteSheet open={notes} onClose={() => setNotes(false)} code={code} name={m.name} />
     </div>
   );

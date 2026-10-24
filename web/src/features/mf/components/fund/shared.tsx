@@ -85,14 +85,29 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
       subtitle={start ? `From ${date(start)}, NAV rebased; dividends inside the NAV, before tax` : undefined}
       controls={
         <>
-          <label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-mf-ink-soft">
-            <input type="checkbox" checked={falls} onChange={(e) => setFalls(e.target.checked)} />
-            Market falls
-          </label>
-          <label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-mf-ink-soft">
-            <input type="checkbox" checked={log} onChange={(e) => setLog(e.target.checked)} />
-            Log scale
-          </label>
+          <div className="hidden items-center gap-3 sm:flex">
+            <label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-mf-ink-soft">
+              <input type="checkbox" checked={falls} onChange={(e) => setFalls(e.target.checked)} />
+              Market falls
+            </label>
+            <label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-mf-ink-soft">
+              <input type="checkbox" checked={log} onChange={(e) => setLog(e.target.checked)} />
+              Log scale
+            </label>
+          </div>
+          <details className="relative sm:hidden">
+            <summary className="inline-flex min-h-8 cursor-pointer items-center rounded-control border border-mf-line px-2 text-xs font-medium text-mf-ink-soft">Chart options</summary>
+            <div className="absolute right-0 top-9 z-20 grid min-w-36 gap-2 rounded-[10px] border border-mf-line bg-mf-surface p-3 shadow-card">
+              <label className="inline-flex items-center gap-1.5 text-xs text-mf-ink-soft">
+                <input type="checkbox" checked={falls} onChange={(e) => setFalls(e.target.checked)} />
+                Market falls
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-xs text-mf-ink-soft">
+                <input type="checkbox" checked={log} onChange={(e) => setLog(e.target.checked)} />
+                Log scale
+              </label>
+            </div>
+          </details>
           <Segmented label="Window" value={active} onChange={setWindow} options={(Object.keys(WINDOWS) as WindowKey[]).map((k) => ({ value: k, label: k, disabled: !windows.includes(k) }))} />
         </>
       }
