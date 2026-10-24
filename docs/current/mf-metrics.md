@@ -13,7 +13,8 @@ The method behind every number in the MF screener and research API ([ADR-017](..
 | 4 | 2026-10-23 | NAV analytics v4 ([doc 21](../plans/wickstreet-2/21-analytics-expansion-v4.md)): SEBI 2026 categories and fund type; point-in-time peer groups (consistency changes); persistence; deterioration; direct vs regular; rolling percentiles; current drawdown; near-duplicates; the regime proxy; tax rules back to 2018-04-01 (sections below) | Superseded by v5 |
 | 5 | 2026-10-23 | E2: the RBI 91-day T-bill yield. Risk-free returns, Sharpe 1Y and 3Y with category ranks, and Sortino against the risk-free return instead of 0% ("Risk-free (v5)" below) | Superseded by v6 |
 | 6 | 2026-10-24 | E1, E3, E4: 49 new fields from AMFI's TER, fund performance, scheme summary documents and tracking error, and from AMC portfolio disclosures ("Fund facts (v6)", "Benchmark proxy (v6)", "Holdings (v6)" below). v5 values are unchanged | Superseded by v7 |
-| 7 | 2026-10-24 | E5: 6 fields from AMFI's IDCW history ("IDCW (v7)" below). Monthly facts (fund performance, tracking error) are read on the latest business day of each month, not a weekend month-end with few funds reported | In use (owner direction of 2026-10-24, ADR-023 U14) |
+| 7 | 2026-10-24 | E5: 6 fields from AMFI's IDCW history ("IDCW (v7)" below). Monthly facts (fund performance, tracking error) are read on the latest business day of each month, not a weekend month-end with few funds reported | Superseded by v8 |
+| 8 | 2026-10-24 | Deterministic storage. Every stored float is rounded to 10 significant digits; computation keeps full precision. Beta, R² and alpha against the benchmark proxy use exactly rounded sums (`math.fsum`) instead of NumPy's BLAS-backed `cov` and `corrcoef`. Values move in the 10th significant digit or less | In use (owner decision of 2026-10-24) |
 
 Snapshots of v1 to v6 stay stored; reads use v7.
 

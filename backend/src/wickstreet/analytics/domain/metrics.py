@@ -35,7 +35,10 @@ from typing import Literal
 # and E4 holdings fields from monthly portfolio disclosures.
 # v7: E5 — AMFI IDCW history: payouts, IDCW yield and returns with payouts reinvested;
 # monthly facts read on the latest business day of the month.
-METHOD_VERSION = 7
+# v8: stored floats rounded to 10 significant digits, and beta, R² and alpha against
+# the proxy from exactly rounded sums, so macOS and Linux store the same bytes (owner
+# decision of 2026-10-24).
+METHOD_VERSION = 8
 # The longest gap between two valid NAVs an anchor or a window may span.
 MAX_GAP_DAYS = 7
 # A fund is active when its last valid NAV is this close to the as-of date.

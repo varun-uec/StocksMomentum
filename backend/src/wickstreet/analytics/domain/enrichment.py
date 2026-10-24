@@ -573,6 +573,22 @@ def finite(values: dict[str, Value]) -> dict[str, Value]:
     }
 
 
+def _co_moments(x: np.ndarray, y: np.ndarray) -> tuple[float, float, float]:
+    """Sums of squared and cross deviations from the means, exactly rounded.
+
+    ``math.fsum`` gives the same bits on every platform; NumPy's ``cov`` and
+    ``corrcoef`` go through BLAS, whose sums differ between macOS (Accelerate) and
+    Linux (OpenBLAS) in the last bits.
+    """
+    n = len(x)
+    dx, dy = x - math.fsum(x.tolist()) / n, y - math.fsum(y.tolist()) / n
+    return (
+        math.fsum((dx * dx).tolist()),
+        math.fsum((dy * dy).tolist()),
+        math.fsum((dx * dy).tolist()),
+    )
+
+
 def proxy_fields(
     fund: DailyNavs | None, proxy: DailyNavs | None, risk_free: RiskFree
 ) -> dict[str, Value]:
@@ -589,8 +605,8 @@ def proxy_fields(
     rf_, rp = (mine[1:] / mine[:-1] - 1)[steps], (theirs[1:] / theirs[:-1] - 1)[steps]
     if len(rf_) < MIN_COMMON_DAYS:
         return dict.fromkeys(names, Missing("NA", HISTORY_TOO_SHORT))
-    variance = float(np.var(rp, ddof=1))
-    beta = float(np.cov(rf_, rp, ddof=1)[0, 1] / variance) if variance > 0 else math.nan
+    sxx, syy, sxy = _co_moments(rp, rf_)
+    beta = sxy / sxx if sxx > 0 else math.nan
     years = (int(days[-1]) - int(days[0])) / YEAR_DAYS
     cagr = (mine[-1] / mine[0]) ** (1 / years) - 1
     proxy_cagr = (theirs[-1] / theirs[0]) ** (1 / years) - 1
@@ -602,7 +618,7 @@ def proxy_fields(
         else Missing("NA", NO_RISK_FREE)
     )
     monthly_f, monthly_p = _month_returns(days, mine), _month_returns(days, theirs)
-    correlation = float(np.corrcoef(rf_, rp)[0, 1])
+    correlation = sxy / math.sqrt(sxx * syy) if sxx > 0 and syy > 0 else math.nan
     return {
         "beta_3y": beta if math.isfinite(beta) else Missing("NM", "zero_denominator"),
         "alpha_3y": alpha,

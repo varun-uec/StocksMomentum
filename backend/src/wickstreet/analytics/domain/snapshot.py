@@ -1,7 +1,14 @@
 """A metric snapshot: every fund's fields at one (revision, method version) (MF-11).
 
-The encoding is deterministic: sorted keys, floats as ``repr``, gzip without a
-timestamp. Equal inputs give equal bytes and an equal SHA-256.
+The encoding is deterministic: sorted keys, floats rounded to
+``SIGNIFICANT_DIGITS`` and written as ``repr``, gzip without a timestamp. Equal inputs
+give equal bytes and an equal SHA-256.
+
+Computation keeps full precision; only the stored value is rounded (method v8). The
+same inputs on macOS and Linux can differ in the last bits, because their maths
+libraries round some functions differently; rounding at storage keeps those bits out
+of the snapshot. A value that falls on a rounding boundary can still round two ways,
+so the cross-platform check compares real computes, not an assumption.
 """
 
 from __future__ import annotations
@@ -10,6 +17,7 @@ import gzip
 import hashlib
 import io
 import json
+import math
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -82,8 +90,28 @@ STATES: tuple[tuple[str, str], ...] = tuple(
 _CODES = {pair: code for code, pair in enumerate(STATES)}
 
 
+# Ten keep a filed NAV such as 12345.6789 exact and sit far above the last-bit
+# differences between platforms (relative 1e-11 or less, measured 2026-10-24).
+SIGNIFICANT_DIGITS = 10
+
+
+def quantised(value: Any) -> Any:
+    """``value`` with every finite float rounded to ``SIGNIFICANT_DIGITS``.
+
+    Python formats and parses decimals itself, so the result is the same on every
+    platform.
+    """
+    if isinstance(value, float):
+        return float(f"{value:.{SIGNIFICANT_DIGITS}g}") if math.isfinite(value) else value
+    if isinstance(value, list | tuple):
+        return [quantised(v) for v in value]
+    if isinstance(value, dict):
+        return {k: quantised(v) for k, v in value.items()}
+    return value
+
+
 def _json(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return json.dumps(quantised(value), sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
 def row_json(row: FundRow) -> str:

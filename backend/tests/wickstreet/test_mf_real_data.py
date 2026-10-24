@@ -26,7 +26,7 @@ from platform_common.database import Database
 from wickstreet.analytics.application.research import Research, cell
 from wickstreet.analytics.domain.fields import FIELDS
 from wickstreet.analytics.domain.metrics import METHOD_VERSION, REASONS, Missing
-from wickstreet.analytics.domain.snapshot import Snapshot, payload_sha256
+from wickstreet.analytics.domain.snapshot import SIGNIFICANT_DIGITS, Snapshot, payload_sha256
 from wickstreet.analytics.domain.views import correlation
 from wickstreet.analytics.infrastructure.snapshots import SqlSnapshotStore
 from wickstreet.data_rights.application.gate import RightsGate
@@ -36,6 +36,8 @@ from wickstreet.mf_data.infrastructure.reader import SqlMfReader
 URL = os.environ.get("WICKSTREET_REAL_DATA_URL")
 pytestmark = pytest.mark.skipif(URL is None, reason="WICKSTREET_REAL_DATA_URL is not set")
 SAMPLE = 50
+# A stored value is within half a unit of its last significant digit (method v8).
+STORED = 10.0 ** (1 - SIGNIFICANT_DIGITS)
 # Targets on the 22.27M-row store (Slice 2 plan).
 COMPUTE_SECONDS, PEAK_RSS_MB = 300, 1024
 
@@ -104,7 +106,7 @@ async def test_sampled_returns_match_independent_sql_anchors(real: Database) -> 
                     if annualised
                     else end[1] / start[1] - 1
                 )
-                assert value == pytest.approx(expected, rel=1e-12, abs=1e-15), (code, field)
+                assert value == pytest.approx(expected, rel=STORED, abs=1e-15), (code, field)
                 assert row.anchors[field] == start[0].isoformat()
                 checked += 1
     assert checked >= SAMPLE
@@ -474,7 +476,7 @@ async def test_v4_near_duplicates_agree_with_the_compare_correlation(real: Datab
             [p for p in series[code] if p[0] >= start],
             [p for p in series[other] if p[0] >= start],
         )
-        assert value == pytest.approx(expected, rel=1e-12), (code, other)
+        assert value == pytest.approx(expected, rel=STORED), (code, other)
 
 
 async def test_v4_pair_gaps_and_ranges(real: Database) -> None:
@@ -486,7 +488,10 @@ async def test_v4_pair_gaps_and_ranges(real: Database) -> None:
         direct, regular = (row, partner) if cell(row, "plan") == "direct" else (partner, row)
         gap = cell(row, "dr_gap_3y")
         if gap is not None:
-            assert gap == cell(direct, "cagr_3y") - cell(regular, "cagr_3y")
+            mine, theirs = cell(direct, "cagr_3y"), cell(regular, "cagr_3y")
+            # Each of the three is stored rounded; the bound is their rounding.
+            bound = STORED * (abs(gap) + abs(mine) + abs(theirs))
+            assert gap == pytest.approx(mine - theirs, rel=0, abs=bound)
     for row in snapshot.rows:
         for name in ("q1_share_3y", "consistency_3y"):
             value = cell(row, name)
@@ -526,8 +531,11 @@ async def test_v5_risk_free_and_sharpe_match_pandas(real: Database) -> None:
         growth = (1 + daily / 100 / 365).prod()
         expected = growth ** (365.25 / (end - start).days) - 1
         assert cell(row, "rf_3y") == pytest.approx(expected, rel=1e-9), code
-        sharpe = (cell(row, "cagr_3y") - expected) / cell(row, "vol_3y")
-        assert cell(row, "sharpe_3y") == pytest.approx(sharpe, rel=1e-9), code
+        cagr, vol = cell(row, "cagr_3y"), cell(row, "vol_3y")
+        sharpe = (cagr - expected) / vol
+        # The rebuild uses the stored, rounded CAGR and volatility.
+        bound = STORED * (abs(cagr) / vol + 2 * abs(sharpe))
+        assert cell(row, "sharpe_3y") == pytest.approx(sharpe, rel=0, abs=bound), code
         checked += 1
     assert checked >= 30
 

@@ -29,7 +29,7 @@ from wickstreet.analytics.domain.metrics import (
 )
 from wickstreet.analytics.domain.peers import absent_fields
 from wickstreet.analytics.domain.relations import no_pair
-from wickstreet.analytics.domain.snapshot import FundRow, decode, encode
+from wickstreet.analytics.domain.snapshot import FundRow, decode, encode, quantised
 from wickstreet.mf_data.domain.reads import FundRecord
 
 
@@ -318,7 +318,21 @@ def test_the_encoding_is_deterministic_and_round_trips() -> None:
     second = encode(1, 7, date(2024, 6, 28), ["amfi", "tigzig"], list(rows))
     assert first == second
     snapshot = decode(1, first.payload)
-    assert snapshot.rows == tuple(rows)
+    stored = tuple(replace(r, values=tuple(quantised(v) for v in r.values)) for r in rows)
+    assert snapshot.rows == stored  # floats as stored: 10 significant digits (v8)
+    assert encode(1, 7, date(2024, 6, 28), ["amfi"], list(snapshot.rows)).payload == encode(
+        1, 7, date(2024, 6, 28), ["amfi"], rows
+    ).payload
     assert snapshot.sources == ("amfi", "tigzig")
     assert len(snapshot.rows[0].values) == len(FIELDS)
     assert all(not isinstance(v, float) or math.isfinite(v) for v in snapshot.rows[0].values)
+
+
+def test_stored_floats_keep_ten_significant_digits() -> None:
+    """Method v8: platform noise in the last bits stays out of the snapshot."""
+    noisy = 0.12345678901234567
+    assert quantised(noisy) == 0.123456789
+    assert quantised(noisy + 3e-17) == quantised(noisy)
+    assert quantised(12345.6789) == 12345.6789  # a filed NAV is unchanged
+    nested = {"a": [1.0000000000004, 7, "x", None, True]}
+    assert quantised(nested) == {"a": [1.0, 7, "x", None, True]}
