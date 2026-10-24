@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router';
 import { MfApiError, mfApi, type Condition, type FieldDef, type ScreenRequest, type ScreenRow } from '../api';
 import { I } from '../components/icons';
 import { ConditionEditor } from '../components/screener/ConditionEditor';
-import { FilterRail } from '../components/screener/FilterRail';
+import { FilterRail, METRIC_AS_OF_FIELDS, type FilterMode } from '../components/screener/FilterRail';
 import { FormulaEditor } from '../components/screener/FormulaEditor';
 import { ResultsTable, columnLabel } from '../components/screener/ResultsTable';
 import { Badge, Button, Chip, EmptyState, ErrorState, Field, Loading, PageHeader, Segmented, Sheet, SnapshotNote, cx, inputClass, useTitle } from '../components/ui';
@@ -96,9 +96,19 @@ export default function Screen() {
   const [editing, setEditing] = useState<{ field: FieldDef; index?: number } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draft, setDraft] = useState<ScreenView | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>('basic');
   const [formulasOpen, setFormulasOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+
+  const changeFilterMode = (next: FilterMode) => {
+    if (filtersOpen && filterMode === 'basic' && next === 'advanced') setDraft(view);
+    if (filtersOpen && filterMode === 'advanced' && next === 'basic') {
+      if (draft) setView(draft);
+      setDraft(null);
+    }
+    setFilterMode(next);
+  };
 
   if (fields.isError) return <ErrorState error={fields.error} onRetry={() => fields.refetch()} />;
   if (!view || !fields.data) return <Loading label="Loading the screener" />;
@@ -111,9 +121,24 @@ export default function Screen() {
     const conditions = [...view.conditions];
     if (editing?.index !== undefined) conditions[editing.index] = c;
     else conditions.push(c);
-    const columns = view.columns.includes(c.field) || view.columns.length >= MAX_COLUMNS || !fields.byId.has(c.field) ? view.columns : [...view.columns, c.field];
+    const columns = [...view.columns];
+    const companion = METRIC_AS_OF_FIELDS[c.field];
+    for (const id of [c.field, ...(companion ? [companion] : [])]) {
+      if (!columns.includes(id) && byId.has(id) && columns.length < MAX_COLUMNS) columns.push(id);
+    }
     setView({ ...view, conditions, columns });
     setEditing(null);
+  };
+
+  const toggleMetric = (field: FieldDef, shown: boolean) => {
+    if (shown && view.columns.includes(field.id)) return;
+    const companion = METRIC_AS_OF_FIELDS[field.id];
+    const ids = [field.id, ...(companion && fields.byId.has(companion) ? [companion] : [])];
+    if (shown && view.columns.length + ids.filter((id) => !view.columns.includes(id)).length > MAX_COLUMNS) return;
+    setView({
+      ...view,
+      columns: shown ? [...ids.filter((id) => !view.columns.includes(id)), ...view.columns] : view.columns.filter((column) => !ids.includes(column)),
+    });
   };
 
   const onSort = (field: string) => {
@@ -177,7 +202,7 @@ export default function Screen() {
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside aria-label="Filters" className="hidden lg:block">
           <div className="mf-scroll sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-1">
-            <FilterRail view={view} fields={fields.byId} onChange={setView} onPickField={(field) => setEditing({ field })} />
+            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
           </div>
         </aside>
 
@@ -185,15 +210,12 @@ export default function Screen() {
           {/* Conditions */}
           <section aria-label="Conditions" className="rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
             <div className="flex flex-wrap items-center gap-2">
-              <Segmented
+              {filterMode === 'advanced' && <Segmented
                 label="Match"
                 value={view.mode}
                 onChange={(mode) => setView({ ...view, mode })}
-                options={[
-                  { value: 'all', label: 'Match all' },
-                  { value: 'any', label: 'Match any' },
-                ]}
-              />
+                options={[{ value: 'all', label: 'Match all' }, { value: 'any', label: 'Match any' }]}
+              />}
               {view.conditions.map((c, i) => (
                 <Chip
                   key={i}
@@ -204,7 +226,7 @@ export default function Screen() {
                   {describe(c, byId, short)}
                 </Chip>
               ))}
-              <Button size="sm" variant="ghost" className="lg:hidden" onClick={() => { setDraft(view); setFiltersOpen(true); }}>
+              <Button size="sm" variant="ghost" className="lg:hidden" onClick={() => { setDraft(filterMode === 'advanced' ? view : null); setFiltersOpen(true); }}>
                 <I.screen className="h-4 w-4" />
                 Filters ({view.conditions.length})
               </Button>
@@ -214,7 +236,7 @@ export default function Screen() {
                 </button>
               )}
             </div>
-            {view.mode === 'any' && view.conditions.some(isGate) && (
+          {filterMode === 'advanced' && view.mode === 'any' && view.conditions.some(isGate) && (
               <p className="mt-3 text-xs text-mf-muted">
                 The dashed conditions (status, plan, option) still apply to every fund. “Match any” applies to the others.
               </p>
@@ -268,10 +290,10 @@ export default function Screen() {
                 <I.grid className="h-4 w-4" />
                 Columns ({view.columns.length})
               </Button>
-              <Button size="sm" onClick={() => setFormulasOpen(true)}>
+              {filterMode === 'advanced' && <Button size="sm" onClick={() => setFormulasOpen(true)}>
                 <I.plus className="h-4 w-4" />
                 Formula{Object.keys(view.formulas).length ? `s (${Object.keys(view.formulas).length})` : ''}
-              </Button>
+              </Button>}
             </div>
           </div>
 
@@ -364,9 +386,9 @@ export default function Screen() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         title="Filters"
-        footer={
+        footer={filterMode === 'advanced' ? (
           <>
-            <Button onClick={() => setFiltersOpen(false)}>Cancel</Button>
+            <Button onClick={() => { setDraft(null); setFiltersOpen(false); }}>Cancel</Button>
             <Button
               variant="primary"
               onClick={() => {
@@ -377,23 +399,27 @@ export default function Screen() {
               Apply filters
             </Button>
           </>
-        }
+        ) : undefined}
       >
-        {draft && (
+        {(filterMode === 'basic' || draft) && (
           <>
-            <ul className="mb-4 flex flex-wrap gap-2">
-              {draft.conditions.map((c, i) => (
+            {filterMode === 'advanced' && <ul className="mb-4 flex flex-wrap gap-2">
+              {draft!.conditions.map((c, i) => (
                 <li key={i}>
-                  <Chip onRemove={() => setDraft({ ...draft, conditions: draft.conditions.filter((_, j) => j !== i) })}>{describe(c, byId, short)}</Chip>
+                  <Chip onRemove={() => setDraft({ ...draft!, conditions: draft!.conditions.filter((_, j) => j !== i) })}>{describe(c, byId, short)}</Chip>
                 </li>
               ))}
-            </ul>
+            </ul>}
             <FilterRail
-              view={draft}
-              fields={fields.byId}
-              onChange={setDraft}
+              view={filterMode === 'advanced' ? draft! : view}
+              fields={byId}
+              onShowMetric={toggleMetric}
+              mode={filterMode}
+              onModeChange={changeFilterMode}
+              maxColumns={MAX_COLUMNS}
               onPickField={(field) => {
-                setView(draft);
+                if (draft) setView(draft);
+                setDraft(null);
                 setFiltersOpen(false);
                 setEditing({ field });
               }}

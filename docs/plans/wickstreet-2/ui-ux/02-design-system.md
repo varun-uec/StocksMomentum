@@ -4,6 +4,10 @@
 
 **Paper, ink and a living margin.** Warm paper surfaces, crisp ink, a deep sea-green accent, editorial headings and disciplined numeric tables. Use whitespace and typography instead of a field of decorative dashboard boxes. Botanical linework may appear in empty discovery states; charts never carry decorative illustrations. The desktop hero is a compact invitation to research, not a marketing billboard. Original components are informed by consumer simplicity and analytical tools; no competitor assets or copied layouts.
 
+## Product-wide interaction rule
+
+**Deliver value before asking for configuration.** Every screen and journey should surface its most relevant evidence or useful default action immediately, preserve research context, and remove clicks, dialogs, and choices that do not change the user's outcome. Choose context-aware defaults, show adjustments beside their result, and make advanced controls opt-in without deleting capability. Prefer a useful initial view over an empty setup screen. Acceptance records should measure task completion, meaningful interactions, unnecessary configuration steps, result responsiveness, and usability on desktop and mobile. Benchmark leading fintech products where a comparable workflow can be observed; never infer superiority from unmeasured visual preference.
+
 ## Tokens
 
 | Token | Light | Dark | Role |

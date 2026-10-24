@@ -31,21 +31,34 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     await expect(page.getByRole('region', { name: 'Screen results' }).getByRole('link').first()).toHaveText(name);
   });
 
-  test('screener: a quick filter writes the view to the URL, and zero matches offer relaxations', async ({ page }) => {
+  test('screener: metric discovery adds data without narrowing the result universe', async ({ page }) => {
+    const runs: import('@playwright/test').Response[] = [];
+    page.on('response', (response) => { if (response.url().includes('/api/v1/mf/screener/run')) runs.push(response); });
     await page.goto('/mf/screen');
     const count = page.locator('[aria-live="polite"]').filter({ hasText: 'funds' }).first();
     await expect(count).not.toHaveText(/—/);
     const before = await count.innerText();
-    // The checkbox follows the URL, so its state settles a moment after the click.
-    await page.getByRole('checkbox', { name: 'Sharpe 3Y at least' }).click();
-    await expect(page.getByRole('checkbox', { name: 'Sharpe 3Y at least' })).toBeChecked();
+    const initialFilter = runs[0].request().postDataJSON().filter;
+    const initial = await runs[0].json();
+    const result = page.waitForResponse((response) => response.url().includes('/api/v1/mf/screener/run') && response.request().method() === 'POST' && JSON.stringify(response.request().postDataJSON().columns).includes('ret_1y'));
+    await page.getByRole('checkbox', { name: 'Show Return 1Y' }).click();
+    const response = await result;
+    const shown = await response.json();
+    expect(response.request().postDataJSON().filter).toEqual(initialFilter);
+    expect(shown.matched).toBe(initial.matched);
+    expect(shown.rows.some((row: { values: Record<string, unknown> }) => typeof row.values.ret_1y === 'number')).toBe(true);
+    await expect(page.getByRole('columnheader', { name: /Return 1Y/ })).toBeVisible();
     await expect(page).toHaveURL(/v=/);
-    await expect(page.getByRole('button', { name: 'Sharpe 3Y ≥ 0.4', exact: true })).toBeVisible();
-    await expect(count).not.toHaveText(before);
+    await expect(count).toHaveText(before);
+    await page.getByRole('button', { name: 'Filter by Return 1Y' }).click();
+    await expect(page.getByRole('dialog', { name: 'Add condition: Return 1Y' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(count).toHaveText(before);
   });
 
   test('screener: the condition editor takes percent input and serialises a fraction', async ({ page }) => {
     await page.goto('/mf/screen');
+    await page.getByRole('radio', { name: 'Advanced' }).click();
     await page.getByLabel('Search filter fields').fill('cagr_3y');
     await page.getByRole('navigation', { name: 'All fields' }).getByRole('button', { name: /^CAGR 3Y\s?, / }).click();
     const dialog = page.getByRole('dialog');
@@ -194,6 +207,7 @@ test.describe('theme and layout', () => {
     await page.getByRole('button', { name: /^Filters \(\d+\)$/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Filters' });
     await expect(sheet).toBeVisible();
+    await sheet.getByRole('radio', { name: 'Advanced' }).click();
     await sheet.getByRole('button', { name: 'Cancel' }).click();
     await expect(sheet).toBeHidden();
     await page.getByRole('navigation', { name: 'Mutual fund research' }).last().getByRole('link', { name: 'Compare' }).click();

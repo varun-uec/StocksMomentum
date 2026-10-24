@@ -103,6 +103,7 @@ test("F-05: Match any never ORs the starting universe", async ({
     ).json()
   ).matched;
   await page.goto("/mf/screen");
+  await page.getByRole("radio", { name: "Advanced" }).click();
   await page.getByRole("radio", { name: "Match any" }).click();
   await expect(page.getByText(/still apply to every fund/)).toBeVisible();
   const shown = page
@@ -162,6 +163,7 @@ test.describe("formula check", () => {
   }) => {
     await page.goto("/mf/screen");
     const url = page.url();
+    await page.getByRole("radio", { name: "Advanced" }).click();
     await page.getByRole("button", { name: /^Formula/ }).click();
     await page.getByRole("textbox", { name: "Name" }).fill("broken");
     await page.getByRole("textbox", { name: "Expression" }).fill("cagr_3y / (");

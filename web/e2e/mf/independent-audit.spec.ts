@@ -157,6 +157,7 @@ test('A-08: Match any on a saved nested group keeps a valid filter', async ({ pa
   await page.goto(`/mf/screen?v=${encodeView(view)}`);
   const runs: unknown[] = [];
   page.on('request', (r) => r.url().includes('/screener/run') && runs.push(r.postDataJSON().filter));
+  await page.getByRole('radio', { name: 'Advanced' }).click();
   await page.getByRole('radio', { name: 'Match any' }).click();
   await expect.poll(() => runs.length).toBeGreaterThan(0);
   const depth = (n: Record<string, unknown>): number => ('field' in n ? 0 : 1 + Math.max(...((n.all ?? n.any) as Record<string, unknown>[]).map(depth)));
