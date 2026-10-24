@@ -9,7 +9,17 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Protocol
 
-from wickstreet.mf_data.domain.model import Anomaly, NavRecord, RatePoint, RawFile, SchemeRecord
+from wickstreet.mf_data.domain.model import (
+    Anomaly,
+    CapClass,
+    NavRecord,
+    Portfolios,
+    RatePoint,
+    RawFile,
+    SchemeFacts,
+    SchemeRecord,
+    SchemeRef,
+)
 
 
 class SourceLayoutError(Exception):
@@ -228,4 +238,124 @@ class MfStore(Protocol):
         self, amfi_code: str, start: date, end: date
     ) -> dict[date, Decimal | None]:
         """One code's current NAVs in ``[start, end]``."""
+        ...
+
+    async def scheme_keys(self) -> tuple[list[SchemeRef], dict[int, str]]:
+        """Every listed scheme, and each scheme's current SEBI code."""
+        ...
+
+    async def latest_nav_day(self, on_or_before: date) -> date | None:
+        """The latest date on or before ``on_or_before`` with current NAVs."""
+        ...
+
+    async def scheme_navs(self, day: date) -> dict[int, list[Decimal]]:
+        """Each joined scheme's plan-option NAVs on ``day``."""
+        ...
+
+    async def active_scheme_names(self, since: date) -> list[str]:
+        """Master scheme names of plan-options with a current NAV on or after ``since``."""
+        ...
+
+    async def publish_portfolios(
+        self, run_id: int, found: Portfolios, provenance: Provenance
+    ) -> Published:
+        """Write changed portfolios as a new revision, atomically."""
+        ...
+
+    async def publish_market_caps(
+        self, run_id: int, found: Sequence[CapClass], provenance: Provenance
+    ) -> Published:
+        """Write market-cap classes as a new revision, atomically."""
+        ...
+
+    async def publish_facts(
+        self,
+        run_id: int,
+        found: SchemeFacts,
+        provenance: Provenance,
+        schemes: Sequence[SchemeRef] = (),
+    ) -> Published:
+        """Write changed schemes, ISIN joins and facts as a new revision, atomically."""
+        ...
+
+
+class FactSource(Protocol):
+    """A supplier of scheme facts (doc 21 E1, E3); parsing joins rows to scheme ids."""
+
+    name: str
+    adapter_version: str
+
+    async def scheme_list(self) -> RawFile:
+        """Fetch every scheme id and name."""
+        ...
+
+    async def ssd(self, sd_id: int) -> RawFile | None:
+        """Fetch one scheme summary document; ``None`` when the source has none."""
+        ...
+
+    async def ter_month(self, month: date) -> RawFile:
+        """Fetch the daily TER of every scheme for the month containing ``month``."""
+        ...
+
+    async def performance(self, day: date, *, closed_ended: bool) -> RawFile:
+        """Fetch every scheme's returns against its benchmark on ``day``."""
+        ...
+
+    async def tracking_error(self, day: date) -> RawFile:
+        """Fetch the tracking error of every index fund and ETF on ``day``."""
+        ...
+
+    async def market_caps(self, period_end: date) -> RawFile | None:
+        """Fetch the market-cap list for the half-year ending ``period_end``."""
+        ...
+
+    def parse_market_caps(self, raw: RawFile) -> list[CapClass]:
+        """The companies, their market cap and class."""
+        ...
+
+    def parse_scheme_list(self, raw: RawFile) -> list[SchemeRef]:
+        """Every scheme in a scheme-list file."""
+        ...
+
+    def parse_ssd(self, raw: RawFile, sd_id: int, as_of: date) -> SchemeFacts:
+        """One summary document's facts and the ISINs it lists."""
+        ...
+
+    def parse_ter(
+        self, raw: RawFile, codes: Mapping[str, int], names: Mapping[str, int]
+    ) -> SchemeFacts:
+        """A TER month as change points, joined by SEBI code or name."""
+        ...
+
+    def parse_performance(
+        self,
+        raw: RawFile,
+        day: date,
+        names: Mapping[str, int],
+        navs: Mapping[Decimal, set[int]] | None = None,
+    ) -> SchemeFacts:
+        """Fund performance facts on ``day``, joined by name, else by NAV pair."""
+        ...
+
+    def parse_tracking_error(
+        self, raw: RawFile, day: date, names: Mapping[str, int]
+    ) -> SchemeFacts:
+        """Tracking-error facts on ``day``, joined by name."""
+        ...
+
+
+class PortfolioSource(Protocol):
+    """A supplier of monthly portfolio disclosures (doc 21 E4)."""
+
+    name: str
+    adapter_version: str
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """Fetch the month's disclosure; ``None`` when the source lists none."""
+        ...
+
+    def parse_portfolios(
+        self, raw: RawFile, names: Mapping[str, int], fallback: date | None
+    ) -> Portfolios:
+        """Every scheme portfolio in the file, joined by scheme name."""
         ...

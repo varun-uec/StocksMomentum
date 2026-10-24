@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
-from typing import Literal
+from dataclasses import asdict
 
 from wickstreet.analytics.domain import classify
+from wickstreet.analytics.domain.enrichment import FACT_FIELDS
+from wickstreet.analytics.domain.fieldspec import Field
+from wickstreet.analytics.domain.holdings import HOLDING_FIELDS
 from wickstreet.analytics.domain.metrics import (
     DRAWDOWN,
     EPISODES,
@@ -27,21 +29,7 @@ from wickstreet.analytics.domain.peers import PEER_METRICS, SCORE_PARTS, THEN_ME
 from wickstreet.analytics.domain.relations import NEAR_DUPLICATE
 from wickstreet.mf_data.domain.reads import FundRecord
 
-FieldType = Literal["number", "boolean", "enum", "date"]
 _FRACTION = "fraction"
-
-
-@dataclass(frozen=True, slots=True)
-class Field:
-    """One screenable value. ``values`` lists an enum's members; ``None`` means the snapshot's."""
-
-    id: str
-    label: str
-    group: str
-    type: FieldType
-    unit: str | None
-    description: str
-    values: tuple[str, ...] | None = None
 
 
 CATEGORY_BASES = ("amfi", "scheme_sibling", "none")
@@ -622,6 +610,8 @@ FIELDS: tuple[Field, ...] = (
         for name, months in ROLLING
         for stat, (label, description, unit) in _ROLLING_STATS.items()
     ),
+    *FACT_FIELDS,
+    *HOLDING_FIELDS,
 )
 BY_ID = {field.id: field for field in FIELDS}
 INDEX = {field.id: i for i, field in enumerate(FIELDS)}

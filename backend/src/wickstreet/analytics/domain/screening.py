@@ -21,7 +21,8 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Literal, cast
 
-from wickstreet.analytics.domain.fields import FIELDS, Field
+from wickstreet.analytics.domain.fields import FIELDS
+from wickstreet.analytics.domain.fieldspec import Field
 from wickstreet.analytics.domain.metrics import Missing, Value
 from wickstreet.analytics.domain.snapshot import FundRow
 

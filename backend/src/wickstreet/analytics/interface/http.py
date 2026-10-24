@@ -527,3 +527,46 @@ async def fund_regimes(
     """The fund's return in each regime window beside the proxy's."""
     envelope, body = await research.fund_regimes(code, data_revision)
     return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/profile")
+async def fund_profile(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """AMFI's fund facts: TER, AUM, riskometer, managers, exit load, minimums and history."""
+    envelope, body = await research.profile(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/benchmark")
+async def fund_benchmark(
+    _: Context, research: ResearchDep, code: str, data_revision: Revision = None
+) -> dict[str, Any]:
+    """AMFI's returns against the Tier 1 benchmark, and statistics against a labelled proxy."""
+    envelope, body = await research.benchmark(code, data_revision)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/funds/{code}/holdings")
+async def fund_holdings(
+    _: Context,
+    research: ResearchDep,
+    code: str,
+    as_of: Annotated[date | None, Query(description="Latest portfolio on or before.")] = None,
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """The fund's disclosed portfolio: mix, concentration, lines, changes and trend."""
+    envelope, body = await research.holdings(code, data_revision, as_of)
+    return {**_envelope(envelope), "amfi_code": code, **body}
+
+
+@router.get("/holdings/overlap")
+async def holdings_overlap(
+    _: Context,
+    research: ResearchDep,
+    code: Annotated[list[str], Query(description="2 to 5 AMFI codes.")],
+    data_revision: Revision = None,
+) -> dict[str, Any]:
+    """Shared securities and weighted overlap between each pair of funds."""
+    envelope, body = await research.overlap(code, data_revision)
+    return {**_envelope(envelope), **body}

@@ -30,7 +30,10 @@ from typing import Literal
 # near-duplicates.
 # v5: E2 — the RBI 91-day T-bill yield: risk-free returns, Sharpe 1Y/3Y, Sortino against
 # the risk-free rate instead of 0%.
-METHOD_VERSION = 5
+# v6: E1 and E3 — AMFI scheme facts (TER, AUM, riskometer, benchmark, SSD), TER category
+# ranks, AMFI benchmark-relative returns, statistics against a labelled index-fund proxy,
+# and E4 holdings fields from monthly portfolio disclosures.
+METHOD_VERSION = 6
 # The longest gap between two valid NAVs an anchor or a window may span.
 MAX_GAP_DAYS = 7
 # A fund is active when its last valid NAV is this close to the as-of date.
@@ -53,6 +56,17 @@ NO_PEER_GROUP = "no_peer_group"
 TOO_FEW_PEERS = "too_few_peers"
 NO_PAIR = "no_pair"
 NO_RISK_FREE = "no_risk_free"
+# Scheme facts (v6): no AMFI scheme joins the plan-option; the scheme did not file the
+# value; AMFI's returns are for the growth option; no benchmark, or no index fund for it;
+# no value a year back.
+NO_SCHEME = "no_scheme_join"
+NOT_FILED = "not_filed"
+GROWTH_ONLY = "growth_option_only"
+NO_BENCHMARK = "no_benchmark"
+NO_PROXY = "no_benchmark_proxy"
+NO_YEAR_AGO = "no_year_ago_value"
+# Holdings (v6): the portfolio holds no equity, so an equity share is not meaningful.
+NO_EQUITY = "no_equity"
 # A window may end at most this long after the last auction it uses.
 RISK_FREE_STALE_DAYS = 35
 REASONS = frozenset(
@@ -69,6 +83,13 @@ REASONS = frozenset(
         TOO_FEW_PEERS,
         NO_PAIR,
         NO_RISK_FREE,
+        NO_SCHEME,
+        NOT_FILED,
+        GROWTH_ONLY,
+        NO_BENCHMARK,
+        NO_PROXY,
+        NO_YEAR_AGO,
+        NO_EQUITY,
     }
 )
 

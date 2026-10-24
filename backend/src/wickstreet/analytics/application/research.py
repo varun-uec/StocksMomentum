@@ -20,30 +20,65 @@ from wickstreet.analytics.domain.calculators import Outcome
 from wickstreet.analytics.domain.classify import (
     CAUTION,
     DIRECT,
+    ETF,
+    GROWTH,
+    INDEX_FUND,
     NAV_EXCLUDING_PAYOUTS,
+    REGULAR,
     UNCLASSIFIED,
     canonical_category,
     option_of,
     plan_of,
     sibling_categories,
 )
+from wickstreet.analytics.domain.enrichment import (
+    FACT_FIELD_IDS,
+    HORIZONS,
+    IR_HORIZONS,
+    PROXY_FIELDS,
+    SSD_PROFILE,
+    TER_DEFINITION_CHANGE,
+    benchmark_key,
+    change_points,
+    choose_proxies,
+    cost_ranks,
+    fact_fields,
+    facts_of,
+    finite,
+    manager_starts,
+    proxy_fields,
+)
 from wickstreet.analytics.domain.fields import (
     FIELDS,
     INDEX,
-    Field,
     attributes,
     ordered,
     registry_version,
 )
+from wickstreet.analytics.domain.fieldspec import Field
 from wickstreet.analytics.domain.formulas import compile_formulas, with_formulas
+from wickstreet.analytics.domain.holdings import (
+    HOLDING_FIELD_IDS,
+    cap_of,
+    holding_fields,
+)
+from wickstreet.analytics.domain.holdings import changes as holding_changes
+from wickstreet.analytics.domain.holdings import overlap as holdings_overlap
+from wickstreet.analytics.domain.holdings import summary as holdings_summary
+from wickstreet.analytics.domain.holdings import trend as holdings_trend
 from wickstreet.analytics.domain.metrics import (
     ACTIVE,
     HISTORY_TOO_SHORT,
     MAX_GAP_DAYS,
     METHOD_VERSION,
     METRIC_FIELDS,
+    NO_BENCHMARK,
     NO_NAV,
     NO_PEER_GROUP,
+    NO_PROXY,
+    NO_SCHEME,
+    NOT_FILED,
+    YEAR_DAYS,
     Missing,
     MonthEnds,
     RiskFree,
@@ -119,6 +154,7 @@ from wickstreet.mf_data.domain.reads import (
     Link,
     MfReader,
     NavPoint,
+    Portfolio,
 )
 
 DEFAULT_COLUMNS = ("category", "plan", "option", "ret_1y", "cagr_3y", "cagr_5y", "vol_3y", "mdd_3y")
@@ -174,6 +210,27 @@ def _in_proxy(fund: FundRecord) -> bool:
     )
 
 
+def _proxy_candidate(values: Mapping[str, Value]) -> bool:
+    """An index fund's direct growth plan, or an ETF, can stand in for its benchmark."""
+    if values["fund_type"] == ETF:
+        return True
+    return (
+        values["fund_type"] == INDEX_FUND
+        and values["plan"] == DIRECT
+        and (values["option"] == GROWTH)
+    )
+
+
+def _plus(a: Any, b: Any) -> float | None:
+    return a + b if isinstance(a, float) and isinstance(b, float) else None
+
+
+def _gap(cagr: Value, benchmark: Value) -> Value:
+    if isinstance(cagr, float) and isinstance(benchmark, float):
+        return cagr - benchmark
+    return Missing("NA", NOT_FILED)
+
+
 class ComputeSnapshot:
     """Compute the snapshot of the published revision once (MF-11)."""
 
@@ -217,6 +274,10 @@ class ComputeSnapshot:
             [METRIC_FIELDS.index(n) for n in RANKED_INPUTS],
         )
         classes: list[dict[str, Value]] = []
+        extra: dict[int, dict[str, Value]] = {}
+        cost_groups: dict[tuple[str, str, str], list[int]] = defaultdict(list)
+        candidates: list[tuple[int, str, str, str, float | None, Value]] = []
+        cagr_at = METRIC_FIELDS.index("cagr_3y")
         groups: dict[tuple[str, str, str], list[tuple[int, PeerFund]]] = defaultdict(list)
         grouped: dict[int, PeerFund] = {}
         pair_keys: dict[int, tuple[str, str, str, str]] = {}
@@ -224,6 +285,28 @@ class ComputeSnapshot:
             values = attributes(fund, siblings.get(fund.plan_option_id))
             classes.append(values)
             status = str(metric_values[status_at])
+            pid = fund.plan_option_id
+            facts = facts_of(history.facts, pid, str(values["plan"]), str(values["fund_type"]))
+            extra[pid] = fact_fields(facts, str(values["option"]), as_of)
+            portfolio = history.facts.portfolios.get(facts.sd_id) if facts else None
+            extra[pid] |= (
+                holding_fields(portfolio, history.facts.caps)
+                if facts is not None
+                else dict.fromkeys(HOLDING_FIELD_IDS, Missing("NA", NO_SCHEME))
+            )
+            if status == ACTIVE and values["category"] != UNCLASSIFIED:
+                key = (str(values["category"]), str(values["plan"]), str(values["option"]))
+                cost_groups[key].append(pid)
+            if facts is not None and status == ACTIVE and _proxy_candidate(values):
+                filed = facts.get("tracking_benchmark", scheme_level=True)
+                filed = filed or facts.get("benchmark", scheme_level=True)
+                te = facts.get("tracking_error")
+                gap = _gap(metric_values[cagr_at], extra[pid]["bench_ret_3y"])
+                if filed is not None and filed.txt and pid in daily:
+                    name = fund.nav_name or fund.scheme_name or fund.amfi_code
+                    candidates.append(
+                        (pid, fund.amfi_code, name, filed.txt, te.num if te else None, gap)
+                    )
             if status == ACTIVE:
                 pair_keys[fund.plan_option_id] = (
                     fund.amc or "",
@@ -246,6 +329,22 @@ class ComputeSnapshot:
         for members in groups.values():
             # A large group takes a second or more; a thread keeps the loop turning.
             near |= await asyncio.to_thread(_group_fields, members, daily, last_month)
+        cost_ranks(cost_groups, extra)
+        proxies = choose_proxies(candidates)
+        for done, (pid, values) in enumerate(extra.items()):
+            bench = values["benchmark"]
+            proxy = proxies.get(benchmark_key(bench)) if isinstance(bench, str) else None
+            if proxy is None:
+                reason = NO_PROXY if isinstance(bench, str) else NO_BENCHMARK
+                values |= dict.fromkeys(PROXY_FIELDS, Missing("NA", reason))
+                values["bench_proxy_gap_3y"] = Missing("NA", reason)
+            else:
+                values |= proxy_fields(daily.get(pid), daily[proxy.pid], risk_free)
+                values["bench_proxy_gap_3y"] = proxy.gap_3y
+            for name in FACT_FIELD_IDS:
+                values.setdefault(name, Missing("NA", NO_PEER_GROUP))
+            extra[pid] = finite(values)
+            await _turn(done + 1)
         has_window = set(daily)
         daily.clear()
         partners = pairs(pair_keys)
@@ -261,6 +360,18 @@ class ComputeSnapshot:
             "regimes": regimes(levels),
             "proxy": PROXY
             | {"levels": [[date.fromordinal(d).isoformat(), level] for d, level in levels]},
+            "benchmark_proxies": {
+                key: {
+                    "benchmark": p.benchmark,
+                    "code": p.code,
+                    "name": p.name,
+                    "tracking_error": p.tracking_error,
+                    "gap_3y": p.gap_3y
+                    if isinstance(p.gap_3y, float) and math.isfinite(p.gap_3y)
+                    else None,
+                }
+                for key, p in sorted(proxies.items())
+            },
         }
         encoder = Encoder(METHOD_VERSION, history.revision, history.as_of, history.sources)
         for done, i in enumerate(
@@ -270,6 +381,7 @@ class ComputeSnapshot:
             pid = fund.plan_option_id
             metric_values, anchors = own[i]
             values |= dict(zip(METRIC_FIELDS, metric_values, strict=True))
+            values |= extra[pid]
             found = grouped.get(pid)
             if found is None:
                 absent = group_absence(str(values["status"]), str(values["category"]), UNCLASSIFIED)
@@ -986,6 +1098,287 @@ class Research:
             ],
             "notes": notes,
         }
+
+    async def _scheme(self, code: str, revision: int | None) -> tuple[Envelope, FundRow, Any]:
+        snapshot, envelope = await self._pinned(revision)
+        row = self._row(snapshot, code)
+        return envelope, row, await self._reader.scheme_profile(code, snapshot.revision)
+
+    async def profile(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """AMFI's facts for one fund: costs, AUM, riskometer, managers, loads and their history."""
+        envelope, row, scheme = await self._scheme(code, revision)
+        if scheme is None:
+            return envelope, {"scheme": None, "reason": NO_SCHEME}
+        plan = str(cell(row, "plan"))
+        by: dict[tuple[str, str], list[Any]] = defaultdict(list)
+        for fact in scheme.facts:
+            by[(fact.name, fact.plan)].append(fact)
+
+        def text_of(name: str) -> dict[str, Any] | None:
+            found = by.get((name, ""))
+            return {"text": found[-1].txt, "as_of": found[-1].as_of.isoformat()} if found else None
+
+        def numbers(name: str, plan_of: str) -> list[list[Any]]:
+            points = [(f.as_of, f.num) for f in by.get((name, plan_of), []) if f.num is not None]
+            return [[d.isoformat(), v] for d, v in change_points(points)]
+
+        managers = by.get(("ssd:Fund_Manager_From_Date", ""))
+        starts = manager_starts(managers[-1].txt or "") if managers else []
+        ter_days = [f.as_of for f in by.get(("ter", plan), [])]
+        notes = [
+            "Figures are as AMFI publishes them. TER is % a year of daily net assets.",
+        ]
+        if ter_days and ter_days[0] < TER_DEFINITION_CHANGE <= ter_days[-1]:
+            notes.append(
+                "SEBI changed what the total TER includes from 1 April 2026; values before "
+                "and after that date are not like for like."
+            )
+        return envelope, {
+            "scheme": {"sd_id": scheme.sd_id, "name": scheme.scheme_name},
+            "plan": plan,
+            "summary": {f: cell(row, f) for f in FACT_FIELD_IDS if f not in PROXY_FIELDS},
+            "states": {f: s for f in FACT_FIELD_IDS if (s := state(row, f)) is not None},
+            "document": {key: text_of(name) for key, name in SSD_PROFILE.items()},
+            "managers": [
+                {
+                    "name": name,
+                    "since": since.isoformat(),
+                    "years": round((envelope.as_of - since).days / YEAR_DAYS, 1),
+                }
+                for name, since in starts
+            ],
+            "ter": {p: numbers("ter", p) for p in (REGULAR, DIRECT)},
+            "ter_base": {p: numbers("ter_base", p) for p in (REGULAR, DIRECT)},
+            "aum_cr": numbers("aum_cr", ""),
+            "riskometer": [
+                [d.isoformat(), v]
+                for d, v in change_points(
+                    [(f.as_of, f.txt) for f in by.get(("riskometer", ""), [])]
+                )
+            ],
+            "source": "AMFI: TER of MF schemes, fund performance and scheme summary documents",
+            "notes": notes,
+        }
+
+    async def benchmark(
+        self, code: str, revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """AMFI's returns against the Tier 1 benchmark, and statistics against the proxy."""
+        envelope, row, scheme = await self._scheme(code, revision)
+        snapshot, _ = await self._pinned(revision)
+        if scheme is None:
+            return envelope, {"scheme": None, "reason": NO_SCHEME}
+        plan = str(cell(row, "plan"))
+        by: dict[tuple[str, str], dict[date, float]] = defaultdict(dict)
+        for fact in scheme.facts:
+            if fact.num is not None:
+                by[(fact.name, fact.plan)][fact.as_of] = fact.num
+        days = sorted(by.get(("bench_ret_1y", ""), {}))
+        history = [
+            {
+                "date": d.isoformat(),
+                **{
+                    f"{who}_{h}": by.get((f"{prefix}_{h}", key), {}).get(d)
+                    for h in HORIZONS
+                    for who, prefix, key in (("fund", "ret", plan), ("benchmark", "bench_ret", ""))
+                },
+            }
+            for d in days
+        ]
+        bench = cell(row, "benchmark")
+        proxy = (
+            snapshot.tables.get("benchmark_proxies", {}).get(benchmark_key(bench))
+            if isinstance(bench, str)
+            else None
+        )
+        return envelope, {
+            "scheme": {"sd_id": scheme.sd_id, "name": scheme.scheme_name},
+            "plan": plan,
+            "benchmark": bench,
+            "riskometer_benchmark": next(
+                (f.txt for f in reversed(scheme.facts) if f.name == "riskometer_benchmark"), None
+            ),
+            "official": {
+                "as_of": cell(row, "perf_as_of"),
+                "rows": [
+                    {
+                        "horizon": h,
+                        "fund": _plus(cell(row, f"excess_{h}"), cell(row, f"bench_ret_{h}")),
+                        "benchmark": cell(row, f"bench_ret_{h}"),
+                        "excess": cell(row, f"excess_{h}"),
+                        "information_ratio": cell(row, f"ir_{h}") if h in IR_HORIZONS else None,
+                    }
+                    for h in HORIZONS
+                ],
+                "history": history,
+                "source": "AMFI fund performance: scheme and Tier 1 benchmark TRI returns",
+            },
+            "proxy": proxy,
+            "proxy_stats": {f: cell(row, f) for f in (*PROXY_FIELDS, "bench_proxy_gap_3y")},
+            "states": {
+                f: s
+                for f in (*PROXY_FIELDS, "bench_proxy_gap_3y", *(f"excess_{h}" for h in HORIZONS))
+                if (s := state(row, f)) is not None
+            },
+            "tracking_error_filed": cell(row, "tracking_error"),
+            "method": (
+                "Returns over 1 year are a year, as AMFI computes them. Proxy statistics use "
+                "daily NAVs of an index fund on the same benchmark over the last 3 years: it "
+                "carries its own TER and tracking error, so it is not the index."
+            ),
+        }
+
+    async def holdings(
+        self, code: str, revision: int | None = None, as_of: date | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """One fund's disclosed portfolio: mix, concentration, lines, changes and trend."""
+        snapshot, envelope = await self._pinned(revision)
+        self._row(snapshot, code)
+        found = await self._reader.scheme_portfolios(code, snapshot.revision)
+        if found is None:
+            return envelope, {"scheme": None, "reason": NO_SCHEME}
+        scheme = {"sd_id": found.sd_id, "name": found.scheme_name}
+        if not found.portfolios:
+            return envelope, {"scheme": scheme, "reason": NOT_FILED, "dates": []}
+        dates = [p.as_of for p in found.portfolios]
+        at = (
+            len(dates) - 1
+            if as_of is None
+            else max((i for i, d in enumerate(dates) if d <= as_of), default=-1)
+        )
+        if at < 0:
+            raise FilterError("as_of", f"no portfolio on or before {as_of}")
+        portfolio = found.portfolios[at]
+        lines = sorted(portfolio.rows, key=lambda r: (-r.weight, r.name))
+        return envelope, {
+            "scheme": scheme,
+            # Not ``as_of``: the envelope's ``as_of`` is the NAV data date.
+            "portfolio_as_of": portfolio.as_of.isoformat(),
+            "dates": [d.isoformat() for d in dates],
+            "summary": holdings_summary(portfolio, found.caps),
+            "lines": [
+                {
+                    "name": r.name,
+                    "isin": r.isin,
+                    "industry": r.industry,
+                    "section": r.section,
+                    "asset": r.asset,
+                    "weight": r.weight,
+                    "value": r.value,
+                    "cap": cap_of(r.isin, portfolio.as_of, found.caps)
+                    if r.asset == "equity"
+                    else None,
+                }
+                for r in lines
+            ],
+            "changes": holding_changes(found.portfolios[at - 1], portfolio) if at > 0 else None,
+            "previous_as_of": dates[at - 1].isoformat() if at > 0 else None,
+            "trend": holdings_trend(found.portfolios, found.caps),
+            "method": (
+                "Weights are % of net assets as the AMC filed them. Market cap uses AMFI's list "
+                "for the latest half-year ending on or before the portfolio date. Sector and "
+                "market-cap shares are of the equity held."
+            ),
+        }
+
+    async def overlap(
+        self, codes: Sequence[str], revision: int | None = None
+    ) -> tuple[Envelope, dict[str, Any]]:
+        """Shared securities between each pair of funds, from their latest disclosures."""
+        if not 2 <= len(set(codes)) <= MAX_COMPARE:
+            raise FilterError("code", f"overlap needs 2 to {MAX_COMPARE} distinct codes")
+        snapshot, envelope = await self._pinned(revision)
+        funds: list[tuple[str, str, Portfolio | None]] = []
+        for code in dict.fromkeys(codes):
+            row = self._row(snapshot, code)
+            found = await self._reader.scheme_portfolios(code, snapshot.revision)
+            funds.append(
+                (code, row.name, found.portfolios[-1] if found and found.portfolios else None)
+            )
+        pairs = []
+        for i, (code_a, _, a) in enumerate(funds):
+            for code_b, _, b in funds[i + 1 :]:
+                if a is None or b is None:
+                    pairs.append({"a": code_a, "b": code_b, "reason": NOT_FILED})
+                    continue
+                result = holdings_overlap(a, b)
+                result["common"] = result["common"][:25]
+                pairs.append({"a": code_a, "b": code_b, **result})
+        return envelope, {
+            "funds": [
+                {"code": code, "name": name, "as_of": p.as_of.isoformat() if p else None}
+                for code, name, p in funds
+            ],
+            "pairs": pairs,
+            "method": (
+                "Overlap is the sum, over securities both funds hold, of the smaller weight. "
+                "Securities match by ISIN; cash, TREPS and derivatives are left out. NAV "
+                "correlation (Compare) says funds move together; this says they own the same."
+            ),
+        }
+
+    async def held_funds(
+        self, codes: Sequence[str]
+    ) -> tuple[Envelope, dict[str, dict[str, Any]], Mapping[str, Sequence[tuple[date, str]]]]:
+        """For a portfolio: each held code's snapshot cells, latest portfolio and direct TER."""
+        snapshot, envelope = await self._pinned(None)
+        pairs = snapshot.tables.get("pairs", {})
+        found: dict[str, dict[str, Any]] = {}
+        caps: Mapping[str, Sequence[tuple[date, str]]] = {}
+        for code in dict.fromkeys(codes):
+            row = snapshot.by_code.get(code)
+            if row is None:
+                continue
+            cells = {
+                f: cell(row, f)
+                for f in ("category", "asset_class", "plan", "nav", "last_nav_date", "ter", "score")
+            }
+            partner = pairs.get(code) or next((r for r, d in pairs.items() if d == code), None)
+            other = snapshot.by_code.get(partner) if partner else None
+            direct = other if other is not None and cell(other, "plan") == DIRECT else None
+            portfolios = await self._reader.scheme_portfolios(code, snapshot.revision)
+            if portfolios is not None and portfolios.portfolios:
+                caps = portfolios.caps
+            found[code] = {
+                "name": row.name,
+                **cells,
+                "direct_ter": cell(direct, "ter") if direct is not None else None,
+                "holdings": portfolios.portfolios[-1]
+                if portfolios and portfolios.portfolios
+                else None,
+            }
+        return envelope, found, caps
+
+    async def alternatives(self, code: str, count: int = 3) -> list[dict[str, Any]]:
+        """Active direct growth funds in the code's category with a higher score than it."""
+        snapshot, _ = await self._pinned(None)
+        row = snapshot.by_code.get(code)
+        if row is None:
+            return []
+        category, mine = cell(row, "category"), cell(row, "score")
+        scheme = cell(row, "amc"), row.name.split(" - ")[0]
+        better = [
+            r
+            for r in snapshot.rows
+            if cell(r, "category") == category
+            and cell(r, "status") == ACTIVE
+            and cell(r, "plan") == DIRECT
+            and cell(r, "option") == GROWTH
+            and isinstance(cell(r, "score"), float)
+            and (not isinstance(mine, float) or cell(r, "score") > mine)
+            and (cell(r, "amc"), r.name.split(" - ")[0]) != scheme
+        ]
+        better.sort(key=lambda r: (-cell(r, "score"), r.amfi_code))
+        return [
+            {
+                "code": r.amfi_code,
+                "name": r.name,
+                **{f: cell(r, f) for f in ("score", "ter", "cagr_3y", "excess_3y", "mdd_3y")},
+            }
+            for r in better[:count]
+        ]
 
     async def risk_free(self, revision: int | None = None) -> tuple[Envelope, dict[str, Any]]:
         """The 91-day T-bill cut-off yields behind every risk-free value, with their source."""

@@ -15,7 +15,7 @@ from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from typing import cast
 
-from wickstreet.analytics.domain.fields import Field
+from wickstreet.analytics.domain.fieldspec import Field
 from wickstreet.analytics.domain.metrics import ZERO_DENOMINATOR, Missing, Value
 from wickstreet.analytics.domain.screening import REGISTRY, Columns, FilterError
 from wickstreet.analytics.domain.snapshot import FundRow

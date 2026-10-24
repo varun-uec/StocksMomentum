@@ -23,6 +23,10 @@ dependencies = [
     "nsemine>=1.5",
     "prometheus-client>=0.20",
     "exchange_calendars>=4.5",
+    # Old binary XLS portfolio files that AMCs still publish (doc 21 E4).
+    "xlrd>=2.0",
+    # CAMS and KFintech consolidated account statements, parsed on this machine (Slice 6).
+    "casparser>=1.4",
 ]
 
 [project.optional-dependencies]
@@ -135,6 +139,7 @@ containers = [
     "wickstreet.mf_data",
     "wickstreet.analytics",
     "wickstreet.workspace",
+    "wickstreet.portfolio",
 ]
 layers = ["(interface)", "application", "domain"]
 

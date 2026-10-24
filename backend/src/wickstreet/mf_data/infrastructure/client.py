@@ -16,10 +16,12 @@ import httpx
 from wickstreet.mf_data.domain.ports import SourceError
 
 USER_AGENT = "Wickstreet/2.0 (self-hosted personal mutual-fund research)"
+# The same identity in the crawler form; AMFI's research gateway refuses any other form.
+COMPATIBLE_USER_AGENT = "Mozilla/5.0 (compatible; " + USER_AGENT.replace(" (", "; ", 1)
 
 
 class PacedClient:
-    """A throttled, retrying ``GET``."""
+    """A throttled, retrying ``GET`` or JSON ``POST``."""
 
     def __init__(
         self,
@@ -30,10 +32,11 @@ class PacedClient:
         transport: httpx.AsyncBaseTransport | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         clock: Callable[[], float] = time.monotonic,
+        user_agent: str = USER_AGENT,
     ) -> None:
         """Create the client; ``transport`` replaces the network in tests."""
         self._client = httpx.AsyncClient(
-            headers={"User-Agent": USER_AGENT},
+            headers={"User-Agent": user_agent},
             timeout=timeout_seconds,
             follow_redirects=False,
             transport=transport,
@@ -50,13 +53,20 @@ class PacedClient:
 
     async def get(self, url: str, params: dict[str, str] | None = None) -> httpx.Response:
         """Return the first response that is not a 429 or 5xx, or raise :class:`SourceError`."""
+        return await self._send("GET", url, params=params)
+
+    async def post(self, url: str, body: dict[str, object]) -> httpx.Response:
+        """``POST`` a JSON body, paced and retried as :meth:`get` is."""
+        return await self._send("POST", url, json=body)
+
+    async def _send(self, method: str, url: str, **request: object) -> httpx.Response:
         problem = ""
         for attempt in range(1, self._attempts + 1):
             wait = self._next_at - self._clock()
             if wait > 0:
                 await self._sleep(wait)
             try:
-                response = await self._client.get(url, params=params)
+                response = await self._client.request(method, url, **request)  # type: ignore[arg-type]
             except httpx.TransportError as exc:
                 problem = f"{type(exc).__name__}: {exc}"
             else:

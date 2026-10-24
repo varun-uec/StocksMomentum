@@ -22,11 +22,19 @@ from platform_common.database import Database
 from wickstreet.mf_data.domain.model import TBILL_91
 from wickstreet.mf_data.domain.reads import (
     SEARCH_SYNONYMS,
+    SERIES_FACTS,
+    FactPoint,
+    FactView,
     FundRecord,
     FundSeries,
     History,
+    HoldingRow,
     Link,
     NavPoint,
+    Portfolio,
+    SchemeFactRow,
+    SchemePortfolios,
+    SchemeProfile,
     search_terms,
 )
 
@@ -91,6 +99,78 @@ _RATES = text(
     "SELECT effective_date, value::float8 FROM wickstreet.rate_point t "
     f"WHERE series = :s AND {_visible('t')} ORDER BY effective_date"
 )
+
+
+# A plan-option joins its scheme through the ISINs its scheme's SSD lists (doc 21 E1).
+_SCHEME_OF = (
+    "SELECT DISTINCT ON (m.plan_option_id) m.plan_option_id, i.sd_id "
+    "FROM wickstreet.plan_option_master m JOIN wickstreet.scheme_isin i "
+    "ON i.isin IN (m.isin_growth, m.isin_reinvest) "
+    f"WHERE {_visible('m')} ORDER BY m.plan_option_id, m.effective_from DESC, i.sd_id"
+)
+_FACT_DAY = "(f.as_of - DATE '0001-01-01') + 1"
+_LATEST_FACTS = text(
+    f"SELECT DISTINCT ON (f.sd_id, f.name, f.plan) f.sd_id, f.name, f.plan, {_FACT_DAY}, "
+    f"f.num::float8, f.txt FROM wickstreet.scheme_fact f WHERE {_visible('f')} "
+    "ORDER BY f.sd_id, f.name, f.plan, f.as_of DESC"
+)
+_SERIES_FACTS = text(
+    f"SELECT f.sd_id, f.name, f.plan, {_FACT_DAY}, f.num::float8, f.txt "
+    f"FROM wickstreet.scheme_fact f WHERE f.name = ANY(:names) AND {_visible('f')} "
+    "ORDER BY f.sd_id, f.name, f.plan, f.as_of"
+)
+
+
+_HOLDING_COLUMNS = (
+    "h.sd_id, h.as_of, h.name, h.isin, h.industry, h.section, h.asset, "
+    "h.weight::float8, h.value::float8"
+)
+_LATEST_PORTFOLIOS = text(
+    f"WITH v AS (SELECT * FROM wickstreet.holding h WHERE {_visible('h')}), "
+    "latest AS (SELECT sd_id, max(as_of) AS as_of FROM v GROUP BY sd_id) "
+    f"SELECT {_HOLDING_COLUMNS} FROM v h JOIN latest l USING (sd_id, as_of) "
+    "ORDER BY h.sd_id, h.seq"
+)
+_CAPS = text(
+    f"SELECT c.isin, c.as_of, c.cap_class FROM wickstreet.security_class c WHERE {_visible('c')} "
+    "ORDER BY c.isin, c.as_of"
+)
+
+
+async def _caps(connection: AsyncConnection, revision: int) -> dict[str, list[tuple[date, str]]]:
+    caps: dict[str, list[tuple[date, str]]] = {}
+    for isin, as_of, cap_class in await connection.execute(_CAPS, {"r": revision}):
+        caps.setdefault(isin, []).append((as_of, cap_class))
+    return caps
+
+
+def _portfolios(rows: Any) -> dict[int, list[Portfolio]]:
+    found: dict[int, list[Portfolio]] = {}
+    for sd_id, as_of, name, isin, industry, section, asset, weight, value in rows:
+        listed = found.setdefault(sd_id, [])
+        if not listed or listed[-1].as_of != as_of:
+            listed.append(Portfolio(as_of, []))
+        listed[-1].rows.append(  # type: ignore[attr-defined]
+            HoldingRow(name, isin, industry, section, asset, weight, value)
+        )
+    return found
+
+
+async def _fact_view(connection: AsyncConnection, revision: int) -> FactView:
+    params = {"r": revision}
+    scheme_of: dict[int, int] = {}
+    for pid, sd_id in await connection.execute(text(_SCHEME_OF), params):
+        scheme_of[pid] = sd_id
+    latest: dict[int, dict[tuple[str, str], FactPoint]] = {}
+    for sd_id, name, plan, day, num, txt in await connection.execute(_LATEST_FACTS, params):
+        latest.setdefault(sd_id, {})[(name, plan)] = FactPoint(day, num, txt)
+    series: dict[int, dict[tuple[str, str], list[FactPoint]]] = {}
+    found = await connection.execute(_SERIES_FACTS, params | {"names": list(SERIES_FACTS)})
+    for sd_id, name, plan, day, num, txt in found:
+        series.setdefault(sd_id, {}).setdefault((name, plan), []).append(FactPoint(day, num, txt))
+    latest_portfolios = await connection.execute(_LATEST_PORTFOLIOS, params)
+    portfolios = {sd_id: found[-1] for sd_id, found in _portfolios(latest_portfolios).items()}
+    return FactView(scheme_of, latest, series, portfolios, await _caps(connection, revision))
 
 
 def _record(row: Sequence[Any]) -> FundRecord:
@@ -173,12 +253,13 @@ class SqlMfReader:
                         _RATES, {"s": TBILL_91, "r": revision}
                     )
                 ]
+                facts = await _fact_view(connection, revision)
                 found = await connection.execute(text(_funds_sql("TRUE")), {"r": revision})
                 records = {row[0]: _record(row) for row in found}
                 rows = await connection.stream(
                     text(_STREAM).execution_options(yield_per=_STREAM_BATCH)
                 )
-                yield History(revision, as_of, sources, _grouped(records, rows), risk_free)
+                yield History(revision, as_of, sources, _grouped(records, rows), risk_free, facts)
 
     async def search(self, query: str, limit: int, revision: int) -> list[FundRecord]:
         """Match an AMFI code or ISIN exactly, or every term of a name or AMC.
@@ -264,6 +345,57 @@ class SqlMfReader:
     async def rates(self, series: str, revision: int) -> list[tuple[date, float]]:
         """One rate series at ``revision``, in date order."""
         return [(day, value) for day, value in await self._rows(_RATES, s=series, r=revision)]
+
+    async def scheme_profile(self, code: str, revision: int) -> SchemeProfile | None:
+        """The scheme of one plan-option and every fact visible for it at ``revision``."""
+        found = await self._rows(
+            text(
+                f"SELECT j.sd_id, s.name FROM ({_SCHEME_OF}) j "
+                "JOIN wickstreet.scheme s ON s.sd_id = j.sd_id "
+                "JOIN wickstreet.plan_option p ON p.id = j.plan_option_id WHERE p.amfi_code = :c"
+            ),
+            c=code,
+            r=revision,
+        )
+        if not found:
+            return None
+        sd_id, name = found[0]
+        rows = await self._rows(
+            text(
+                "SELECT f.name, f.plan, f.as_of, f.num::float8, f.txt "
+                f"FROM wickstreet.scheme_fact f WHERE f.sd_id = :s AND {_visible('f')} "
+                "ORDER BY f.name, f.plan, f.as_of"
+            ),
+            s=sd_id,
+            r=revision,
+        )
+        return SchemeProfile(sd_id, name, [SchemeFactRow(*row) for row in rows])
+
+    async def scheme_portfolios(self, code: str, revision: int) -> SchemePortfolios | None:
+        """Every visible portfolio of the plan-option's scheme, oldest first."""
+        profile = await self._rows(
+            text(
+                f"SELECT j.sd_id, s.name FROM ({_SCHEME_OF}) j "
+                "JOIN wickstreet.scheme s ON s.sd_id = j.sd_id "
+                "JOIN wickstreet.plan_option p ON p.id = j.plan_option_id WHERE p.amfi_code = :c"
+            ),
+            c=code,
+            r=revision,
+        )
+        if not profile:
+            return None
+        sd_id, name = profile[0]
+        async with self._database.engine.connect() as connection:
+            rows = await connection.execute(
+                text(
+                    f"SELECT {_HOLDING_COLUMNS} FROM wickstreet.holding h "
+                    f"WHERE h.sd_id = :s AND {_visible('h')} ORDER BY h.as_of, h.seq"
+                ),
+                {"s": sd_id, "r": revision},
+            )
+            found = _portfolios(rows).get(sd_id, [])
+            caps = await _caps(connection, revision) if found else {}
+        return SchemePortfolios(sd_id, name, found, caps)
 
     async def links(self, code: str) -> list[Link]:
         """Curated links from or to one plan-option."""

@@ -18,19 +18,15 @@ files and ``wickstreet mf import-rates`` imports them. Two layouts, as observed 
 from __future__ import annotations
 
 import html
-import io
 import re
-import zipfile
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from xml.etree import ElementTree
 
 from wickstreet.mf_data.domain.model import RBI, TBILL_91, RatePoint, RawFile
 from wickstreet.mf_data.domain.ports import SourceLayoutError
+from wickstreet.mf_data.infrastructure.xlsx import first_sheet
 
-_M = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _EXCEL_EPOCH = date(1899, 12, 30)
-_COLUMN = re.compile(r"[A-Z]+")
 _DAY_TEXT = "%d-%b-%Y"
 _RELEASE_DATE = re.compile(r"Date\s*:\s*([A-Z][a-z]{2} \d{1,2}, \d{4})")
 _ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
@@ -40,33 +36,6 @@ _YTM = re.compile(r"\(YTM:\s*([0-9.]+)%\)")
 
 def _text(cell: str) -> str:
     return html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", cell))).strip()
-
-
-def _sheet_rows(content: bytes) -> list[dict[str, str]]:
-    """The first sheet's cells by column letter, one dict per row (stdlib only)."""
-    book = zipfile.ZipFile(io.BytesIO(content))
-    names = book.namelist()
-    shared = (
-        [
-            "".join(t.text or "" for t in item.iter(_M + "t"))
-            for item in ElementTree.fromstring(book.read("xl/sharedStrings.xml")).iter(_M + "si")
-        ]
-        if "xl/sharedStrings.xml" in names
-        else []
-    )
-    sheet = min(n for n in names if n.startswith("xl/worksheets/sheet"))
-    rows = []
-    for row in ElementTree.fromstring(book.read(sheet)).iter(_M + "row"):
-        cells = {}
-        for cell in row.iter(_M + "c"):
-            value = cell.find(_M + "v")
-            column = _COLUMN.match(cell.get("r", ""))
-            if value is None or value.text is None or column is None:
-                continue
-            text = shared[int(value.text)] if cell.get("t") == "s" else value.text
-            cells[column.group()] = text.strip()
-        rows.append(cells)
-    return rows
 
 
 def _auction_day(value: str) -> date | None:
@@ -90,7 +59,7 @@ def _yield(value: str) -> Decimal | None:
 
 def parse_handbook(content: bytes) -> list[RatePoint]:
     """Rates from a Handbook table: one per auction row with a date and a yield."""
-    rows = _sheet_rows(content)
+    rows = first_sheet(content)
     header = next((r for r in rows if any("Implicit Yield" in v for v in r.values())), None)
     if header is None:
         raise SourceLayoutError("No 'Implicit Yield at Cut-off Price' column.")

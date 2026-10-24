@@ -46,6 +46,11 @@ SHARED_REFERENCE_TABLES = frozenset(
         "plan_option_link",
         "metric_snapshot",
         "rate_point",
+        "scheme",
+        "scheme_isin",
+        "scheme_fact",
+        "holding",
+        "security_class",
     }
 )
 _POLICY_SETTING = "current_setting('wickstreet.tenant_id'"
@@ -181,4 +186,4 @@ async def test_mf_migrations_run_alone_and_leave_momentum25_untouched(
     await admin.dispose()
     assert before[0]
     assert after == before
-    assert mf_version == "0005_research_records"
+    assert mf_version == "0008_portfolio_ledger"

@@ -30,9 +30,13 @@ from wickstreet.mf_data.domain.model import (
     ARCHIVE_TOLERANCE,
     NAV_CONTRACT,
     Anomaly,
+    CapClass,
     NavRecord,
+    Portfolios,
     RatePoint,
+    SchemeFacts,
     SchemeRecord,
+    SchemeRef,
 )
 from wickstreet.mf_data.domain.ports import Provenance, Published, Run, StoredRaw
 
@@ -605,3 +609,330 @@ class SqlMfStore:
             await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
             return Published(revision=None, inserted=0, superseded=0)
         return Published(revision=revision_id, inserted=changed, superseded=0)
+
+    async def scheme_keys(self) -> tuple[list[SchemeRef], dict[int, str]]:
+        """Every listed scheme, and each scheme's current SEBI code from its SSD."""
+        async with self._database.engine.connect() as connection:
+            schemes = [
+                SchemeRef(r.sd_id, r.mf_id, r.name)
+                for r in await connection.execute(
+                    text("SELECT sd_id, mf_id, name FROM wickstreet.scheme ORDER BY sd_id")
+                )
+            ]
+            codes = {
+                r.sd_id: r.txt
+                for r in await connection.execute(
+                    text(
+                        "SELECT DISTINCT ON (sd_id) sd_id, txt FROM wickstreet.scheme_fact "
+                        "WHERE name = 'ssd:SEBI_Codes' AND superseded_revision IS NULL "
+                        "ORDER BY sd_id, as_of DESC"
+                    )
+                )
+            }
+        return schemes, codes
+
+    async def scheme_navs(self, day: date) -> dict[int, list[Decimal]]:
+        """Each scheme's plan-option NAVs on ``day``, joined through the master ISINs."""
+        async with self._database.engine.connect() as connection:
+            rows = await connection.execute(
+                text(
+                    "SELECT DISTINCT i.sd_id, n.nav FROM wickstreet.nav n "
+                    "JOIN wickstreet.plan_option_master m ON m.plan_option_id = n.plan_option_id "
+                    "AND m.superseded_revision IS NULL "
+                    "JOIN wickstreet.scheme_isin i ON i.isin IN (m.isin_growth, m.isin_reinvest) "
+                    "WHERE n.nav_date = :d AND n.superseded_revision IS NULL AND n.nav > 0"
+                ),
+                {"d": day},
+            )
+            found: dict[int, list[Decimal]] = {}
+            for row in rows:
+                found.setdefault(row.sd_id, []).append(row.nav)
+        return found
+
+    async def active_scheme_names(self, since: date) -> list[str]:
+        """Master scheme names of plan-options with a current NAV on or after ``since``."""
+        async with self._database.engine.connect() as connection:
+            rows = await connection.execute(
+                text(
+                    "SELECT DISTINCT m.scheme_name FROM wickstreet.plan_option_master m "
+                    "WHERE m.superseded_revision IS NULL AND EXISTS (SELECT 1 FROM "
+                    "wickstreet.nav n WHERE n.plan_option_id = m.plan_option_id "
+                    "AND n.nav_date >= :d AND n.superseded_revision IS NULL)"
+                ),
+                {"d": since},
+            )
+            return [row.scheme_name for row in rows]
+
+    async def latest_nav_day(self, on_or_before: date) -> date | None:
+        """The latest date on or before ``on_or_before`` with current NAVs."""
+        async with self._database.engine.connect() as connection:
+            found: date | None = await connection.scalar(
+                text(
+                    "SELECT max(nav_date) FROM wickstreet.nav WHERE nav_date <= :d "
+                    "AND nav_date > :d - 10 AND superseded_revision IS NULL"
+                ),
+                {"d": on_or_before},
+            )
+        return found
+
+    async def publish_facts(
+        self,
+        run_id: int,
+        found: SchemeFacts,
+        provenance: Provenance,
+        schemes: Sequence[SchemeRef] = (),
+    ) -> Published:
+        """Publish schemes, ISIN joins and facts as revision R, or mark the run unchanged.
+
+        A fact with a different value for a stored key supersedes it. Scheme names and
+        ISIN joins are kept as last listed.
+        """
+        facts = [(f.sd_id, f.name, f.plan, f.as_of, f.num, f.txt) for f in found.facts]
+        try:
+            async with self._database.engine.begin() as connection:
+                revision_id = await self._revision(connection, run_id, provenance)
+                listed = await self._upsert_schemes(connection, schemes, found, revision_id)
+                await self._stage(
+                    connection,
+                    "fact_stage",
+                    "sd_id int, name text, plan text, as_of date, num numeric, txt text",
+                    ("sd_id", "name", "plan", "as_of", "num", "txt"),
+                    facts,
+                )
+                # A fact for a scheme no list has named yet waits for the next list.
+                await connection.execute(
+                    text(
+                        "DELETE FROM fact_stage s WHERE NOT EXISTS "
+                        "(SELECT 1 FROM wickstreet.scheme c WHERE c.sd_id = s.sd_id)"
+                    )
+                )
+                key = (
+                    "t.sd_id = s.sd_id AND t.name = s.name AND t.plan = s.plan "
+                    "AND t.as_of = s.as_of AND t.superseded_revision IS NULL"
+                )
+                superseded = await connection.execute(
+                    text(
+                        f"UPDATE wickstreet.scheme_fact t SET superseded_revision = :r "
+                        f"FROM fact_stage s WHERE {key} AND (t.num IS DISTINCT FROM s.num "
+                        "OR t.txt IS DISTINCT FROM s.txt)"
+                    ),
+                    {"r": revision_id},
+                )
+                inserted = await connection.execute(
+                    text(
+                        "INSERT INTO wickstreet.scheme_fact "
+                        "(sd_id, name, plan, as_of, num, txt, revision_id) "
+                        "SELECT s.sd_id, s.name, s.plan, s.as_of, s.num, s.txt, "
+                        "CAST(:r AS bigint) FROM fact_stage s WHERE NOT EXISTS "
+                        f"(SELECT 1 FROM wickstreet.scheme_fact t WHERE {key})"
+                    ),
+                    {"r": revision_id},
+                )
+                if inserted.rowcount == 0 and listed == 0:
+                    raise _NothingChangedError
+                await self._point(connection, revision_id)
+                await self._finish(
+                    connection,
+                    run_id,
+                    "published",
+                    raw_sha256=provenance.raw_sha256,
+                    revision_id=revision_id,
+                    rows=len(facts),
+                    inserted=int(inserted.rowcount) + listed,
+                    superseded=int(superseded.rowcount),
+                    anomalies=found.unmatched,
+                )
+        except _NothingChangedError:
+            await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
+            return Published(revision=None, inserted=0, superseded=0)
+        return Published(
+            int(revision_id), int(inserted.rowcount) + listed, int(superseded.rowcount)
+        )
+
+    async def _upsert_schemes(
+        self,
+        connection: AsyncConnection,
+        schemes: Sequence[SchemeRef],
+        found: SchemeFacts,
+        revision_id: int,
+    ) -> int:
+        """Write new or renamed schemes and new or moved ISIN joins; return how many."""
+        changed = 0
+        if schemes:
+            result = await connection.execute(
+                text(
+                    "INSERT INTO wickstreet.scheme (sd_id, mf_id, name, revision_id) "
+                    "SELECT * FROM unnest(CAST(:ids AS int[]), CAST(:mfs AS int[]), "
+                    "CAST(:names AS text[]), CAST(:rs AS bigint[])) "
+                    "ON CONFLICT (sd_id) DO UPDATE SET mf_id = excluded.mf_id, "
+                    "name = excluded.name, revision_id = excluded.revision_id "
+                    "WHERE (scheme.mf_id, scheme.name) IS DISTINCT FROM "
+                    "(excluded.mf_id, excluded.name)"
+                ),
+                {
+                    "ids": [s.sd_id for s in schemes],
+                    "mfs": [s.mf_id for s in schemes],
+                    "names": [s.name for s in schemes],
+                    "rs": [revision_id] * len(schemes),
+                },
+            )
+            changed += int(result.rowcount)
+        if found.isins:
+            result = await connection.execute(
+                text(
+                    "INSERT INTO wickstreet.scheme_isin (isin, sd_id, revision_id) "
+                    "SELECT i, s, CAST(:r AS bigint) FROM unnest(CAST(:isins AS text[]), "
+                    "CAST(:ids AS int[])) AS u(i, s) "
+                    "WHERE EXISTS (SELECT 1 FROM wickstreet.scheme c WHERE c.sd_id = u.s) "
+                    "ON CONFLICT (isin) DO UPDATE SET sd_id = excluded.sd_id, "
+                    "revision_id = excluded.revision_id "
+                    "WHERE scheme_isin.sd_id IS DISTINCT FROM excluded.sd_id"
+                ),
+                {"isins": list(found.isins), "ids": list(found.isins.values()), "r": revision_id},
+            )
+            changed += int(result.rowcount)
+        return changed
+
+    async def publish_portfolios(
+        self, run_id: int, found: Portfolios, provenance: Provenance
+    ) -> Published:
+        """Publish changed portfolios as revision R, or mark the run unchanged.
+
+        A portfolio is one scheme on one date. When its filed lines differ in any way
+        from the current ones, every current line is superseded and the new set inserted.
+        """
+        columns = (
+            "sd_id",
+            "as_of",
+            "seq",
+            "name",
+            "isin",
+            "industry",
+            "section",
+            "asset",
+            "quantity",
+            "value",
+            "weight",
+        )
+        rows = [
+            (h.sd_id, h.as_of, h.seq, h.name, h.isin, h.industry, h.section, h.asset)
+            + (h.quantity, h.value, h.weight)
+            for h in found.holdings
+        ]
+        listed = ", ".join(columns)
+        try:
+            async with self._database.engine.begin() as connection:
+                revision_id = await self._revision(connection, run_id, provenance)
+                await self._stage(
+                    connection,
+                    "holding_stage",
+                    "sd_id int, as_of date, seq int, name text, isin text, industry text, "
+                    "section text, asset text, quantity numeric, value numeric, weight numeric",
+                    columns,
+                    rows,
+                )
+                current = (
+                    f"SELECT {listed} FROM wickstreet.holding h WHERE h.superseded_revision "
+                    "IS NULL AND (h.sd_id, h.as_of) IN (SELECT sd_id, as_of FROM holding_stage)"
+                )
+                await connection.execute(
+                    text(
+                        "CREATE TEMPORARY TABLE holding_changed ON COMMIT DROP AS "
+                        f"SELECT DISTINCT sd_id, as_of FROM ((SELECT {listed} FROM holding_stage "
+                        f"EXCEPT {current}) UNION ALL ({current} EXCEPT SELECT {listed} "
+                        "FROM holding_stage)) d"
+                    )
+                )
+                superseded = await connection.execute(
+                    text(
+                        "UPDATE wickstreet.holding h SET superseded_revision = :r "
+                        "FROM holding_changed c WHERE h.sd_id = c.sd_id AND h.as_of = c.as_of "
+                        "AND h.superseded_revision IS NULL"
+                    ),
+                    {"r": revision_id},
+                )
+                inserted = await connection.execute(
+                    text(
+                        f"INSERT INTO wickstreet.holding ({listed}, revision_id) "
+                        f"SELECT {', '.join('s.' + c for c in columns)}, CAST(:r AS bigint) "
+                        "FROM holding_stage s JOIN holding_changed c "
+                        "ON c.sd_id = s.sd_id AND c.as_of = s.as_of"
+                    ),
+                    {"r": revision_id},
+                )
+                if inserted.rowcount == 0:
+                    raise _NothingChangedError
+                await self._point(connection, revision_id)
+                await self._finish(
+                    connection,
+                    run_id,
+                    "published",
+                    raw_sha256=provenance.raw_sha256,
+                    revision_id=revision_id,
+                    rows=len(rows),
+                    inserted=int(inserted.rowcount),
+                    superseded=int(superseded.rowcount),
+                    anomalies=len(found.unmatched),
+                )
+        except _NothingChangedError:
+            await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
+            return Published(revision=None, inserted=0, superseded=0)
+        return Published(int(revision_id), int(inserted.rowcount), int(superseded.rowcount))
+
+    async def publish_market_caps(
+        self, run_id: int, found: Sequence[CapClass], provenance: Provenance
+    ) -> Published:
+        """Publish AMFI's market-cap classes for one period as revision R."""
+        rows = [(c.isin, c.as_of, c.name, c.market_cap_cr, c.cap_class) for c in found]
+        key = "t.isin = s.isin AND t.as_of = s.as_of AND t.superseded_revision IS NULL"
+        try:
+            async with self._database.engine.begin() as connection:
+                revision_id = await self._revision(connection, run_id, provenance)
+                await self._stage(
+                    connection,
+                    "cap_stage",
+                    "isin text, as_of date, name text, market_cap_cr numeric, cap_class text",
+                    ("isin", "as_of", "name", "market_cap_cr", "cap_class"),
+                    rows,
+                )
+                await connection.execute(
+                    text(
+                        "DELETE FROM cap_stage a USING cap_stage b WHERE a.ctid > b.ctid "
+                        "AND a.isin = b.isin AND a.as_of = b.as_of"
+                    )
+                )
+                superseded = await connection.execute(
+                    text(
+                        f"UPDATE wickstreet.security_class t SET superseded_revision = :r "
+                        f"FROM cap_stage s WHERE {key} AND (t.cap_class, t.market_cap_cr, t.name) "
+                        "IS DISTINCT FROM (s.cap_class, s.market_cap_cr, s.name)"
+                    ),
+                    {"r": revision_id},
+                )
+                inserted = await connection.execute(
+                    text(
+                        "INSERT INTO wickstreet.security_class "
+                        "(isin, as_of, name, market_cap_cr, cap_class, revision_id) "
+                        "SELECT s.isin, s.as_of, s.name, s.market_cap_cr, s.cap_class, "
+                        "CAST(:r AS bigint) FROM cap_stage s WHERE NOT EXISTS "
+                        f"(SELECT 1 FROM wickstreet.security_class t WHERE {key})"
+                    ),
+                    {"r": revision_id},
+                )
+                if inserted.rowcount == 0:
+                    raise _NothingChangedError
+                await self._point(connection, revision_id)
+                await self._finish(
+                    connection,
+                    run_id,
+                    "published",
+                    raw_sha256=provenance.raw_sha256,
+                    revision_id=revision_id,
+                    rows=len(rows),
+                    inserted=int(inserted.rowcount),
+                    superseded=int(superseded.rowcount),
+                )
+        except _NothingChangedError:
+            await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
+            return Published(revision=None, inserted=0, superseded=0)
+        return Published(int(revision_id), int(inserted.rowcount), int(superseded.rowcount))

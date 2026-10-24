@@ -11,7 +11,7 @@ them for the dates AMFI no longer serves and for cross-checks (ADR-023 U11).
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
@@ -98,3 +98,94 @@ class RatePoint:
     series: str
     day: date
     value: Decimal
+
+
+# Scheme facts from AMFI's research pages (doc 21 E1, E3): TER, fund performance against
+# the benchmark, scheme summary documents and index-fund tracking error. A scheme is
+# AMFI's scheme id (``SD_Id``); its plan-options join through the ISINs it lists.
+FACT_CONTRACT = "scheme-facts-v1"
+SCHEME_LIST = "scheme-list"
+TER_MONTH = "ter-month"
+PERFORMANCE_DAY = "performance-day"
+SSD = "ssd"
+TRACKING_ERROR_DAY = "tracking-error-day"
+# A fact's plan: the whole scheme, or one plan type of it.
+SCHEME, REGULAR, DIRECT = "", "regular", "direct"
+
+
+@dataclass(frozen=True, slots=True)
+class SchemeRef:
+    """One AMFI scheme: its id, its fund house's AMFI id and its name as listed."""
+
+    sd_id: int
+    mf_id: int
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class Fact:
+    """One filed value of one scheme: a number or a text, in force from ``as_of``.
+
+    ``plan`` is ``SCHEME`` for the whole scheme, else ``REGULAR`` or ``DIRECT``.
+    """
+
+    sd_id: int
+    name: str
+    plan: str
+    as_of: date
+    num: Decimal | None = None
+    txt: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SchemeFacts:
+    """What one facts file gave: the facts and the ISINs that join plans to schemes."""
+
+    facts: list[Fact]
+    isins: dict[str, int] = field(default_factory=dict)
+    unmatched: int = 0
+
+
+# Monthly portfolio disclosures (doc 21 E4): one row per filed line of one scheme's
+# portfolio on its disclosure date. ``weight`` is a fraction of net assets.
+HOLDINGS_CONTRACT = "holdings-v1"
+HOLDINGS_MONTH = "holdings-month"
+# AMFI's half-yearly market-cap list (SEBI categorisation of 6 Oct 2017).
+MARKET_CAP = "market-cap"
+EQUITY, DEBT, CASH, DERIVATIVE, OTHER = "equity", "debt", "cash", "derivative", "other"
+
+
+@dataclass(frozen=True, slots=True)
+class Holding:
+    """One filed line of a scheme's portfolio: its section, asset kind and weight."""
+
+    sd_id: int
+    as_of: date
+    seq: int
+    name: str
+    isin: str | None
+    industry: str | None
+    section: str
+    asset: str
+    quantity: Decimal | None
+    value: Decimal | None
+    weight: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class Portfolios:
+    """What one disclosure file gave: the holdings, and sheets no scheme matched."""
+
+    holdings: list[Holding]
+    unmatched: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class CapClass:
+    """One company in AMFI's market-cap list: average market cap (₹ crore) and class."""
+
+    isin: str
+    as_of: date
+    name: str
+    market_cap_cr: Decimal | None
+    cap_class: str

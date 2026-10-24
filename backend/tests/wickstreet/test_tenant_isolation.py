@@ -7,6 +7,7 @@ what stops it (ADR-023 §2.6, U3). The API checks run through the real app.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import date
 from uuid import UUID, uuid4
 
 import pytest
@@ -20,7 +21,7 @@ from starlette.requests import Request
 from momentum25.infrastructure.persistence.models import Base
 from platform_common.database import Database
 from tests.wickstreet.conftest import Urls
-from tests.wickstreet.tenant_cases import CASES, record_id
+from tests.wickstreet.tenant_cases import CASES, import_id, record_id, txn_id
 from wickstreet.app import create_app
 from wickstreet.config import WickstreetSettings
 from wickstreet.context import TenantContext
@@ -32,6 +33,7 @@ from wickstreet.persistence.database import (
     tenant_transaction,
 )
 from wickstreet.persistence.roles import ensure_roles
+from wickstreet.portfolio.infrastructure.tables import portfolio_import, portfolio_txn
 from wickstreet.workspace.infrastructure.tables import research_record
 
 Tenants = tuple[TenantContext, TenantContext]
@@ -56,6 +58,32 @@ async def tenants(app_database: Database) -> Tenants:
                     schema_version=1,
                     version=1,
                     archived=False,
+                )
+            )
+            owner = {"tenant_id": context.tenant_id, "owner_id": context.user_id}
+            await session.execute(
+                portfolio_import.insert().values(
+                    id=import_id(context),
+                    file_sha256="probe",
+                    cas_type="DETAILED",
+                    added=1,
+                    duplicates=0,
+                    closings=[],
+                    **owner,
+                )
+            )
+            await session.execute(
+                portfolio_txn.insert().values(
+                    id=txn_id(context),
+                    import_id=import_id(context),
+                    fingerprint="probe",
+                    folio="1",
+                    amc="Probe",
+                    scheme="Probe Fund",
+                    day=date(2026, 1, 1),
+                    kind="PURCHASE",
+                    description="Purchase",
+                    **owner,
                 )
             )
     return pair

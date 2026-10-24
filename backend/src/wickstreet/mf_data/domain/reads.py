@@ -8,9 +8,9 @@ from the same data while a refresh publishes.
 from __future__ import annotations
 
 import re
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Protocol
 
@@ -67,6 +67,88 @@ class FundSeries:
 
 
 @dataclass(frozen=True, slots=True)
+class FactPoint:
+    """One filed scheme fact (doc 21 E1, E3): a number or a text, in force from ``day``."""
+
+    day: int
+    num: float | None
+    txt: str | None
+
+
+# Facts read as a series in the snapshot pass; every other fact is read at its latest.
+SERIES_FACTS = ("ter", "aum_cr")
+
+
+@dataclass(frozen=True, slots=True)
+class HoldingRow:
+    """One filed line of a portfolio; ``weight`` is a fraction of net assets."""
+
+    name: str
+    isin: str | None
+    industry: str | None
+    section: str
+    asset: str
+    weight: float
+    value: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Portfolio:
+    """One scheme's portfolio on one disclosure date."""
+
+    as_of: date
+    rows: Sequence[HoldingRow]
+
+
+@dataclass(frozen=True, slots=True)
+class FactView:
+    """Scheme facts at one revision, joined to plan-options through their ISINs.
+
+    ``latest`` and ``series`` are keyed by scheme id, then by (fact name, plan), where
+    plan is ``""`` for the whole scheme, else ``"regular"`` or ``"direct"``.
+    """
+
+    scheme_of: Mapping[int, int] = field(default_factory=dict)
+    latest: Mapping[int, Mapping[tuple[str, str], FactPoint]] = field(default_factory=dict)
+    series: Mapping[int, Mapping[tuple[str, str], Sequence[FactPoint]]] = field(
+        default_factory=dict
+    )
+    # Each scheme's latest portfolio, and each ISIN's market-cap classes by period end.
+    portfolios: Mapping[int, Portfolio] = field(default_factory=dict)
+    caps: Mapping[str, Sequence[tuple[date, str]]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class SchemeFactRow:
+    """One visible fact of one scheme, for a fund's profile."""
+
+    name: str
+    plan: str
+    as_of: date
+    num: float | None
+    txt: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class SchemeProfile:
+    """A plan-option's AMFI scheme and every fact visible for it at a revision."""
+
+    sd_id: int
+    scheme_name: str
+    facts: Sequence[SchemeFactRow]
+
+
+@dataclass(frozen=True, slots=True)
+class SchemePortfolios:
+    """Every visible portfolio of a plan-option's scheme, oldest first, and the cap classes."""
+
+    sd_id: int
+    scheme_name: str
+    portfolios: Sequence[Portfolio]
+    caps: Mapping[str, Sequence[tuple[date, str]]]
+
+
+@dataclass(frozen=True, slots=True)
 class History:
     """Every plan-option's series at ``revision``, streamed one fund at a time."""
 
@@ -76,6 +158,7 @@ class History:
     funds: AsyncIterator[FundSeries]
     # The 91-day T-bill yield as (date ordinal, % a year), in date order; empty if none.
     risk_free: Sequence[tuple[int, float]] = ()
+    facts: FactView = field(default_factory=FactView)
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,4 +220,12 @@ class MfReader(Protocol):
 
     async def rates(self, series: str, revision: int) -> list[tuple[date, float]]:
         """Return one rate series at ``revision``, in date order."""
+        ...
+
+    async def scheme_profile(self, code: str, revision: int) -> SchemeProfile | None:
+        """Return the scheme a plan-option belongs to and every fact visible for it."""
+        ...
+
+    async def scheme_portfolios(self, code: str, revision: int) -> SchemePortfolios | None:
+        """Return every visible portfolio of the plan-option's scheme."""
         ...

@@ -10,7 +10,9 @@ from datetime import date, timedelta
 import pytest
 
 from wickstreet.analytics.domain import classify
+from wickstreet.analytics.domain.enrichment import fact_fields
 from wickstreet.analytics.domain.fields import FIELDS, attributes, ordered
+from wickstreet.analytics.domain.holdings import holding_fields
 from wickstreet.analytics.domain.metrics import (
     ANNUALISE_VOL,
     GAP_AT_START,
@@ -308,6 +310,8 @@ def test_the_encoding_is_deterministic_and_round_trips() -> None:
         | absent_fields(absent)
         | no_pair()
         | {"near_duplicates": absent}
+        | fact_fields(None, classify.GROWTH, o("2024-06-28"))
+        | holding_fields(None, {})
     )
     rows = [FundRow(1, "10001", "Example", ordered(values), metrics.anchors)]
     first = encode(1, 7, date(2024, 6, 28), ["tigzig", "amfi"], rows)

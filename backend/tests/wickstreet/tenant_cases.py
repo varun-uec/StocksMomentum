@@ -29,6 +29,16 @@ def record_id(context: TenantContext) -> UUID:
     return uuid5(context.tenant_id, "research_record")
 
 
+def import_id(context: TenantContext) -> UUID:
+    """The id of the one portfolio import the isolation fixture saves for a tenant."""
+    return uuid5(context.tenant_id, "portfolio_import")
+
+
+def txn_id(context: TenantContext) -> UUID:
+    """The id of the one portfolio transaction the isolation fixture saves for a tenant."""
+    return uuid5(context.tenant_id, "portfolio_txn")
+
+
 CASES: dict[str, TenantCase] = {
     "tenant": TenantCase(
         tenant_column="id",
@@ -47,6 +57,25 @@ CASES: dict[str, TenantCase] = {
             "id": uuid4(),
             "tenant_id": victim.tenant_id,
             "owner_id": victim.user_id,
+        },
+    ),
+    "portfolio_import": TenantCase(
+        tenant_column="tenant_id",
+        key=lambda c: {"id": import_id(c)},
+        forged_row=lambda victim: {
+            "id": uuid4(),
+            "tenant_id": victim.tenant_id,
+            "owner_id": victim.user_id,
+        },
+    ),
+    "portfolio_txn": TenantCase(
+        tenant_column="tenant_id",
+        key=lambda c: {"id": txn_id(c)},
+        forged_row=lambda victim: {
+            "id": uuid4(),
+            "tenant_id": victim.tenant_id,
+            "owner_id": victim.user_id,
+            "import_id": import_id(victim),
         },
     ),
 }

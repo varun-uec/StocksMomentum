@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import resource
 import sys
@@ -267,6 +268,159 @@ def mf_import_rates(
         for path, source in zip(files, url, strict=True):
             obtained = datetime.fromtimestamp(path.stat().st_mtime, UTC)
             outcome = await ingestion.rates.execute(RawFile(source, obtained, path.read_bytes()))
+            _print(outcome)
+            summary.add(outcome)
+        return summary
+
+    _ingest(settings, work)
+
+
+def _months(first: date, last: date) -> list[date]:
+    months: list[date] = []
+    month = first.replace(day=1)
+    while month <= last:
+        months.append(month)
+        month = date(month.year + month.month // 12, month.month % 12 + 1, 1)
+    return months
+
+
+@mf_app.command("facts")
+def mf_facts(
+    dataset: str = typer.Argument(
+        ..., help="schemes, ssd, ter, performance, tracking-error or market-caps."
+    ),
+    start: str | None = typer.Option(None, help="First date, YYYY-MM-DD; default the end."),
+    end: str | None = typer.Option(None, help="Last date, YYYY-MM-DD; default today."),
+    closed_ended: bool = typer.Option(False, help="Performance: include closed-ended schemes."),
+    refetch: bool = typer.Option(False, help="Re-read periods already settled."),
+    missing: bool = typer.Option(False, help="SSD: read only schemes with no stored SSD."),
+    stored: Path | None = typer.Option(None, help="SSD: publish this kept file."),  # noqa: B008
+    compute: bool = typer.Option(True, help="Compute the snapshot after a publish."),
+) -> None:
+    """Acquire AMFI scheme facts (doc 21 E1, E3); run ``schemes`` first, then ``ssd``.
+
+    ``ter`` reads each month from start to end. ``performance`` and ``tracking-error``
+    read the last NAV date of each month from start to end, then the end date itself.
+    """
+    settings = get_settings()
+    last = date.fromisoformat(end) if end else _today()
+    first = date.fromisoformat(start) if start else last
+
+    async def work(ingestion: Ingestion) -> Summary:
+        summary, facts = Summary(), ingestion.facts
+
+        def progress(done: int, total: int) -> None:
+            if done % 200 == 0 or done == total:
+                typer.echo(f"ssd {done}/{total}", err=True)
+
+        if dataset == "schemes":
+            outcomes = [await facts.schemes(last, refetch=refetch)]
+        elif dataset == "ssd":
+            kept = None
+            if stored is not None:
+                content = gzip.decompress(stored.read_bytes())
+                obtained = datetime.fromtimestamp(stored.stat().st_mtime, UTC)
+                kept = RawFile("https://portal.amfiindia.com/spages/SSD_*.xml", obtained, content)
+            outcomes = [
+                await facts.ssds(
+                    last, refetch=refetch, missing=missing, progress=progress, stored=kept
+                )
+            ]
+        elif dataset == "ter":
+            outcomes = []
+            for month in _months(first, last):
+                outcomes.append(await facts.ter(month, refetch=refetch))
+                _print(outcomes[-1])
+        elif dataset == "market-caps":
+            outcomes = []
+            for month in _months(first, last):
+                if month.month in (6, 12):
+                    end_day = date(month.year, month.month, 30 if month.month == 6 else 31)
+                    outcomes.append(await facts.market_caps(end_day, refetch=refetch))
+                    _print(outcomes[-1])
+        elif dataset in ("performance", "tracking-error"):
+            days: list[date] = []
+            for month in _months(first, last):
+                following = date(month.year + month.month // 12, month.month % 12 + 1, 1)
+                found = await ingestion.store.latest_nav_day(min(following - timedelta(1), last))
+                if found is not None and found not in days:
+                    days.append(found)
+            outcomes = []
+            for day in days:
+                if dataset == "performance":
+                    outcome = await facts.performance(
+                        day, closed_ended=closed_ended, refetch=refetch
+                    )
+                else:
+                    outcome = await facts.tracking_error(day, refetch=refetch)
+                _print(outcome)
+                outcomes.append(outcome)
+        else:
+            raise typer.BadParameter(f"unknown dataset {dataset!r}")
+        for outcome in outcomes:
+            summary.add(outcome)
+        if dataset in ("schemes", "ssd"):
+            _print(outcomes[0])
+        return summary
+
+    summary = _run(settings, work)
+    _summary(summary)
+    if compute and summary.statuses["published"]:
+        _compute(settings)
+
+
+def _month_end(month: date) -> date:
+    following = date(month.year + month.month // 12, month.month % 12 + 1, 1)
+    return following - timedelta(days=1)
+
+
+@mf_app.command("portfolios")
+def mf_portfolios(
+    amc: list[str] = typer.Option(["ppfas", "dsp"], "--amc", help="AMCs to read."),  # noqa: B008
+    start: str | None = typer.Option(None, help="First month, YYYY-MM-DD; default last month."),
+    end: str | None = typer.Option(None, help="Last month, YYYY-MM-DD; default last month."),
+    refetch: bool = typer.Option(False, help="Re-read months already settled."),
+    compute: bool = typer.Option(True, help="Compute the snapshot after a publish."),
+) -> None:
+    """Acquire monthly portfolio disclosures from AMC pages (doc 21 E4)."""
+    settings = get_settings()
+    previous = _today().replace(day=1) - timedelta(days=1)
+    last = date.fromisoformat(end) if end else previous
+    first = date.fromisoformat(start) if start else last
+
+    async def work(ingestion: Ingestion) -> Summary:
+        summary = Summary()
+        for name in amc:
+            for month in _months(first, last):
+                outcome = await ingestion.portfolios.month(name, _month_end(month), refetch=refetch)
+                typer.echo(f"{name} ", nl=False)
+                _print(outcome)
+                summary.add(outcome)
+        return summary
+
+    summary = _run(settings, work)
+    _summary(summary)
+    if compute and summary.statuses["published"]:
+        _compute(settings)
+
+
+@mf_app.command("import-portfolios")
+def mf_import_portfolios(
+    files: list[Path] = typer.Argument(..., help="AMC portfolio workbooks or zips."),  # noqa: B008
+    amc: str = typer.Option(..., help="The AMC the files came from, e.g. ppfas."),
+    month: str = typer.Option(..., help="Month end of the disclosure, YYYY-MM-DD."),
+    url: str = typer.Option(..., help="Where the files came from."),
+) -> None:
+    """Import portfolio files a person downloaded; Wickstreet fetches nothing."""
+    settings = get_settings()
+    month_end = date.fromisoformat(month)
+
+    async def work(ingestion: Ingestion) -> Summary:
+        summary = Summary()
+        for path in files:
+            obtained = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+            raw = RawFile(url, obtained, path.read_bytes())
+            outcome = await ingestion.portfolios.import_file(amc, raw, month_end)
             _print(outcome)
             summary.add(outcome)
         return summary
