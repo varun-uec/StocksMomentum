@@ -59,6 +59,8 @@ export function ResultsTable({
   stale?: boolean;
 }) {
   const primary = sort[0];
+  // With six or more metrics the NAV line gives way on narrower desktops, so the chosen metrics fit (review 2, rank 3).
+  const compact = columns.length >= 6;
   // Width hidden to the right of the wide table, so a column never disappears without a cue (review 1, rank 3).
   const wide = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(0);
@@ -98,7 +100,7 @@ export function ResultsTable({
               <th scope="col" className="sticky left-0 z-10 bg-mf-sunken px-4 py-3 text-left font-medium">
                 Fund
               </th>
-              <th scope="col" className="w-[96px] px-2 py-3 text-left font-medium">
+              <th scope="col" className={cx('w-[96px] px-2 py-3 text-left font-medium', compact && 'max-2xl:hidden')}>
                 3Y NAV
               </th>
               {columns.map((c) => {
@@ -124,7 +126,7 @@ export function ResultsTable({
                   <div className="flex items-center gap-2.5">
                     <FundMark amc={String(r.values.amc ?? '')} size="sm" />
                     <div className="min-w-0">
-                      <Link to={`/mf/funds/${r.amfi_code}`} className="line-clamp-2 font-medium leading-snug text-mf-ink hover:text-mf-brand-strong" title={r.name}>
+                      <Link to={`/mf/funds/${r.amfi_code}`} className="block truncate font-medium leading-snug text-mf-ink hover:text-mf-brand-strong" title={r.name}>
                         {schemeName(r.name)}
                       </Link>
                       <span className="text-xs text-mf-muted">
@@ -133,7 +135,7 @@ export function ResultsTable({
                     </div>
                   </div>
                 </th>
-                <td className="w-[96px] px-2 py-2">{line(r)}</td>
+                <td className={cx('w-[96px] px-2 py-2', compact && 'max-2xl:hidden')}>{line(r)}</td>
                 {columns.map((c) => (
                   <td key={c} className="whitespace-nowrap px-2.5 py-3 text-right">
                     <Cell row={r} column={c} fields={fields} />
@@ -163,7 +165,10 @@ export function ResultsTable({
                 </Link>
                 <p className="mt-0.5 text-xs text-mf-muted">{r.values.category ? categoryShort(String(r.values.category)) : `AMFI ${r.amfi_code}`}</p>
               </div>
-              <div className="w-20 shrink-0">{line(r)}</div>
+              <div className="flex shrink-0 gap-1">
+                <WatchButton code={r.amfi_code} name={r.name} />
+                <CompareButton code={r.amfi_code} name={r.name} />
+              </div>
             </div>
             <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2">
               {columns
@@ -178,10 +183,6 @@ export function ResultsTable({
                   </div>
                 ))}
             </dl>
-            <div className="mt-3 flex gap-2">
-              <WatchButton code={r.amfi_code} name={r.name} label />
-              <CompareButton code={r.amfi_code} name={r.name} label />
-            </div>
           </li>
         ))}
       </ul>
