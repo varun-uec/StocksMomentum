@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from datetime import date
 from typing import Any
 
-from sqlalchemy import bindparam, text
+from sqlalchemy import TextClause, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncResult
 
 from platform_common.database import Database
@@ -168,17 +168,29 @@ def _portfolios(rows: Any) -> dict[int, list[Portfolio]]:
     return found
 
 
+async def _streamed(
+    connection: AsyncConnection, sql: TextClause, params: dict[str, Any]
+) -> AsyncIterator[tuple[Any, ...]]:
+    found = await connection.stream(sql.execution_options(yield_per=_STREAM_BATCH), params)
+    async for batch in found.partitions(_STREAM_BATCH):
+        for row in batch:
+            yield tuple(row)
+
+
 async def _fact_view(connection: AsyncConnection, revision: int) -> FactView:
     params = {"r": revision}
     scheme_of: dict[int, int] = {}
     for pid, sd_id in await connection.execute(text(_SCHEME_OF), params):
         scheme_of[pid] = sd_id
+    # The fact queries stream: buffering the TER and AUM series (~670k rows) whole
+    # cost ~180 MB at the compute's peak.
     latest: dict[int, dict[tuple[str, str], FactPoint]] = {}
-    for sd_id, name, plan, day, num, txt in await connection.execute(_LATEST_FACTS, params):
+    found = _streamed(connection, _LATEST_FACTS, params)
+    async for sd_id, name, plan, day, num, txt in found:
         latest.setdefault(sd_id, {})[(name, plan)] = FactPoint(day, num, txt)
     series: dict[int, dict[tuple[str, str], list[FactPoint]]] = {}
-    found = await connection.execute(_SERIES_FACTS, params | {"names": list(SERIES_FACTS)})
-    for sd_id, name, plan, day, num, txt in found:
+    found = _streamed(connection, _SERIES_FACTS, params | {"names": list(SERIES_FACTS)})
+    async for sd_id, name, plan, day, num, txt in found:
         series.setdefault(sd_id, {}).setdefault((name, plan), []).append(FactPoint(day, num, txt))
     distributions: dict[int, list[tuple[int, float]]] = {}
     for pid, day, rate in await connection.execute(_DISTRIBUTIONS, params):

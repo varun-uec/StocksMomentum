@@ -379,11 +379,14 @@ class ComputeSnapshot:
         for done, i in enumerate(
             sorted(range(len(records)), key=lambda i: records[i].plan_option_id)
         ):
+            # A row's dicts are dropped once it is encoded: kept, they held every
+            # field of every fund to the end (~250 MB at the compute's peak).
             fund, values = records[i], classes[i]
+            classes[i] = {}
             pid = fund.plan_option_id
             metric_values, anchors = own[i]
             values |= dict(zip(METRIC_FIELDS, metric_values, strict=True))
-            values |= extra[pid]
+            values |= extra.pop(pid)
             found = grouped.get(pid)
             if found is None:
                 absent = group_absence(str(values["status"]), str(values["category"]), UNCLASSIFIED)
