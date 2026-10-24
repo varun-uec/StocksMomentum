@@ -1,0 +1,9 @@
+/mf 1 {"lcp":7088,"cls":0.01824177685667207,"longTasks":[76,56]}
+/mf 2 {"lcp":7104,"cls":0.01824177685667207,"longTasks":[75,60]}
+/mf 3 {"lcp":7104,"cls":0.01824177685667207,"longTasks":[77,62]}
+/mf/funds/122639 1 {"lcp":8256,"cls":0.06989722222702166,"longTasks":[75,80]}
+/mf/funds/122639 2 {"lcp":8268,"cls":0.06989722222702166,"longTasks":[79,96]}
+/mf/funds/122639 3 {"lcp":8256,"cls":0.06989722222702166,"longTasks":[76,82]}
+/mf/simulate?code=118987 1 {"lcp":7072,"cls":0.035245539558111154,"longTasks":[69]}
+/mf/simulate?code=118987 2 {"lcp":7060,"cls":0.035245539558111154,"longTasks":[72]}
+/mf/simulate?code=118987 3 {"lcp":7080,"cls":0.035245539558111154,"longTasks":[77]}

@@ -1,0 +1,1085 @@
+{
+  "base": "http://localhost:8000",
+  "profile": "390x844 mobile, reduced motion, cache disabled, 4x CPU, 150 ms latency, 200000 B/s down, 93750 B/s up",
+  "summary": [
+    {
+      "route": "/",
+      "lcp": [
+        2184,
+        2168,
+        2176
+      ],
+      "medianLcp": 2176,
+      "maxCls": 0.21938861679822014,
+      "jsEncoded": 238700,
+      "jsDecoded": 752666
+    },
+    {
+      "route": "/chart/RELIANCE",
+      "lcp": [
+        2156,
+        2160,
+        2148
+      ],
+      "medianLcp": 2156,
+      "maxCls": 0.02164369591602623,
+      "jsEncoded": 247973,
+      "jsDecoded": 778789
+    }
+  ],
+  "results": [
+    {
+      "route": "/",
+      "run": 1,
+      "vitals": {
+        "lcp": 2184,
+        "lcpElement": "span \"Data is 3 trading sessions behind — last bar 2026-10-19.\"",
+        "cls": 0.21938861679822014,
+        "longTasks": [
+          70
+        ]
+      },
+      "fcp": 1920,
+      "jsDecoded": 752666,
+      "jsEncoded": 238700,
+      "transferBytes": 976266,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 174,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 175,
+          "end": 484,
+          "encoded": 14099,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 175,
+          "end": 1460,
+          "encoded": 208994,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/page-DDdYkYOm.js",
+          "start": 1489,
+          "end": 1745,
+          "encoded": 3111,
+          "decoded": 6980
+        },
+        {
+          "url": "/assets/MomentumTable-BWAm5IIk.js",
+          "start": 1489,
+          "end": 1782,
+          "encoded": 5325,
+          "decoded": 17195
+        },
+        {
+          "url": "/assets/useQueries-zo5NO8vf.js",
+          "start": 1489,
+          "end": 1714,
+          "encoded": 1524,
+          "decoded": 3462
+        },
+        {
+          "url": "/assets/screener-DETaHVaF.js",
+          "start": 1489,
+          "end": 1753,
+          "encoded": 3593,
+          "decoded": 10435
+        },
+        {
+          "url": "/assets/FloatingPanel-RfZS9PYC.js",
+          "start": 1489,
+          "end": 1835,
+          "encoded": 14739,
+          "decoded": 54496
+        },
+        {
+          "url": "/assets/StrategySelector-BM7EWI8t.js",
+          "start": 1490,
+          "end": 1708,
+          "encoded": 812,
+          "decoded": 1600
+        },
+        {
+          "url": "/api/v1/workspaces/default",
+          "start": 1846,
+          "end": 2007,
+          "encoded": 467,
+          "decoded": 467
+        },
+        {
+          "url": "/api/v1/screens/default",
+          "start": 1857,
+          "end": 2014,
+          "encoded": 79,
+          "decoded": 79
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 1868,
+          "end": 2405,
+          "encoded": 48249,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/strategies?workspace=true",
+          "start": 1872,
+          "end": 2038,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/strategies?with_runs=true&workspace=true",
+          "start": 1872,
+          "end": 2052,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/runs/latest?strategy=minervini_trend_template",
+          "start": 1873,
+          "end": 2068,
+          "encoded": 1072,
+          "decoded": 1072
+        },
+        {
+          "url": "/api/v1/health/data-freshness",
+          "start": 1873,
+          "end": 2173,
+          "encoded": 245,
+          "decoded": 245
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=0",
+          "start": 2070,
+          "end": 2810,
+          "encoded": 97609,
+          "decoded": 97609
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=200",
+          "start": 2812,
+          "end": 6193,
+          "encoded": 97318,
+          "decoded": 97318
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=400",
+          "start": 2812,
+          "end": 6208,
+          "encoded": 97634,
+          "decoded": 97634
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=600",
+          "start": 2813,
+          "end": 6223,
+          "encoded": 97382,
+          "decoded": 97382
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=800",
+          "start": 2813,
+          "end": 6229,
+          "encoded": 97012,
+          "decoded": 97012
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=1200",
+          "start": 2813,
+          "end": 5337,
+          "encoded": 61522,
+          "decoded": 61522
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=1000",
+          "start": 2813,
+          "end": 6170,
+          "encoded": 96928,
+          "decoded": 96928
+        },
+        {
+          "url": "/assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+          "start": 6291,
+          "end": 6560,
+          "encoded": 19024,
+          "decoded": 18996
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "run": 2,
+      "vitals": {
+        "lcp": 2168,
+        "lcpElement": "span \"Data is 3 trading sessions behind — last bar 2026-10-19.\"",
+        "cls": 0.21938861679822014,
+        "longTasks": [
+          66
+        ]
+      },
+      "fcp": 1904,
+      "jsDecoded": 752666,
+      "jsEncoded": 238700,
+      "transferBytes": 976266,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 173,
+          "end": 327,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 174,
+          "end": 1453,
+          "encoded": 208994,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 174,
+          "end": 471,
+          "encoded": 14099,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/page-DDdYkYOm.js",
+          "start": 1479,
+          "end": 1731,
+          "encoded": 3111,
+          "decoded": 6980
+        },
+        {
+          "url": "/assets/MomentumTable-BWAm5IIk.js",
+          "start": 1479,
+          "end": 1774,
+          "encoded": 5325,
+          "decoded": 17195
+        },
+        {
+          "url": "/assets/useQueries-zo5NO8vf.js",
+          "start": 1480,
+          "end": 1692,
+          "encoded": 1524,
+          "decoded": 3462
+        },
+        {
+          "url": "/assets/screener-DETaHVaF.js",
+          "start": 1480,
+          "end": 1746,
+          "encoded": 3593,
+          "decoded": 10435
+        },
+        {
+          "url": "/assets/FloatingPanel-RfZS9PYC.js",
+          "start": 1480,
+          "end": 1827,
+          "encoded": 14739,
+          "decoded": 54496
+        },
+        {
+          "url": "/assets/StrategySelector-BM7EWI8t.js",
+          "start": 1480,
+          "end": 1700,
+          "encoded": 812,
+          "decoded": 1600
+        },
+        {
+          "url": "/api/v1/workspaces/default",
+          "start": 1836,
+          "end": 1993,
+          "encoded": 467,
+          "decoded": 467
+        },
+        {
+          "url": "/api/v1/screens/default",
+          "start": 1845,
+          "end": 1999,
+          "encoded": 79,
+          "decoded": 79
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 1856,
+          "end": 2390,
+          "encoded": 48249,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/strategies?workspace=true",
+          "start": 1859,
+          "end": 2022,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/strategies?with_runs=true&workspace=true",
+          "start": 1860,
+          "end": 2031,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/runs/latest?strategy=minervini_trend_template",
+          "start": 1860,
+          "end": 2052,
+          "encoded": 1072,
+          "decoded": 1072
+        },
+        {
+          "url": "/api/v1/health/data-freshness",
+          "start": 1861,
+          "end": 2157,
+          "encoded": 245,
+          "decoded": 245
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=0",
+          "start": 2054,
+          "end": 2794,
+          "encoded": 97609,
+          "decoded": 97609
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=200",
+          "start": 2797,
+          "end": 6126,
+          "encoded": 97318,
+          "decoded": 97318
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=400",
+          "start": 2797,
+          "end": 6156,
+          "encoded": 97634,
+          "decoded": 97634
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=600",
+          "start": 2797,
+          "end": 6133,
+          "encoded": 97382,
+          "decoded": 97382
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=800",
+          "start": 2797,
+          "end": 6163,
+          "encoded": 97012,
+          "decoded": 97012
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=1000",
+          "start": 2797,
+          "end": 6170,
+          "encoded": 96928,
+          "decoded": 96928
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=1200",
+          "start": 2797,
+          "end": 5006,
+          "encoded": 61522,
+          "decoded": 61522
+        },
+        {
+          "url": "/assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+          "start": 6230,
+          "end": 6493,
+          "encoded": 19024,
+          "decoded": 18996
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "run": 3,
+      "vitals": {
+        "lcp": 2176,
+        "lcpElement": "span \"Data is 3 trading sessions behind — last bar 2026-10-19.\"",
+        "cls": 0.21938861679822014,
+        "longTasks": [
+          67
+        ]
+      },
+      "fcp": 1904,
+      "jsDecoded": 752666,
+      "jsEncoded": 238700,
+      "transferBytes": 976266,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 174,
+          "end": 327,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 174,
+          "end": 477,
+          "encoded": 14099,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 174,
+          "end": 1452,
+          "encoded": 208994,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/page-DDdYkYOm.js",
+          "start": 1479,
+          "end": 1753,
+          "encoded": 3111,
+          "decoded": 6980
+        },
+        {
+          "url": "/assets/MomentumTable-BWAm5IIk.js",
+          "start": 1479,
+          "end": 1774,
+          "encoded": 5325,
+          "decoded": 17195
+        },
+        {
+          "url": "/assets/useQueries-zo5NO8vf.js",
+          "start": 1479,
+          "end": 1684,
+          "encoded": 1524,
+          "decoded": 3462
+        },
+        {
+          "url": "/assets/screener-DETaHVaF.js",
+          "start": 1479,
+          "end": 1737,
+          "encoded": 3593,
+          "decoded": 10435
+        },
+        {
+          "url": "/assets/FloatingPanel-RfZS9PYC.js",
+          "start": 1479,
+          "end": 1828,
+          "encoded": 14739,
+          "decoded": 54496
+        },
+        {
+          "url": "/assets/StrategySelector-BM7EWI8t.js",
+          "start": 1480,
+          "end": 1715,
+          "encoded": 812,
+          "decoded": 1600
+        },
+        {
+          "url": "/api/v1/workspaces/default",
+          "start": 1838,
+          "end": 2001,
+          "encoded": 467,
+          "decoded": 467
+        },
+        {
+          "url": "/api/v1/screens/default",
+          "start": 1847,
+          "end": 2008,
+          "encoded": 79,
+          "decoded": 79
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 1857,
+          "end": 2391,
+          "encoded": 48249,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/strategies?workspace=true",
+          "start": 1861,
+          "end": 2022,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/strategies?with_runs=true&workspace=true",
+          "start": 1862,
+          "end": 2030,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/runs/latest?strategy=minervini_trend_template",
+          "start": 1863,
+          "end": 2052,
+          "encoded": 1072,
+          "decoded": 1072
+        },
+        {
+          "url": "/api/v1/health/data-freshness",
+          "start": 1863,
+          "end": 2166,
+          "encoded": 245,
+          "decoded": 245
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=0",
+          "start": 2055,
+          "end": 2795,
+          "encoded": 97609,
+          "decoded": 97609
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=200",
+          "start": 2797,
+          "end": 6050,
+          "encoded": 97318,
+          "decoded": 97318
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=400",
+          "start": 2797,
+          "end": 6088,
+          "encoded": 97634,
+          "decoded": 97634
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=600",
+          "start": 2797,
+          "end": 6095,
+          "encoded": 97382,
+          "decoded": 97382
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=800",
+          "start": 2798,
+          "end": 6064,
+          "encoded": 97012,
+          "decoded": 97012
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=1000",
+          "start": 2798,
+          "end": 6072,
+          "encoded": 96928,
+          "decoded": 96928
+        },
+        {
+          "url": "/api/v1/rankings/runs/171?limit=200&offset=1200",
+          "start": 2798,
+          "end": 5195,
+          "encoded": 61522,
+          "decoded": 61522
+        },
+        {
+          "url": "/assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+          "start": 6155,
+          "end": 6418,
+          "encoded": 19024,
+          "decoded": 18996
+        }
+      ]
+    },
+    {
+      "route": "/chart/RELIANCE",
+      "run": 1,
+      "vitals": {
+        "lcp": 2156,
+        "lcpElement": "div \"RELIANCE · 1D · NSE\"",
+        "cls": 0.02164369591602623,
+        "longTasks": [
+          53
+        ]
+      },
+      "fcp": 1984,
+      "jsDecoded": 778789,
+      "jsEncoded": 247973,
+      "transferBytes": 596740,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 165,
+          "end": 328,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 165,
+          "end": 1453,
+          "encoded": 208994,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 165,
+          "end": 470,
+          "encoded": 14099,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/page-CeudmWuH.js",
+          "start": 1480,
+          "end": 1812,
+          "encoded": 8248,
+          "decoded": 22374
+        },
+        {
+          "url": "/assets/MomentumTable-BWAm5IIk.js",
+          "start": 1481,
+          "end": 1790,
+          "encoded": 5325,
+          "decoded": 17195
+        },
+        {
+          "url": "/assets/useQueries-zo5NO8vf.js",
+          "start": 1481,
+          "end": 1723,
+          "encoded": 1524,
+          "decoded": 3462
+        },
+        {
+          "url": "/assets/screener-DETaHVaF.js",
+          "start": 1482,
+          "end": 1729,
+          "encoded": 3593,
+          "decoded": 10435
+        },
+        {
+          "url": "/assets/OverlayPicker-DyUZGBoB.js",
+          "start": 1482,
+          "end": 1737,
+          "encoded": 3147,
+          "decoded": 8136
+        },
+        {
+          "url": "/assets/FloatingPanel-RfZS9PYC.js",
+          "start": 1482,
+          "end": 1857,
+          "encoded": 14739,
+          "decoded": 54496
+        },
+        {
+          "url": "/assets/useChartShell-DxhFGizB.js",
+          "start": 1482,
+          "end": 1888,
+          "encoded": 1801,
+          "decoded": 4193
+        },
+        {
+          "url": "/api/v1/workspaces/default",
+          "start": 1897,
+          "end": 2052,
+          "encoded": 467,
+          "decoded": 467
+        },
+        {
+          "url": "/api/v1/drawings/RELIANCE",
+          "start": 1906,
+          "end": 2067,
+          "encoded": 80,
+          "decoded": 80
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 1920,
+          "end": 2878,
+          "encoded": 48249,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/securities/RELIANCE/ohlcv",
+          "start": 1924,
+          "end": 3784,
+          "encoded": 228086,
+          "decoded": 228086
+        },
+        {
+          "url": "/api/v1/stocks/RELIANCE/indicators/series?strategy=minervini_trend_template",
+          "start": 1924,
+          "end": 2811,
+          "encoded": 40665,
+          "decoded": 40665
+        },
+        {
+          "url": "/api/v1/alerts",
+          "start": 1925,
+          "end": 2090,
+          "encoded": 24,
+          "decoded": 24
+        },
+        {
+          "url": "/api/v1/runs/latest?strategy=minervini_trend_template",
+          "start": 1925,
+          "end": 2263,
+          "encoded": 1072,
+          "decoded": 1072
+        },
+        {
+          "url": "/api/v1/watchlist/detail?strategy=minervini_trend_template",
+          "start": 1926,
+          "end": 2248,
+          "encoded": 358,
+          "decoded": 358
+        },
+        {
+          "url": "/api/v1/strategies?workspace=true",
+          "start": 1926,
+          "end": 2277,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/securities?q=RELIANCE&limit=1",
+          "start": 2156,
+          "end": 2427,
+          "encoded": 74,
+          "decoded": 74
+        },
+        {
+          "url": "/api/v1/stocks/RELIANCE?strategy=minervini_trend_template&run_id=171",
+          "start": 2268,
+          "end": 2630,
+          "encoded": 8430,
+          "decoded": 8430
+        }
+      ]
+    },
+    {
+      "route": "/chart/RELIANCE",
+      "run": 2,
+      "vitals": {
+        "lcp": 2160,
+        "lcpElement": "div \"RELIANCE · 1D · NSE\"",
+        "cls": 0.02164369591602623,
+        "longTasks": [
+          50
+        ]
+      },
+      "fcp": 1992,
+      "jsDecoded": 778789,
+      "jsEncoded": 247973,
+      "transferBytes": 596740,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 173,
+          "end": 336,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 173,
+          "end": 486,
+          "encoded": 14099,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 173,
+          "end": 1460,
+          "encoded": 208994,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/page-CeudmWuH.js",
+          "start": 1485,
+          "end": 1821,
+          "encoded": 8248,
+          "decoded": 22374
+        },
+        {
+          "url": "/assets/useQueries-zo5NO8vf.js",
+          "start": 1486,
+          "end": 1729,
+          "encoded": 1524,
+          "decoded": 3462
+        },
+        {
+          "url": "/assets/MomentumTable-BWAm5IIk.js",
+          "start": 1486,
+          "end": 1812,
+          "encoded": 5325,
+          "decoded": 17195
+        },
+        {
+          "url": "/assets/FloatingPanel-RfZS9PYC.js",
+          "start": 1486,
+          "end": 1866,
+          "encoded": 14739,
+          "decoded": 54496
+        },
+        {
+          "url": "/assets/OverlayPicker-DyUZGBoB.js",
+          "start": 1486,
+          "end": 1746,
+          "encoded": 3147,
+          "decoded": 8136
+        },
+        {
+          "url": "/assets/screener-DETaHVaF.js",
+          "start": 1486,
+          "end": 1760,
+          "encoded": 3593,
+          "decoded": 10435
+        },
+        {
+          "url": "/assets/useChartShell-DxhFGizB.js",
+          "start": 1486,
+          "end": 1896,
+          "encoded": 1801,
+          "decoded": 4193
+        },
+        {
+          "url": "/api/v1/workspaces/default",
+          "start": 1906,
+          "end": 2060,
+          "encoded": 467,
+          "decoded": 467
+        },
+        {
+          "url": "/api/v1/drawings/RELIANCE",
+          "start": 1915,
+          "end": 2075,
+          "encoded": 80,
+          "decoded": 80
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 1931,
+          "end": 2884,
+          "encoded": 48249,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/securities/RELIANCE/ohlcv",
+          "start": 1934,
+          "end": 3792,
+          "encoded": 228086,
+          "decoded": 228086
+        },
+        {
+          "url": "/api/v1/stocks/RELIANCE/indicators/series?strategy=minervini_trend_template",
+          "start": 1934,
+          "end": 2817,
+          "encoded": 40665,
+          "decoded": 40665
+        },
+        {
+          "url": "/api/v1/alerts",
+          "start": 1935,
+          "end": 2097,
+          "encoded": 24,
+          "decoded": 24
+        },
+        {
+          "url": "/api/v1/runs/latest?strategy=minervini_trend_template",
+          "start": 1936,
+          "end": 2270,
+          "encoded": 1072,
+          "decoded": 1072
+        },
+        {
+          "url": "/api/v1/watchlist/detail?strategy=minervini_trend_template",
+          "start": 1937,
+          "end": 2263,
+          "encoded": 358,
+          "decoded": 358
+        },
+        {
+          "url": "/api/v1/strategies?workspace=true",
+          "start": 1937,
+          "end": 2285,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/securities?q=RELIANCE&limit=1",
+          "start": 2160,
+          "end": 2442,
+          "encoded": 74,
+          "decoded": 74
+        },
+        {
+          "url": "/api/v1/stocks/RELIANCE?strategy=minervini_trend_template&run_id=171",
+          "start": 2276,
+          "end": 2638,
+          "encoded": 8430,
+          "decoded": 8430
+        }
+      ]
+    },
+    {
+      "route": "/chart/RELIANCE",
+      "run": 3,
+      "vitals": {
+        "lcp": 2148,
+        "lcpElement": "div \"RELIANCE · 1D · NSE\"",
+        "cls": 0.02164369591602623,
+        "longTasks": [
+          50
+        ]
+      },
+      "fcp": 1976,
+      "jsDecoded": 778789,
+      "jsEncoded": 247973,
+      "transferBytes": 596740,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 172,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 173,
+          "end": 486,
+          "encoded": 14099,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 173,
+          "end": 1461,
+          "encoded": 208994,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/page-CeudmWuH.js",
+          "start": 1487,
+          "end": 1821,
+          "encoded": 8248,
+          "decoded": 22374
+        },
+        {
+          "url": "/assets/useQueries-zo5NO8vf.js",
+          "start": 1487,
+          "end": 1715,
+          "encoded": 1524,
+          "decoded": 3462
+        },
+        {
+          "url": "/assets/MomentumTable-BWAm5IIk.js",
+          "start": 1487,
+          "end": 1797,
+          "encoded": 5325,
+          "decoded": 17195
+        },
+        {
+          "url": "/assets/FloatingPanel-RfZS9PYC.js",
+          "start": 1487,
+          "end": 1865,
+          "encoded": 14739,
+          "decoded": 54496
+        },
+        {
+          "url": "/assets/screener-DETaHVaF.js",
+          "start": 1487,
+          "end": 1745,
+          "encoded": 3593,
+          "decoded": 10435
+        },
+        {
+          "url": "/assets/OverlayPicker-DyUZGBoB.js",
+          "start": 1487,
+          "end": 1761,
+          "encoded": 3147,
+          "decoded": 8136
+        },
+        {
+          "url": "/assets/useChartShell-DxhFGizB.js",
+          "start": 1487,
+          "end": 1881,
+          "encoded": 1801,
+          "decoded": 4193
+        },
+        {
+          "url": "/api/v1/workspaces/default",
+          "start": 1890,
+          "end": 2053,
+          "encoded": 467,
+          "decoded": 467
+        },
+        {
+          "url": "/api/v1/drawings/RELIANCE",
+          "start": 1899,
+          "end": 2060,
+          "encoded": 80,
+          "decoded": 80
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 1915,
+          "end": 2886,
+          "encoded": 48249,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/securities/RELIANCE/ohlcv",
+          "start": 1918,
+          "end": 3785,
+          "encoded": 228086,
+          "decoded": 228086
+        },
+        {
+          "url": "/api/v1/stocks/RELIANCE/indicators/series?strategy=minervini_trend_template",
+          "start": 1919,
+          "end": 2802,
+          "encoded": 40665,
+          "decoded": 40665
+        },
+        {
+          "url": "/api/v1/alerts",
+          "start": 1919,
+          "end": 2090,
+          "encoded": 24,
+          "decoded": 24
+        },
+        {
+          "url": "/api/v1/runs/latest?strategy=minervini_trend_template",
+          "start": 1919,
+          "end": 2270,
+          "encoded": 1072,
+          "decoded": 1072
+        },
+        {
+          "url": "/api/v1/watchlist/detail?strategy=minervini_trend_template",
+          "start": 1920,
+          "end": 2241,
+          "encoded": 358,
+          "decoded": 358
+        },
+        {
+          "url": "/api/v1/strategies?workspace=true",
+          "start": 1921,
+          "end": 2277,
+          "encoded": 863,
+          "decoded": 863
+        },
+        {
+          "url": "/api/v1/securities?q=RELIANCE&limit=1",
+          "start": 2147,
+          "end": 2419,
+          "encoded": 74,
+          "decoded": 74
+        },
+        {
+          "url": "/api/v1/stocks/RELIANCE?strategy=minervini_trend_template&run_id=171",
+          "start": 2276,
+          "end": 2631,
+          "encoded": 8430,
+          "decoded": 8430
+        }
+      ]
+    }
+  ]
+}

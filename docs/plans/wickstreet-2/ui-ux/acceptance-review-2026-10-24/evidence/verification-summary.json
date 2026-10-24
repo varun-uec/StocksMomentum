@@ -1,0 +1,28 @@
+{
+  "verdict": "Further Remediation Required",
+  "weighted_score": 7.78,
+  "displayed_score": 7.8,
+  "matrix": {
+    "Verified Fixed": 14,
+    "Partially Fixed": 1,
+    "Unresolved": 0,
+    "Regressed": 0
+  },
+  "browser_tests_passed": 21,
+  "focused_web_tests_passed": 31,
+  "tax_tests_passed": 3,
+  "all_four_independent_scenario_roundtrips": true,
+  "cold_profile": "390x844; 4x CPU; 150ms; 200000 B/s download; 93750 B/s upload; cache disabled",
+  "median_lcp_ms": {
+    "/mf": 7104,
+    "/mf/funds/122639": 8256,
+    "/mf/simulate?code=118987": 7072
+  },
+  "known_failure": {
+    "code": "119517",
+    "actual_tax": 0.0,
+    "expected_tax": 15320.157428624489
+  },
+  "missing_local_links": [],
+  "screenshots": 17
+}

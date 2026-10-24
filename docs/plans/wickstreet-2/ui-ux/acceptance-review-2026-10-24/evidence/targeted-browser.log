@@ -1,0 +1,26 @@
+
+Running 19 tests using 1 worker
+
+(node:98880) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › e2e/mf/independent-audit.spec.ts:21:1 › A-02: the risk chart, its zoom and its table keep the deepest fall (687ms)
+  ✓   2 [chromium] › e2e/mf/independent-audit.spec.ts:40:1 › A-03: a sale on the 12-month anniversary is short term (76ms)
+  ✓   3 [chromium] › e2e/mf/independent-audit.spec.ts:54:1 › A-04: the lab never taxes a debt fund as equity by default (375ms)
+  ✓   4 [chromium] › e2e/mf/independent-audit.spec.ts:67:1 › A-04: a fund whose category does not settle its tax asks for a class (2.4s)
+  ✓   5 [chromium] › e2e/mf/independent-audit.spec.ts:82:1 › A-05: a saved scenario reopens with every input, on its snapshot or the latest (443ms)
+  ✓   6 [chromium] › e2e/mf/independent-audit.spec.ts:118:1 › A-06: an older query’s results cannot be chosen while the new one is pending (4.4s)
+  ✓   7 [chromium] › e2e/mf/independent-audit.spec.ts:138:1 › A-07: a broad AMC query opens on current plans; historical ones are labelled (1.4s)
+  ✓   8 [chromium] › e2e/mf/independent-audit.spec.ts:149:1 › A-08: Match any on a saved nested group keeps a valid filter (291ms)
+  ✓   9 [chromium] › e2e/mf/independent-audit.spec.ts:182:1 › rename conflict › A-09: a rename that loses a race keeps the proposed name (280ms)
+  ✓  10 [chromium] › e2e/mf/independent-audit.spec.ts:200:3 › watchlist failure › A-10: a failed watchlist change is shown and can be retried (342ms)
+  ✓  11 [chromium] › e2e/mf/independent-audit.spec.ts:218:1 › A-11: an unsaved note survives opening another note (319ms)
+  ✓  12 [chromium] › e2e/mf/independent-audit.spec.ts:232:1 › A-12: chart focus is visible to keyboard users (336ms)
+  ✓  13 [chromium] › e2e/mf/independent-audit.spec.ts:240:1 › A-13: the comparison table uses the chart’s rupees (364ms)
+  ✓  14 [chromium] › e2e/mf/independent-audit.spec.ts:249:1 › A-14: backtest growth starts at 100 and books each month at its realised end (1.2s)
+  ✓  15 [chromium] › e2e/mf/independent-audit.spec.ts:260:1 › A-15: sections from two snapshots raise a warning (461ms)
+  ✓  16 [chromium] › e2e/mf/independent-audit.spec.ts:278:1 › Discover answers a question in the first desktop viewport (254ms)
+  ✓  17 [chromium] › e2e/mf/independent-audit.spec.ts:288:3 › phone › the lab shows its result before the form on a phone (412ms)
+  ✓  18 [chromium] › e2e/mf/independent-audit.spec.ts:294:3 › phone › fund tabs other than Overview use a compact header (208ms)
+  ✓  19 [chromium] › e2e/mf/independent-audit.spec.ts:299:3 › phone › information buttons have a 44 px touch area (190ms)
+
+  19 passed (15.0s)

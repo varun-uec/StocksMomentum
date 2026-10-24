@@ -1,0 +1,2543 @@
+{
+  "base": "http://localhost:8000",
+  "profile": "390x844 mobile, reduced motion, cache disabled, 4x CPU, 150 ms latency, 200000 B/s down, 93750 B/s up",
+  "summary": [
+    {
+      "route": "/mf",
+      "lcp": [
+        7092,
+        7088,
+        7084
+      ],
+      "medianLcp": 7088,
+      "maxCls": 0.01824177685667207,
+      "jsEncoded": 1175341,
+      "jsDecoded": 1175341
+    },
+    {
+      "route": "/mf/funds/122639",
+      "lcp": [
+        8256,
+        8228,
+        8244
+      ],
+      "medianLcp": 8244,
+      "maxCls": 0.06989722222702166,
+      "jsEncoded": 1204185,
+      "jsDecoded": 1204185
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "lcp": [
+        7084,
+        7088,
+        7080
+      ],
+      "medianLcp": 7084,
+      "maxCls": 0.035245539558111154,
+      "jsEncoded": 1173924,
+      "jsDecoded": 1173924
+    }
+  ],
+  "results": [
+    {
+      "route": "/mf",
+      "run": 1,
+      "vitals": {
+        "lcp": 7092,
+        "lcpElement": "h1 \"Find better mutual fund investments.\"",
+        "cls": 0.01824177685667207,
+        "longTasks": [
+          78,
+          57
+        ]
+      },
+      "fcp": 7092,
+      "jsDecoded": 1175341,
+      "jsEncoded": 1175341,
+      "transferBytes": 1511375,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 176,
+          "end": 334,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 176,
+          "end": 4017,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 176,
+          "end": 1092,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4049,
+          "end": 4393,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4049,
+          "end": 4303,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4049,
+          "end": 4324,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4049,
+          "end": 4332,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4049,
+          "end": 4451,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4050,
+          "end": 4318,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4050,
+          "end": 4489,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4050,
+          "end": 4534,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4050,
+          "end": 4475,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/discover-DYz1y8F4.js",
+          "start": 4051,
+          "end": 4700,
+          "encoded": 16472,
+          "decoded": 16472
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4051,
+          "end": 5644,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4051,
+          "end": 6028,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4051,
+          "end": 6965,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4051,
+          "end": 5082,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4051,
+          "end": 4722,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4051,
+          "end": 5052,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4051,
+          "end": 5164,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4051,
+          "end": 5638,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4052,
+          "end": 5382,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4052,
+          "end": 5473,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "start": 4052,
+          "end": 5600,
+          "encoded": 1854,
+          "decoded": 1854
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4052,
+          "end": 5659,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "start": 4052,
+          "end": 5788,
+          "encoded": 924,
+          "decoded": 924
+        },
+        {
+          "url": "/assets/view-spec-DQiDgA6N.js",
+          "start": 4052,
+          "end": 5855,
+          "encoded": 3488,
+          "decoded": 3488
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7033,
+          "end": 8263,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/mf/screener/fields",
+          "start": 7089,
+          "end": 8428,
+          "encoded": 61713,
+          "decoded": 61713
+        },
+        {
+          "url": "/api/v1/mf/regimes",
+          "start": 7090,
+          "end": 8540,
+          "encoded": 84652,
+          "decoded": 84652
+        },
+        {
+          "url": "/api/v1/mf/risk-free",
+          "start": 7090,
+          "end": 7572,
+          "encoded": 12010,
+          "decoded": 12010
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=watchlist&archived=false",
+          "start": 7091,
+          "end": 7095,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/api/v1/mf/screener/run",
+          "start": 7091,
+          "end": 7422,
+          "encoded": 5420,
+          "decoded": 5420
+        },
+        {
+          "url": "/api/v1/mf/screener/presets",
+          "start": 7092,
+          "end": 7370,
+          "encoded": 3169,
+          "decoded": 3169
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/metrics",
+          "start": 7102,
+          "end": 7707,
+          "encoded": 5433,
+          "decoded": 5433
+        },
+        {
+          "url": "/api/v1/mf/funds/118955/metrics",
+          "start": 7102,
+          "end": 7752,
+          "encoded": 5446,
+          "decoded": 5446
+        },
+        {
+          "url": "/api/v1/mf/funds/120166/metrics",
+          "start": 7103,
+          "end": 7849,
+          "encoded": 5363,
+          "decoded": 5363
+        },
+        {
+          "url": "/api/v1/mf/screener/run",
+          "start": 7378,
+          "end": 7992,
+          "encoded": 4163,
+          "decoded": 4163
+        },
+        {
+          "url": "/api/v1/mf/funds/sparklines?code=120251&code=120586&code=122639&code=147946&code=149134&code=150237&code=150584&code=150587",
+          "start": 7428,
+          "end": 8075,
+          "encoded": 6803,
+          "decoded": 6803
+        },
+        {
+          "url": "/api/v1/mf/funds/sparklines?code=119517&code=119783&code=120782&code=152082",
+          "start": 8003,
+          "end": 8240,
+          "encoded": 3600,
+          "decoded": 3600
+        }
+      ]
+    },
+    {
+      "route": "/mf",
+      "run": 2,
+      "vitals": {
+        "lcp": 7088,
+        "lcpElement": "h1 \"Find better mutual fund investments.\"",
+        "cls": 0.01824177685667207,
+        "longTasks": [
+          75,
+          65
+        ]
+      },
+      "fcp": 7088,
+      "jsDecoded": 1175341,
+      "jsEncoded": 1175341,
+      "transferBytes": 1511375,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 176,
+          "end": 343,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 176,
+          "end": 4017,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 176,
+          "end": 1100,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4049,
+          "end": 4399,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4049,
+          "end": 4303,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4049,
+          "end": 4317,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4049,
+          "end": 4453,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4049,
+          "end": 4332,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4049,
+          "end": 4340,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4049,
+          "end": 4497,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4049,
+          "end": 4521,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4050,
+          "end": 4476,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/discover-DYz1y8F4.js",
+          "start": 4050,
+          "end": 4699,
+          "encoded": 16472,
+          "decoded": 16472
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4050,
+          "end": 5629,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4050,
+          "end": 6964,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4051,
+          "end": 5105,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4051,
+          "end": 6028,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4051,
+          "end": 4715,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4051,
+          "end": 5046,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4051,
+          "end": 5164,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4051,
+          "end": 5419,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4051,
+          "end": 5487,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4051,
+          "end": 5623,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "start": 4051,
+          "end": 5637,
+          "encoded": 1854,
+          "decoded": 1854
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4052,
+          "end": 5661,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "start": 4052,
+          "end": 5825,
+          "encoded": 924,
+          "decoded": 924
+        },
+        {
+          "url": "/assets/view-spec-DQiDgA6N.js",
+          "start": 4052,
+          "end": 5862,
+          "encoded": 3488,
+          "decoded": 3488
+        },
+        {
+          "url": "/api/v1/mf/screener/fields",
+          "start": 7013,
+          "end": 8359,
+          "encoded": 61713,
+          "decoded": 61713
+        },
+        {
+          "url": "/api/v1/mf/regimes",
+          "start": 7014,
+          "end": 8472,
+          "encoded": 84652,
+          "decoded": 84652
+        },
+        {
+          "url": "/api/v1/mf/risk-free",
+          "start": 7014,
+          "end": 7489,
+          "encoded": 12010,
+          "decoded": 12010
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=watchlist&archived=false",
+          "start": 7014,
+          "end": 7018,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/api/v1/mf/screener/run",
+          "start": 7015,
+          "end": 7325,
+          "encoded": 5420,
+          "decoded": 5420
+        },
+        {
+          "url": "/api/v1/mf/screener/presets",
+          "start": 7016,
+          "end": 7250,
+          "encoded": 3169,
+          "decoded": 3169
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7026,
+          "end": 8255,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/metrics",
+          "start": 7098,
+          "end": 7588,
+          "encoded": 5433,
+          "decoded": 5433
+        },
+        {
+          "url": "/api/v1/mf/funds/118955/metrics",
+          "start": 7098,
+          "end": 7654,
+          "encoded": 5446,
+          "decoded": 5446
+        },
+        {
+          "url": "/api/v1/mf/funds/120166/metrics",
+          "start": 7098,
+          "end": 7760,
+          "encoded": 5363,
+          "decoded": 5363
+        },
+        {
+          "url": "/api/v1/mf/screener/run",
+          "start": 7258,
+          "end": 7888,
+          "encoded": 4163,
+          "decoded": 4163
+        },
+        {
+          "url": "/api/v1/mf/funds/sparklines?code=120251&code=120586&code=122639&code=147946&code=149134&code=150237&code=150584&code=150587",
+          "start": 7331,
+          "end": 7970,
+          "encoded": 6803,
+          "decoded": 6803
+        },
+        {
+          "url": "/api/v1/mf/funds/sparklines?code=119517&code=119783&code=120782&code=152082",
+          "start": 7900,
+          "end": 8134,
+          "encoded": 3600,
+          "decoded": 3600
+        }
+      ]
+    },
+    {
+      "route": "/mf",
+      "run": 3,
+      "vitals": {
+        "lcp": 7084,
+        "lcpElement": "h1 \"Find better mutual fund investments.\"",
+        "cls": 0.01824177685667207,
+        "longTasks": [
+          80,
+          59
+        ]
+      },
+      "fcp": 7084,
+      "jsDecoded": 1175341,
+      "jsEncoded": 1175341,
+      "transferBytes": 1511375,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 174,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 174,
+          "end": 1093,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 174,
+          "end": 4017,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4051,
+          "end": 4303,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4051,
+          "end": 4401,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4052,
+          "end": 4309,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4052,
+          "end": 4326,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4052,
+          "end": 4453,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4052,
+          "end": 4490,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4052,
+          "end": 4497,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4052,
+          "end": 4528,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4053,
+          "end": 4332,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/discover-DYz1y8F4.js",
+          "start": 4053,
+          "end": 4663,
+          "encoded": 16472,
+          "decoded": 16472
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4053,
+          "end": 5652,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4053,
+          "end": 6028,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4053,
+          "end": 6966,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4054,
+          "end": 4715,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4054,
+          "end": 5091,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4054,
+          "end": 5038,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4054,
+          "end": 5127,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4054,
+          "end": 5404,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4054,
+          "end": 5451,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4054,
+          "end": 5614,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "start": 4054,
+          "end": 5622,
+          "encoded": 1854,
+          "decoded": 1854
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4055,
+          "end": 5645,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "start": 4055,
+          "end": 5811,
+          "encoded": 924,
+          "decoded": 924
+        },
+        {
+          "url": "/assets/view-spec-DQiDgA6N.js",
+          "start": 4055,
+          "end": 5848,
+          "encoded": 3488,
+          "decoded": 3488
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7028,
+          "end": 8255,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/mf/screener/fields",
+          "start": 7083,
+          "end": 8413,
+          "encoded": 61713,
+          "decoded": 61713
+        },
+        {
+          "url": "/api/v1/mf/regimes",
+          "start": 7083,
+          "end": 8532,
+          "encoded": 84652,
+          "decoded": 84652
+        },
+        {
+          "url": "/api/v1/mf/risk-free",
+          "start": 7084,
+          "end": 7573,
+          "encoded": 12010,
+          "decoded": 12010
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=watchlist&archived=false",
+          "start": 7084,
+          "end": 7088,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/api/v1/mf/screener/run",
+          "start": 7085,
+          "end": 7414,
+          "encoded": 5420,
+          "decoded": 5420
+        },
+        {
+          "url": "/api/v1/mf/screener/presets",
+          "start": 7086,
+          "end": 7333,
+          "encoded": 3169,
+          "decoded": 3169
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/metrics",
+          "start": 7101,
+          "end": 7663,
+          "encoded": 5433,
+          "decoded": 5433
+        },
+        {
+          "url": "/api/v1/mf/funds/118955/metrics",
+          "start": 7102,
+          "end": 7738,
+          "encoded": 5446,
+          "decoded": 5446
+        },
+        {
+          "url": "/api/v1/mf/funds/120166/metrics",
+          "start": 7102,
+          "end": 7850,
+          "encoded": 5363,
+          "decoded": 5363
+        },
+        {
+          "url": "/api/v1/mf/screener/run",
+          "start": 7341,
+          "end": 7970,
+          "encoded": 4163,
+          "decoded": 4163
+        },
+        {
+          "url": "/api/v1/mf/funds/sparklines?code=120251&code=120586&code=122639&code=147946&code=149134&code=150237&code=150584&code=150587",
+          "start": 7421,
+          "end": 8060,
+          "encoded": 6803,
+          "decoded": 6803
+        },
+        {
+          "url": "/api/v1/mf/funds/sparklines?code=119517&code=119783&code=120782&code=152082",
+          "start": 7982,
+          "end": 8217,
+          "encoded": 3600,
+          "decoded": 3600
+        }
+      ]
+    },
+    {
+      "route": "/mf/funds/122639",
+      "run": 1,
+      "vitals": {
+        "lcp": 8256,
+        "lcpElement": "p \"Worst fallIn the deepest market fall it lived through (12 Fe\"",
+        "cls": 0.06989722222702166,
+        "longTasks": [
+          78,
+          78
+        ]
+      },
+      "fcp": 7188,
+      "jsDecoded": 1204185,
+      "jsEncoded": 1204185,
+      "transferBytes": 1857595,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 173,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 173,
+          "end": 1100,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 173,
+          "end": 4017,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4048,
+          "end": 4333,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4048,
+          "end": 4392,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4048,
+          "end": 4302,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4048,
+          "end": 4339,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4048,
+          "end": 4452,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4049,
+          "end": 4317,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4049,
+          "end": 4527,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4049,
+          "end": 4474,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4049,
+          "end": 4498,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/FundMark-CEQfxT4e.js",
+          "start": 4050,
+          "end": 4573,
+          "encoded": 1051,
+          "decoded": 1051
+        },
+        {
+          "url": "/assets/verdicts-DWwklJ6K.js",
+          "start": 4050,
+          "end": 4625,
+          "encoded": 2246,
+          "decoded": 2246
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "start": 4050,
+          "end": 4654,
+          "encoded": 1854,
+          "decoded": 1854
+        },
+        {
+          "url": "/assets/fund-BPbzDQgm.js",
+          "start": 4050,
+          "end": 5278,
+          "encoded": 45507,
+          "decoded": 45507
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4050,
+          "end": 5824,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4050,
+          "end": 5262,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4050,
+          "end": 6185,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4050,
+          "end": 7115,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4050,
+          "end": 4851,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4050,
+          "end": 5337,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4050,
+          "end": 5561,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4050,
+          "end": 5877,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4051,
+          "end": 5652,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4051,
+          "end": 5862,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "start": 4051,
+          "end": 5885,
+          "encoded": 924,
+          "decoded": 924
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4051,
+          "end": 5990,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7157,
+          "end": 7857,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/mf/funds/122639",
+          "start": 7190,
+          "end": 7370,
+          "encoded": 781,
+          "decoded": 781
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/metrics",
+          "start": 7190,
+          "end": 7460,
+          "encoded": 5433,
+          "decoded": 5433
+        },
+        {
+          "url": "/api/v1/mf/screener/fields",
+          "start": 7191,
+          "end": 7939,
+          "encoded": 61713,
+          "decoded": 61713
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=watchlist&archived=false",
+          "start": 7973,
+          "end": 7978,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/navs",
+          "start": 7974,
+          "end": 10407,
+          "encoded": 212550,
+          "decoded": 212550
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/score",
+          "start": 7974,
+          "end": 8143,
+          "encoded": 804,
+          "decoded": 804
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/regimes",
+          "start": 7974,
+          "end": 8231,
+          "encoded": 2850,
+          "decoded": 2850
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/drawdowns?top=5",
+          "start": 7975,
+          "end": 8165,
+          "encoded": 808,
+          "decoded": 808
+        },
+        {
+          "url": "/api/v1/mf/regimes",
+          "start": 7975,
+          "end": 9695,
+          "encoded": 84652,
+          "decoded": 84652
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/rolling?window=3y",
+          "start": 7976,
+          "end": 9350,
+          "encoded": 60187,
+          "decoded": 60187
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=note&archived=false",
+          "start": 7976,
+          "end": 7979,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+          "start": 8000,
+          "end": 9815,
+          "encoded": 85068,
+          "decoded": 85068
+        }
+      ]
+    },
+    {
+      "route": "/mf/funds/122639",
+      "run": 2,
+      "vitals": {
+        "lcp": 8228,
+        "lcpElement": "p \"Worst fallIn the deepest market fall it lived through (12 Fe\"",
+        "cls": 0.06989722222702166,
+        "longTasks": [
+          77,
+          79
+        ]
+      },
+      "fcp": 7172,
+      "jsDecoded": 1204185,
+      "jsEncoded": 1204185,
+      "transferBytes": 1857595,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 164,
+          "end": 336,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 165,
+          "end": 1085,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 165,
+          "end": 4003,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4034,
+          "end": 4303,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4034,
+          "end": 4378,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4035,
+          "end": 4317,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4035,
+          "end": 4288,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4035,
+          "end": 4294,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4035,
+          "end": 4438,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4035,
+          "end": 4476,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4035,
+          "end": 4513,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4036,
+          "end": 4482,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/fund-BPbzDQgm.js",
+          "start": 4037,
+          "end": 5240,
+          "encoded": 45507,
+          "decoded": 45507
+        },
+        {
+          "url": "/assets/FundMark-CEQfxT4e.js",
+          "start": 4037,
+          "end": 4558,
+          "encoded": 1051,
+          "decoded": 1051
+        },
+        {
+          "url": "/assets/verdicts-DWwklJ6K.js",
+          "start": 4037,
+          "end": 4617,
+          "encoded": 2246,
+          "decoded": 2246
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "start": 4037,
+          "end": 4663,
+          "encoded": 1854,
+          "decoded": 1854
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4037,
+          "end": 5810,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4037,
+          "end": 5263,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4037,
+          "end": 6170,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4037,
+          "end": 7099,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4037,
+          "end": 4858,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4038,
+          "end": 5338,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4038,
+          "end": 5525,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4038,
+          "end": 5645,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4038,
+          "end": 5826,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4038,
+          "end": 5855,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "start": 4038,
+          "end": 5870,
+          "encoded": 924,
+          "decoded": 924
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4038,
+          "end": 5982,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7141,
+          "end": 7843,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/mf/funds/122639",
+          "start": 7173,
+          "end": 7355,
+          "encoded": 781,
+          "decoded": 781
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/metrics",
+          "start": 7174,
+          "end": 7437,
+          "encoded": 5433,
+          "decoded": 5433
+        },
+        {
+          "url": "/api/v1/mf/screener/fields",
+          "start": 7174,
+          "end": 7925,
+          "encoded": 61713,
+          "decoded": 61713
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=watchlist&archived=false",
+          "start": 7959,
+          "end": 7964,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/navs",
+          "start": 7960,
+          "end": 10393,
+          "encoded": 212550,
+          "decoded": 212550
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/score",
+          "start": 7960,
+          "end": 8120,
+          "encoded": 804,
+          "decoded": 804
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/regimes",
+          "start": 7960,
+          "end": 8217,
+          "encoded": 2850,
+          "decoded": 2850
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/drawdowns?top=5",
+          "start": 7960,
+          "end": 8135,
+          "encoded": 808,
+          "decoded": 808
+        },
+        {
+          "url": "/api/v1/mf/regimes",
+          "start": 7962,
+          "end": 9688,
+          "encoded": 84652,
+          "decoded": 84652
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/rolling?window=3y",
+          "start": 7962,
+          "end": 9328,
+          "encoded": 60187,
+          "decoded": 60187
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=note&archived=false",
+          "start": 7963,
+          "end": 7965,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+          "start": 7986,
+          "end": 9793,
+          "encoded": 85068,
+          "decoded": 85068
+        }
+      ]
+    },
+    {
+      "route": "/mf/funds/122639",
+      "run": 3,
+      "vitals": {
+        "lcp": 8244,
+        "lcpElement": "p \"Worst fallIn the deepest market fall it lived through (12 Fe\"",
+        "cls": 0.06989722222702166,
+        "longTasks": [
+          77,
+          85
+        ]
+      },
+      "fcp": 7184,
+      "jsDecoded": 1204185,
+      "jsEncoded": 1204185,
+      "transferBytes": 1857595,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 165,
+          "end": 327,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 165,
+          "end": 1093,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 165,
+          "end": 4010,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4042,
+          "end": 4311,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4042,
+          "end": 4333,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4042,
+          "end": 4393,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4042,
+          "end": 4445,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4043,
+          "end": 4324,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4043,
+          "end": 4475,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4043,
+          "end": 4491,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4043,
+          "end": 4512,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4044,
+          "end": 4295,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/FundMark-CEQfxT4e.js",
+          "start": 4044,
+          "end": 4572,
+          "encoded": 1051,
+          "decoded": 1051
+        },
+        {
+          "url": "/assets/fund-BPbzDQgm.js",
+          "start": 4044,
+          "end": 5254,
+          "encoded": 45507,
+          "decoded": 45507
+        },
+        {
+          "url": "/assets/verdicts-DWwklJ6K.js",
+          "start": 4044,
+          "end": 4625,
+          "encoded": 2246,
+          "decoded": 2246
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "start": 4044,
+          "end": 4662,
+          "encoded": 1854,
+          "decoded": 1854
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4045,
+          "end": 5803,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4045,
+          "end": 7108,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4045,
+          "end": 6177,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4045,
+          "end": 4858,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4045,
+          "end": 5262,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4046,
+          "end": 5338,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4046,
+          "end": 5548,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4046,
+          "end": 5653,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4046,
+          "end": 5847,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4046,
+          "end": 5855,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "start": 4046,
+          "end": 5877,
+          "encoded": 924,
+          "decoded": 924
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4046,
+          "end": 5968,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7151,
+          "end": 7866,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/api/v1/mf/funds/122639",
+          "start": 7184,
+          "end": 7363,
+          "encoded": 781,
+          "decoded": 781
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/metrics",
+          "start": 7185,
+          "end": 7453,
+          "encoded": 5433,
+          "decoded": 5433
+        },
+        {
+          "url": "/api/v1/mf/screener/fields",
+          "start": 7185,
+          "end": 7941,
+          "encoded": 61713,
+          "decoded": 61713
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=watchlist&archived=false",
+          "start": 7975,
+          "end": 7980,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/navs",
+          "start": 7975,
+          "end": 10407,
+          "encoded": 212550,
+          "decoded": 212550
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/score",
+          "start": 7976,
+          "end": 8134,
+          "encoded": 804,
+          "decoded": 804
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/regimes",
+          "start": 7976,
+          "end": 8233,
+          "encoded": 2850,
+          "decoded": 2850
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/drawdowns?top=5",
+          "start": 7977,
+          "end": 8149,
+          "encoded": 808,
+          "decoded": 808
+        },
+        {
+          "url": "/api/v1/mf/regimes",
+          "start": 7977,
+          "end": 9702,
+          "encoded": 84652,
+          "decoded": 84652
+        },
+        {
+          "url": "/api/v1/mf/funds/122639/rolling?window=3y",
+          "start": 7978,
+          "end": 9351,
+          "encoded": 60187,
+          "decoded": 60187
+        },
+        {
+          "url": "/api/v1/mf/workspace/records?kind=note&archived=false",
+          "start": 7978,
+          "end": 7981,
+          "encoded": 2,
+          "decoded": 2
+        },
+        {
+          "url": "/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+          "start": 8002,
+          "end": 9808,
+          "encoded": 85068,
+          "decoded": 85068
+        }
+      ]
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "run": 1,
+      "vitals": {
+        "lcp": 7084,
+        "lcpElement": "p \"Test an investment habit on real past NAVs: what happened, m\"",
+        "cls": 0.035245539558111154,
+        "longTasks": [
+          75
+        ]
+      },
+      "fcp": 7084,
+      "jsDecoded": 1173924,
+      "jsEncoded": 1173924,
+      "transferBytes": 1417468,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 175,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 175,
+          "end": 1093,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 175,
+          "end": 4018,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4051,
+          "end": 4400,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4051,
+          "end": 4340,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4051,
+          "end": 4303,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4051,
+          "end": 4325,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4051,
+          "end": 4452,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4052,
+          "end": 4475,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4052,
+          "end": 4520,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4052,
+          "end": 4333,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4052,
+          "end": 4498,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/simulate-Bq6AAhLn.js",
+          "start": 4052,
+          "end": 4722,
+          "encoded": 18407,
+          "decoded": 18407
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4052,
+          "end": 5668,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4053,
+          "end": 6943,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4053,
+          "end": 6005,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4053,
+          "end": 4715,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4053,
+          "end": 5045,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4053,
+          "end": 5098,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4053,
+          "end": 5181,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4054,
+          "end": 5615,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4054,
+          "end": 5398,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4054,
+          "end": 5496,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/scenario-DiemRxBb.js",
+          "start": 4054,
+          "end": 5653,
+          "encoded": 2914,
+          "decoded": 2914
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4054,
+          "end": 5682,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/api/v1/mf/funds/118987/metrics",
+          "start": 7014,
+          "end": 7281,
+          "encoded": 5430,
+          "decoded": 5430
+        },
+        {
+          "url": "/api/v1/mf/funds/118987/rolling-sip?tenor=3y&amount=10000",
+          "start": 7015,
+          "end": 7378,
+          "encoded": 12876,
+          "decoded": 12876
+        },
+        {
+          "url": "/api/v1/mf/calculators/sip",
+          "start": 7016,
+          "end": 7273,
+          "encoded": 4910,
+          "decoded": 4910
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7030,
+          "end": 7790,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+          "start": 7059,
+          "end": 7985,
+          "encoded": 85068,
+          "decoded": 85068
+        }
+      ]
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "run": 2,
+      "vitals": {
+        "lcp": 7088,
+        "lcpElement": "p \"Test an investment habit on real past NAVs: what happened, m\"",
+        "cls": 0.035245539558111154,
+        "longTasks": [
+          74
+        ]
+      },
+      "fcp": 7088,
+      "jsDecoded": 1173924,
+      "jsEncoded": 1173924,
+      "transferBytes": 1417468,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 175,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 176,
+          "end": 1093,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 176,
+          "end": 4018,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4050,
+          "end": 4393,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4050,
+          "end": 4318,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4050,
+          "end": 4324,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4050,
+          "end": 4333,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4050,
+          "end": 4340,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4050,
+          "end": 4452,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4051,
+          "end": 4542,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4051,
+          "end": 4505,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4051,
+          "end": 4512,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/simulate-Bq6AAhLn.js",
+          "start": 4052,
+          "end": 4798,
+          "encoded": 18407,
+          "decoded": 18407
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4052,
+          "end": 5113,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4052,
+          "end": 5637,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4052,
+          "end": 6027,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4052,
+          "end": 6957,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4052,
+          "end": 4730,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4052,
+          "end": 5127,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4052,
+          "end": 5194,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4052,
+          "end": 5442,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4052,
+          "end": 5518,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4052,
+          "end": 5691,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/scenario-DiemRxBb.js",
+          "start": 4052,
+          "end": 5698,
+          "encoded": 2914,
+          "decoded": 2914
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4052,
+          "end": 5705,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7039,
+          "end": 7866,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+          "start": 7063,
+          "end": 8053,
+          "encoded": 85068,
+          "decoded": 85068
+        },
+        {
+          "url": "/api/v1/mf/funds/118987/metrics",
+          "start": 7086,
+          "end": 7408,
+          "encoded": 5430,
+          "decoded": 5430
+        },
+        {
+          "url": "/api/v1/mf/funds/118987/rolling-sip?tenor=3y&amount=10000",
+          "start": 7087,
+          "end": 7505,
+          "encoded": 12876,
+          "decoded": 12876
+        },
+        {
+          "url": "/api/v1/mf/calculators/sip",
+          "start": 7088,
+          "end": 7401,
+          "encoded": 4910,
+          "decoded": 4910
+        }
+      ]
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "run": 3,
+      "vitals": {
+        "lcp": 7080,
+        "lcpElement": "p \"Test an investment habit on real past NAVs: what happened, m\"",
+        "cls": 0.035245539558111154,
+        "longTasks": [
+          71
+        ]
+      },
+      "fcp": 7080,
+      "jsDecoded": 1173924,
+      "jsEncoded": 1173924,
+      "transferBytes": 1417468,
+      "requests": [
+        {
+          "url": "/theme-init.js",
+          "start": 174,
+          "end": 335,
+          "encoded": 602,
+          "decoded": 602
+        },
+        {
+          "url": "/assets/index-Dhoq07pH.css",
+          "start": 174,
+          "end": 1093,
+          "encoded": 74972,
+          "decoded": 74972
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "start": 174,
+          "end": 4018,
+          "encoded": 657896,
+          "decoded": 657896
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "start": 4049,
+          "end": 4401,
+          "encoded": 9367,
+          "decoded": 9367
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "start": 4050,
+          "end": 4309,
+          "encoded": 2781,
+          "decoded": 2781
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "start": 4050,
+          "end": 4318,
+          "encoded": 3021,
+          "decoded": 3021
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "start": 4050,
+          "end": 4325,
+          "encoded": 2753,
+          "decoded": 2753
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "start": 4050,
+          "end": 4453,
+          "encoded": 19535,
+          "decoded": 19535
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "start": 4050,
+          "end": 4333,
+          "encoded": 3797,
+          "decoded": 3797
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "start": 4050,
+          "end": 4535,
+          "encoded": 4077,
+          "decoded": 4077
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "start": 4050,
+          "end": 4490,
+          "encoded": 188,
+          "decoded": 188
+        },
+        {
+          "url": "/assets/layout-0cx1lrfZ.css",
+          "start": 4051,
+          "end": 4506,
+          "encoded": 3032,
+          "decoded": 3032
+        },
+        {
+          "url": "/assets/simulate-Bq6AAhLn.js",
+          "start": 4051,
+          "end": 4761,
+          "encoded": 18407,
+          "decoded": 18407
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "start": 4051,
+          "end": 5652,
+          "encoded": 49719,
+          "decoded": 49719
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "start": 4051,
+          "end": 6950,
+          "encoded": 264293,
+          "decoded": 264293
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "start": 4051,
+          "end": 4731,
+          "encoded": 515,
+          "decoded": 515
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "start": 4051,
+          "end": 5106,
+          "encoded": 16822,
+          "decoded": 16822
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "start": 4051,
+          "end": 6013,
+          "encoded": 75163,
+          "decoded": 75163
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "start": 4051,
+          "end": 5090,
+          "encoded": 4454,
+          "decoded": 4454
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "start": 4051,
+          "end": 5195,
+          "encoded": 11269,
+          "decoded": 11269
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "start": 4051,
+          "end": 5412,
+          "encoded": 4432,
+          "decoded": 4432
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "start": 4051,
+          "end": 5509,
+          "encoded": 4525,
+          "decoded": 4525
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "start": 4051,
+          "end": 5683,
+          "encoded": 16610,
+          "decoded": 16610
+        },
+        {
+          "url": "/assets/scenario-DiemRxBb.js",
+          "start": 4052,
+          "end": 5675,
+          "encoded": 2914,
+          "decoded": 2914
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "start": 4052,
+          "end": 5690,
+          "encoded": 784,
+          "decoded": 784
+        },
+        {
+          "url": "/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+          "start": 7031,
+          "end": 7850,
+          "encoded": 48256,
+          "decoded": 48256
+        },
+        {
+          "url": "/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+          "start": 7056,
+          "end": 8046,
+          "encoded": 85068,
+          "decoded": 85068
+        },
+        {
+          "url": "/api/v1/mf/funds/118987/metrics",
+          "start": 7080,
+          "end": 7400,
+          "encoded": 5430,
+          "decoded": 5430
+        },
+        {
+          "url": "/api/v1/mf/funds/118987/rolling-sip?tenor=3y&amount=10000",
+          "start": 7081,
+          "end": 7498,
+          "encoded": 12876,
+          "decoded": 12876
+        },
+        {
+          "url": "/api/v1/mf/calculators/sip",
+          "start": 7082,
+          "end": 7385,
+          "encoded": 4910,
+          "decoded": 4910
+        }
+      ]
+    }
+  ]
+}

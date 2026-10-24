@@ -1,0 +1,1765 @@
+{
+  "screens": [
+    {
+      "name": "d-risk",
+      "url": "http://localhost:8000/mf/funds/122639?tab=risk",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "d-compare",
+      "url": "http://localhost:8000/mf/compare?code=122639&code=118955&code=120166",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "d-discover",
+      "url": "http://localhost:8000/mf",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "d-fund-overview",
+      "url": "http://localhost:8000/mf/funds/122639",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "d-screener",
+      "url": "http://localhost:8000/mf/screen",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "d-overseas-tax",
+      "url": "http://localhost:8000/mf/simulate?kind=lumpsum&code=119517&amount=1000000&start=2023-07-24&end=2024-07-25&slab=30",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "m-fund-overview",
+      "url": "http://localhost:8000/mf/funds/122639",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "m-risk",
+      "url": "http://localhost:8000/mf/funds/122639?tab=risk",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "m-lab",
+      "url": "http://localhost:8000/mf/simulate?code=118987",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "m-screen",
+      "url": "http://localhost:8000/mf/screen",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "t-fund",
+      "url": "http://localhost:8000/mf/funds/122639",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      }
+    },
+    {
+      "name": "narrow-risk",
+      "url": "http://localhost:8000/mf/funds/122639?tab=risk",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      }
+    },
+    {
+      "name": "d-compare-dark",
+      "url": "http://localhost:8000/mf/compare?code=122639&code=118955&code=120166",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "save-replay-sip",
+      "saved": {
+        "code": "122639",
+        "amount": 25000,
+        "start": "2019-04-15",
+        "end": "2025-10-15",
+        "tax_class": "equity",
+        "day": 15,
+        "step_up": 0.1
+      },
+      "replayed": {
+        "code": "122639",
+        "amount": 25000,
+        "start": "2019-04-15",
+        "end": "2025-10-15",
+        "tax_class": "equity",
+        "day": 15,
+        "step_up": 0.1,
+        "data_revision": 2801
+      },
+      "provenance": {
+        "data_revision": 2801,
+        "method_version": 5,
+        "as_of": "2026-10-22",
+        "calculator_version": 1,
+        "tax_class": "equity",
+        "tax_class_source": "chosen"
+      },
+      "pass": true
+    },
+    {
+      "name": "save-replay-lumpsum",
+      "saved": {
+        "code": "122639",
+        "amount": 250000,
+        "start": "2021-02-01",
+        "end": "2025-10-15",
+        "tax_class": "equity"
+      },
+      "replayed": {
+        "code": "122639",
+        "amount": 250000,
+        "start": "2021-02-01",
+        "end": "2025-10-15",
+        "tax_class": "equity",
+        "data_revision": 2801
+      },
+      "provenance": {
+        "data_revision": 2801,
+        "method_version": 5,
+        "as_of": "2026-10-22",
+        "calculator_version": 1,
+        "tax_class": "equity",
+        "tax_class_source": "chosen"
+      },
+      "pass": true
+    },
+    {
+      "name": "save-replay-swp",
+      "saved": {
+        "code": "118987",
+        "amount": 1500000,
+        "start": "2020-01-01",
+        "end": "2025-10-15",
+        "tax_class": "debt",
+        "day": 7,
+        "instalment": 7500,
+        "slab_rate": 0.2
+      },
+      "replayed": {
+        "code": "118987",
+        "amount": 1500000,
+        "start": "2020-01-01",
+        "end": "2025-10-15",
+        "tax_class": "debt",
+        "day": 7,
+        "instalment": 7500,
+        "slab_rate": 0.2,
+        "data_revision": 2801
+      },
+      "provenance": {
+        "data_revision": 2801,
+        "method_version": 5,
+        "as_of": "2026-10-22",
+        "calculator_version": 1,
+        "tax_class": "debt",
+        "tax_class_source": "chosen"
+      },
+      "pass": true
+    },
+    {
+      "name": "save-replay-stp",
+      "saved": {
+        "code": "118987",
+        "amount": 600000,
+        "start": "2021-02-01",
+        "end": "2025-10-15",
+        "tax_class": "debt",
+        "day": 3,
+        "instalment": 12500,
+        "target": "122639",
+        "slab_rate": 0.3
+      },
+      "replayed": {
+        "code": "118987",
+        "amount": 600000,
+        "start": "2021-02-01",
+        "end": "2025-10-15",
+        "tax_class": "debt",
+        "day": 3,
+        "instalment": 12500,
+        "target": "122639",
+        "slab_rate": 0.3,
+        "data_revision": 2801
+      },
+      "provenance": {
+        "data_revision": 2801,
+        "method_version": 5,
+        "as_of": "2026-10-22",
+        "calculator_version": 1,
+        "tax_class": "debt",
+        "tax_class_source": "chosen"
+      },
+      "pass": true
+    },
+    {
+      "name": "compare-table-currency",
+      "rows": 201,
+      "first": "17 Oct 2016₹10,000₹10,000₹10,000",
+      "last": "22 Oct 2026₹46,362₹41,343₹32,865",
+      "pass": true
+    },
+    {
+      "name": "compare-period-reload",
+      "selected": "1Y",
+      "url": "http://localhost:8000/mf/compare?code=122639&code=118955&code=120166",
+      "afterReload": "true"
+    },
+    {
+      "name": "overseas-tax-browser",
+      "text": "Tax estimate\n\nAs if you redeemed every unit on 25 Jul 2024. No tax is due until you sell.\n\nEquity-oriented · from the fund’s category\nRules in force on each sale date (in-2018-04-01)\n\nFinancial year\tShort-term gain\tLong-term gain\tSlab-taxed gain\tTax\nFY2024-25\t₹0\t₹49,103\t₹0\t₹0\n\nEstimated total tax ₹0\n\nHolding periods count calendar months: a unit sold on its 12-month anniversary is still short term. Includes 4% cess. Not included: exit loads, surcharge and securities transaction tax."
+    },
+    {
+      "name": "layout-m-fund-overview",
+      "overflow": 0
+    },
+    {
+      "name": "layout-m-risk",
+      "overflow": 0
+    },
+    {
+      "name": "layout-m-lab",
+      "overflow": 0
+    },
+    {
+      "name": "layout-m-screen",
+      "overflow": 0
+    },
+    {
+      "name": "layout-t-fund",
+      "overflow": 0
+    },
+    {
+      "name": "layout-narrow-risk",
+      "overflow": 0
+    },
+    {
+      "name": "layout-d-compare-dark",
+      "overflow": 0
+    }
+  ],
+  "performance": [
+    {
+      "route": "/mf",
+      "run": 1,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 7088,
+        "cls": 0.01824177685667207,
+        "longTasks": [
+          76,
+          56
+        ]
+      },
+      "jsBytes": 1175341,
+      "transferBytes": 1511375,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 162.19999992847443
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3844.600000023842
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 343.10000002384186
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 282.10000002384186
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 268.09999990463257
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 252.70000004768372
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 289.2000000476837
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 401.39999997615814
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 469.7000000476837
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 445.7000000476837
+        },
+        {
+          "url": "/assets/discover-DYz1y8F4.js",
+          "decoded": 16472,
+          "encoded": 16472,
+          "duration": 648.1000000238419
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1593.8000000715256
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1039.1000000238419
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 1976.7000000476837
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 2914
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 654.6999999284744
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1104.8999999761581
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 978.3999999761581
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1352.3999999761581
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1420.2999999523163
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1555.3999999761581
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "decoded": 1854,
+          "encoded": 1854,
+          "duration": 1570.3999999761581
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1599.2999999523163
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "decoded": 924,
+          "encoded": 924,
+          "duration": 1756.6000000238419
+        },
+        {
+          "url": "/assets/view-spec-DQiDgA6N.js",
+          "decoded": 3488,
+          "encoded": 3488,
+          "duration": 1803
+        }
+      ]
+    },
+    {
+      "route": "/mf",
+      "run": 2,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 7104,
+        "cls": 0.01824177685667207,
+        "longTasks": [
+          75,
+          60
+        ]
+      },
+      "jsBytes": 1175341,
+      "transferBytes": 1511375,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 161.70000004768372
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3843.5
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 345.6999999284744
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 268.90000009536743
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 291.7000000476837
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 403.89999997615814
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 275.40000009536743
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 472
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 493.3000000715256
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 449.39999997615814
+        },
+        {
+          "url": "/assets/discover-DYz1y8F4.js",
+          "decoded": 16472,
+          "encoded": 16472,
+          "duration": 717.5
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1581
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 2001.1000000238419
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 2931
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1078.5
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 680.5
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1040.3000000715256
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1144.5
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1616.3999999761581
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1391.9000000953674
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1458.5
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "decoded": 1854,
+          "encoded": 1854,
+          "duration": 1608.7000000476837
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1639.2000000476837
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "decoded": 924,
+          "encoded": 924,
+          "duration": 1774.5
+        },
+        {
+          "url": "/assets/view-spec-DQiDgA6N.js",
+          "decoded": 3488,
+          "encoded": 3488,
+          "duration": 1827.2000000476837
+        }
+      ]
+    },
+    {
+      "route": "/mf",
+      "run": 3,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 7104,
+        "cls": 0.01824177685667207,
+        "longTasks": [
+          77,
+          62
+        ]
+      },
+      "jsBytes": 1175341,
+      "transferBytes": 1511375,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 177
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3844.5
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 342.90000009536743
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 267.7000000476837
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 275.7000000476837
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 403.39999997615814
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 261
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 291
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 440.89999997615814
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 484.89999997615814
+        },
+        {
+          "url": "/assets/discover-DYz1y8F4.js",
+          "decoded": 16472,
+          "encoded": 16472,
+          "duration": 672.1000000238419
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1602
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 2922.100000023842
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 1991.6000000238419
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 678.2999999523163
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1054.2999999523163
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1000.3999999761581
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1129.1999999284744
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1369
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1579.1000000238419
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1444
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "decoded": 1854,
+          "encoded": 1854,
+          "duration": 1585.1000000238419
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1623.8000000715256
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "decoded": 924,
+          "encoded": 924,
+          "duration": 1780.3999999761581
+        },
+        {
+          "url": "/assets/view-spec-DQiDgA6N.js",
+          "decoded": 3488,
+          "encoded": 3488,
+          "duration": 1810.7000000476837
+        }
+      ]
+    },
+    {
+      "route": "/mf/funds/122639",
+      "run": 1,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 8256,
+        "cls": 0.06989722222702166,
+        "longTasks": [
+          75,
+          80
+        ]
+      },
+      "jsBytes": 1204185,
+      "transferBytes": 1857595,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 170.10000002384186
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3845.2000000476837
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 357.2999999523163
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 281.5
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 288.10000002384186
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 409.60000002384186
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 265.60000002384186
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 445.90000009536743
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 467.8000000715256
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 490.2000000476837
+        },
+        {
+          "url": "/assets/FundMark-CEQfxT4e.js",
+          "decoded": 1051,
+          "encoded": 1051,
+          "duration": 527.2999999523163
+        },
+        {
+          "url": "/assets/verdicts-DWwklJ6K.js",
+          "decoded": 2246,
+          "encoded": 2246,
+          "duration": 586.6999999284744
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "decoded": 1854,
+          "encoded": 1854,
+          "duration": 623.8999999761581
+        },
+        {
+          "url": "/assets/fund-BPbzDQgm.js",
+          "decoded": 45507,
+          "encoded": 45507,
+          "duration": 1209.5999999046326
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1823.7000000476837
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 2138.100000023842
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 3075.8000000715256
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 811.2999999523163
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1224.7999999523163
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1291
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1500.2999999523163
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1831.3999999761581
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1605.8000000715256
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1800.3000000715256
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "decoded": 924,
+          "encoded": 924,
+          "duration": 1837.1000000238419
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1965.7999999523163
+        }
+      ]
+    },
+    {
+      "route": "/mf/funds/122639",
+      "run": 2,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 8268,
+        "cls": 0.06989722222702166,
+        "longTasks": [
+          79,
+          96
+        ]
+      },
+      "jsBytes": 1204185,
+      "transferBytes": 1857595,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 161.89999997615814
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3844.5
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 345.39999997615814
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 292.59999990463257
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 278
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 283.7000000476837
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 404.7999999523163
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 434.5
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 449.2999999523163
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 487.2999999523163
+        },
+        {
+          "url": "/assets/FundMark-CEQfxT4e.js",
+          "decoded": 1051,
+          "encoded": 1051,
+          "duration": 523.1000000238419
+        },
+        {
+          "url": "/assets/verdicts-DWwklJ6K.js",
+          "decoded": 2246,
+          "encoded": 2246,
+          "duration": 575.8000000715256
+        },
+        {
+          "url": "/assets/fund-BPbzDQgm.js",
+          "decoded": 45507,
+          "encoded": 45507,
+          "duration": 1250
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "decoded": 1854,
+          "encoded": 1854,
+          "duration": 620.3999999761581
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1783.1000000238419
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 2136
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 3073.7999999523163
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 807.7999999523163
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1212.0999999046326
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1295.5
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1496.2999999523163
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1609.1999999284744
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1788.6000000238419
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1842
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "decoded": 924,
+          "encoded": 924,
+          "duration": 1834.3999999761581
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1954.2999999523163
+        }
+      ]
+    },
+    {
+      "route": "/mf/funds/122639",
+      "run": 3,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 8256,
+        "cls": 0.06989722222702166,
+        "longTasks": [
+          76,
+          82
+        ]
+      },
+      "jsBytes": 1204185,
+      "transferBytes": 1857595,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 161.70000004768372
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3843.600000023842
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 343.60000002384186
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 276
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 259.89999997615814
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 289.89999997615814
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 401.6999999284744
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 432.5
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 446.39999997615814
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 485.09999990463257
+        },
+        {
+          "url": "/assets/FundMark-CEQfxT4e.js",
+          "decoded": 1051,
+          "encoded": 1051,
+          "duration": 520.5
+        },
+        {
+          "url": "/assets/fund-BPbzDQgm.js",
+          "decoded": 45507,
+          "encoded": 45507,
+          "duration": 1249.2999999523163
+        },
+        {
+          "url": "/assets/verdicts-DWwklJ6K.js",
+          "decoded": 2246,
+          "encoded": 2246,
+          "duration": 573.2000000476837
+        },
+        {
+          "url": "/assets/ScoreBadge-DaoJA1Wm.js",
+          "decoded": 1854,
+          "encoded": 1854,
+          "duration": 619.1000000238419
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1779.8000000715256
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 2133
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 3070.2000000476837
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 813.5
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1210.8999999761581
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1301
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1502.7999999523163
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1847.3999999761581
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1614.8000000715256
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1794.7000000476837
+        },
+        {
+          "url": "/assets/series-BR2rT9B4.js",
+          "decoded": 924,
+          "encoded": 924,
+          "duration": 1831.7000000476837
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1944.5999999046326
+        }
+      ]
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "run": 1,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 7072,
+        "cls": 0.035245539558111154,
+        "longTasks": [
+          69
+        ]
+      },
+      "jsBytes": 1173924,
+      "transferBytes": 1417468,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 178.10000002384186
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3844.6999999284744
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 345.5
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 261.89999997615814
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 253.79999995231628
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 268.89999997615814
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 405.1999999284744
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 291.59999990463257
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 435.1999999284744
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 480.09999990463257
+        },
+        {
+          "url": "/assets/simulate-Bq6AAhLn.js",
+          "decoded": 18407,
+          "encoded": 18407,
+          "duration": 710.8000000715256
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1566.5
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 1956.5
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 2894
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 665.6000000238419
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1048.7000000476837
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1130.3000000715256
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1032.6000000238419
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1610.6000000238419
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1355
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1436.7000000476837
+        },
+        {
+          "url": "/assets/scenario-DiemRxBb.js",
+          "decoded": 2914,
+          "encoded": 2914,
+          "duration": 1602.3999999761581
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1617.8999999761581
+        }
+      ]
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "run": 2,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 7060,
+        "cls": 0.035245539558111154,
+        "longTasks": [
+          72
+        ]
+      },
+      "jsBytes": 1173924,
+      "transferBytes": 1417468,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 155
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3837.899999976158
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 351.39999997615814
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 254
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 275.10000002384186
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 403.6999999284744
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 268.60000002384186
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 291.10000002384186
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 439.60000002384186
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 478.39999997615814
+        },
+        {
+          "url": "/assets/simulate-Bq6AAhLn.js",
+          "decoded": 18407,
+          "encoded": 18407,
+          "duration": 694.5999999046326
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1587.4000000953674
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 2892.100000023842
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 1945.8999999761581
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1031.2999999523163
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 672
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1016.6000000238419
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1129.5
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1608.9000000953674
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1339.3000000715256
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1443.5
+        },
+        {
+          "url": "/assets/scenario-DiemRxBb.js",
+          "decoded": 2914,
+          "encoded": 2914,
+          "duration": 1593.7999999523163
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1622.5
+        }
+      ]
+    },
+    {
+      "route": "/mf/simulate?code=118987",
+      "run": 3,
+      "profile": "390x844, 4x CPU, 150ms latency, 200000 B/s download, cold cache",
+      "vitals": {
+        "lcp": 7080,
+        "cls": 0.035245539558111154,
+        "longTasks": [
+          77
+        ]
+      },
+      "jsBytes": 1173924,
+      "transferBytes": 1417468,
+      "js": [
+        {
+          "url": "/theme-init.js",
+          "decoded": 602,
+          "encoded": 602,
+          "duration": 169.70000004768372
+        },
+        {
+          "url": "/assets/index-CKzs1glZ.js",
+          "decoded": 657896,
+          "encoded": 657896,
+          "duration": 3843.5999999046326
+        },
+        {
+          "url": "/assets/layout-CN0HJAg8.js",
+          "decoded": 9367,
+          "encoded": 9367,
+          "duration": 351.2000000476837
+        },
+        {
+          "url": "/assets/themes-21vY0V0V.js",
+          "decoded": 3021,
+          "encoded": 3021,
+          "duration": 276.6999999284744
+        },
+        {
+          "url": "/assets/workspace-CIwDPcPl.js",
+          "decoded": 2753,
+          "encoded": 2753,
+          "duration": 261.1999999284744
+        },
+        {
+          "url": "/assets/queries-D_oi_JF3.js",
+          "decoded": 2781,
+          "encoded": 2781,
+          "duration": 268.2999999523163
+        },
+        {
+          "url": "/assets/ui-DKktM7fg.js",
+          "decoded": 19535,
+          "encoded": 19535,
+          "duration": 403
+        },
+        {
+          "url": "/assets/CompareTray-XxOigYs7.js",
+          "decoded": 3797,
+          "encoded": 3797,
+          "duration": 292
+        },
+        {
+          "url": "/assets/use-debounced-P9UcdofD.js",
+          "decoded": 188,
+          "encoded": 188,
+          "duration": 448.5
+        },
+        {
+          "url": "/assets/FundSearch-BFH4YFNQ.js",
+          "decoded": 4077,
+          "encoded": 4077,
+          "duration": 478
+        },
+        {
+          "url": "/assets/simulate-Bq6AAhLn.js",
+          "decoded": 18407,
+          "encoded": 18407,
+          "duration": 724.8000000715256
+        },
+        {
+          "url": "/assets/charts-D9SuD0p_.js",
+          "decoded": 49719,
+          "encoded": 49719,
+          "duration": 1580.6000000238419
+        },
+        {
+          "url": "/assets/CartesianChart-C6YcAdfH.js",
+          "decoded": 75163,
+          "encoded": 75163,
+          "duration": 1970.5
+        },
+        {
+          "url": "/assets/CategoricalChart-3RMbvsS3.js",
+          "decoded": 264293,
+          "encoded": 264293,
+          "duration": 2899.7999999523163
+        },
+        {
+          "url": "/assets/Dot-DTG2XjIx.js",
+          "decoded": 515,
+          "encoded": 515,
+          "duration": 664.2999999523163
+        },
+        {
+          "url": "/assets/LineChart-D4SJ2edJ.js",
+          "decoded": 16822,
+          "encoded": 16822,
+          "duration": 1063.1999999284744
+        },
+        {
+          "url": "/assets/XAxis-9frAXCWw.js",
+          "decoded": 11269,
+          "encoded": 11269,
+          "duration": 1130.6000000238419
+        },
+        {
+          "url": "/assets/ReferenceLine-zpvYikvf.js",
+          "decoded": 4454,
+          "encoded": 4454,
+          "duration": 1047.0999999046326
+        },
+        {
+          "url": "/assets/BarChart-BgWKsC-u.js",
+          "decoded": 16610,
+          "encoded": 16610,
+          "duration": 1616.7000000476837
+        },
+        {
+          "url": "/assets/getZIndexFromUnknown-BkUcBPhZ.js",
+          "decoded": 4432,
+          "encoded": 4432,
+          "duration": 1377.1000000238419
+        },
+        {
+          "url": "/assets/Symbols-J2jwOZLc.js",
+          "decoded": 4525,
+          "encoded": 4525,
+          "duration": 1452.2000000476837
+        },
+        {
+          "url": "/assets/scenario-DiemRxBb.js",
+          "decoded": 2914,
+          "encoded": 2914,
+          "duration": 1624.7999999523163
+        },
+        {
+          "url": "/assets/context-9a8EZxbr.js",
+          "decoded": 784,
+          "encoded": 784,
+          "duration": 1638.7999999523163
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "artifact": {
+    "entry": "/assets/index-CKzs1glZ.js",
+    "bytes": 657896,
+    "sha256": "66ec2eb71e9449f0751d64873bbd55bb42b39f6a92dc29a09ad8108a33a684e9",
+    "headers": {
+      "date": "Fri, 23 Oct 2026 23:32:35 GMT",
+      "server": "uvicorn",
+      "content-type": "text/javascript; charset=utf-8",
+      "accept-ranges": "bytes",
+      "content-length": "657896",
+      "last-modified": "Fri, 23 Oct 2026 19:15:57 GMT",
+      "etag": "\"3303bbcf5b1f88de1bdad7b55b35aadc\"",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "x-xss-protection": "1; mode=block",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "permissions-policy": "camera=(), microphone=(), geolocation=()",
+      "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+      "x-request-id": "3aa56768-c4aa-46f6-ba58-5d6fe9705b44",
+      "x-correlation-id": "37ebebfbb1b14f6e",
+      "connection": "close"
+    }
+  },
+  "tax": {
+    "equity-2024-07-22": true,
+    "equity-2024-07-23": true,
+    "equity-2024-07-24": true,
+    "equity-2024-07-25": true
+  },
+  "drawdown": {
+    "raw_nav_trough": [
+      "2020-03-24",
+      -0.31202149047503647
+    ],
+    "api_trough": [
+      "2020-03-24",
+      -0.31202149047503647
+    ],
+    "valid_nav_count": 2470
+  },
+  "default_tax": {
+    "118987": {
+      "rules": "in-2018-04-01",
+      "tax_class": "debt",
+      "total": 21647.402873338862,
+      "years": [
+        {
+          "year": "FY2026-27",
+          "short_term": 0,
+          "long_term": 56626.692154659744,
+          "slab": 45788.24645267018,
+          "tax": 21647.402873338862
+        }
+      ],
+      "sales_not_modelled": 0,
+      "reason": null
+    },
+    "119517": {
+      "rules": "in-2018-04-01",
+      "tax_class": "equity",
+      "total": 25640.79021454885,
+      "years": [
+        {
+          "year": "FY2026-27",
+          "short_term": 5464.694400613322,
+          "long_term": 313493.33676324063,
+          "slab": 0,
+          "tax": 25640.79021454885
+        }
+      ],
+      "sales_not_modelled": 0,
+      "reason": null
+    }
+  }
+}

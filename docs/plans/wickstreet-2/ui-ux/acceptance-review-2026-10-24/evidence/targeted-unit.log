@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/varunagarwal/Downloads/Applications/StocksMomentum/web
+
+
+ Test Files  4 passed (4)
+      Tests  31 passed (31)
+   Start at  04:54:27
+   Duration  449ms (transform 158ms, setup 0ms, import 405ms, tests 27ms, environment 0ms)
+

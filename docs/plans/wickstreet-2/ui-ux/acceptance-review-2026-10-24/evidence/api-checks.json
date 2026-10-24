@@ -1,0 +1,6106 @@
+{
+  "artifact": {
+    "entry": "/assets/index-CKzs1glZ.js",
+    "bytes": 657896,
+    "sha256": "66ec2eb71e9449f0751d64873bbd55bb42b39f6a92dc29a09ad8108a33a684e9",
+    "headers": {
+      "date": "Fri, 23 Oct 2026 23:32:35 GMT",
+      "server": "uvicorn",
+      "content-type": "text/javascript; charset=utf-8",
+      "accept-ranges": "bytes",
+      "content-length": "657896",
+      "last-modified": "Fri, 23 Oct 2026 19:15:57 GMT",
+      "etag": "\"3303bbcf5b1f88de1bdad7b55b35aadc\"",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "x-xss-protection": "1; mode=block",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "permissions-policy": "camera=(), microphone=(), geolocation=()",
+      "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+      "x-request-id": "3aa56768-c4aa-46f6-ba58-5d6fe9705b44",
+      "x-correlation-id": "37ebebfbb1b14f6e",
+      "connection": "close"
+    }
+  },
+  "search-nippon india": {
+    "path": "/api/v1/mf/funds?q=nippon+india&limit=8",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "funds": [
+        {
+          "amfi_code": "118701",
+          "name": "Nippon India Liquid Fund - Direct Plan Growth Plan - Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Debt Scheme - Liquid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118719",
+          "name": "Nippon India Money Market Fund - Direct Plan Growth Plan - Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Debt Scheme - Money Market Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118794",
+          "name": "Nippon India Aggressive Hybrid Fund  - Direct Plan Growth Plan",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Hybrid Scheme - Aggressive Hybrid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118585",
+          "name": "Nippon India Arbitrage Fund - Direct Plan Growth Plan - Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Hybrid Scheme - Arbitrage Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118736",
+          "name": "Nippon India Balanced Advantage Fund - Direct Plan Growth Plan - Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118589",
+          "name": "Nippon India Banking & Financial Services Fund - Direct Plan Growth Plan - Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Equity Scheme - Sectoral/ Thematic",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "134547",
+          "name": "Nippon India Banking and PSU DEBT Fund- Direct Plan-Growth Plan- Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Debt Scheme - Banking and PSU Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118726",
+          "name": "Nippon India Conservative Hybrid  Fund - Direct Plan Growth Plan - Growth Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Hybrid Scheme - Conservative Hybrid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        }
+      ]
+    }
+  },
+  "search-hdfc": {
+    "path": "/api/v1/mf/funds?q=hdfc&limit=8",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "funds": [
+        {
+          "amfi_code": "119091",
+          "name": "HDFC Liquid Fund - Growth Option - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Debt Scheme - Liquid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119092",
+          "name": "HDFC Money Market Fund - Growth Option - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Debt Scheme - Money Market Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119110",
+          "name": "HDFC Overnight Fund - Growth Option - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Debt Scheme - Overnight Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "129052",
+          "name": "HDFC ARBITRAGE FUND -Direct Plan - Growth Option",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Hybrid Scheme - Arbitrage Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119062",
+          "name": "HDFC Aggressive Hybrid Fund - Growth Option - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Hybrid Scheme - Aggressive Hybrid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119065",
+          "name": "HDFC BSE Sensex Index Fund - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "118968",
+          "name": "HDFC Balanced Advantage Fund - Growth Plan - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "128629",
+          "name": "HDFC Banking and PSU Debt Fund - Growth Option - Direct Plan",
+          "amc": "HDFC Asset Management Company Limited",
+          "category": "Debt Scheme - Banking and PSU Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        }
+      ]
+    }
+  },
+  "search-sbi": {
+    "path": "/api/v1/mf/funds?q=sbi&limit=8",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "funds": [
+        {
+          "amfi_code": "119800",
+          "name": "SBI Liquid Fund - DIRECT PLAN -Growth",
+          "amc": "SBI Funds Management Limited",
+          "category": "Debt Scheme - Liquid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119833",
+          "name": "SBI OVERNIGHT FUND - DIRECT PLAN - GROWTH",
+          "amc": "SBI Funds Management Limited",
+          "category": "Debt Scheme - Overnight Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119828",
+          "name": "SBI ULTRA SHORT TERM FUND - DIRECT PLAN - GROWTH",
+          "amc": "SBI Funds Management Limited",
+          "category": "Income/Debt Oriented Schemes - Ultra Short Term Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "120137",
+          "name": "SBI 10 YEAR CONSTANT MATURITY GILT FUND - DIRECT PLAN - GROWTH",
+          "amc": "SBI Funds Management Limited",
+          "category": "Debt Scheme - Gilt Fund with 10 year constant duration",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119609",
+          "name": "SBI AGGRESIVE HYBRID FUND - DIRECT PLAN - Growth",
+          "amc": "SBI Funds Management Limited",
+          "category": "Hybrid Scheme - Aggressive Hybrid Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119574",
+          "name": "SBI Arbitrage Fund - Direct Plan - Gr",
+          "amc": "SBI Funds Management Limited",
+          "category": "Hybrid Scheme - Arbitrage Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "133859",
+          "name": "SBI BANKING & FINANCIAL SERVICES FUND - DIRECT PLAN - GROWTH",
+          "amc": "SBI Funds Management Limited",
+          "category": "Equity Scheme - Sectoral/ Thematic",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "125503",
+          "name": "SBI BANKING & PSU DEBT FUND - Direct Plan - Growth",
+          "amc": "SBI Funds Management Limited",
+          "category": "Debt Scheme - Banking and PSU Fund",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        }
+      ]
+    }
+  },
+  "search-144891": {
+    "path": "/api/v1/mf/funds?q=144891&limit=8",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "funds": [
+        {
+          "amfi_code": "144891",
+          "name": "NIPPON INDIA - INDIA OPPORTUNITIES FUND - SERIES A - DIRECT Plan - IDCW Option",
+          "amc": "Nippon Life India Asset Management Limited",
+          "category": "Unclassified",
+          "plan": "direct",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "historical",
+          "last_nav_date": "2022-01-31"
+        }
+      ]
+    }
+  },
+  "search-uti nifty 50 index": {
+    "path": "/api/v1/mf/funds?q=uti+nifty+50+index&limit=8",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "funds": [
+        {
+          "amfi_code": "120716",
+          "name": "UTI Nifty 50 Index Fund - Growth Option- Direct",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "120717",
+          "name": "UTI Nifty 50 Index Fund - Direct Plan - IDCW",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "100822",
+          "name": "UTI Nifty 50 Index Fund - Regular Plan - Growth Option",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "regular",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "100823",
+          "name": "UTI Nifty 50 Index Fund - Regular Plan - IDCW",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "regular",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "143341",
+          "name": "UTI Nifty Next 50 Index Fund - Direct Plan - Growth Option",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "150313",
+          "name": "UTI Nifty Midcap 150 Quality 50 Index Fund - Direct Plan - Growth Option",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "151739",
+          "name": "UTI Nifty 500 Value 50 Index Fund - Direct Plan - Growth Option",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "151762",
+          "name": "UTI Nifty50 Equal Weight Index Fund - Direct Plan - Growth Option",
+          "amc": "UTI Asset Mgmt. Co. Ltd.",
+          "category": "Other Scheme - Index Funds",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        }
+      ]
+    }
+  },
+  "search-international equity": {
+    "path": "/api/v1/mf/funds?q=international+equity&limit=8",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "funds": [
+        {
+          "amfi_code": "119517",
+          "name": "Aditya Birla Sun Life International Equity Fund - Growth - Direct Plan",
+          "amc": "Aditya Birla Sun Life AMC Limited",
+          "category": "Equity Scheme - Sectoral/ Thematic",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "119516",
+          "name": "Aditya Birla Sun Life International Equity Fund - Direct - IDCW",
+          "amc": "Aditya Birla Sun Life AMC Limited",
+          "category": "Equity Scheme - Sectoral/ Thematic",
+          "plan": "direct",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "106873",
+          "name": "Aditya Birla Sun Life International Equity Fund - Growth - Regular Plan",
+          "amc": "Aditya Birla Sun Life AMC Limited",
+          "category": "Equity Scheme - Sectoral/ Thematic",
+          "plan": "regular",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "106872",
+          "name": "Aditya Birla Sun Life International Equity Fund - Regular - IDCW",
+          "amc": "Aditya Birla Sun Life AMC Limited",
+          "category": "Equity Scheme - Sectoral/ Thematic",
+          "plan": "regular",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "148646",
+          "name": "Kotak International REIT Overseas Equity Active FOF - Direct Plan - Growth",
+          "amc": "Kotak Mahindra Asset Management Company Limited.",
+          "category": "Other Scheme - FoF Overseas",
+          "plan": "direct",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "148649",
+          "name": "Kotak International REIT Overseas Equity Active FOF - Direct Plan - Payout of Income Distribution cum capital withdrawal option",
+          "amc": "Kotak Mahindra Asset Management Company Limited.",
+          "category": "Other Scheme - FoF Overseas",
+          "plan": "direct",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "148645",
+          "name": "Kotak International REIT Overseas Equity Active FOF - Regular Plan - Growth",
+          "amc": "Kotak Mahindra Asset Management Company Limited.",
+          "category": "Other Scheme - FoF Overseas",
+          "plan": "regular",
+          "option": "growth",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        },
+        {
+          "amfi_code": "148647",
+          "name": "Kotak International REIT Overseas Equity Active FOF - Regular Plan - Payout of Income Distribution cum capital withdrawal option",
+          "amc": "Kotak Mahindra Asset Management Company Limited.",
+          "category": "Other Scheme - FoF Overseas",
+          "plan": "regular",
+          "option": "idcw",
+          "nav_available": true,
+          "status": "active",
+          "last_nav_date": "2026-10-22"
+        }
+      ]
+    }
+  },
+  "equity-2024-07-22": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "122639",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "tax_class": "equity",
+      "end": "2024-07-22"
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "122639"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1383976.0080978216,
+        "gain": 383976.0080978216,
+        "xirr": 0.38521210253983085,
+        "valued_on": "2024-07-22",
+        "calculator_version": 1,
+        "units": 16518.597567019304,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 59900.25726326017,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 383976.0080978216,
+            "long_term": 0,
+            "slab": 0,
+            "tax": 59900.25726326017
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    },
+    "independent_expected_tax": 59900.25726326017,
+    "tax_agrees": true
+  },
+  "equity-2024-07-23": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "122639",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "tax_class": "equity",
+      "end": "2024-07-23"
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "122639"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1384925.8274579253,
+        "gain": 384925.8274579253,
+        "xirr": 0.38492582745792514,
+        "valued_on": "2024-07-23",
+        "calculator_version": 1,
+        "units": 16518.597567019304,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 80064.57211124848,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 384925.8274579253,
+            "long_term": 0,
+            "slab": 0,
+            "tax": 80064.57211124848
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    },
+    "independent_expected_tax": 80064.57211124848,
+    "tax_agrees": true
+  },
+  "equity-2024-07-24": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "122639",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "tax_class": "equity",
+      "end": "2024-07-24"
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "122639"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1376182.5337657018,
+        "gain": 376182.5337657018,
+        "xirr": 0.37498241936530674,
+        "valued_on": "2024-07-24",
+        "calculator_version": 1,
+        "units": 16518.597567019304,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 78245.96702326598,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 376182.5337657018,
+            "long_term": 0,
+            "slab": 0,
+            "tax": 78245.96702326598
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    },
+    "independent_expected_tax": 78245.96702326598,
+    "tax_agrees": true
+  },
+  "equity-2024-07-25": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "122639",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "tax_class": "equity",
+      "end": "2024-07-25"
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "122639"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1370325.039068437,
+        "gain": 370325.03906843695,
+        "xirr": 0.36797437027102176,
+        "valued_on": "2024-07-25",
+        "calculator_version": 1,
+        "units": 16518.597567019304,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 31892.255078896804,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 0,
+            "long_term": 370325.03906843695,
+            "slab": 0,
+            "tax": 31892.255078896804
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    },
+    "independent_expected_tax": 31892.255078896804,
+    "tax_agrees": true
+  },
+  "fund-118987": {
+    "path": "/api/v1/mf/funds/118987",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "fund": {
+        "plan_option_id": 2491,
+        "amfi_code": "118987",
+        "amc": "HDFC Asset Management Company Limited",
+        "scheme_name": "HDFC Corporate Bond Fund",
+        "nav_name": "HDFC Corporate Bond Fund - Growth Option - Direct Plan",
+        "scheme_type": "Open Ended",
+        "category": "Debt Scheme - Corporate Bond Fund",
+        "plan": "Direct Plan",
+        "option": "Growth Option",
+        "isin_growth": "INF179K01XD8",
+        "isin_reinvest": null,
+        "launch_date": "2010-06-25"
+      },
+      "classification": {
+        "category": "Debt Scheme - Corporate Bond Fund",
+        "source_category": "Debt Scheme - Corporate Bond Fund",
+        "asset_class": "Debt",
+        "plan": "direct",
+        "option": "growth",
+        "return_basis": "nav",
+        "active": true,
+        "last_nav_date": "2026-10-22",
+        "since_start": "2016-10-17"
+      },
+      "links": []
+    }
+  },
+  "default-tax-118987": {
+    "path": "/api/v1/mf/calculators/sip",
+    "request": {
+      "code": "118987",
+      "amount": 10000,
+      "day": 1,
+      "start": "2021-10-01",
+      "end": "2026-10-24",
+      "slab_rate": 0.3
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "sip",
+      "codes": [
+        "118987"
+      ],
+      "summary": {
+        "invested": 610000.0,
+        "withdrawn": 0.0,
+        "value": 712414.93860733,
+        "gain": 102414.93860732997,
+        "xirr": 0.06100727234909942,
+        "valued_on": "2026-10-22",
+        "calculator_version": 1,
+        "instalments": 61,
+        "units": 20405.376165603455
+      },
+      "timeline": [
+        {
+          "date": "2021-10-01",
+          "invested": 10000.0,
+          "value": 9999.5
+        },
+        {
+          "date": "2021-11-01",
+          "invested": 20000.0,
+          "value": 20010.94004530533
+        },
+        {
+          "date": "2021-12-01",
+          "invested": 30000.0,
+          "value": 30111.044964655997
+        },
+        {
+          "date": "2022-01-03",
+          "invested": 40000.0,
+          "value": 40153.97485356895
+        },
+        {
+          "date": "2022-02-01",
+          "invested": 50000.0,
+          "value": 50073.0001406735
+        },
+        {
+          "date": "2022-03-02",
+          "invested": 60000.0,
+          "value": 60360.97586200361
+        },
+        {
+          "date": "2022-04-04",
+          "invested": 70000.0,
+          "value": 70678.50528257492
+        },
+        {
+          "date": "2022-05-02",
+          "invested": 80000.0,
+          "value": 80450.61791690555
+        },
+        {
+          "date": "2022-06-01",
+          "invested": 90000.0,
+          "value": 89749.45811483805
+        },
+        {
+          "date": "2022-07-01",
+          "invested": 100000.0,
+          "value": 99999.3339796468
+        },
+        {
+          "date": "2022-08-01",
+          "invested": 110000.0,
+          "value": 110946.980329531
+        },
+        {
+          "date": "2022-09-01",
+          "invested": 120000.0,
+          "value": 121955.45857966912
+        },
+        {
+          "date": "2022-10-03",
+          "invested": 130000.0,
+          "value": 131886.5216851193
+        },
+        {
+          "date": "2022-11-01",
+          "invested": 140000.0,
+          "value": 142513.48383798284
+        },
+        {
+          "date": "2022-12-01",
+          "invested": 150000.0,
+          "value": 153736.24364344924
+        },
+        {
+          "date": "2023-01-02",
+          "invested": 160000.0,
+          "value": 164363.80174430233
+        },
+        {
+          "date": "2023-02-01",
+          "invested": 170000.0,
+          "value": 175177.16053682505
+        },
+        {
+          "date": "2023-03-01",
+          "invested": 180000.0,
+          "value": 185653.11235149184
+        },
+        {
+          "date": "2023-04-03",
+          "invested": 190000.0,
+          "value": 197159.9484612958
+        },
+        {
+          "date": "2023-05-02",
+          "invested": 200000.0,
+          "value": 209371.3273961096
+        },
+        {
+          "date": "2023-06-01",
+          "invested": 210000.0,
+          "value": 221078.8242870306
+        },
+        {
+          "date": "2023-07-03",
+          "invested": 220000.0,
+          "value": 231858.91106654092
+        },
+        {
+          "date": "2023-08-01",
+          "invested": 230000.0,
+          "value": 243485.02464500687
+        },
+        {
+          "date": "2023-09-01",
+          "invested": 240000.0,
+          "value": 254897.51797251322
+        },
+        {
+          "date": "2023-10-03",
+          "invested": 250000.0,
+          "value": 266352.56226715376
+        },
+        {
+          "date": "2023-11-01",
+          "invested": 260000.0,
+          "value": 276993.4563927662
+        },
+        {
+          "date": "2023-12-01",
+          "invested": 270000.0,
+          "value": 288495.6628891634
+        },
+        {
+          "date": "2024-01-01",
+          "invested": 280000.0,
+          "value": 300666.53187522764
+        },
+        {
+          "date": "2024-02-01",
+          "invested": 290000.0,
+          "value": 312881.2333751981
+        },
+        {
+          "date": "2024-03-01",
+          "invested": 300000.0,
+          "value": 325241.34313522116
+        },
+        {
+          "date": "2024-04-02",
+          "invested": 310000.0,
+          "value": 337875.9079284899
+        },
+        {
+          "date": "2024-05-02",
+          "invested": 320000.0,
+          "value": 349176.05632105615
+        },
+        {
+          "date": "2024-06-03",
+          "invested": 330000.0,
+          "value": 362499.1923218466
+        },
+        {
+          "date": "2024-07-01",
+          "invested": 340000.0,
+          "value": 374400.8593062984
+        },
+        {
+          "date": "2024-08-01",
+          "invested": 350000.0,
+          "value": 387827.25695122156
+        },
+        {
+          "date": "2024-09-02",
+          "invested": 360000.0,
+          "value": 400794.2530013124
+        },
+        {
+          "date": "2024-10-01",
+          "invested": 370000.0,
+          "value": 414891.7690705034
+        },
+        {
+          "date": "2024-11-04",
+          "invested": 380000.0,
+          "value": 427284.57454618067
+        },
+        {
+          "date": "2024-12-02",
+          "invested": 390000.0,
+          "value": 439934.3139388747
+        },
+        {
+          "date": "2025-01-01",
+          "invested": 400000.0,
+          "value": 451566.2206895155
+        },
+        {
+          "date": "2025-02-03",
+          "invested": 410000.0,
+          "value": 465118.9997749128
+        },
+        {
+          "date": "2025-03-03",
+          "invested": 420000.0,
+          "value": 476140.67870361503
+        },
+        {
+          "date": "2025-04-02",
+          "invested": 430000.0,
+          "value": 494570.15106791304
+        },
+        {
+          "date": "2025-05-02",
+          "invested": 440000.0,
+          "value": 510205.1959491927
+        },
+        {
+          "date": "2025-06-02",
+          "invested": 450000.0,
+          "value": 526139.7202288982
+        },
+        {
+          "date": "2025-07-01",
+          "invested": 460000.0,
+          "value": 535556.8834340868
+        },
+        {
+          "date": "2025-08-01",
+          "invested": 470000.0,
+          "value": 548877.9126011786
+        },
+        {
+          "date": "2025-09-01",
+          "invested": 480000.0,
+          "value": 556876.2654325111
+        },
+        {
+          "date": "2025-10-01",
+          "invested": 490000.0,
+          "value": 571405.36507039
+        },
+        {
+          "date": "2025-11-03",
+          "invested": 500000.0,
+          "value": 585845.8350240769
+        },
+        {
+          "date": "2025-12-01",
+          "invested": 510000.0,
+          "value": 598125.9095503323
+        },
+        {
+          "date": "2026-01-01",
+          "invested": 520000.0,
+          "value": 609281.5807672465
+        },
+        {
+          "date": "2026-02-02",
+          "invested": 530000.0,
+          "value": 617120.7225168209
+        },
+        {
+          "date": "2026-03-02",
+          "invested": 540000.0,
+          "value": 633360.4579335878
+        },
+        {
+          "date": "2026-04-02",
+          "invested": 550000.0,
+          "value": 636567.1341893491
+        },
+        {
+          "date": "2026-05-04",
+          "invested": 560000.0,
+          "value": 652384.0005331873
+        },
+        {
+          "date": "2026-06-01",
+          "invested": 570000.0,
+          "value": 662679.5608090915
+        },
+        {
+          "date": "2026-07-01",
+          "invested": 580000.0,
+          "value": 688065.3429557596
+        },
+        {
+          "date": "2026-08-03",
+          "invested": 590000.0,
+          "value": 699732.7260957339
+        },
+        {
+          "date": "2026-09-01",
+          "invested": 600000.0,
+          "value": 708244.4797596192
+        },
+        {
+          "date": "2026-10-01",
+          "invested": 610000.0,
+          "value": 716746.9999672875
+        }
+      ],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "debt",
+        "total": 21647.402873338862,
+        "years": [
+          {
+            "year": "FY2026-27",
+            "short_term": 0,
+            "long_term": 56626.692154659744,
+            "slab": 45788.24645267018,
+            "tax": 21647.402873338862
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    }
+  },
+  "fund-119517": {
+    "path": "/api/v1/mf/funds/119517",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "fund": {
+        "plan_option_id": 9486,
+        "amfi_code": "119517",
+        "amc": "Aditya Birla Sun Life AMC Limited",
+        "scheme_name": "Aditya Birla Sun Life International Equity Fund",
+        "nav_name": "Aditya Birla Sun Life International Equity Fund - Growth - Direct Plan",
+        "scheme_type": "Open Ended",
+        "category": "Equity Scheme - Sectoral/ Thematic",
+        "plan": "Direct Plan",
+        "option": "GROWTH",
+        "isin_growth": "INF209K01WS3",
+        "isin_reinvest": null,
+        "launch_date": "2007-09-17"
+      },
+      "classification": {
+        "category": "Equity Scheme - Sectoral/ Thematic",
+        "source_category": "Equity Scheme - Sectoral/ Thematic",
+        "asset_class": "Equity",
+        "plan": "direct",
+        "option": "growth",
+        "return_basis": "nav",
+        "active": true,
+        "last_nav_date": "2026-10-22",
+        "since_start": "2016-10-17"
+      },
+      "links": []
+    }
+  },
+  "default-tax-119517": {
+    "path": "/api/v1/mf/calculators/sip",
+    "request": {
+      "code": "119517",
+      "amount": 10000,
+      "day": 1,
+      "start": "2021-10-01",
+      "end": "2026-10-24",
+      "slab_rate": 0.3
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "sip",
+      "codes": [
+        "119517"
+      ],
+      "summary": {
+        "invested": 610000.0,
+        "withdrawn": 0.0,
+        "value": 928958.0311638538,
+        "gain": 318958.0311638538,
+        "xirr": 0.16703153168817264,
+        "valued_on": "2026-10-22",
+        "calculator_version": 1,
+        "instalments": 61,
+        "units": 16584.2125296593
+      },
+      "timeline": [
+        {
+          "date": "2021-10-01",
+          "invested": 10000.0,
+          "value": 9999.5
+        },
+        {
+          "date": "2021-11-01",
+          "invested": 20000.0,
+          "value": 20444.271136823816
+        },
+        {
+          "date": "2021-12-01",
+          "invested": 30000.0,
+          "value": 29464.253839537192
+        },
+        {
+          "date": "2022-01-03",
+          "invested": 40000.0,
+          "value": 40576.294856010936
+        },
+        {
+          "date": "2022-02-01",
+          "invested": 50000.0,
+          "value": 49996.95153225716
+        },
+        {
+          "date": "2022-03-02",
+          "invested": 60000.0,
+          "value": 58991.50363305567
+        },
+        {
+          "date": "2022-04-01",
+          "invested": 70000.0,
+          "value": 70541.03792625504
+        },
+        {
+          "date": "2022-05-02",
+          "invested": 80000.0,
+          "value": 76926.21181106294
+        },
+        {
+          "date": "2022-06-01",
+          "invested": 90000.0,
+          "value": 88703.950151222
+        },
+        {
+          "date": "2022-07-01",
+          "invested": 100000.0,
+          "value": 92888.83103374773
+        },
+        {
+          "date": "2022-08-01",
+          "invested": 110000.0,
+          "value": 110165.98421981046
+        },
+        {
+          "date": "2022-09-01",
+          "invested": 120000.0,
+          "value": 114685.14664038797
+        },
+        {
+          "date": "2022-10-03",
+          "invested": 130000.0,
+          "value": 116606.0775011052
+        },
+        {
+          "date": "2022-11-01",
+          "invested": 140000.0,
+          "value": 137554.0649544452
+        },
+        {
+          "date": "2022-12-01",
+          "invested": 150000.0,
+          "value": 157095.46628605013
+        },
+        {
+          "date": "2023-01-02",
+          "invested": 160000.0,
+          "value": 164062.82252696078
+        },
+        {
+          "date": "2023-02-01",
+          "invested": 170000.0,
+          "value": 182622.1628531303
+        },
+        {
+          "date": "2023-03-01",
+          "invested": 180000.0,
+          "value": 187462.8571849384
+        },
+        {
+          "date": "2023-04-03",
+          "invested": 190000.0,
+          "value": 199501.3170464261
+        },
+        {
+          "date": "2023-05-02",
+          "invested": 200000.0,
+          "value": 209403.07893246334
+        },
+        {
+          "date": "2023-06-01",
+          "invested": 210000.0,
+          "value": 213596.6752430085
+        },
+        {
+          "date": "2023-07-03",
+          "invested": 220000.0,
+          "value": 235296.77213951436
+        },
+        {
+          "date": "2023-08-01",
+          "invested": 230000.0,
+          "value": 250163.8666045253
+        },
+        {
+          "date": "2023-09-01",
+          "invested": 240000.0,
+          "value": 252045.93761753457
+        },
+        {
+          "date": "2023-10-03",
+          "invested": 250000.0,
+          "value": 244260.6927924631
+        },
+        {
+          "date": "2023-11-01",
+          "invested": 260000.0,
+          "value": 249896.59487272764
+        },
+        {
+          "date": "2023-12-01",
+          "invested": 270000.0,
+          "value": 283563.43949265
+        },
+        {
+          "date": "2024-01-01",
+          "invested": 280000.0,
+          "value": 308283.4459143996
+        },
+        {
+          "date": "2024-02-01",
+          "invested": 290000.0,
+          "value": 311699.4123070831
+        },
+        {
+          "date": "2024-03-01",
+          "invested": 300000.0,
+          "value": 331153.0966298334
+        },
+        {
+          "date": "2024-04-01",
+          "invested": 310000.0,
+          "value": 350031.94756855554
+        },
+        {
+          "date": "2024-05-02",
+          "invested": 320000.0,
+          "value": 347434.299409901
+        },
+        {
+          "date": "2024-06-03",
+          "invested": 330000.0,
+          "value": 364269.79528618976
+        },
+        {
+          "date": "2024-07-01",
+          "invested": 340000.0,
+          "value": 369329.75573728123
+        },
+        {
+          "date": "2024-08-01",
+          "invested": 350000.0,
+          "value": 392625.7490518265
+        },
+        {
+          "date": "2024-09-02",
+          "invested": 360000.0,
+          "value": 426239.328744819
+        },
+        {
+          "date": "2024-10-01",
+          "invested": 370000.0,
+          "value": 440896.4541795252
+        },
+        {
+          "date": "2024-11-04",
+          "invested": 380000.0,
+          "value": 437718.9510587844
+        },
+        {
+          "date": "2024-12-02",
+          "invested": 390000.0,
+          "value": 459804.0217137022
+        },
+        {
+          "date": "2025-01-01",
+          "invested": 400000.0,
+          "value": 456264.29791806854
+        },
+        {
+          "date": "2025-02-03",
+          "invested": 410000.0,
+          "value": 491120.4498601815
+        },
+        {
+          "date": "2025-03-03",
+          "invested": 420000.0,
+          "value": 524067.3065062434
+        },
+        {
+          "date": "2025-04-01",
+          "invested": 430000.0,
+          "value": 517448.60799586785
+        },
+        {
+          "date": "2025-05-02",
+          "invested": 440000.0,
+          "value": 535672.658175713
+        },
+        {
+          "date": "2025-06-02",
+          "invested": 450000.0,
+          "value": 575015.5924358928
+        },
+        {
+          "date": "2025-07-01",
+          "invested": 460000.0,
+          "value": 603893.6541670014
+        },
+        {
+          "date": "2025-08-01",
+          "invested": 470000.0,
+          "value": 629478.9392203074
+        },
+        {
+          "date": "2025-09-01",
+          "invested": 480000.0,
+          "value": 669675.2982084779
+        },
+        {
+          "date": "2025-10-01",
+          "invested": 490000.0,
+          "value": 702662.5584998977
+        },
+        {
+          "date": "2025-11-03",
+          "invested": 500000.0,
+          "value": 718824.3936316934
+        },
+        {
+          "date": "2025-12-01",
+          "invested": 510000.0,
+          "value": 733128.2661605383
+        },
+        {
+          "date": "2026-01-01",
+          "invested": 520000.0,
+          "value": 754982.1016437702
+        },
+        {
+          "date": "2026-02-02",
+          "invested": 530000.0,
+          "value": 800868.009222111
+        },
+        {
+          "date": "2026-03-02",
+          "invested": 540000.0,
+          "value": 796595.4022161289
+        },
+        {
+          "date": "2026-04-01",
+          "invested": 550000.0,
+          "value": 782060.6705843806
+        },
+        {
+          "date": "2026-05-04",
+          "invested": 560000.0,
+          "value": 868101.9547578933
+        },
+        {
+          "date": "2026-06-01",
+          "invested": 570000.0,
+          "value": 906902.6907753848
+        },
+        {
+          "date": "2026-07-01",
+          "invested": 580000.0,
+          "value": 912367.9552518814
+        },
+        {
+          "date": "2026-08-03",
+          "invested": 590000.0,
+          "value": 923785.3525810508
+        },
+        {
+          "date": "2026-09-01",
+          "invested": 600000.0,
+          "value": 922841.8865794853
+        },
+        {
+          "date": "2026-10-01",
+          "invested": 610000.0,
+          "value": 958902.4853074066
+        }
+      ],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 25640.79021454885,
+        "years": [
+          {
+            "year": "FY2026-27",
+            "short_term": 5464.694400613322,
+            "long_term": 313493.33676324063,
+            "slab": 0,
+            "tax": 25640.79021454885
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    }
+  },
+  "overseas-tax-boundary": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "119517",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "end": "2024-07-25",
+      "slab_rate": 0.3
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "119517"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1049103.0686814887,
+        "gain": 49103.068681488745,
+        "xirr": 0.048829048000971986,
+        "valued_on": "2024-07-25",
+        "calculator_version": 1,
+        "units": 29489.482050329265,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 0.0,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 0,
+            "long_term": 49103.068681488745,
+            "slab": 0,
+            "tax": 0.0
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    },
+    "independent_expected_tax": 15320.157428624489
+  },
+  "overseas-tax-explicit-other": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "119517",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "end": "2024-07-25",
+      "slab_rate": 0.3,
+      "tax_class": "other"
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "119517"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1049103.0686814887,
+        "gain": 49103.068681488745,
+        "xirr": 0.048829048000971986,
+        "valued_on": "2024-07-25",
+        "calculator_version": 1,
+        "units": 29489.482050329265,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "other",
+        "total": 15320.157428624489,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 0,
+            "long_term": 0,
+            "slab": 49103.068681488745,
+            "tax": 15320.157428624489
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    }
+  },
+  "ambiguous-tax": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "120716",
+      "amount": 100000,
+      "start": "2021-10-01",
+      "end": "2026-10-22",
+      "slab_rate": 0.3
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "120716"
+      ],
+      "summary": {
+        "invested": 100000.0,
+        "withdrawn": 0.0,
+        "value": 135773.72603473108,
+        "gain": 35773.72603473108,
+        "xirr": 0.062298940049898,
+        "valued_on": "2026-10-22",
+        "calculator_version": 1,
+        "units": 849.7520724364884,
+        "bought_on": "2021-10-01"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": null,
+        "total": null,
+        "years": [],
+        "sales_not_modelled": 0,
+        "reason": "tax_class_needed"
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    }
+  },
+  "navs": {
+    "path": "/api/v1/mf/funds/122639/navs",
+    "request": null,
+    "status": 200,
+    "response": {
+      "rows": 2470,
+      "data_revision": 2801
+    }
+  },
+  "underwater": {
+    "path": "/api/v1/mf/funds/122639/underwater",
+    "request": null,
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "amfi_code": "122639",
+      "recovery": [
+        {
+          "depth": -0.05,
+          "recovered": 8,
+          "not_recovered": 1,
+          "min_days": 8,
+          "median_days": 82,
+          "p90_days": 333,
+          "max_days": 333
+        },
+        {
+          "depth": -0.1,
+          "recovered": 3,
+          "not_recovered": 1,
+          "min_days": 105,
+          "median_days": 315,
+          "p90_days": 333,
+          "max_days": 333
+        },
+        {
+          "depth": -0.2,
+          "recovered": 1,
+          "not_recovered": 0,
+          "min_days": 105,
+          "median_days": 105,
+          "p90_days": 105,
+          "max_days": 105
+        }
+      ],
+      "dd_now": -0.06645282813981368,
+      "dd_now_days": 360,
+      "underwater_max_days": 556
+    }
+  },
+  "independent-drawdown": {
+    "raw_nav_trough": [
+      "2020-03-24",
+      -0.31202149047503647
+    ],
+    "api_trough": [
+      "2020-03-24",
+      -0.31202149047503647
+    ],
+    "valid_nav_count": 2470
+  },
+  "replay-current": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "122639",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "tax_class": "equity",
+      "end": "2024-07-24",
+      "data_revision": 2801
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "kind": "lumpsum",
+      "codes": [
+        "122639"
+      ],
+      "summary": {
+        "invested": 1000000.0,
+        "withdrawn": 0.0,
+        "value": 1376182.5337657018,
+        "gain": 376182.5337657018,
+        "xirr": 0.37498241936530674,
+        "valued_on": "2024-07-24",
+        "calculator_version": 1,
+        "units": 16518.597567019304,
+        "bought_on": "2023-07-24"
+      },
+      "timeline": [],
+      "tax": {
+        "rules": "in-2018-04-01",
+        "tax_class": "equity",
+        "total": 78245.96702326598,
+        "years": [
+          {
+            "year": "FY2024-25",
+            "short_term": 376182.5337657018,
+            "long_term": 0,
+            "slab": 0,
+            "tax": 78245.96702326598
+          }
+        ],
+        "sales_not_modelled": 0,
+        "reason": null
+      },
+      "cautions": [
+        "Past NAVs only; the simulation does not forecast returns.",
+        "Exit loads, surcharge and securities transaction tax are not modelled."
+      ]
+    }
+  },
+  "replay-missing": {
+    "path": "/api/v1/mf/calculators/lumpsum",
+    "request": {
+      "code": "122639",
+      "amount": 1000000,
+      "start": "2023-07-24",
+      "tax_class": "equity",
+      "end": "2024-07-24",
+      "data_revision": 1
+    },
+    "status": 404,
+    "response": {
+      "type": "urn:wickstreet:error:no-snapshot",
+      "title": "no-snapshot",
+      "status": 404,
+      "detail": "No method v5 snapshot for revision 1.",
+      "instance": "/api/v1/mf/calculators/lumpsum"
+    }
+  },
+  "nested-any": {
+    "path": "/api/v1/mf/screener/run",
+    "request": {
+      "filter": {
+        "all": [
+          {
+            "field": "status",
+            "op": "in",
+            "value": [
+              "active"
+            ]
+          },
+          {
+            "field": "plan",
+            "op": "in",
+            "value": [
+              "direct"
+            ]
+          },
+          {
+            "field": "option",
+            "op": "in",
+            "value": [
+              "growth"
+            ]
+          },
+          {
+            "any": [
+              {
+                "field": "cagr_3y",
+                "op": ">",
+                "value": 0.15
+              },
+              {
+                "field": "vol_3y",
+                "op": "<",
+                "value": 0.12
+              }
+            ]
+          }
+        ]
+      },
+      "sort": [
+        {
+          "field": "cagr_3y",
+          "dir": "desc"
+        }
+      ],
+      "columns": [
+        "status",
+        "plan",
+        "option",
+        "cagr_3y",
+        "vol_3y"
+      ],
+      "page": {
+        "size": 100
+      }
+    },
+    "status": 200,
+    "response": {
+      "data_revision": 2801,
+      "latest_revision": 2801,
+      "method_version": 5,
+      "as_of": "2026-10-22",
+      "sources": [
+        "amfi",
+        "rbi",
+        "tigzig"
+      ],
+      "total": 40213,
+      "matched": 792,
+      "excluded_missing": [
+        {
+          "path": "all[0]",
+          "field": "status",
+          "count": 0,
+          "reasons": {}
+        },
+        {
+          "path": "all[1]",
+          "field": "plan",
+          "count": 0,
+          "reasons": {}
+        },
+        {
+          "path": "all[2]",
+          "field": "option",
+          "count": 0,
+          "reasons": {}
+        },
+        {
+          "path": "all[3].any[0]",
+          "field": "cagr_3y",
+          "count": 33847,
+          "reasons": {
+            "no_nav": 18019,
+            "no_recent_nav": 13526,
+            "history_too_short": 2290,
+            "gap_at_start": 12
+          }
+        },
+        {
+          "path": "all[3].any[1]",
+          "field": "vol_3y",
+          "count": 33868,
+          "reasons": {
+            "no_nav": 18019,
+            "no_recent_nav": 13526,
+            "history_too_short": 2290,
+            "gap_in_window": 21,
+            "gap_at_start": 12
+          }
+        }
+      ],
+      "columns": [
+        "status",
+        "plan",
+        "option",
+        "cagr_3y",
+        "vol_3y"
+      ],
+      "rows": [
+        {
+          "plan_option_id": 9506,
+          "amfi_code": "148928",
+          "name": "Mirae Asset NYSE FANG + ETF Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.61558631944353,
+            "vol_3y": 0.28027675357343035
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.61558631944353
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.28027675357343035
+            }
+          ]
+        },
+        {
+          "plan_option_id": 704,
+          "amfi_code": "149329",
+          "name": "Nippon India Taiwan Equity Fund- Direct Plan- Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.5609932345692659,
+            "vol_3y": null
+          },
+          "states": {
+            "vol_3y": {
+              "state": "NM",
+              "reason": "gap_in_window"
+            }
+          },
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.5609932345692659
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": null,
+              "state": {
+                "state": "NM",
+                "reason": "gap_in_window"
+              }
+            }
+          ]
+        },
+        {
+          "plan_option_id": 13786,
+          "amfi_code": "119277",
+          "name": "DSP World Gold Mining Overseas Equity Omni FoF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.4906137150775687,
+            "vol_3y": 0.35553512508664964
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.4906137150775687
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.35553512508664964
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2662,
+          "amfi_code": "149170",
+          "name": "Mirae Asset S&P 500 Top 50 ETF Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.4736471401943527,
+            "vol_3y": 0.32933941459342914
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.4736471401943527
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.32933941459342914
+            }
+          ]
+        },
+        {
+          "plan_option_id": 10586,
+          "amfi_code": "151730",
+          "name": "UTI Silver Exchange Traded Fund",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3880164576727301,
+            "vol_3y": 0.37143822314224406
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3880164576727301
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.37143822314224406
+            }
+          ]
+        },
+        {
+          "plan_option_id": 6615,
+          "amfi_code": "150597",
+          "name": "Mirae Asset Global X Artificial Intelligence & Technology ETF Fund of Fund - Direct Plan- Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.38769585762076497,
+            "vol_3y": 0.26003156890690904
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.38769585762076497
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.26003156890690904
+            }
+          ]
+        },
+        {
+          "plan_option_id": 11187,
+          "amfi_code": "151603",
+          "name": "Kotak Silver ETF Fund of Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3875931430178672,
+            "vol_3y": 0.40196175159396685
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3875931430178672
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.40196175159396685
+            }
+          ]
+        },
+        {
+          "plan_option_id": 8444,
+          "amfi_code": "151731",
+          "name": "UTI Silver ETF Fund of Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.38732759748100576,
+            "vol_3y": 0.396250675822284
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.38732759748100576
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.396250675822284
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15664,
+          "amfi_code": "150615",
+          "name": "Axis Silver Fund of Fund- Direct Plan-Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3865238685745316,
+            "vol_3y": 0.3872952203183975
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3865238685745316
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.3872952203183975
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15576,
+          "amfi_code": "149775",
+          "name": "ICICI Prudential Silver ETF FOF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3842053846587037,
+            "vol_3y": 0.38561210782701694
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3842053846587037
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.38561210782701694
+            }
+          ]
+        },
+        {
+          "plan_option_id": 13640,
+          "amfi_code": "149780",
+          "name": "Aditya Birla Sun Life Silver ETF FOF-Direct Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.38351921261125343,
+            "vol_3y": 0.40019028630952075
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.38351921261125343
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.40019028630952075
+            }
+          ]
+        },
+        {
+          "plan_option_id": 8207,
+          "amfi_code": "150737",
+          "name": "HDFC Silver ETF Fund of Fund - Growth Option - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.38225159438721157,
+            "vol_3y": 0.41607693260006323
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.38225159438721157
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.41607693260006323
+            }
+          ]
+        },
+        {
+          "plan_option_id": 11278,
+          "amfi_code": "149760",
+          "name": "Nippon India Silver ETF FOF- Direct Plan-Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3811285794631154,
+            "vol_3y": 0.3748069401806128
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3811285794631154
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.3748069401806128
+            }
+          ]
+        },
+        {
+          "plan_option_id": 5023,
+          "amfi_code": "150581",
+          "name": "Edelweiss Gold and Silver ETF FOF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3572261808785364,
+            "vol_3y": 0.28609876633552905
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3572261808785364
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.28609876633552905
+            }
+          ]
+        },
+        {
+          "plan_option_id": 7507,
+          "amfi_code": "145552",
+          "name": "Motilal Oswal Nasdaq 100 Fund of Fund- Direct Plan Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.351989230086587,
+            "vol_3y": 0.21783483121020264
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.351989230086587
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.21783483121020264
+            }
+          ]
+        },
+        {
+          "plan_option_id": 10281,
+          "amfi_code": "149455",
+          "name": "ICICI Prudential Strategic Metal and Energy Equity Fund of Fund - Direct Plan Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.34774930544205374,
+            "vol_3y": 0.23589025352223428
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.34774930544205374
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.23589025352223428
+            }
+          ]
+        },
+        {
+          "plan_option_id": 10054,
+          "amfi_code": "151750",
+          "name": "HDFC Defence Fund - Growth Option - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3326878210706057,
+            "vol_3y": 0.2597572816448417
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3326878210706057
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2597572816448417
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4985,
+          "amfi_code": "150642",
+          "name": "Motilal Oswal Gold and Silver Passive Fund of Funds(Direct Plan)",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3299652584432484,
+            "vol_3y": 0.26461478360702534
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3299652584432484
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.26461478360702534
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15903,
+          "amfi_code": "105463",
+          "name": "UTI GOLD Exchange Traded Fund",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3215286117129408,
+            "vol_3y": 0.1991812805514159
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3215286117129408
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1991812805514159
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15927,
+          "amfi_code": "150714",
+          "name": "UTI Gold ETF Fund of Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.32009819503461423,
+            "vol_3y": 0.208390401660271
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.32009819503461423
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.208390401660271
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4961,
+          "amfi_code": "115132",
+          "name": "Quantum Gold ETF FOF - Direct Plan Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3171216020269789,
+            "vol_3y": 0.21568866581650936
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3171216020269789
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.21568866581650936
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15087,
+          "amfi_code": "149910",
+          "name": "Navi NASDAQ100 US Specific Equity Passive FOF- Direct- Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3153156982648475,
+            "vol_3y": 0.2120078259230303
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3153156982648475
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2120078259230303
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15578,
+          "amfi_code": "149961",
+          "name": "Invesco India - Invesco EQQQ Nasdaq-100 ETF Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3149572962226539,
+            "vol_3y": 0.19376239760980665
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3149572962226539
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.19376239760980665
+            }
+          ]
+        },
+        {
+          "plan_option_id": 6144,
+          "amfi_code": "120685",
+          "name": "ICICI Prudential Gold ETF FOF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.31466537478633194,
+            "vol_3y": 0.222867595680514
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.31466537478633194
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.222867595680514
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4676,
+          "amfi_code": "119781",
+          "name": "Kotak Gold Fund Growth - Direct",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3146634290460175,
+            "vol_3y": 0.21722144941398072
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3146634290460175
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.21722144941398072
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3649,
+          "amfi_code": "148662",
+          "name": "Kotak US Specific Equity Passive FOF- Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.314621164406929,
+            "vol_3y": 0.19639062429341944
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.314621164406929
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.19639062429341944
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2554,
+          "amfi_code": "149291",
+          "name": "Aditya Birla Sun Life US Equity Passive FOF-Direct-Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.31456564504716966,
+            "vol_3y": 0.18695158388581823
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.31456564504716966
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18695158388581823
+            }
+          ]
+        },
+        {
+          "plan_option_id": 13443,
+          "amfi_code": "119132",
+          "name": "HDFC Gold ETF Fund of Fund - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3144929775376366,
+            "vol_3y": 0.2190484423733741
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3144929775376366
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2190484423733741
+            }
+          ]
+        },
+        {
+          "plan_option_id": 56,
+          "amfi_code": "119788",
+          "name": "SBI GOLD FUND- DIRECT PLAN - GROWTH",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3143492912399528,
+            "vol_3y": 0.214666187412461
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3143492912399528
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.214666187412461
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2530,
+          "amfi_code": "151974",
+          "name": "LIC MF Gold ETF Fund of Fund-Direct Plan-Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3142041928203301,
+            "vol_3y": 0.2430759628893394
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3142041928203301
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2430759628893394
+            }
+          ]
+        },
+        {
+          "plan_option_id": 11741,
+          "amfi_code": "120546",
+          "name": "Aditya Birla Sun Life Gold Fund - Growth - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3133262919096138,
+            "vol_3y": 0.22389042996835495
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3133262919096138
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.22389042996835495
+            }
+          ]
+        },
+        {
+          "plan_option_id": 5054,
+          "amfi_code": "120531",
+          "name": "Invesco India Gold ETF Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.3126663071041691,
+            "vol_3y": 0.23560301648561063
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.3126663071041691
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.23560301648561063
+            }
+          ]
+        },
+        {
+          "plan_option_id": 535,
+          "amfi_code": "118663",
+          "name": "Nippon India Gold Savings Fund - Direct Plan Growth Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.31257522345739974,
+            "vol_3y": 0.20660826850712527
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.31257522345739974
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.20660826850712527
+            }
+          ]
+        },
+        {
+          "plan_option_id": 7305,
+          "amfi_code": "120473",
+          "name": "Axis Gold Fund - Direct Plan - Growth option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.31223060682202264,
+            "vol_3y": 0.2393386822969531
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.31223060682202264
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2393386822969531
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1040,
+          "amfi_code": "149219",
+          "name": "ICICI Prudential NASDAQ 100 Index Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.31216552988717194,
+            "vol_3y": 0.21393284852020975
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.31216552988717194
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.21393284852020975
+            }
+          ]
+        },
+        {
+          "plan_option_id": 11941,
+          "amfi_code": "150751",
+          "name": "Axis NASDAQ 100 US Specific Equity Passive FOF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.30894541982916635,
+            "vol_3y": 0.1867822985816198
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.30894541982916635
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1867822985816198
+            }
+          ]
+        },
+        {
+          "plan_option_id": 14452,
+          "amfi_code": "148063",
+          "name": "Edelweiss US Technology Equity Fund of Fund- Direct Plan- Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.30461155371230664,
+            "vol_3y": 0.2797508039000896
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.30461155371230664
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2797508039000896
+            }
+          ]
+        },
+        {
+          "plan_option_id": 16151,
+          "amfi_code": "149816",
+          "name": "DSP Global Innovation Overseas Equity Omni FoF - Direct - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2951424278828785,
+            "vol_3y": 0.18595240581677952
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2951424278828785
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18595240581677952
+            }
+          ]
+        },
+        {
+          "plan_option_id": 7050,
+          "amfi_code": "119252",
+          "name": "DSP US Specific Equity Omni FoF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2834891733806415,
+            "vol_3y": 0.18045194387445146
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2834891733806415
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18045194387445146
+            }
+          ]
+        },
+        {
+          "plan_option_id": 730,
+          "amfi_code": "119279",
+          "name": "DSP World Mining Overseas Equity Omni FoF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2832433042940823,
+            "vol_3y": 0.2747712299853532
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2832433042940823
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2747712299853532
+            }
+          ]
+        },
+        {
+          "plan_option_id": 9312,
+          "amfi_code": "149830",
+          "name": "Navi Total Stock Market US Specific Equity Passive FoF- Direct Plan- Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2784698623751267,
+            "vol_3y": 0.16137238295328052
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2784698623751267
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.16137238295328052
+            }
+          ]
+        },
+        {
+          "plan_option_id": 12333,
+          "amfi_code": "152082",
+          "name": "HDFC Pharma and Healthcare Fund - Growth Option - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.27711958205420784,
+            "vol_3y": 0.14167563779657424
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.27711958205420784
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.14167563779657424
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2958,
+          "amfi_code": "140327",
+          "name": "Edelweiss Emerging Markets Opportunities Equity Offshore Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2768006129991569,
+            "vol_3y": 0.18394390692565155
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2768006129991569
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18394390692565155
+            }
+          ]
+        },
+        {
+          "plan_option_id": 13315,
+          "amfi_code": "148381",
+          "name": "Motilal Oswal S&P 500 Index Fund - Direct Plan Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.27645636245372884,
+            "vol_3y": 0.15306164623515942
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.27645636245372884
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.15306164623515942
+            }
+          ]
+        },
+        {
+          "plan_option_id": 14588,
+          "amfi_code": "120043",
+          "name": "HSBC Global Emerging Market Fund - Growth Direct",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.27208494778147574,
+            "vol_3y": 0.2015460808259955
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.27208494778147574
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2015460808259955
+            }
+          ]
+        },
+        {
+          "plan_option_id": 10970,
+          "amfi_code": "149180",
+          "name": "HDFC Developed World Overseas Equity Passive FOF - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2691529562321293,
+            "vol_3y": 0.12519441040218648
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2691529562321293
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.12519441040218648
+            }
+          ]
+        },
+        {
+          "plan_option_id": 9782,
+          "amfi_code": "148760",
+          "name": "SBI US Specific Equity Active FoF - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.26753289297226623,
+            "vol_3y": 0.18543342768445753
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.26753289297226623
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18543342768445753
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4381,
+          "amfi_code": "140296",
+          "name": "Edelweiss Europe Dynamic Equity Offshore Fund - Growth Option - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2606977517045972,
+            "vol_3y": 0.15120420159173117
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2606977517045972
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.15120420159173117
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15120,
+          "amfi_code": "148954",
+          "name": "Axis Global Innovation Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2588970577681504,
+            "vol_3y": 0.19289474453327643
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2588970577681504
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.19289474453327643
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3707,
+          "amfi_code": "149098",
+          "name": "Bandhan US specific Equity Active FOF - GROWTH - DIRECT PLAN",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2537698996886,
+            "vol_3y": 0.2017490563035199
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2537698996886
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2017490563035199
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2017,
+          "amfi_code": "127071",
+          "name": "HSBC Asia Pacific (Ex Japan) Dividend Yield Fund - Growth Direct",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2501483220401739,
+            "vol_3y": 0.18423845148220647
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2501483220401739
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18423845148220647
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15372,
+          "amfi_code": "149059",
+          "name": "Kotak Global Innovation Overseas Equity Active FOF- Direct Plan -Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2471904345661866,
+            "vol_3y": 0.18461193462666042
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2471904345661866
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18461193462666042
+            }
+          ]
+        },
+        {
+          "plan_option_id": 6490,
+          "amfi_code": "119779",
+          "name": "Kotak Global Emerging Market Overseas Equity Active FOF - Growth - Direct",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.24422655794810977,
+            "vol_3y": 0.1846401276059928
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.24422655794810977
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1846401276059928
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4360,
+          "amfi_code": "148485",
+          "name": "Axis Global Equity Alpha Fund of Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.24391634217484914,
+            "vol_3y": 0.1523560755955916
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.24391634217484914
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1523560755955916
+            }
+          ]
+        },
+        {
+          "plan_option_id": 14706,
+          "amfi_code": "129188",
+          "name": "Invesco India - Invesco Global Equity Income Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.23877422981820184,
+            "vol_3y": 0.14539066256436314
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.23877422981820184
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.14539066256436314
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2140,
+          "amfi_code": "152090",
+          "name": "Motilal Oswal Developed Market Ex US ETFs Fund of Funds Direct Plan Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.23837737898217193,
+            "vol_3y": 0.15182076032831085
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.23837737898217193
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.15182076032831085
+            }
+          ]
+        },
+        {
+          "plan_option_id": 10863,
+          "amfi_code": "130860",
+          "name": "Nippon India Japan Equity Fund- Direct Plan- Growth Plan- Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.23465985949511103,
+            "vol_3y": 0.1890038665867804
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.23465985949511103
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1890038665867804
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4387,
+          "amfi_code": "132009",
+          "name": "Aditya Birla Sun Life Global Excellence Equity Fund Of Fund - Retail Plan - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2291799762375406,
+            "vol_3y": 0.155856190334002
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2291799762375406
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.155856190334002
+            }
+          ]
+        },
+        {
+          "plan_option_id": 9486,
+          "amfi_code": "119517",
+          "name": "Aditya Birla Sun Life International Equity Fund - Growth - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.22841557146743852,
+            "vol_3y": 0.12489534743499599
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.22841557146743852
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.12489534743499599
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1387,
+          "amfi_code": "118551",
+          "name": "Franklin U.S. Opportunities Equity Active Fund of Funds - Direct - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.22796637838570932,
+            "vol_3y": 0.2061240391303052
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.22796637838570932
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2061240391303052
+            }
+          ]
+        },
+        {
+          "plan_option_id": 9345,
+          "amfi_code": "138456",
+          "name": "PGIM India Emerging Markets Equity Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.22458906072450158,
+            "vol_3y": 0.23640777465238003
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.22458906072450158
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.23640777465238003
+            }
+          ]
+        },
+        {
+          "plan_option_id": 8277,
+          "amfi_code": "140243",
+          "name": "Edelweiss Greater China Equity Off-shore Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.22414306230001912,
+            "vol_3y": null
+          },
+          "states": {
+            "vol_3y": {
+              "state": "NM",
+              "reason": "gap_in_window"
+            }
+          },
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.22414306230001912
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": null,
+              "state": {
+                "state": "NM",
+                "reason": "gap_in_window"
+              }
+            }
+          ]
+        },
+        {
+          "plan_option_id": 9563,
+          "amfi_code": "140274",
+          "name": "Edelweiss US Value Equity Offshore Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2213267557886247,
+            "vol_3y": 0.13473231030384358
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2213267557886247
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.13473231030384358
+            }
+          ]
+        },
+        {
+          "plan_option_id": 8454,
+          "amfi_code": "120035",
+          "name": "HSBC Brazil Fund - Growth Direct",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.22111412355908167,
+            "vol_3y": 0.25497121664644734
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.22111412355908167
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.25497121664644734
+            }
+          ]
+        },
+        {
+          "plan_option_id": 16295,
+          "amfi_code": "119783",
+          "name": "SBI HEALTHCARE OPPORTUNITIES FUND - DIRECT PLAN -GROWTH",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21473258595533506,
+            "vol_3y": 0.1302579097932007
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21473258595533506
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1302579097932007
+            }
+          ]
+        },
+        {
+          "plan_option_id": 16131,
+          "amfi_code": "147946",
+          "name": "BANDHAN SMALL CAP FUND - DIRECT PLAN GROWTH",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21327577962936672,
+            "vol_3y": 0.17509580707390926
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21327577962936672
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.17509580707390926
+            }
+          ]
+        },
+        {
+          "plan_option_id": 20,
+          "amfi_code": "126353",
+          "name": "Invesco India - Invesco Pan European Equity Fund of Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21285458703467963,
+            "vol_3y": 0.1669197961899014
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21285458703467963
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1669197961899014
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1557,
+          "amfi_code": "148614",
+          "name": "Invesco India - Invesco Global Consumer Trends Fund of Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21255354189289966,
+            "vol_3y": 0.312562013879054
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21255354189289966
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.312562013879054
+            }
+          ]
+        },
+        {
+          "plan_option_id": 2699,
+          "amfi_code": "147648",
+          "name": "ICICI Prudential Global Advantage Fund (FOF) - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21149635706811654,
+            "vol_3y": 0.1409218920091977
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21149635706811654
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1409218920091977
+            }
+          ]
+        },
+        {
+          "plan_option_id": 12954,
+          "amfi_code": "118559",
+          "name": "Franklin Asian Equity Fund - Direct - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21121669576358215,
+            "vol_3y": 0.16825858207519315
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21121669576358215
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.16825858207519315
+            }
+          ]
+        },
+        {
+          "plan_option_id": 8036,
+          "amfi_code": "134923",
+          "name": "Nippon India US Equity Opportunities Fund- Direct Plan- Growth Plan- Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.21102333412376928,
+            "vol_3y": 0.156896481727864
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.21102333412376928
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.156896481727864
+            }
+          ]
+        },
+        {
+          "plan_option_id": 9476,
+          "amfi_code": "120821",
+          "name": "quant Multi Asset Allocation Fund-GROWTH OPTION-Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.2105885949969042,
+            "vol_3y": 0.11475514074635182
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.2105885949969042
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": true,
+              "value": 0.11475514074635182
+            }
+          ]
+        },
+        {
+          "plan_option_id": 6106,
+          "amfi_code": "151901",
+          "name": "HDFC Transportation and Logistics Fund - Growth Option - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20951146929275155,
+            "vol_3y": 0.17180919896162214
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20951146929275155
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.17180919896162214
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15214,
+          "amfi_code": "143783",
+          "name": "Mirae Asset Healthcare Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20902776606183093,
+            "vol_3y": 0.14191830065965896
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20902776606183093
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.14191830065965896
+            }
+          ]
+        },
+        {
+          "plan_option_id": 5072,
+          "amfi_code": "120782",
+          "name": "UTI Healthcare Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20750282639633322,
+            "vol_3y": 0.13543502943910368
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20750282639633322
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.13543502943910368
+            }
+          ]
+        },
+        {
+          "plan_option_id": 5636,
+          "amfi_code": "119602",
+          "name": "Sundaram Global Brand Theme-Equity Active FOF - Direct Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20335343394435057,
+            "vol_3y": 0.1313826837716202
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20335343394435057
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1313826837716202
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1400,
+          "amfi_code": "120403",
+          "name": "Invesco India Mid Cap Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20281047084500625,
+            "vol_3y": 0.17288385100713594
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20281047084500625
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.17288385100713594
+            }
+          ]
+        },
+        {
+          "plan_option_id": 15834,
+          "amfi_code": "147919",
+          "name": "ITI Small Cap Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20203316842046792,
+            "vol_3y": 0.19375107024021052
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20203316842046792
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.19375107024021052
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4211,
+          "amfi_code": "151036",
+          "name": "HSBC Midcap Fund - Direct Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20164876869252413,
+            "vol_3y": 0.1886567470490936
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20164876869252413
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1886567470490936
+            }
+          ]
+        },
+        {
+          "plan_option_id": 5441,
+          "amfi_code": "120186",
+          "name": "ICICI Prudential US Bluechip Equity Fund - Direct Plan -  Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20113404901678056,
+            "vol_3y": 0.16198384845220412
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20113404901678056
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.16198384845220412
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1576,
+          "amfi_code": "148699",
+          "name": "Axis Greater China Equity Fund of Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20113112316261583,
+            "vol_3y": 0.2290347198647216
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20113112316261583
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2290347198647216
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3817,
+          "amfi_code": "120351",
+          "name": "LIC MF Infrastructure Fund-Direct Plan-Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.20111840546073245,
+            "vol_3y": 0.19967292635173223
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.20111840546073245
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.19967292635173223
+            }
+          ]
+        },
+        {
+          "plan_option_id": 10822,
+          "amfi_code": "119275",
+          "name": "DSP Global Clean Energy Overseas Equity Omni FoF Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.1995029563269446,
+            "vol_3y": 0.20574513896049862
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.1995029563269446
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.20574513896049862
+            }
+          ]
+        },
+        {
+          "plan_option_id": 6656,
+          "amfi_code": "148490",
+          "name": "SBI Children's Fund - Investment Plan - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19827814596575855,
+            "vol_3y": 0.12569765741868358
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19827814596575855
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.12569765741868358
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3013,
+          "amfi_code": "132140",
+          "name": "Aditya Birla Sun Life Global Emerging Opportunities Fund - Direct plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19823727669183344,
+            "vol_3y": 0.18416517181270692
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19823727669183344
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.18416517181270692
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4440,
+          "amfi_code": "143874",
+          "name": "ICICI Prudential Healthcare Fund - Direct Plan - Cumulative Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19818076870357415,
+            "vol_3y": 0.13769772697081448
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19818076870357415
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.13769772697081448
+            }
+          ]
+        },
+        {
+          "plan_option_id": 13112,
+          "amfi_code": "152024",
+          "name": "LIC MF Healthcare Fund-Direct Plan-Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.1971557732731828,
+            "vol_3y": 0.14147365269434173
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.1971557732731828
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.14147365269434173
+            }
+          ]
+        },
+        {
+          "plan_option_id": 7724,
+          "amfi_code": "119364",
+          "name": "BANK OF INDIA Manufacturing & Infrastructure Fund-Direct Plan-Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19602124304212043,
+            "vol_3y": 0.17366345336186226
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19602124304212043
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.17366345336186226
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3444,
+          "amfi_code": "120357",
+          "name": "Invesco India Large & Mid Cap Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19427984284539468,
+            "vol_3y": 0.16813277017529335
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19427984284539468
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.16813277017529335
+            }
+          ]
+        },
+        {
+          "plan_option_id": 7433,
+          "amfi_code": "145454",
+          "name": "DSP Healthcare Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.1930244194010644,
+            "vol_3y": 0.12891645832515322
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.1930244194010644
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.12891645832515322
+            }
+          ]
+        },
+        {
+          "plan_option_id": 11225,
+          "amfi_code": "147704",
+          "name": "Motilal Oswal Large and Midcap Fund - Direct Plan Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19261816091506834,
+            "vol_3y": 0.1940525097914697
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19261816091506834
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1940525097914697
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3870,
+          "amfi_code": "150930",
+          "name": "ICICI Prudential Nifty Pharma Index Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.1924161152660615,
+            "vol_3y": 0.1511224312340249
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.1924161152660615
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1511224312340249
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1099,
+          "amfi_code": "145137",
+          "name": "Invesco India Small Cap Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.1920108179118003,
+            "vol_3y": 0.1800238700029237
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.1920108179118003
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1800238700029237
+            }
+          ]
+        },
+        {
+          "plan_option_id": 4179,
+          "amfi_code": "148481",
+          "name": "Invesco India Focused Fund - Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19131215856002504,
+            "vol_3y": 0.16211068805476017
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19131215856002504
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.16211068805476017
+            }
+          ]
+        },
+        {
+          "plan_option_id": 12952,
+          "amfi_code": "150584",
+          "name": "WhiteOak Capital Mid Cap Fund Direct Plan Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.19036776456485183,
+            "vol_3y": 0.16026345236838171
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.19036776456485183
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.16026345236838171
+            }
+          ]
+        },
+        {
+          "plan_option_id": 8272,
+          "amfi_code": "148555",
+          "name": "Edelweiss MSCI India Domestic & World Healthcare 45 Index Fund Direct Plan - Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.1903570679693789,
+            "vol_3y": 0.11735921368016215
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.1903570679693789
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": true,
+              "value": 0.11735921368016215
+            }
+          ]
+        },
+        {
+          "plan_option_id": 1857,
+          "amfi_code": "147409",
+          "name": "Aditya Birla Sun Life Pharma and Healthcare Fund-Direct-Growth",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.18708024802294054,
+            "vol_3y": 0.12946558158195534
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.18708024802294054
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.12946558158195534
+            }
+          ]
+        },
+        {
+          "plan_option_id": 926,
+          "amfi_code": "151853",
+          "name": "quant Healthcare Fund - Growth Option - Direct Plan",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.186605515636588,
+            "vol_3y": 0.17411913304962004
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.186605515636588
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.17411913304962004
+            }
+          ]
+        },
+        {
+          "plan_option_id": 12235,
+          "amfi_code": "151739",
+          "name": "UTI Nifty 500 Value 50 Index Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.18644543851851658,
+            "vol_3y": 0.2051619193321641
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.18644543851851658
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.2051619193321641
+            }
+          ]
+        },
+        {
+          "plan_option_id": 3152,
+          "amfi_code": "133386",
+          "name": "Motilal Oswal ELSS Tax Saver Fund - Direct Plan - Growth Option",
+          "values": {
+            "status": "active",
+            "plan": "direct",
+            "option": "growth",
+            "cagr_3y": 0.18449181404970316,
+            "vol_3y": 0.1944327542587669
+          },
+          "states": {},
+          "conditions": [
+            {
+              "path": "all[0]",
+              "passed": true,
+              "value": "active"
+            },
+            {
+              "path": "all[1]",
+              "passed": true,
+              "value": "direct"
+            },
+            {
+              "path": "all[2]",
+              "passed": true,
+              "value": "growth"
+            },
+            {
+              "path": "all[3].any[0]",
+              "passed": true,
+              "value": 0.18449181404970316
+            },
+            {
+              "path": "all[3].any[1]",
+              "passed": false,
+              "value": 0.1944327542587669
+            }
+          ]
+        }
+      ],
+      "relaxations": [],
+      "next": "WzI4MDEsICI4ZTBmMjU1ODhiZTU1MjEzZDIyNDJlYmE5ZTc2N2JmOGUxZDAyOTM5M2UwMmU5NDVhZThjNmI1MDhkZDYyMjczIiwgMTAwXQ=="
+    },
+    "independent_predicate_check": {
+      "returned_rows": 100,
+      "matched_all_rows": true,
+      "total_matched": 792,
+      "scope": "first 100 rows only; not a new all-field audit"
+    }
+  }
+}
