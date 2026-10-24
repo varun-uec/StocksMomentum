@@ -200,7 +200,9 @@ def _scheme(rows: list[Row], names: Mapping[str, int]) -> tuple[int | None, str]
             label = label or text
             for candidate in (text, text.split("(")[0], text.split(" - ")[0]):
                 key = compact(
-                    candidate.replace("Portfolio of", "").replace("Monthly Portfolio", "")
+                    candidate.replace("Portfolio of", "")
+                    .replace("Monthly Portfolio", "")
+                    .removeprefix("SCHEME:")
                 )
                 if key in names:
                     return names[key], text
@@ -220,13 +222,14 @@ def _sheet(
     as_of = next((d for r in rows[:start] for t in r.values() if (d := _day(t))), None) or fallback
     if as_of is None:
         raise SourceLayoutError(f"No disclosure date above the header for {label}.")
+    own = compact(label.removeprefix("SCHEME:")) or "\0"
     lines: list[_Line] = []
     section = ""
     for row in rows[start + 1 :]:
         name = row.get(columns["name"], "") or next((t for t in row.values() if t), "")
         weight = _number(row.get(columns["weight"]))
-        if _GRAND_TOTAL.match(name):
-            break
+        if _GRAND_TOTAL.match(name) or (_TOTAL.match(name) and own in compact(name)):
+            break  # UTI closes a portfolio with "TOTAL : <scheme>", then prints notes
         if not name or _TOTAL.match(name):
             continue
         isin = row.get(columns["isin"]) or None
@@ -250,7 +253,11 @@ def _sheet(
                 weight,
             )
         )
-    percent = any(abs(w) > Decimal("1.5") for *_, w in lines)
+    # Filed as percentages: a line above 1.5, or a total near 100 when every line is
+    # small (a portfolio of 250 stocks); fraction sheets total 4 at most, headings and all.
+    percent = any(abs(w) > Decimal("1.5") for *_, w in lines) or sum(
+        (w for *_, w in lines), Decimal(0)
+    ) > Decimal(50)
     lines = _without_subtotals(lines, Decimal(100) if percent else Decimal(1))
     holdings = [
         Holding(
@@ -328,6 +335,18 @@ def _without_subtotals(lines: list[_Line], whole: Decimal) -> list[_Line]:
     return result
 
 
+# UTI stacks every scheme on one sheet, each block opened by "SCHEME CODE002STARTS".
+_BLOCK = re.compile(r"^\s*scheme\s*code\s*\w*\s*starts\s*$", re.I)
+
+
+def _blocks(rows: list[Row]) -> list[list[Row]]:
+    """A sheet's portfolios: the whole sheet, or each block a scheme-code line opens."""
+    starts = [i for i, row in enumerate(rows) if any(_BLOCK.match(t) for t in row.values())]
+    if not starts:
+        return [rows]
+    return [rows[a:b] for a, b in zip(starts, [*starts[1:], len(rows)], strict=True)]
+
+
 def _workbooks(content: bytes) -> list[bytes]:
     """The workbooks in a file: the file itself, or each workbook inside a zip of them."""
     if content[:8] == XLS_SIGNATURE:
@@ -347,11 +366,12 @@ def parse_portfolios(
     holdings: list[Holding] = []
     unmatched: list[str] = []
     for workbook in _workbooks(content):
-        for _, rows in any_sheets(workbook):
-            found, missing = _sheet(rows, names, fallback)
-            holdings.extend(found)
-            if missing:
-                unmatched.append(missing)
+        for _, sheet in any_sheets(workbook):
+            for rows in _blocks(sheet):
+                found, missing = _sheet(rows, names, fallback)
+                holdings.extend(found)
+                if missing:
+                    unmatched.append(missing)
     if not holdings and not unmatched:
         raise SourceLayoutError("No sheet has an ISIN and a % to net assets header.")
     return Portfolios(holdings, unmatched)

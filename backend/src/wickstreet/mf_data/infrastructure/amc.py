@@ -22,6 +22,7 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
   ``www.icicipruamc.com/blob``: one zip a month of a workbook per scheme
   (``Monthly-Portfolio-Disclosure-September-2026.zip``).
 - Baroda BNP Paribas: see :class:`BarodaPortfolioAdapter`.
+- UTI: see :class:`UtiPortfolioAdapter`.
 
 Other AMCs build their pages in the browser from sources not yet read, so their
 files come in through ``wickstreet mf import-portfolios``, which reads the same
@@ -218,6 +219,29 @@ class BarodaPortfolioAdapter(AmcPortfolioAdapter):
         return None
 
 
+class UtiPortfolioAdapter(AmcPortfolioAdapter):
+    """UTI: one ``GET`` per month lists the consolidated portfolio zip.
+
+    The downloads page asks ``utimf.com/api/get-consolidate-portfolio-disclosure``
+    with the year and the month's name; the answer is JSON rows with each file's
+    ``url``. The zip holds one sheet that stacks every scheme's portfolio.
+    """
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """The month's consolidated zip, or ``None`` when the month lists none."""
+        month = _MONTHS[month_end.month - 1].capitalize()
+        listed = await self._http.get(self._page, {"year": str(month_end.year), "month": month})
+        if listed.status_code != 200:
+            raise SourceError(f"{self._page} answered HTTP {listed.status_code}.")
+        for row in json.loads(listed.text).get("rows", []):
+            if "consolidated" in str(row.get("name", "")).lower() and row.get("url"):
+                response = await self._http.get(row["url"])
+                if response.status_code != 200:
+                    raise SourceError(f"{row['url']} answered HTTP {response.status_code}.")
+                return RawFile(row["url"], datetime.now(UTC), response.content)
+        return None
+
+
 def amc_adapters(
     *, min_interval_seconds: float, timeout_seconds: float, max_attempts: int
 ) -> dict[str, AmcPortfolioAdapter]:
@@ -290,6 +314,14 @@ def amc_adapters(
             "https://www.icicipruamc.com/blob",
             require=("monthly-portfolio-disclosure",),
             exclude=("fortnight", "half"),
+        ),
+        "uti": UtiPortfolioAdapter(
+            "uti",
+            "https://www.utimf.com/api/get-consolidate-portfolio-disclosure",
+            require=(),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
         ),
         "barodabnp": BarodaPortfolioAdapter(
             "barodabnp",

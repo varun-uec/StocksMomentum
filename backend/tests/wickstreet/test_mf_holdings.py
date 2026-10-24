@@ -238,3 +238,52 @@ def test_links_are_read_from_pages_and_json_listings() -> None:
         "/docs/NIMF-MONTHLY-PORTFOLIO-30-Sep-26.xls",
         "/downloads/Files/2026/Sep/Monthly-Portfolio-Disclosure-September-2026.zip",
     ]
+
+
+def test_one_sheet_can_stack_portfolios_each_closed_by_its_own_total() -> None:
+    """UTI's layout: blocks opened by a scheme-code line, closed by "TOTAL : <scheme>"."""
+
+    def block(code: str, scheme: str, isin: str) -> list[list[str | float]]:
+        return [
+            [f"SCHEME CODE{code}STARTS"],
+            ["UTI MUTUAL FUND"],
+            [f"SCHEME: {scheme}"],
+            ["PORTFOLIO DISCLOSURE AS OF 30/09/2026"],
+            [
+                "NAME OF THE INSTRUMENT",
+                "RATING/INDUSTRY",
+                "QUANTITY",
+                "MARKET-VALUE",
+                "% TO NAV",
+                "ISIN",
+            ],
+            ["EQ - HDFC BANK LIMITED", "Banks", 10, 90, 90, isin],
+            ["NET CURRENT ASSETS", "", "", 10, 10, ""],
+            [f"TOTAL : {scheme}", "", "", 100, "", ""],
+            ["NAME OF THE SECURITY", "ISIN NO", "VALUE AS PER NCA", "%AGE TO NAV", "Total Amt Due"],
+            ["CP - DEFAULTED PAPER", "INE008I14OM7", 0, 0, 9991.55],
+            [f"SCHEME CODE{code}ENDS"],
+        ]
+
+    content = _xlsx(
+        [
+            *block("002", "UTI Alpha Fund", "INE040A01034"),
+            *block("003", "UTI Beta Fund", "INE040A01034"),
+        ]
+    )
+    found = parse_portfolios(content, {"utialphafund": 1, "utibetafund": 2}, date(2026, 9, 30))
+    assert [(x.sd_id, x.name, x.weight) for x in found.holdings] == [
+        (1, "EQ - HDFC BANK LIMITED", Decimal("0.9")),
+        (1, "NET CURRENT ASSETS", Decimal("0.1")),
+        (2, "EQ - HDFC BANK LIMITED", Decimal("0.9")),
+        (2, "NET CURRENT ASSETS", Decimal("0.1")),
+    ]
+
+
+def test_small_weights_filed_as_percentages_are_read_as_percentages() -> None:
+    """Every line under 1.5% (a broad index fund) but the total near 100: percentages."""
+    lines: list[list[str | float]] = [
+        [k, f"Company {k}", f"INE{k:09d}", "Banks", 1, 1, 1.0] for k in range(1, 101)
+    ]
+    found = parse_portfolios(_book(lines), {"dspexamplefund": 7})
+    assert sum(x.weight for x in found.holdings) == Decimal("1")
