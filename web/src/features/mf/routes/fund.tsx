@@ -169,7 +169,7 @@ export default function Fund() {
           Back
         </button>
         {/* One actions row at every width; on phones it scrolls sideways, so no bar covers the page. */}
-        <div tabIndex={0} className="mf-scroll -mr-1 flex min-w-0 gap-2 overflow-x-auto py-1 pr-1 sm:flex-wrap sm:justify-end sm:overflow-visible" role="group" aria-label="Fund actions; scroll sideways for more actions">
+        <div tabIndex={0} className="mf-scroll -mr-1 flex min-w-0 gap-2 overflow-x-auto py-1 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)] sm:flex-wrap sm:justify-end sm:overflow-visible sm:pr-1 sm:[mask-image:none]" role="group" aria-label="Fund actions; scroll sideways for more actions">
           {actions}
         </div>
       </div>

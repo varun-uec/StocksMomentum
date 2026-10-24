@@ -18,8 +18,8 @@ export default function Ask() {
   useTitle('AI research');
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Planned · Slice 5" title="Ask Wickstreet, in your language" lead="Questions in English, हिन्दी or Hinglish, answered with cited numbers from the same tools you see here. It opens an editable view you can check and save." />
-      <DependencyPanel title="Research agent" needs="A1, the agent runtime with tool citations and validation (ADR-022)">
+      <PageHeader eyebrow="Coming later" title="Ask Wickstreet, in your language" lead="Questions in English, हिन्दी or Hinglish, answered with cited numbers from the same tools you see here. It opens an editable view you can check and save." />
+      <DependencyPanel title="Research assistant" needs="an assistant that cites every number to a Wickstreet tool">
         Every number in an answer will come from a tool result, never from the model’s wording. No answer is shown until that runtime exists.
       </DependencyPanel>
       <section aria-labelledby="ask-today">

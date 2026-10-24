@@ -216,16 +216,18 @@ export function KeyFactsStrip({ code, metrics }: { code: string; metrics: Metric
   const profile = useProfile(code);
   const v = metrics.values;
   const managers = profile.data?.managers ?? [];
+  const managerCount = isNum(v.manager_count) ? v.manager_count : managers.length;
   const items: [string, string][] = [
     ['TER', isNum(v.ter) ? pct(v.ter, 2) : '—'],
     ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : '—'],
     ['Risk', typeof v.riskometer === 'string' ? v.riskometer : '—'],
     ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : '—'],
-    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managers.length > 1 ? ` +${managers.length - 1}` : ''}` : '—'],
+    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managerCount > 1 ? ` +${managerCount - 1}` : ''}` : '—'],
     ['Portfolio', typeof v.holdings_as_of === 'string' ? date(v.holdings_as_of) : '—'],
   ];
   return (
-    <a href="#key-facts" className="mt-2 block rounded-[12px] bg-mf-surface/80 p-2 ring-1 ring-mf-line" aria-label="Key facts; go to their dates and sources">
+    <a href="#key-facts" className="mt-2 block rounded-[12px] bg-mf-surface/80 p-2 ring-1 ring-mf-line">
+      <span className="sr-only">Key facts: </span>
       <dl className="grid grid-cols-3 gap-x-2 gap-y-1.5">
         {items.map(([k, value]) => (
           <div key={k} className="min-w-0">
@@ -234,6 +236,7 @@ export function KeyFactsStrip({ code, metrics }: { code: string; metrics: Metric
           </div>
         ))}
       </dl>
+      <span className="sr-only">. Dates and sources are in Key facts below.</span>
     </a>
   );
 }
@@ -249,6 +252,8 @@ export function KeyFacts({ code, metrics }: { code: string; metrics: Metrics }) 
   const v = metrics.values;
   const why = (id: string) => missingLabel(metrics.states[id]);
   const managers = profile.data?.managers ?? [];
+  // The scheme document's count; the dated list can miss a name it could not date.
+  const managerCount = isNum(v.manager_count) ? v.manager_count : managers.length;
   const h = holdings.data;
   const top = h?.lines?.[0];
   const sector = Object.entries(h?.summary?.sectors ?? {}).sort((a, b) => b[1] - a[1])[0];
@@ -305,16 +310,16 @@ export function KeyFacts({ code, metrics }: { code: string; metrics: Metrics }) 
           to="?tab=benchmark"
         />
         <Fact
-          label={managers.length > 1 ? `Fund managers (${managers.length})` : 'Fund manager'}
+          label={managerCount > 1 ? `Fund managers (${managerCount})` : 'Fund manager'}
           value={managers.length ? managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '') : profile.isLoading ? <Skeleton className="h-5 w-32" /> : 'Not filed'}
           sub={
-            managers.length > 1
-              ? `and ${managers.length - 1} more · longest tenure ${Math.max(...managers.map((m) => m.years)).toFixed(1)} yrs`
+            managerCount > 1
+              ? `and ${managerCount - 1} more · longest tenure ${Math.max(...managers.map((m) => m.years)).toFixed(1)} yrs`
               : managers.length
                 ? `Since ${date(managers[0].since)}`
                 : undefined
           }
-          source={managers.length ? `Scheme document of ${date(profile.data?.document?.managers?.as_of)}` : undefined}
+          source={managers.length ? `Scheme summary document, read ${date(profile.data?.document?.managers?.as_of)}` : undefined}
           to="?tab=facts"
         />
         <Fact

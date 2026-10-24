@@ -13,7 +13,7 @@ export function FundRow({ code, action }: { code: string; action?: ReactNode }) 
     <div className="flex items-center gap-3 py-2.5">
       <Link to={`/mf/funds/${code}`} className="group flex min-w-0 flex-1 items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium group-hover:text-mf-brand-strong">{schemeName(m.name)}</p>
+          <p className="line-clamp-2 text-sm font-medium group-hover:text-mf-brand-strong">{schemeName(m.name)}</p>
           <p className="text-xs text-mf-muted">{categoryShort(String(m.values.category))}</p>
         </div>
         <div className="text-right text-xs">

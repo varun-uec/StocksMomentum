@@ -45,7 +45,7 @@ export function MetricTile({
   else if (rank && metrics.values[rank] != null) sub = `rank ${metrics.values[rank]} of ${metrics.values[rank.replace(/_rank$/, '_count')] ?? '—'} in category`;
   // A Sharpe ratio depends on its risk-free rate; print it, so a different figure elsewhere reads as a method difference (review 1, rank 9).
   const rf = RISK_FREE[id] ? metrics.values[RISK_FREE[id]] : null;
-  if (!missing && isNum(rf)) sub = `${sub ? `${sub} · ` : ''}risk-free ${pct(rf, 2)}`;
+  if (!missing && isNum(rf)) sub = `${sub ? `${sub} · ` : ''}risk-free ${pct(rf, 2)}, window average`;
   const negative = typeof value === 'number' && value < 0 && field?.unit === 'fraction';
   return (
     <Stat
@@ -126,7 +126,7 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of �
         fund.length > 1 && (
           <>
             <LegendDot color={seriesColor(0)} label={<>This fund <b className="tabular">{inr(end)}</b></>} />
-            {proxyEnd !== undefined && <LegendDot color={token('chart2')} dashed label={<><span>Large-cap proxy<span className="max-sm:hidden">, not the benchmark</span></span> <b className="tabular">{inr(proxyEnd)}</b></>} />}
+            {proxyEnd !== undefined && <LegendDot color={token('chart2')} dashed label={<><span><span className="max-sm:hidden">Large-cap proxy, not the benchmark</span><span className="sm:hidden">Proxy, not benchmark</span></span> <b className="tabular">{inr(proxyEnd)}</b></>} />}
             {bands.length > 0 && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-3 w-4 rounded-[3px]" style={{ background: token('muted', 0.18) }} aria-hidden="true" />

@@ -198,11 +198,11 @@ export default function Compare() {
         lead="The same start date, the same metrics, side by side."
         actions={
           <>
-            <Link to={labHref} className={buttonClass('secondary')}>
+            <Link to={labHref} className={buttonClass('secondary', 'sm')}>
               <I.lab className="h-4 w-4" />
               Test an investment
             </Link>
-            <Button disabled={!data || create.isPending} onClick={() => create.mutate({ name: `Comparison · ${funds.map((f) => schemeName(f.name).split(' ')[0]).join(', ')}`.slice(0, 120), body: { codes } })}>
+            <Button size="sm" disabled={!data || create.isPending} onClick={() => create.mutate({ name: `Comparison · ${funds.map((f) => schemeName(f.name).split(' ')[0]).join(', ')}`.slice(0, 120), body: { codes } })}>
               <I.star className="h-4 w-4" />
               {create.isSuccess ? 'Saved as a watchlist' : 'Save as watchlist'}
             </Button>
@@ -216,14 +216,15 @@ export default function Compare() {
         <Loading label="Comparing" />
       ) : (
         <div className={cx('space-y-6', compare.isPlaceholderData && 'opacity-60')}>
-          <div className="rounded-[12px] border border-mf-info/30 bg-mf-info-soft/60 px-4 py-3 text-sm text-mf-ink-soft">
-            The growth chart starts on <b>{date(data.start)}</b>, the first date every selected fund has a NAV. Metrics below keep their own trailing windows.
-            {categories.size > 1 && ' These funds are in different categories, so their scores rank them against different peers; a higher score is not a win across categories.'}
-          </div>
+
           {example && (
             <p className="text-sm text-mf-muted">These are example funds. Remove them and add your own, or use the compare button on any fund.</p>
           )}
           <AtAGlance funds={funds} codes={codes} dataRevision={dataRevision} />
+          <div className="rounded-[12px] border border-mf-info/30 bg-mf-info-soft/60 px-4 py-3 text-sm text-mf-ink-soft">
+            The growth chart starts on <b>{date(data.start)}</b>, the first date every selected fund has a NAV. The answers above and the table below keep their own trailing windows.
+            {categories.size > 1 && ' These funds are in different categories, so their scores rank them against different peers; a higher score is not a win across categories.'}
+          </div>
           <ChartFrame
             title={period === 'All' ? 'Growth of ₹10,000 from the common start' : `Growth of ₹10,000 over ${period}`}
             subtitle={`From ${date(series[0]?.points[0]?.[0])}; NAV rebased, before tax`}
@@ -378,12 +379,12 @@ function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes
   const pair = overlap.data?.pairs.filter((q) => isNum(q.weighted_overlap)).sort((x, y) => (y.weighted_overlap ?? 0) - (x.weighted_overlap ?? 0))[0];
   const short = (name: string) => schemeName(name).replace(/ Fund$/, '');
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="At a glance">
+    <ul className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-5" aria-label="At a glance">
       {questions.map((q) => {
         const known = funds.map((f, i) => ({ f, i, v: f.values[q.id] })).filter((x): x is { f: CompareFund; i: number; v: number } => isNum(x.v));
         const best = known.length > 1 ? known.reduce((a, b) => ((q.better === 'higher' ? b.v > a.v : b.v < a.v) ? b : a)) : null;
         return (
-          <li key={q.id} className="mf-lift rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
+          <li key={q.id} className="mf-lift rounded-card border border-mf-line bg-mf-surface p-3 shadow-card sm:p-4">
             <p className="text-xs font-medium uppercase tracking-[0.06em] text-mf-muted">{q.title}</p>
             {best ? (
               <>
@@ -391,7 +392,8 @@ function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: seriesColor(best.i) }} aria-hidden="true" />
                   <span className="truncate" title={best.f.name}>{short(best.f.name)}</span>
                 </p>
-                <ul className="mt-1.5 space-y-0.5 text-xs text-mf-ink-soft">
+                <p className="mt-0.5 text-xs tabular text-mf-ink-soft sm:hidden">{known.map((x) => pct(x.v, q.digits ?? 1, q.id !== 'ter')).join(' vs ')}</p>
+                <ul className="mt-1.5 hidden space-y-0.5 text-xs text-mf-ink-soft sm:block">
                   {known.map((x) => (
                     <li key={x.f.amfi_code} className="flex justify-between gap-2">
                       <span className="truncate">{short(x.f.name)}</span>
@@ -399,7 +401,7 @@ function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes
                     </li>
                   ))}
                 </ul>
-                <p className="mt-1 text-[11px] text-mf-muted">{q.note}</p>
+                <p className="mt-1 hidden text-[11px] text-mf-muted sm:block">{q.note}</p>
               </>
             ) : (
               <p className="mt-1.5 text-sm text-mf-muted">
@@ -409,7 +411,7 @@ function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes
           </li>
         );
       })}
-      <li className="mf-lift rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
+      <li className="mf-lift rounded-card border border-mf-line bg-mf-surface p-3 shadow-card sm:p-4">
         <p className="text-xs font-medium uppercase tracking-[0.06em] text-mf-muted">Shared holdings</p>
         {pair ? (
           <>

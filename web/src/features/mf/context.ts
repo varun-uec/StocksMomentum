@@ -12,8 +12,9 @@ const MAX = 5;
 /** Example funds when the visitor has opened none: three flexi caps with long NAV histories. */
 export const EXAMPLES = [
   { code: '122639', name: 'Parag Parikh Flexi Cap Fund' },
+  // The first two have stored portfolios, so a first comparison shows shared holdings (review 2, rank 1).
+  { code: '148990', name: 'ICICI Prudential Flexi Cap Fund' },
   { code: '118955', name: 'HDFC Flexi Cap Fund' },
-  { code: '120166', name: 'Kotak Flexi Cap Fund' },
 ] as const;
 
 const listeners = new Set<() => void>();
