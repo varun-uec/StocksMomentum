@@ -20,6 +20,7 @@ Every backlog item also uses the product-wide interaction rule in [the design sy
 
 ## Current milestone evidence
 
+- Screener Basic mode refines every field inline (2026-10-24). Showing a metric opens its control at once: a range for numbers and dates, a checklist for enums, Any/Yes/No for a flag. No operator, date or dialog. A preset's `>=` and `<=` merge into one editable range. Chips open the inline control; only top/bottom share, "none of", missing-value and group conditions open the full editor. `/screener/fields` now gives each number field its snapshot range (`Snapshot.ranges`), shown as "Snapshot values run from −98.9% to 93.6%". Measured on real data: Show Return 1Y = 1 click (545 ms to visible column); a −10% minimum = 0 further clicks plus one entry (46 → 37 funds; was 1 click). A shown or filtered metric is now the first data column. MF E2E 80/80, vitest 215/215, backend screening + analytics 72/72; axe clean on open refine rows. Governing principle added to `CLAUDE.md` ("Product UX: Adapt to the User").
 - `backend/src/wickstreet/mf_data/infrastructure/amc.py` registers 21 manual sources and never fetches them.
 - `backend/src/wickstreet/mf_data/infrastructure/portfolios.py` reuses workbook parsing for CSV and ZIP containers; unsupported PDFs and protected files fail clearly.
 - `backend/src/wickstreet/mf_data/application/portfolios.py` requires a source-specific storage grant, records no retrieval grant, keeps raw hash/provenance, rejects empty or wholly unmatched files, and holds back unreconciled portfolios until layout verification.

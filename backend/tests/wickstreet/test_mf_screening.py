@@ -197,6 +197,13 @@ def test_cursor_is_pinned_to_its_request() -> None:
         decode_cursor("!!!", request)
 
 
+def test_ranges_span_each_number_field_and_skip_missing_values() -> None:
+    ranges = snapshot(*ROWS, row(5, ret_1y=-0.05)).ranges
+    assert ranges["ret_1y"] == (-0.05, 0.20)
+    assert "cagr_3y" not in ranges  # no fund has a value
+    assert "plan" not in ranges  # not a number
+
+
 def test_index_covers_every_field() -> None:
     assert [f.id for f in FIELDS] == sorted(INDEX, key=INDEX.__getitem__)
 

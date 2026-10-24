@@ -82,6 +82,50 @@ export function isCondition(node: FilterNode): node is Condition {
   return 'field' in node;
 }
 
+/** A Basic-mode control for one field: a range, a value list or a yes/no flag. */
+export type BasicControl =
+  | { kind: 'range'; min: unknown; max: unknown }
+  | { kind: 'values'; picked: string[] }
+  | { kind: 'flag'; value: boolean | null };
+
+const mentions = (node: FilterNode, field: string): boolean =>
+  isCondition(node) ? node.field === field : ('all' in node ? node.all : node.any).some((n) => mentions(n, field));
+
+/**
+ * The field's conditions as one Basic control, or null when only the full editor can show them
+ * (a top or bottom share, "none of", missing values, a group). A min and a max condition merge into one range.
+ */
+export function basicControl(field: FieldDef, conditions: FilterNode[]): BasicControl | null {
+  if (conditions.some((n) => !isCondition(n) && mentions(n, field.id))) return null;
+  const own = conditions.filter((n): n is Condition => isCondition(n) && n.field === field.id);
+  if (field.type === 'enum') {
+    if (!own.length) return { kind: 'values', picked: [] };
+    const [c] = own;
+    return own.length === 1 && c.op === 'in' && Array.isArray(c.value) ? { kind: 'values', picked: c.value.map(String) } : null;
+  }
+  if (field.type === 'boolean') {
+    if (!own.length) return { kind: 'flag', value: null };
+    const [c] = own;
+    return own.length === 1 && c.op === '=' && typeof c.value === 'boolean' ? { kind: 'flag', value: c.value } : null;
+  }
+  let min: unknown = null;
+  let max: unknown = null;
+  for (const c of own) {
+    if (c.op === 'between' && Array.isArray(c.value) && min === null && max === null) [min, max] = c.value;
+    else if ((c.op === '>=' || c.op === '>') && min === null) min = c.value;
+    else if ((c.op === '<=' || c.op === '<') && max === null) max = c.value;
+    else return null;
+  }
+  return { kind: 'range', min, max };
+}
+
+/** The one condition a Basic control sets, or null when it keeps every fund. */
+export function basicCondition(field: FieldDef, control: BasicControl): Condition | null {
+  if (control.kind === 'values') return control.picked.length ? { field: field.id, op: 'in', value: control.picked } : null;
+  if (control.kind === 'flag') return control.value === null ? null : { field: field.id, op: '=', value: control.value };
+  return control.min === null && control.max === null ? null : { field: field.id, op: 'between', value: [control.min, control.max] };
+}
+
 function toBase64Url(text: string): string {
   const bytes = new TextEncoder().encode(text);
   let binary = '';

@@ -50,9 +50,9 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     await expect(page.getByRole('columnheader', { name: /Return 1Y/ })).toBeVisible();
     await expect(page).toHaveURL(/v=/);
     await expect(count).toHaveText(before);
-    await page.getByRole('button', { name: 'Filter by Return 1Y' }).click();
-    await expect(page.getByRole('dialog', { name: 'Add condition: Return 1Y' })).toBeVisible();
-    await page.keyboard.press('Escape');
+    // The range opens inline with the metric; an empty range keeps every fund.
+    await expect(page.getByRole('spinbutton', { name: 'Minimum Return 1Y' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(count).toHaveText(before);
   });
 

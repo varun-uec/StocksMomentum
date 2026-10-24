@@ -30,6 +30,8 @@ export interface FieldDef {
   values?: string[];
   available: boolean;
   coverage: { values: number; missing: Record<string, number> };
+  /** A number field's lowest and highest value in the snapshot. */
+  range?: [number, number];
 }
 
 export interface FieldsResponse extends Envelope {

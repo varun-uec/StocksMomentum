@@ -22,6 +22,7 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
+from functools import cached_property
 from typing import Any, Protocol
 
 from wickstreet.analytics.domain.fields import FIELDS
@@ -61,6 +62,18 @@ class Snapshot:
         object.__setattr__(self, "by_code", {row.amfi_code: row for row in self.rows})
         if not self.missing:
             object.__setattr__(self, "missing", count_missing(self.rows))
+
+    @cached_property
+    def ranges(self) -> dict[str, tuple[float, float]]:
+        """Number field id -> (lowest, highest) value; a field with no value is absent."""
+        found: dict[str, tuple[float, float]] = {}
+        for i, f in enumerate(FIELDS):
+            if f.type != "number":
+                continue
+            values = [v for r in self.rows if isinstance(v := r.values[i], (int, float))]
+            if values:
+                found[f.id] = (min(values), max(values))
+        return found
 
 
 def count_missing(rows: Sequence[FundRow]) -> dict[str, Counter[str]]:

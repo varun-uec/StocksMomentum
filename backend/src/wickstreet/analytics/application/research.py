@@ -584,7 +584,7 @@ class Research:
     async def fields(
         self, revision: int | None = None
     ) -> tuple[Envelope, str, list[dict[str, Any]]]:
-        """The registry; an enum without fixed members lists the snapshot's values."""
+        """The registry; snapshot values for an open enum, the value range for a number."""
         snapshot, envelope = await self._pinned(revision)
         listed = []
         for f in FIELDS:
@@ -613,6 +613,7 @@ class Research:
                     **({"values": list(values)} if values is not None else {}),
                     "available": available,
                     "coverage": coverage,
+                    **({"range": list(snapshot.ranges[f.id])} if f.id in snapshot.ranges else {}),
                     **(
                         {}
                         if available

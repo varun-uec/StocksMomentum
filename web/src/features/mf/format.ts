@@ -154,6 +154,9 @@ export function enumLabel(value: string): string {
   return ENUM_LABELS[value] ?? value;
 }
 
+/** An enum value in words: a category in its short form, a code as its label. */
+export const valueLabel = (v: string) => (v.includes(' - ') ? categoryShort(v) : enumLabel(v));
+
 /** `Equity Scheme - Flexi Cap Fund` → `Flexi Cap`. */
 export function categoryShort(category: string | null | undefined): string {
   if (!category) return '—';

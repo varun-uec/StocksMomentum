@@ -15,9 +15,9 @@ import { FormulaEditor } from '../components/screener/FormulaEditor';
 import { ResultsTable, columnLabel } from '../components/screener/ResultsTable';
 import { Badge, Button, Chip, EmptyState, ErrorState, Field, Loading, PageHeader, Segmented, Sheet, SnapshotNote, cx, inputClass, useTitle } from '../components/ui';
 import { download, screenCsv } from '../csv';
-import { categoryShort, enumLabel } from '../format';
+import { categoryShort, valueLabel } from '../format';
 import { useFields, usePresets } from '../queries';
-import { DEFAULT_CATEGORY, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, presetView, toApi, type ScreenView } from '../view-spec';
+import { DEFAULT_CATEGORY, basicControl, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, presetView, type ScreenView } from '../view-spec';
 import { isConflict, useRecordMutations, useRecords, type ResearchRecord } from '../workspace';
 import { useDebounced } from '../use-debounced';
 
@@ -32,8 +32,7 @@ interface ScreenBody {
   preset?: string;
 }
 
-
-const short = (v: string) => (v.includes(' - ') ? categoryShort(v) : enumLabel(v));
+const short = valueLabel;
 
 /** The single category a view keeps, if it keeps exactly one. */
 function categoryOf(view: ScreenView): string | null {
@@ -97,6 +96,8 @@ export default function Screen() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draft, setDraft] = useState<ScreenView | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>('basic');
+  // The Basic metric whose refine control is open.
+  const [refining, setRefining] = useState<string | null>(null);
   const [formulasOpen, setFormulasOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
@@ -117,40 +118,35 @@ export default function Screen() {
   for (const name of Object.keys(view.formulas))
     byId.set(name, { id: name, label: name, group: 'Formulas', type: 'number', unit: null, description: view.formulas[name], available: true, coverage: { values: 0, missing: {} } });
 
+  /** The columns with a filtered field and its as-of companion first, like a shown metric, while room is left. */
+  const withColumns = (columns: string[], id: string) => {
+    const companion = METRIC_AS_OF_FIELDS[id];
+    const added = [id, ...(companion ? [companion] : [])].filter((c) => !columns.includes(c) && byId.has(c));
+    return [...added.slice(0, Math.max(MAX_COLUMNS - columns.length, 0)), ...columns];
+  };
+
   const saveCondition = (c: Condition) => {
     const conditions = [...view.conditions];
     if (editing?.index !== undefined) conditions[editing.index] = c;
     else conditions.push(c);
-    const columns = [...view.columns];
-    const companion = METRIC_AS_OF_FIELDS[c.field];
-    for (const id of [c.field, ...(companion ? [companion] : [])]) {
-      if (!columns.includes(id) && byId.has(id) && columns.length < MAX_COLUMNS) columns.push(id);
-    }
-    setView({ ...view, conditions, columns });
+    setView({ ...view, conditions, columns: withColumns(view.columns, c.field) });
     setEditing(null);
   };
 
-  const setBasicRange = (field: FieldDef, minimum: string, maximum: string) => {
-    const parse = (text: string) => {
-      if (!text.trim()) return null;
-      const n = Number(text);
-      return Number.isFinite(n) ? toApi(field, n) : NaN;
-    };
-    const min = parse(minimum);
-    const max = parse(maximum);
-    if (Number.isNaN(min) || Number.isNaN(max) || (min !== null && max !== null && min > max)) return;
-    const conditions = view.conditions.filter((node) => !(isCondition(node) && node.field === field.id));
-    if (min !== null || max !== null) {
-      const condition: Condition = { field: field.id, op: 'between', value: [min, max] };
-      conditions.push(condition);
-    }
-    const columns = [...view.columns];
-    const companion = METRIC_AS_OF_FIELDS[field.id];
-    for (const id of [field.id, ...(companion ? [companion] : [])]) {
-      if (!columns.includes(id) && byId.has(id) && columns.length < MAX_COLUMNS) columns.push(id);
-    }
-    const next = { ...view, conditions, columns };
-    if (JSON.stringify(next.conditions) !== JSON.stringify(view.conditions) || JSON.stringify(next.columns) !== JSON.stringify(view.columns)) setView(next);
+  /** A Basic control replaces the field's own conditions, in place, with one or none. */
+  const setBasicCondition = (field: FieldDef, condition: Condition | null) => {
+    const own = (node: (typeof view.conditions)[number]) => isCondition(node) && node.field === field.id;
+    const at = view.conditions.findIndex(own);
+    const conditions = view.conditions.filter((node) => !own(node));
+    if (condition) conditions.splice(at < 0 ? conditions.length : at, 0, condition);
+    const next = { ...view, conditions, columns: withColumns(view.columns, field.id) };
+    if (JSON.stringify(next) !== JSON.stringify(view)) setView(next);
+  };
+
+  /** Edit the field's first condition in the full editor, or add one. */
+  const editField = (field: FieldDef) => {
+    const index = view.conditions.findIndex((node) => isCondition(node) && node.field === field.id);
+    setEditing(index < 0 ? { field } : { field, index });
   };
 
   const toggleMetric = (field: FieldDef, shown: boolean) => {
@@ -162,6 +158,8 @@ export default function Screen() {
       ...view,
       columns: shown ? [...ids.filter((id) => !view.columns.includes(id)), ...view.columns] : view.columns.filter((column) => !ids.includes(column)),
     });
+    // Showing a metric opens its refine control at once; filtering stays optional.
+    setRefining((open) => (shown ? field.id : open === field.id ? null : open));
   };
 
   const onSort = (field: string) => {
@@ -225,7 +223,7 @@ export default function Screen() {
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside aria-label="Filters" className="hidden lg:block">
           <div className="mf-scroll sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-1">
-            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} onRangeChange={setBasicRange} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
+            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} onConditionChange={setBasicCondition} onEditField={editField} openField={refining} onOpenField={setRefining} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
           </div>
         </aside>
 
@@ -243,7 +241,11 @@ export default function Screen() {
                 <Chip
                   key={i}
                   className={cx('max-lg:hidden', isGate(c) && 'border-dashed')}
-                  onClick={isCondition(c) && byId.has(c.field) ? () => setEditing({ field: byId.get(c.field)!, index: i }) : undefined}
+                  onClick={
+                    isCondition(c) && byId.has(c.field)
+                      ? () => (filterMode === 'basic' && basicControl(byId.get(c.field)!, view.conditions) ? setRefining(c.field) : setEditing({ field: byId.get(c.field)!, index: i }))
+                      : undefined
+                  }
                   onRemove={() => setView({ ...view, conditions: view.conditions.filter((_, j) => j !== i) })}
                 >
                   {describe(c, byId, short)}
@@ -437,7 +439,13 @@ export default function Screen() {
               view={filterMode === 'advanced' ? draft! : view}
               fields={byId}
               onShowMetric={toggleMetric}
-              onRangeChange={setBasicRange}
+              onConditionChange={setBasicCondition}
+              onEditField={(field) => {
+                setFiltersOpen(false);
+                editField(field);
+              }}
+              openField={refining}
+              onOpenField={setRefining}
               mode={filterMode}
               onModeChange={changeFilterMode}
               maxColumns={MAX_COLUMNS}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldDef, FilterNode } from './api';
-import { UNIVERSE, decodeView, defaultView, describe as describeCondition, encodeView, filterOf, formulaNameError, fromApi, mixesCategories, toApi } from './view-spec';
+import { UNIVERSE, basicCondition, basicControl, decodeView, defaultView, describe as describeCondition, encodeView, filterOf, formulaNameError, fromApi, mixesCategories, toApi } from './view-spec';
 import { toggleCode } from './workspace';
 
 const fields = new Map<string, FieldDef>([
@@ -110,5 +110,36 @@ describe('default screen is category-aware (audit F-06)', () => {
     const view = defaultView();
     expect(mixesCategories({ ...view, conditions: UNIVERSE })).toBe(true);
     expect(mixesCategories({ ...view, conditions: UNIVERSE, sort: [{ field: 'cagr_3y', dir: 'desc' }] })).toBe(false);
+  });
+});
+
+describe('basic controls', () => {
+  const cagr = fields.get('cagr_3y')!;
+  const category = fields.get('category')!;
+  const active = { id: 'active', label: 'Active', unit: null, type: 'boolean' } as FieldDef;
+
+  it('merges a minimum and a maximum condition into one range', () => {
+    const conditions: FilterNode[] = [...UNIVERSE, { field: 'cagr_3y', op: '<=', value: 0.2 }, { field: 'cagr_3y', op: '>=', value: 0.1 }];
+    expect(basicControl(cagr, conditions)).toEqual({ kind: 'range', min: 0.1, max: 0.2 });
+    expect(basicCondition(cagr, { kind: 'range', min: 0.1, max: 0.2 })).toEqual({ field: 'cagr_3y', op: 'between', value: [0.1, 0.2] });
+  });
+
+  it('keeps every fund when a control is empty', () => {
+    expect(basicControl(cagr, UNIVERSE)).toEqual({ kind: 'range', min: null, max: null });
+    expect(basicCondition(cagr, { kind: 'range', min: null, max: null })).toBeNull();
+    expect(basicCondition(category, { kind: 'values', picked: [] })).toBeNull();
+    expect(basicCondition(active, { kind: 'flag', value: null })).toBeNull();
+  });
+
+  it('shows value lists and flags directly', () => {
+    expect(basicControl(category, [{ field: 'category', op: 'in', value: ['Equity Scheme - Flexi Cap Fund'] }])).toEqual({ kind: 'values', picked: ['Equity Scheme - Flexi Cap Fund'] });
+    expect(basicControl(active, [{ field: 'active', op: '=', value: false }])).toEqual({ kind: 'flag', value: false });
+  });
+
+  it('leaves conditions a Basic control cannot show to the full editor', () => {
+    expect(basicControl(cagr, [{ field: 'cagr_3y', op: 'top_pct', value: 25 }])).toBeNull();
+    expect(basicControl(cagr, [{ field: 'cagr_3y', op: '>=', value: 0.1 }, { field: 'cagr_3y', op: '>', value: 0.2 }])).toBeNull();
+    expect(basicControl(category, [{ field: 'category', op: 'not_in', value: ['x'] }])).toBeNull();
+    expect(basicControl(cagr, [{ any: [{ field: 'cagr_3y', op: '>=', value: 0.1 }, { field: 'score', op: '>=', value: 50 }] }])).toBeNull();
   });
 });

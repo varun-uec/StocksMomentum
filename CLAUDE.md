@@ -253,6 +253,28 @@ Never leave partially implemented architectural components.
 
 ---
 
+# Product UX: Adapt to the User
+
+The application adapts to the user. The user never adapts to its implementation.
+
+Design every interaction around the user's goal, not the shape of the backend query.
+
+* Selecting a metric shows its data at once. It never changes the result set by itself.
+* Refining a metric is direct: a range, a threshold or a value list, right where the metric is.
+* Use the latest applicable data by default.
+* Never ask for a date when the metric already defines its period.
+* Never ask for an operator when the control already implies one.
+* Never force a condition builder, dialog or extra step before the user sees data.
+* Never invent a threshold just to make a filter valid. An empty bound means no limit.
+* Keep advanced conditions, historical dates and expressions available, but optional.
+* Remove a step only when no analytical capability goes with it.
+
+Acceptance test: a user selects a metric, sees meaningful results, and refines them, with no configuration first. Benchmark the click count against the best comparable product (for the screener, Tickertape).
+
+This applies to every Wickstreet surface: screener, fund pages, compare, studio, simulators and the stock app.
+
+---
+
 # Definition of Success
 
 Success is measured by:
