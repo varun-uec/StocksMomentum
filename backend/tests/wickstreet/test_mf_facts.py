@@ -148,6 +148,52 @@ def test_ssd_keeps_filed_elements_and_lists_isins() -> None:
     assert found.isins == {"INF879O01019": 7, "INF879O01027": 7}
 
 
+def test_ssd_rows_map_to_the_summary_elements() -> None:
+    rows = [
+        ("Fund Type", "Index fund"),
+        ("Stated Asset Allocation", "Equity 95-100%"),
+        ("-", "Debt 0-5%"),
+        ("Benchmark Tier 1", "Nifty 500 TRI"),
+        ("Fund Manager 1 -  Name", "Mr. A B"),
+        ("Fund Manager 1 - From Date", " 6-Sep-2019 "),
+        ("Fund Manager 2 -  Name", "Ms. C D"),
+        ("Fund Manager 2 - From Date", "01/04/2024"),
+        ("Fund Manager 3 - Name", "-"),
+        ("Exit Load", "Yes"),
+        ("ISINS", "INF247L01957"),
+        ("SIP", ""),
+        ("Frequency", "Annual"),
+        ("", "Monthly"),
+        ("Minimum Amount", "6000"),
+        ("", "500"),
+    ]
+    records = "".join(
+        f'<record index="{i}"><Fund_Name_>{k}</Fund_Name_><F>{v}</F></record>'
+        for i, (k, v) in enumerate(rows)
+    )
+    xml = f"<data><columns /><records>{records}</records></data>".encode()
+    found = a.parse_ssd(_raw(xml), 9, date(2026, 10, 24))
+    facts = {f.name: f.txt for f in found.facts}
+    assert facts == {
+        "ssd:Fund_Type": "Index fund",
+        "ssd:Stated_Asset_Allocation": "Equity 95-100%, Debt 0-5%",
+        "ssd:Benchmark_Tier_1": "Nifty 500 TRI",
+        "ssd:Fund_Manager_Name": "Mr. A B, Ms. C D",
+        "ssd:Fund_Manager_From_Date": "Mr. A B - 6-Sep-2019, Ms. C D - 01/04/2024",
+        "ssd:Exit_Load_if_applicable": "Yes",
+        "ssd:ISINs": "INF247L01957",
+        "ssd:SIP_SWP__STP_Details_Frequency": "SIP - Annual, Monthly",
+        "ssd:SIP_SWP__STP_Details_Minimum_amount": "SIP - Monthly: 500, Annual: 6000",
+    }
+    assert found.isins == {"INF247L01957": 9}
+    assert [d.isoformat() for _, d in e.manager_starts(facts["ssd:Fund_Manager_From_Date"])] == [
+        "2019-09-06",
+        "2024-04-01",
+    ]
+    with pytest.raises(a.SourceLayoutError):
+        a.parse_ssd(_raw(b"<data><other /></data>"), 9, date(2026, 10, 24))
+
+
 def _performance(rows: list[dict[str, object]]) -> bytes:
     queries = [{"body": {}, "data": rows}, {"body": {}, "data": rows[:1]}]
     return json.dumps({"day": "2026-10-22", "queries": queries}).encode()

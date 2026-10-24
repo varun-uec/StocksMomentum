@@ -123,20 +123,154 @@ def parse_scheme_list(raw: RawFile) -> list[SchemeRef]:
     return schemes
 
 
+# The row layout of an SSD labels each value in words; these labels differ from the
+# compacted tag of the same field in the SchemeSummary layout.
+_ROW_ALIASES = {
+    "optionnamesregularanddirect": "Option_Names_Regular__Direct",
+    "categoryaspercategorizationcircular": "Category_as_Per_SEBI_Categorization_Circular",
+    "maturiydateforclosureendfunds": "Maturity_Date_For_closedend_funds",
+    "exitload": "Exit_Load_if_applicable",
+    "minimumadddtionalamount": "Minimum_Additional_Amount",
+    "minimumadddtionalamountinmultiplesofrs": "Minimum_Additional_Amount_in_multiples_of_Rs",
+    "swingpricing": "Swing_Pricing_if_applicable",
+    "minimumapplicationamountmultiplesofrs": "Minimum_Application_Amount_in_multiples_of_Rs",
+}
+_ROW_TAGS = [
+    "Fund_Type",
+    "Riskometer_At_the_time_of_Launch",
+    "Riskometer_as_on_Date",
+    "Potential_Risk_Class_as_on_date",
+    "Description_Objective_of_the_scheme",
+    "Stated_Asset_Allocation",
+    "Face_Value",
+    "NFO_Open_Date",
+    "NFO_Close_date",
+    "Allotment_Date",
+    "Reopen_Date",
+    "Benchmark_Tier_1",
+    "Benchmark_Tier_2",
+    "Annual_Expense_Stated_maximum",
+    "Custodian",
+    "Auditor",
+    "Registrar",
+    "RTA_Code_To_be_phased_out",
+    "Listing_Details",
+    "ISINs",
+    "AMFI_Codes_To_be_phased_out",
+    "SEBI_Codes",
+    "Minimum_Application_Amount",
+    "Minimum_Application_Amount_in_multiples_of_Rs",
+    "Minimum_Redemption_Amount_in_Rs",
+    "Minimum_Redemption_Amount_in_Units",
+    "Minimum_Balance_Amount_if_applicable",
+    "Minimum_Balance_Amount_in_Units_if_applicable",
+    "Max_Investment_Amount",
+    "Minimum_Switch_Amount_if_applicable",
+    "Minimum_Switch_Units",
+    "Switch_Multiple_Amount_if_applicable",
+    "Switch_Multiple_Units_if_applicable",
+    "Max_Switch_Amount",
+    "Max_Switch_Units_if_applicable",
+    "Sidepocketing_if_applicable",
+]
+_ROW_TAG = {compact(t): t for t in _ROW_TAGS} | _ROW_ALIASES
+_ROW_MANAGER = re.compile(r"fundmanager(\d+)(name|type|fromdate)")
+_ROW_PLANS = {"sip": "SIP", "stp": "STP", "swp": "SWP"}
+_ROW_PLAN_FIELDS = {
+    "frequency": "Frequency",
+    "minimumamount": "Minimum_amount",
+    "inmultipleof": "In_multiple_of",
+    "minimuminstalments": "Minimum_Instalments",
+    "dates": "Dates",
+    "maximumamountifany": "Maximum_Amount_if_any",
+}
+
+
+def _filed(text: str | None) -> str | None:
+    text = " ".join((text or "").split())
+    return None if text.lower().rstrip(".") in _NOT_FILED else text
+
+
+def _row_layout(records: ElementTree.Element) -> dict[str, list[str]]:
+    """The row layout (label, value) as SchemeSummary tags and their texts.
+
+    A blank or "-" label continues the label above it. Managers 1 to n become the
+    comma-joined name, type and "name - date" texts of the SchemeSummary layout. The
+    SIP, STP and SWP blocks become one "SIP - Monthly: 500, ..." text per detail,
+    monthly first.
+    """
+    filed: dict[str, list[str]] = {}
+    managers: dict[int, dict[str, str]] = {}
+    plans: dict[str, dict[str, list[str]]] = {}
+    label, plan = "", ""
+    for record in records:
+        cells = list(record)
+        if len(cells) < 2:  # noqa: PLR2004 — a label and one value
+            continue
+        key = compact(cells[0].text or "")
+        if key and key not in _ROW_PLAN_FIELDS:
+            plan = _ROW_PLANS.get(key, "")
+        if key in _ROW_PLANS:
+            continue
+        label = key or label
+        value = _filed(cells[1].text)
+        if value is None:
+            continue
+        if plan and label in _ROW_PLAN_FIELDS:
+            plans.setdefault(plan, {}).setdefault(label, []).append(value)
+        elif found := _ROW_MANAGER.fullmatch(label):
+            managers.setdefault(int(found[1]), {})[found[2]] = value
+        elif label in _ROW_TAG:
+            filed.setdefault(_ROW_TAG[label], []).append(value)
+    if not filed:
+        return filed
+    filed = {tag: [", ".join(texts)] for tag, texts in filed.items()}
+    named = [managers[n] for n in sorted(managers) if "name" in managers[n]]
+    for tag, part in (
+        ("Fund_Manager_Name", "name"),
+        ("Fund_Manager_Type_PrimaryComanageDescription", "type"),
+    ):
+        if texts := [m[part] for m in named if part in m]:
+            filed[tag] = [", ".join(texts)]
+    if dated := [f"{m['name']} - {m['fromdate']}" for m in named if "fromdate" in m]:
+        filed["Fund_Manager_From_Date"] = [", ".join(dated)]
+    for field, tag in _ROW_PLAN_FIELDS.items():
+        parts = []
+        for name in ("SIP", "SWP", "STP"):
+            values = plans.get(name, {}).get(field, [])
+            frequencies = plans.get(name, {}).get("frequency", [])
+            if field != "frequency" and len(values) == len(frequencies):
+                pairs = sorted(
+                    zip(frequencies, values, strict=True), key=lambda p: p[0] != "Monthly"
+                )
+                values = [f"{f}: {v}" for f, v in pairs]
+            if values:
+                parts.append(f"{name} - {', '.join(values)}")
+        if parts:
+            filed[f"SIP_SWP__STP_Details_{tag}"] = [", ".join(parts)]
+    return filed
+
+
 def parse_ssd(raw: RawFile, sd_id: int, as_of: date) -> SchemeFacts:
-    """Each filed SSD element as an ``ssd:<element>`` text fact, and the ISINs listed."""
+    """Each filed SSD element as an ``ssd:<element>`` text fact, and the ISINs listed.
+
+    AMFI serves two layouts: a ``SchemeSummary`` element per field, or ``records`` of
+    (label, value) rows. Both yield the same ``ssd:<element>`` names.
+    """
     try:
         root = ElementTree.fromstring(raw.content.decode("utf-8-sig"))
     except (ElementTree.ParseError, UnicodeDecodeError) as exc:
         raise SourceLayoutError(f"SSD {sd_id} is not XML: {exc}") from exc
-    summary = root.find("SchemeSummary")
-    if summary is None:
-        raise SourceLayoutError(f"SSD {sd_id} has no SchemeSummary.")
+    summary, records = root.find("SchemeSummary"), root.find("records")
     filed: dict[str, list[str]] = {}
-    for element in summary:
-        text = " ".join((element.text or "").split())
-        if text.lower().rstrip(".") not in _NOT_FILED:
-            filed.setdefault(element.tag, []).append(text)
+    if summary is not None:
+        for element in summary:
+            if (text := _filed(element.text)) is not None:
+                filed.setdefault(element.tag, []).append(text)
+    elif records is not None:
+        filed = _row_layout(records)
+    if not filed:
+        raise SourceLayoutError(f"SSD {sd_id} has neither SchemeSummary nor records.")
     # An element filed twice keeps both texts, in order.
     facts = [
         Fact(sd_id, f"ssd:{tag}", SCHEME, as_of, txt=" | ".join(texts))
@@ -344,7 +478,10 @@ class AmfiFactsAdapter:
         """One scheme summary document; ``None`` when AMFI has none for the scheme."""
         url = SSD_URL.format(sd_id=sd_id)
         response = await self._http.get(url)
-        if response.status_code != 200 or b"SchemeSummary" not in response.content:
+        found = response.content
+        if response.status_code != 200 or (
+            b"SchemeSummary" not in found and b"<records" not in found
+        ):
             return None
         return RawFile(url, _now(), response.content)
 
