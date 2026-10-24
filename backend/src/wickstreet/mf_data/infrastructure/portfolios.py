@@ -8,7 +8,8 @@ it, and reads every line under it:
 
 - a line with a weight is a holding; a line with no weight and no figures is a section
   heading ("Equity & Equity related", "Debt Instruments", "TREPS");
-- "Total" and "Sub Total" lines are skipped, and the portfolio ends at "Grand Total";
+- "Total" and "Sub Total" lines, and lines that end in "Total" (Tata), are skipped; the
+  portfolio ends at "Grand Total", or at "Net Assets" (Tata);
 - a futures or options line is a derivative, by its industry or contract month; other
   kinds come from the section, else from the line itself (TREPS is cash);
 - weights filed as percentages are divided by 100, so every weight is a fraction.
@@ -51,8 +52,8 @@ _HEADERS = {
     "value": re.compile(r"market.*value|fair\s*value|value\s*\(", re.I),
 }
 # The portfolio ends at its grand total; notes and ratio tables follow it.
-_GRAND_TOTAL = re.compile(r"^\s*grand\s*total\b", re.I)
-_TOTAL = re.compile(r"^\s*(sub[\s-]*total|grand\s*total|total)\b", re.I)
+_GRAND_TOTAL = re.compile(r"^\s*(grand\s*total\b|net\s*assets\s*$)", re.I)
+_TOTAL = re.compile(r"^\s*(sub[\s-]*total|grand\s*total|total)\b|\btotal\s*$", re.I)
 _MONTHS = {
     m: i + 1
     for i, m in enumerate(
@@ -73,7 +74,7 @@ _KINDS = (
             "treps",
             "tri-party",
             "triparty",
-            "reverse repo",
+            "repo",
             "cblo",
             "net receivable",
             "net current",
@@ -112,19 +113,32 @@ _KINDS = (
 
 # A futures or options contract: "Tata Steel Limited Oct26", "NIFTY 23300 Call Oct26".
 _CONTRACT = re.compile(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\d{2}$", re.I)
+# A sheet code before a scheme name: "IB43-".
+_SHEET_CODE = re.compile(r"^[A-Z]{1,4}\d{1,3}\s*-\s*")
+# The words around a scheme name in a title: "... PORTFOLIO STATEMENT OF <name> AS ON ...".
+_TITLE = re.compile(r"^.*?portfolio\s+statement\s+of\s+|\s+as\s+(?:on|at)\b.*$", re.I | re.S)
+# A section heading lettered "I) "; Tata files some with their own weight.
+_LETTERED = re.compile(r"[A-Z]\)\s")
+# Tata files interest rate swaps under a section named "IRS".
+_SWAPS = re.compile(r"\s*irs\s*", re.I)
 
 
-def _asset(section: str, industry: str | None, name: str, isin: str | None) -> str:
+def _asset(
+    section: str, industry: str | None, name: str, isin: str | None, quantity: Decimal | None
+) -> str:
     """A line's asset kind: a derivative by industry or contract month, else by section.
 
     A futures or swap line is a derivative ("Stock Futures", "Interest Rate Swaps- MD
-    ...") whatever section it is filed under. Other kinds come from the section, then
-    from the line's name.
+    ...") whatever section it is filed under. So is a line with a negative quantity: a
+    fund holds no negative shares, so it is a short future, as Tata files them in its
+    equity section. Other kinds come from the section, then from the line's name.
     """
     if (
         _kind(industry or "") == DERIVATIVE
         or (isin is None and _CONTRACT.search(name))
         or "swap" in name.lower()
+        or _SWAPS.fullmatch(section)
+        or (quantity is not None and quantity < 0)
     ):
         return DERIVATIVE
     return _kind(section) or _kind(name) or (EQUITY if isin and isin.startswith("INE") else OTHER)
@@ -191,14 +205,25 @@ def _header(rows: list[Row]) -> tuple[int, dict[str, str]] | None:
 
 
 def _scheme(rows: list[Row], names: Mapping[str, int]) -> tuple[int | None, str]:
-    """The first text above the header that names a scheme, tried whole and before '('."""
+    """The first text above the header that names a scheme.
+
+    Each text is tried whole, before '(' or ' - ', without a leading sheet code
+    ("IB43-Groww Nifty 50 Index Fund", as Groww files them), and as a title's name
+    ("MONTHLY PORTFOLIO STATEMENT OF SAMCO FLEXICAP FUND AS ON ...", as Samco does).
+    """
     label = ""
     for row in rows:
         for text in row.values():
             if len(text) < 6 or text.replace(".", "").isdigit() or _BLOCK.match(text):
                 continue
             label = label or text
-            for candidate in (text, text.split("(")[0], text.split(" - ")[0]):
+            for candidate in (
+                text,
+                text.split("(")[0],
+                text.split(" - ")[0],
+                _SHEET_CODE.sub("", text),
+                _TITLE.sub("", text),
+            ):
                 key = compact(
                     candidate.replace("Portfolio of", "")
                     .replace("Monthly Portfolio", "")
@@ -230,11 +255,13 @@ def _sheet(
         weight = _number(row.get(columns["weight"]))
         if _GRAND_TOTAL.match(name) or (_TOTAL.match(name) and own in compact(name)):
             break  # UTI closes a portfolio with "TOTAL : <scheme>", then prints notes
-        if not name or _TOTAL.match(name):
+        if not name or _TOTAL.search(name):
             continue
         isin = row.get(columns["isin"]) or None
         quantity = _number(row.get(columns.get("quantity", "")))
         value = _number(row.get(columns.get("value", "")))
+        if isin is None and _LETTERED.match(name):
+            section = name  # Tata files "I) REPO" as a heading with its own weight
         if weight is None:
             # A heading has no figures; a line with figures but no weight is skipped.
             if isin is None and quantity is None and value is None:
@@ -255,10 +282,19 @@ def _sheet(
         )
     # Filed as percentages: a line above 1.5, or a total near 100 when every line is
     # small (a portfolio of 250 stocks); fraction sheets total 4 at most, headings and all.
-    percent = any(abs(w) > Decimal("1.5") for *_, w in lines) or sum(
-        (w for *_, w in lines), Decimal(0)
-    ) > Decimal(50)
-    lines = _without_subtotals(lines, Decimal(100) if percent else Decimal(1))
+    # Derivatives are judged apart: Groww files them in percent beside fractions, and
+    # no future is 150% of net assets.
+    future = [_asset(sc, ind, nm, isn, q) == DERIVATIVE for nm, isn, ind, sc, q, _, _ in lines]
+    held = [line[-1] for line, f in zip(lines, future, strict=True) if not f]
+    percent = any(abs(w) > Decimal("1.5") for w in held) or sum(held, Decimal(0)) > 50
+    percent_futures = percent or any(
+        abs(line[-1]) > Decimal("1.5") for line, f in zip(lines, future, strict=True) if f
+    )
+    lines = [
+        (*line[:-1], line[-1] / 100 if (percent_futures if f else percent) else line[-1])
+        for line, f in zip(lines, future, strict=True)
+    ]
+    lines = _without_subtotals(lines, Decimal(1))
     holdings = [
         Holding(
             sd_id,
@@ -268,10 +304,10 @@ def _sheet(
             isin,
             industry,
             section,
-            _asset(section, industry, name, isin),
+            _asset(section, industry, name, isin, quantity),
             quantity,
             value,
-            weight / 100 if percent else weight,
+            weight,
         )
         for seq, (name, isin, industry, section, quantity, value, weight) in enumerate(lines)
     ]
@@ -284,8 +320,8 @@ def _off(lines: list[_Line], whole: Decimal) -> Decimal:
     held = sum(
         (
             w
-            for name, isin, industry, section, *_, w in lines
-            if _asset(section, industry, name, isin) != DERIVATIVE
+            for name, isin, industry, section, quantity, _, w in lines
+            if _asset(section, industry, name, isin, quantity) != DERIVATIVE
         ),
         Decimal(0),
     )

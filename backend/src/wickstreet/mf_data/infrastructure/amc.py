@@ -21,6 +21,25 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
   answers JSON with each file's path. The page opens a path under
   ``www.icicipruamc.com/blob``: one zip a month of a workbook per scheme
   (``Monthly-Portfolio-Disclosure-September-2026.zip``).
+- PGIM India: the disclosures page lists its monthly portfolios from one JSON
+  ``POST`` to ``pgimindia.com/api/v1/brochure/published/disclosure`` (section
+  "Monthly Portfolio"), each with its ``pdfPath``: one workbook per scheme a month
+  (``PGIM INDIA SMALL CAP FUND Sep 2026.xlsx``).
+- Samco: ``samcomf.com/StatutoryDisclosure`` links one workbook per scheme a month
+  (``IN_MF_MONTHLY_PORTFOLIO_September_2026_Samco_Flexicap_Fund_1791526364.xlsx``),
+  each on two hosts; the month is every file that names it.
+- Tata: ``tatamutualfund.com/schemes-related/portfolio``, one workbook a month with a
+  sheet per scheme (``Monthly Portfolio as on 30th September 2026.xlsx``). The links
+  name ``betacms.tatamutualfund.com``, which redirects to ``www``.
+- Groww: ``growwmf.in/statutory-disclosure/portfolio`` holds every file's
+  ``publicUrl`` in its page script: one workbook a month
+  (``Monthly Portfolio - September 30, 2026.xlsx``), beside fortnightly files.
+- Motilal Oswal: the downloads page lists every file from one JSON ``GET`` to
+  ``search-documents.json`` (category "month end portfolio"), each with its ``path``:
+  one workbook a month, named by month ("Scheme Portfolio Details September 2026") or
+  by date ("Monthly Portfolio 31-07-2026-Final"), beside fortnightly files.
+- Trust: see :class:`TrustPortfolioAdapter`.
+- WhiteOak: see :class:`WhiteOakPortfolioAdapter`.
 - Baroda BNP Paribas: see :class:`BarodaPortfolioAdapter`.
 - UTI: see :class:`UtiPortfolioAdapter`.
 
@@ -31,19 +50,22 @@ layouts.
 
 from __future__ import annotations
 
+import io
 import json
 import re
+import zipfile
 from collections.abc import AsyncIterator, Mapping
 from datetime import UTC, date, datetime, timedelta
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from wickstreet.mf_data.domain.model import Portfolios, RawFile
 from wickstreet.mf_data.domain.ports import SourceError
 from wickstreet.mf_data.infrastructure.client import COMPATIBLE_USER_AGENT, PacedClient
 from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
 
-# A link in a page (href) or in a JSON listing ("url").
-_LINK = re.compile(r"""(?:href=|"url"\s*:\s*)["']([^"']+\.(?:xlsx?|zip))(?:\?[^"']*)?["']""", re.I)
+# A link in a page (href) or a JSON value in a listing or a page script ("url",
+# "path", "publicUrl"); Tata's page script holds its JSON escaped.
+_LINK = re.compile(r"""(?:href=|"\w+"\s*:\s*)["']([^"']+\.(?:xlsx?|zip))(?:\?[^"']*)?["']""", re.I)
 _MONTHS = (
     "january", "february", "march", "april", "may", "june",
     "july", "august", "september", "october", "november", "december",
@@ -53,7 +75,7 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.3"
+    adapter_version = "amc-portfolios-2026-10-24.4"
 
     def __init__(
         self,
@@ -66,6 +88,7 @@ class AmcPortfolioAdapter:
         listing: dict[str, object] | None = None,
         headers: dict[str, str] | None = None,
         files: str | None = None,
+        each: bool = False,
         min_interval_seconds: float,
         timeout_seconds: float,
         max_attempts: int,
@@ -74,7 +97,8 @@ class AmcPortfolioAdapter:
 
         With ``listing``, the page is an endpoint that lists the files when it is sent
         that JSON body, with ``headers``. With ``files``, a listed path is read under
-        that prefix rather than against the page.
+        that prefix rather than against the page. With ``each``, the AMC files one
+        workbook per scheme, and a month is every file that names it.
         """
         self.name = name
         self._page = page
@@ -84,6 +108,7 @@ class AmcPortfolioAdapter:
         self._listing = listing
         self._headers = headers
         self._files = files
+        self._each = each
         self._links: list[str] | None = None
         self._http = PacedClient(
             min_interval_seconds=min_interval_seconds,
@@ -104,7 +129,7 @@ class AmcPortfolioAdapter:
                 response = await self._http.post(self._page, self._listing, self._headers)
             if response.status_code != 200:
                 raise SourceError(f"{self._page} answered HTTP {response.status_code}.")
-            found = (m.group(1) for m in _LINK.finditer(response.text))
+            found = (m.group(1) for m in _LINK.finditer(response.text.replace('\\"', '"')))
             links = {
                 urljoin(self._page, link) if self._files is None else self._files + link
                 for link in found
@@ -116,34 +141,70 @@ class AmcPortfolioAdapter:
         """The link for ``month_end``: its month (full or short), year and words.
 
         The year is four digits anywhere, or two digits right after the month
-        ("30-Sep-26"), so a day such as the 26 in "26-Sep-2025" is never a year. A link
-        whose file name starts with a ``prefer`` prefix wins, such as an AMC's
+        ("30-Sep-26"), so a day such as the 26 in "26-Sep-2025" is never a year. A
+        numeric month-end date ("31-07-2026", "31.03.2026", "30092026") names both. A
+        link whose file name starts with a ``prefer`` prefix wins, such as an AMC's
         all-scheme workbook over its per-scheme files.
         """
+        tails = {link: link.rsplit("/", 1)[-1].lower() for link in links}
+        ordered = sorted(links, key=lambda k: (not tails[k].startswith(self._prefer or ("\0",)), k))
+        return next((link for link in ordered if self._names(link, month_end)), None)
+
+    def picks(self, links: list[str], month_end: date) -> list[str]:
+        """Every link for ``month_end``, one per file name, for an AMC that files per scheme."""
+        found: dict[str, str] = {}
+        for link in sorted(links):
+            if self._names(link, month_end):
+                found.setdefault(_tail(link), link)
+        return [found[tail] for tail in sorted(found)]
+
+    def _names(self, link: str, month_end: date) -> bool:
         month = _MONTHS[month_end.month - 1]
         short = rf"(?<![a-z])(?:{month}|{month[:3]})(?![a-z])"
         two_digit = rf"{short}[^a-z0-9]{{0,2}}{month_end.year % 100:02d}(?!\d)"
-        tails = {link: link.rsplit("/", 1)[-1].lower() for link in links}
-        ordered = sorted(links, key=lambda k: (not tails[k].startswith(self._prefer or ("\0",)), k))
-        for link in ordered:
-            tail = link.rsplit("/", 1)[-1].lower().replace("%20", " ")
-            named = month in tail or re.search(short, tail)
-            dated = str(month_end.year) in tail or re.search(two_digit, tail)
-            if (
-                named
-                and dated
-                and all(w in tail for w in self._require)
-                and not any(w in tail for w in self._exclude)
-            ):
-                return link
-        return None
+        numeric = (
+            rf"(?<!\d)(?:{month_end.day}[-. _]0?{month_end.month}[-. _]{month_end.year}"
+            rf"|{month_end:%d%m%Y})(?!\d)"
+        )
+        tail = _tail(link)
+        named = month in tail or re.search(short, tail) or re.search(numeric, tail)
+        dated = str(month_end.year) in tail or re.search(two_digit, tail)
+        return bool(
+            named
+            and dated
+            and all(w in tail for w in self._require)
+            and not any(w in tail for w in self._exclude)
+        )
 
     async def portfolio(self, month_end: date) -> RawFile | None:
-        """The month's file, or ``None`` when the page lists none for it."""
-        link = self.pick(await self._listed(), month_end)
-        if link is None:
-            return None
+        """The month's file, or ``None`` when the page lists none for it.
+
+        An AMC that files one workbook per scheme gets its month's files fetched in
+        turn and kept as one zip, named in order and stamped 1980-01-01, so the same
+        files give the same bytes.
+        """
+        listed = await self._listed()
+        if not self._each:
+            link = self.pick(listed, month_end)
+            return None if link is None else await self._fetch(link)
+        links = self.picks(listed, month_end)
+        return await self._bundle(links) if links else None
+
+    async def _bundle(self, links: list[str]) -> RawFile:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as bundle:
+            for link in links:
+                fetched = await self._fetch(link)
+                bundle.writestr(
+                    zipfile.ZipInfo(_tail(link), (1980, 1, 1, 0, 0, 0)), fetched.content
+                )
+        return RawFile(self._page, datetime.now(UTC), buffer.getvalue())
+
+    async def _fetch(self, link: str) -> RawFile:
         response = await self._http.get(link)
+        if response.is_redirect and _same_site(link, response.headers["location"]):
+            link = urljoin(link, response.headers["location"])
+            response = await self._http.get(link)
         if response.status_code != 200:
             raise SourceError(f"{link} answered HTTP {response.status_code}.")
         return RawFile(link, datetime.now(UTC), response.content)
@@ -153,6 +214,88 @@ class AmcPortfolioAdapter:
     ) -> Portfolios:
         """Every scheme portfolio in the file."""
         return parse_portfolios(raw.content, names, fallback)
+
+
+def _tail(link: str) -> str:
+    """A link's file name, lower case, with ``%20`` read as a space."""
+    return link.rsplit("/", 1)[-1].lower().replace("%20", " ")
+
+
+def _same_site(link: str, target: str) -> bool:
+    """A redirect stays on the link's site: under the link's host less its first label.
+
+    ``betacms.tatamutualfund.com`` may send to ``www.tatamutualfund.com``; a link on a
+    bare domain may only send to the same host.
+    """
+    host = urlsplit(link).hostname or ""
+    to = urlsplit(urljoin(link, target)).hostname or ""
+    parent = host.split(".", 1)[1] if host.count(".") >= 2 else host
+    return to == parent or to.endswith("." + parent)
+
+
+class WhiteOakPortfolioAdapter(AmcPortfolioAdapter):
+    """WhiteOak: a CMS lists one workbook per scheme a month, each with a document name.
+
+    ``cms.whiteoakamc.com/api/scheme-portfolios`` answers 100 rows a page, filtered to
+    the monthly period. A row's ``doc_name`` names the month ("... Monthly Portfolio
+    Disclosure - 30th September2026"); its ``doc_file`` holds the file's URL, whose own
+    name says "Sept_2026", so the month is read from the document name.
+    """
+
+    _documents: dict[str, str] | None = None
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """Every scheme's workbook for the month, as one zip; ``None`` when none is listed."""
+        if self._documents is None:
+            self._documents = {}
+            page, pages = 1, 1
+            while page <= pages:
+                listed = await self._http.get(
+                    self._page,
+                    {
+                        "pagination[page]": str(page),
+                        "pagination[pageSize]": "100",
+                        "filters[period][$eq]": "Monthly",
+                        "populate": "doc_file",
+                    },
+                )
+                if listed.status_code != 200:
+                    raise SourceError(f"{self._page} answered HTTP {listed.status_code}.")
+                found = json.loads(listed.text)
+                pages = int(found["meta"]["pagination"]["pageCount"])
+                for row in found["data"]:
+                    file = ((row["attributes"].get("doc_file") or {}).get("data") or {}).get(
+                        "attributes"
+                    ) or {}
+                    if file.get("url"):
+                        self._documents[row["attributes"]["doc_name"]] = file["url"]
+                page += 1
+        links = [
+            url for name, url in sorted(self._documents.items()) if self._names(name, month_end)
+        ]
+        return await self._bundle(links) if links else None
+
+
+class TrustPortfolioAdapter(AmcPortfolioAdapter):
+    """Trust: one JSON ``POST`` lists the monthly reports, each with a title and a URL.
+
+    ``trustmf.com/api/api/Trust/GetData`` answers rows with a ``title`` ("TRUSTMF
+    Monthly Portfolio Report as on 30.09.2026") and a ``fileurl`` whose name holds only
+    an upload stamp, so the month is read from the title.
+    """
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """The month's report, or ``None`` when none is listed."""
+        listed = await self._http.post(self._page, self._listing or {}, self._headers)
+        if listed.status_code != 200:
+            raise SourceError(f"{self._page} answered HTTP {listed.status_code}.")
+        rows = json.loads(listed.text).get("resultSetArray") or []
+        found = sorted(
+            row["fileurl"]
+            for row in rows
+            if row.get("fileurl") and self._names(str(row.get("title", "")), month_end)
+        )
+        return await self._fetch(found[0]) if found else None
 
 
 class BarodaPortfolioAdapter(AmcPortfolioAdapter):
@@ -253,6 +396,7 @@ def amc_adapters(
         listing: dict[str, object] | None = None,
         headers: dict[str, str] | None = None,
         files: str | None = None,
+        each: bool = False,
         **words: tuple[str, ...],
     ) -> AmcPortfolioAdapter:
         return AmcPortfolioAdapter(
@@ -264,6 +408,7 @@ def amc_adapters(
             listing=listing,
             headers=headers,
             files=files,
+            each=each,
             min_interval_seconds=min_interval_seconds,
             timeout_seconds=timeout_seconds,
             max_attempts=max_attempts,
@@ -314,6 +459,67 @@ def amc_adapters(
             "https://www.icicipruamc.com/blob",
             require=("monthly-portfolio-disclosure",),
             exclude=("fortnight", "half"),
+        ),
+        "pgim": http(
+            "pgim",
+            "https://www.pgimindia.com/api/v1/brochure/published/disclosure",
+            {"headerId": 2, "sectionId": "SECTION_747960037", "source": "W", "branchCode": None},
+            each=True,
+            require=(),
+            exclude=("fortnight",),
+        ),
+        "samco": http(
+            "samco",
+            "https://www.samcomf.com/StatutoryDisclosure",
+            each=True,
+            require=("monthly_portfolio",),
+            exclude=("fortnight",),
+        ),
+        "tata": http(
+            "tata",
+            "https://www.tatamutualfund.com/schemes-related/portfolio",
+            require=("portfolio",),
+            exclude=("fortnight", "half"),
+        ),
+        "groww": http(
+            "groww",
+            "https://www.growwmf.in/statutory-disclosure/portfolio",
+            require=("monthly", "portfolio"),
+            exclude=("fortn", "half"),
+        ),
+        "motilal": http(
+            "motilal",
+            "https://www.motilaloswalmf.com/content/aem-cloud-dept-backend-motilal-oswal/api/"
+            "search-documents.json?year=&category=month%20end%20portfolio&month=&type=mf",
+            require=("portfolio",),
+            exclude=("fortnight", "forthnight", "half", "performance"),
+        ),
+        "whiteoak": WhiteOakPortfolioAdapter(
+            "whiteoak",
+            "https://cms.whiteoakamc.com/api/scheme-portfolios",
+            require=("monthly",),
+            exclude=("fortnight",),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "trust": TrustPortfolioAdapter(
+            "trust",
+            "https://www.trustmf.com/api/api/Trust/GetData",
+            require=("monthly", "portfolio"),
+            listing={
+                "systemQueryFileName": "disclosuresweb.xml",
+                "tagName": "GetDisclosureByType",
+                "searchField": "",
+                "searchValue": "",
+                "sortField": "uploaddate",
+                "sortDirection": "DESC",
+                "replaceField": "_slug_",
+                "replaceValue": "portfolio-monthly-disclosure",
+            },
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
         ),
         "uti": UtiPortfolioAdapter(
             "uti",

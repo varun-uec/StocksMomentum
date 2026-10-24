@@ -5,15 +5,25 @@ Synthetic workbooks only, shaped like the PPFAS and DSP files.
 
 from __future__ import annotations
 
+import io
+import json
+import zipfile
 from datetime import date
 from decimal import Decimal
 
+import httpx
 import pytest
 
 from tests.wickstreet.test_mf_facts import _xlsx
 from wickstreet.analytics.domain import holdings as h
 from wickstreet.mf_data.domain.reads import HoldingRow, Portfolio
-from wickstreet.mf_data.infrastructure.amc import _LINK, amc_adapters
+from wickstreet.mf_data.infrastructure.amc import (
+    _LINK,
+    AmcPortfolioAdapter,
+    _same_site,
+    amc_adapters,
+)
+from wickstreet.mf_data.infrastructure.client import PacedClient
 from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
 
 HEADER = [
@@ -315,3 +325,229 @@ def test_a_second_portfolio_of_one_scheme_is_listed_not_merged() -> None:
     )
     assert [(x.sd_id, x.weight) for x in found.holdings] == [(3, Decimal("1"))]
     assert found.unmatched == ["second portfolio of scheme 3"]
+
+
+def test_tata_totals_end_rows_short_futures_swaps_and_lettered_headings() -> None:
+    """Tata: totals named at the end, NET ASSETS closes, shorts in the equity section."""
+    content = _xlsx(
+        [
+            ["", "TATA EXAMPLE FUND"],
+            ["", "Portfolio as on 30-09-26"],
+            ["", "NAME OF THE INSTRUMENT", "YIELD ( IN % )", "INDUSTRY", "ISIN CODE"]
+            + ["QUANTITY", "MKT VAL(Rs. Lacs)", "% to NAV"],
+            ["", "EQUITY & EQUITY RELATED"],
+            ["", "A) LISTED/AWAITING LISTING ON STOCK EXCHANGES"],
+            ["", "RELIANCE INDUSTRIES LTD", "NA", "Petroleum Products", "INE002A01018"]
+            + [100, 59.5, 59.5],
+            ["", "RELIANCE INDUSTRIES LTD^", "NA", "Petroleum Products", "INE002A01018"]
+            + [-50, -30, -30],
+            ["", "EQUITY & EQUITY RELATED TOTAL", "", "", "", "", 29.5, 29.5],
+            ["", "IRS"],
+            ["", "PAY FIXED 6.1% MD 2027", "", "", "", "", 20, 20],
+            ["", "J) REPO", "", "", "", "", 41, 41],
+            ["", "PORTFOLIO TOTAL", "", "", "", "", 100.5, 100.5],
+            ["", "NET CURRENT LIABILITIES", "", "", "", "", -0.5, -0.5],
+            ["", "NET ASSETS", "", "", "", "", 100, 100],
+            ["", "A NOTE AFTER THE PORTFOLIO", "", "", "INE000000001", 1, 1, 1],
+        ]
+    )
+    found = parse_portfolios(content, {"tataexamplefund": 4}, date(2026, 9, 30))
+    assert [(x.name, x.asset, x.section, x.weight) for x in found.holdings] == [
+        ("RELIANCE INDUSTRIES LTD", "equity", "A) LISTED/AWAITING LISTING ON STOCK EXCHANGES")
+        + (Decimal("0.595"),),
+        ("RELIANCE INDUSTRIES LTD^", "derivative", "A) LISTED/AWAITING LISTING ON STOCK EXCHANGES")
+        + (Decimal("-0.3"),),
+        ("PAY FIXED 6.1% MD 2027", "derivative", "IRS", Decimal("0.2")),
+        ("J) REPO", "cash", "J) REPO", Decimal("0.41")),
+        ("NET CURRENT LIABILITIES", "cash", "J) REPO", Decimal("-0.005")),
+    ]
+
+
+def test_futures_filed_in_percent_beside_fractions_are_read_apart() -> None:
+    """Groww: fractions for holdings, percent for its futures, a sheet code before the name."""
+    content = _xlsx(
+        [
+            ["AR", "IB67-Groww Example Arbitrage Fund"],
+            ["", "Portfolio as on 30-SEP-2026"],
+            ["", "ISIN", "Name of Instrument", "Rating/Industry", "Quantity"]
+            + ["Market Value (In Rs. lakh)", "% To Net Assets"],
+            ["", "", "EQUITY & EQUITY RELATED"],
+            ["", "INE090A01021", "ICICI Bank Limited", "Banks", 100, 70, 0.7],
+            ["", "", "DERIVATIVES"],
+            ["", "", "ICICI Bank Limited Oct26", "Stock Futures", -100, -70.2, -70.2],
+            ["", "", "TREPS"],
+            ["", "", "Clearing Corporation of India", "", "", 30, 0.3],
+            ["", "", "Grand Total", "", "", 100, 1],
+        ]
+    )
+    found = parse_portfolios(content, {"growwexamplearbitragefund": 5})
+    assert [(x.sd_id, x.asset, x.weight) for x in found.holdings] == [
+        (5, "equity", Decimal("0.7")),
+        (5, "derivative", Decimal("-0.702")),
+        (5, "cash", Decimal("0.3")),
+    ]
+
+
+def test_a_scheme_is_named_inside_a_portfolio_statement_title() -> None:
+    content = _xlsx(
+        [
+            ["", "SAMCO MUTUAL FUND"],
+            [],
+            ["", "MONTHLY PORTFOLIO STATEMENT OF SAMCO EXAMPLE FUND  AS ON September 30, 2026"],
+            HEADER,
+            [1, "HDFC Bank Limited", "INE040A01034", "Banks", 100, 100, 1],
+            ["", "Grand Total", "", "", "", 100, 1],
+        ]
+    )
+    found = parse_portfolios(content, {"samcoexamplefund": 6})
+    assert [(x.sd_id, x.as_of) for x in found.holdings] == [(6, date(2026, 9, 30))]
+
+
+def test_numeric_month_end_dates_name_a_month_and_per_scheme_files_are_all_picked() -> None:
+    adapters = amc_adapters(min_interval_seconds=0, timeout_seconds=1, max_attempts=1)
+    base = "https://mf.example/docs/"
+    monthly = [base + "Monthly Portfolio 31-07-2026-Final.xlsx"]
+    monthly += [base + "Fortnightly Portfolio Report 31-07-2026.xlsx"]
+    assert adapters["motilal"].pick(monthly, date(2026, 7, 31)) == monthly[0]
+    each = [
+        base + "FUND A Sep 2026.xlsx",
+        "https://mirror.example/FUND A Sep 2026.xlsx",  # the same file on a second host
+        base + "FUND B Sep 2026.xlsx",
+        base + "FUND B Aug 2026.xlsx",
+        base + "FUND C Fortnightly Sep 2026.xlsx",
+        base + "Overnight_30092026_1791188043.xlsx",
+    ]
+    assert adapters["pgim"].picks(each, date(2026, 9, 30)) == [
+        base + "FUND A Sep 2026.xlsx",
+        base + "FUND B Sep 2026.xlsx",
+        base + "Overnight_30092026_1791188043.xlsx",
+    ]
+
+
+def test_links_are_read_from_any_json_key_and_redirects_stay_on_the_site() -> None:
+    assert _LINK.findall('{"publicUrl":"https://x.example/Monthly Portfolio - Sep 30.xlsx"}') == [
+        "https://x.example/Monthly Portfolio - Sep 30.xlsx"
+    ]
+    assert _same_site(
+        "https://betacms.tatamutualfund.com/a.xlsx", "https://www.tatamutualfund.com/a"
+    )
+    assert _same_site("https://www.x.co.in/a.xlsx", "/b.xlsx")
+    assert not _same_site("https://www.miraeassetmf.co.in/a", "https://evil.co.in/a")
+    assert not _same_site("https://tatamutualfund.com/a", "https://evil.com/a")
+
+
+def _serve(adapter: AmcPortfolioAdapter, routes: dict[str, httpx.Response]) -> list[str]:
+    """Answer the adapter from ``routes`` by URL path; return the URLs it asked for."""
+    asked: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        asked.append(str(request.url))
+        return routes[request.url.path]
+
+    adapter._http = PacedClient(
+        min_interval_seconds=0,
+        timeout_seconds=1,
+        max_attempts=1,
+        transport=httpx.MockTransport(handle),
+    )
+    return asked
+
+
+async def test_an_escaped_page_link_is_fetched_through_a_same_site_redirect() -> None:
+    tata = amc_adapters(min_interval_seconds=0, timeout_seconds=1, max_attempts=1)["tata"]
+    link = (
+        "https://betacms.tatamutualfund.com/files/Monthly Portfolio as on 30th September 2026.xlsx"
+    )
+    page = '{\\"field_media_document\\":\\"' + link + '\\"}'
+    moved = "https://www.tatamutualfund.com/system/files/september.xlsx"
+    _serve(
+        tata,
+        {
+            "/schemes-related/portfolio": httpx.Response(200, text=page),
+            "/files/Monthly Portfolio as on 30th September 2026.xlsx": httpx.Response(
+                302, headers={"location": moved}
+            ),
+            "/system/files/september.xlsx": httpx.Response(200, content=b"book"),
+        },
+    )
+    raw = await tata.portfolio(date(2026, 9, 30))
+    assert raw is not None
+    assert (raw.url, raw.content) == (moved, b"book")
+
+
+async def test_per_scheme_files_of_a_month_are_kept_as_one_repeatable_zip() -> None:
+    samco = amc_adapters(min_interval_seconds=0, timeout_seconds=1, max_attempts=1)["samco"]
+    names = [
+        "IN_MF_MONTHLY_PORTFOLIO_September_2026_Samco_B_Fund_2.xlsx",
+        "IN_MF_MONTHLY_PORTFOLIO_September_2026_Samco_A_Fund_1.xlsx",
+    ]
+    page = "".join(f'<a href="/docs/{n}">x</a>' for n in names)
+    routes = {"/StatutoryDisclosure": httpx.Response(200, text=page)}
+    routes |= {f"/docs/{n}": httpx.Response(200, content=n.encode()) for n in names}
+    _serve(samco, routes)
+    first = await samco.portfolio(date(2026, 9, 30))
+    _serve(samco, routes)
+    samco._links = None
+    second = await samco.portfolio(date(2026, 9, 30))
+    assert first is not None and second is not None
+    assert first.content == second.content
+    bundle = zipfile.ZipFile(io.BytesIO(first.content))
+    assert bundle.namelist() == sorted(n.lower() for n in names)
+
+
+async def test_whiteoak_and_trust_name_the_month_in_a_title_not_a_file_name() -> None:
+    adapters = amc_adapters(min_interval_seconds=0, timeout_seconds=1, max_attempts=1)
+
+    def row(name: str, url: str) -> dict[str, object]:
+        return {
+            "attributes": {"doc_name": name, "doc_file": {"data": {"attributes": {"url": url}}}}
+        }
+
+    cms = {
+        "meta": {"pagination": {"pageCount": 1}},
+        "data": [
+            row(
+                "A Fund Monthly Portfolio Disclosure - 30th September2026",
+                "https://c.example/A_Sept.xlsx",
+            ),
+            row(
+                "A Fund Monthly Portfolio Disclosure - 31st August2026",
+                "https://c.example/A_Aug.xlsx",
+            ),
+        ],
+    }
+    whiteoak = adapters["whiteoak"]
+    asked = _serve(
+        whiteoak,
+        {
+            "/api/scheme-portfolios": httpx.Response(200, text=json.dumps(cms)),
+            "/A_Sept.xlsx": httpx.Response(200, content=b"september"),
+        },
+    )
+    raw = await whiteoak.portfolio(date(2026, 9, 30))
+    assert raw is not None
+    assert zipfile.ZipFile(io.BytesIO(raw.content)).read("a_sept.xlsx") == b"september"
+    assert "filters%5Bperiod%5D%5B%24eq%5D=Monthly" in asked[0]
+
+    trust = adapters["trust"]
+    rows = {
+        "resultSetArray": [
+            {
+                "title": "TRUSTMF Monthly Portfolio Report as on 31.08.2026",
+                "fileurl": "https://t.example/Aug.xlsx",
+            },
+            {
+                "title": "TRUSTMF Monthly Portfolio Report as on 30.09.2026",
+                "fileurl": "https://t.example/Sep.xlsx",
+            },
+        ]
+    }
+    _serve(
+        trust,
+        {
+            "/api/api/Trust/GetData": httpx.Response(200, text=json.dumps(rows)),
+            "/Sep.xlsx": httpx.Response(200, content=b"sep"),
+        },
+    )
+    found = await trust.portfolio(date(2026, 9, 30))
+    assert found is not None and found.content == b"sep"
