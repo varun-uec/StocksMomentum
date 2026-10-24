@@ -38,8 +38,11 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
   ``search-documents.json`` (category "month end portfolio"), each with its ``path``:
   one workbook a month, named by month ("Scheme Portfolio Details September 2026") or
   by date ("Monthly Portfolio 31-07-2026-Final"), beside fortnightly files.
-- Trust: see :class:`TrustPortfolioAdapter`.
+- Trust, Mirae Asset, Sundaram, Quantum, Invesco: see :class:`TitledPortfolioAdapter`
+  and its subclasses.
 - WhiteOak: see :class:`WhiteOakPortfolioAdapter`.
+- LIC: see :class:`LicPortfolioAdapter`.
+- quant: see :class:`QuantPortfolioAdapter`.
 - Baroda BNP Paribas: see :class:`BarodaPortfolioAdapter`.
 - UTI: see :class:`UtiPortfolioAdapter`.
 
@@ -56,6 +59,7 @@ import re
 import zipfile
 from collections.abc import AsyncIterator, Mapping
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 from wickstreet.mf_data.domain.model import Portfolios, RawFile
@@ -75,7 +79,7 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.5"
+    adapter_version = "amc-portfolios-2026-10-24.6"
 
     def __init__(
         self,
@@ -227,9 +231,28 @@ class AmcPortfolioAdapter:
         return sheet_codes(raw.content, names) if self._stable_codes else {}
 
 
+# A date in a title: "30th September 2026", "September2026", "Sep 30, 2026", "30.09.2026".
+_TITLE_DATE = re.compile(
+    r"(?<![a-z])(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[^a-z0-9]{0,3}"
+    r"(?:\d{1,2}(?:st|nd|rd|th)?,?[^a-z0-9]{0,3})?((?:19|20)\d\d)"
+    r"|(?<!\d)\d{1,2}[-./](\d{1,2})[-./]((?:19|20)\d\d)",
+    re.I,
+)
+
+
+def _first_month(title: str) -> tuple[int, int] | None:
+    """The year and month of a title's first date, if it has one."""
+    found = _TITLE_DATE.search(title)
+    if found is None:
+        return None
+    if found.group(1):
+        return int(found.group(2)), [m[:3] for m in _MONTHS].index(found.group(1).lower()) + 1
+    return int(found.group(4)), int(found.group(3))
+
+
 def _tail(link: str) -> str:
-    """A link's file name, lower case, with ``%20`` read as a space."""
-    return link.rsplit("/", 1)[-1].lower().replace("%20", " ")
+    """A link's file name, lower case, with ``%20`` read as a space and no query."""
+    return link.split("?", 1)[0].rsplit("/", 1)[-1].lower().replace("%20", " ")
 
 
 def _same_site(link: str, target: str) -> bool:
@@ -244,35 +267,67 @@ def _same_site(link: str, target: str) -> bool:
     return to == parent or to.endswith("." + parent)
 
 
-class WhiteOakPortfolioAdapter(AmcPortfolioAdapter):
+class TitledPortfolioAdapter(AmcPortfolioAdapter):
+    """An AMC whose listing names each file's month in a title, not in its file name.
+
+    A subclass reads the listing as (title, URL) pairs. The month's files are those
+    whose title's first date is that month ("as on 30th September 2023 for ... Apr 2026
+    ... Index Fund" is September 2023), kept as one zip with ``each``, else the first.
+    """
+
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
+        """Each listed file's title and URL."""
+        raise NotImplementedError
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """The month's file or files, or ``None`` when none is listed."""
+        found: dict[str, str] = {}
+        for title, url in sorted(await self._titled(month_end)):
+            words = title.lower()
+            if (
+                _first_month(title) == (month_end.year, month_end.month)
+                and all(w in words for w in self._require)
+                and not any(w in words for w in self._exclude)
+            ):
+                found.setdefault(_tail(url), url)
+        links = [found[tail] for tail in sorted(found)]
+        if not links:
+            return None
+        return await self._bundle(links) if self._each else await self._fetch(links[0])
+
+    async def _json(self, response: Any) -> Any:
+        if response.status_code != 200:
+            raise SourceError(f"{self._page} answered HTTP {response.status_code}.")
+        return json.loads(response.text)
+
+
+class WhiteOakPortfolioAdapter(TitledPortfolioAdapter):
     """WhiteOak: a CMS lists one workbook per scheme a month, each with a document name.
 
     ``cms.whiteoakamc.com/api/scheme-portfolios`` answers 100 rows a page, filtered to
     the monthly period. A row's ``doc_name`` names the month ("... Monthly Portfolio
     Disclosure - 30th September2026"); its ``doc_file`` holds the file's URL, whose own
-    name says "Sept_2026", so the month is read from the document name.
+    name says "Sept_2026".
     """
 
     _documents: dict[str, str] | None = None
 
-    async def portfolio(self, month_end: date) -> RawFile | None:
-        """Every scheme's workbook for the month, as one zip; ``None`` when none is listed."""
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
         if self._documents is None:
             self._documents = {}
             page, pages = 1, 1
             while page <= pages:
-                listed = await self._http.get(
-                    self._page,
-                    {
-                        "pagination[page]": str(page),
-                        "pagination[pageSize]": "100",
-                        "filters[period][$eq]": "Monthly",
-                        "populate": "doc_file",
-                    },
+                found = await self._json(
+                    await self._http.get(
+                        self._page,
+                        {
+                            "pagination[page]": str(page),
+                            "pagination[pageSize]": "100",
+                            "filters[period][$eq]": "Monthly",
+                            "populate": "doc_file",
+                        },
+                    )
                 )
-                if listed.status_code != 200:
-                    raise SourceError(f"{self._page} answered HTTP {listed.status_code}.")
-                found = json.loads(listed.text)
                 pages = int(found["meta"]["pagination"]["pageCount"])
                 for row in found["data"]:
                     file = ((row["attributes"].get("doc_file") or {}).get("data") or {}).get(
@@ -281,32 +336,187 @@ class WhiteOakPortfolioAdapter(AmcPortfolioAdapter):
                     if file.get("url"):
                         self._documents[row["attributes"]["doc_name"]] = file["url"]
                 page += 1
-        links = [
-            url for name, url in sorted(self._documents.items()) if self._names(name, month_end)
-        ]
-        return await self._bundle(links) if links else None
+        return list(self._documents.items())
 
 
-class TrustPortfolioAdapter(AmcPortfolioAdapter):
+class TrustPortfolioAdapter(TitledPortfolioAdapter):
     """Trust: one JSON ``POST`` lists the monthly reports, each with a title and a URL.
 
     ``trustmf.com/api/api/Trust/GetData`` answers rows with a ``title`` ("TRUSTMF
     Monthly Portfolio Report as on 30.09.2026") and a ``fileurl`` whose name holds only
-    an upload stamp, so the month is read from the title.
+    an upload stamp.
+    """
+
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
+        found = await self._json(
+            await self._http.post(self._page, self._listing or {}, self._headers)
+        )
+        return [
+            (str(row.get("title", "")), row["fileurl"])
+            for row in found.get("resultSetArray") or []
+            if row.get("fileurl")
+        ]
+
+
+class MiraePortfolioAdapter(TitledPortfolioAdapter):
+    """Mirae Asset: a paged JSON ``POST`` lists one workbook per scheme a month.
+
+    ``miraeassetmf.co.in/AjaxService/GetDownloadsData`` (module ``portfolio_tab1``)
+    answers rows with a ``Title`` ("Portfolio Details as on 30th September 2026 for
+    Mirae Asset Flexi Cap Fund") and a site path in ``URL`` (``mafcf_sept2026.xlsx``).
+    """
+
+    _rows: list[tuple[str, str]] | None = None
+
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
+        if self._rows is None:
+            self._rows = []
+            page, total = 1, 1
+            while len(self._rows) < total:
+                found = await self._json(
+                    await self._http.post(
+                        self._page,
+                        {"request": {"modulename": "portfolio_tab1", "pgno": page, "pgsize": 500}},
+                    )
+                )
+                total = int(found.get("DataCount") or 0)
+                rows = found.get("Data") or []
+                if not rows:
+                    break
+                self._rows += [
+                    (str(r.get("Title", "")), urljoin(self._page, r["URL"]))
+                    for r in rows
+                    if r.get("URL")
+                ]
+                page += 1
+        return self._rows
+
+
+class SundaramPortfolioAdapter(TitledPortfolioAdapter):
+    """Sundaram: one form ``POST`` answers every monthly file as HTML links with titles.
+
+    The portfolios page calls its ``GetCategory`` method (``Catid=Monthly``), which
+    answers each year's links (``/uploaddir/MonthlyPortfolio/monthlyportfolio_<stamp>
+    .xlsx``) titled "Monthly Portfolio Disclosure Equity & Fund of Funds - Sep 2026" and
+    "... Fixed Income - Sep 2026".
+    """
+
+    _rows: list[tuple[str, str]] | None = None
+
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
+        if self._rows is None:
+            response = await self._http.post_form(self._page, {"Catid": "Monthly"})
+            if response.status_code != 200:
+                raise SourceError(f"{self._page} answered HTTP {response.status_code}.")
+            found = response.text.replace("\\'", "'")
+            self._rows = [
+                (re.sub(r"<[^>]+>", "", title).strip(), urljoin(self._page, href))
+                for href, title in re.findall(
+                    r"<a[^>]*href='([^']+\.xlsx?)'[^>]*>(.*?)</a>", found, re.S
+                )
+            ]
+        return self._rows
+
+
+class QuantumPortfolioAdapter(TitledPortfolioAdapter):
+    """Quantum: one combined-portfolio page a year lists one all-funds workbook a month.
+
+    ``quantumamc.com/portfolio/combined/-1/1/<year>/0`` (all schemes, monthly) lists the
+    year's months; each link's click handler carries its title ("September 2026 - All
+    Funds") beside the file's URL, whose name is a GUID.
+    """
+
+    _years: dict[int, list[tuple[str, str]]] | None = None
+
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
+        self._years = self._years or {}
+        if month_end.year not in self._years:
+            url = self._page.format(year=month_end.year)
+            response = await self._http.get(url)
+            if response.status_code != 200:
+                raise SourceError(f"{url} answered HTTP {response.status_code}.")
+            self._years[month_end.year] = [
+                (title, link)
+                for link, title in re.findall(
+                    r"GTMcodeforxml\('([^']+\.xlsx?)', '[^']*', '([^']*)'", response.text
+                )
+            ]
+        return self._years[month_end.year]
+
+
+class InvescoPortfolioAdapter(TitledPortfolioAdapter):
+    """Invesco: one JSON ``GET`` per year and class lists each scheme's twelve months.
+
+    ``invescomutualfund.com/api/CompleteMonthlyHoldings?year=&classification=`` answers
+    a row per scheme with ``Name`` and ``JanUrl`` to ``DecUrl``, for the classes
+    ``equity``, ``hybrid``, ``fixed-income``, ``fund-of-funds`` and ``index-funds``.
+    A file's title is the month, the year and the scheme's name.
+    """
+
+    CLASSES = ("equity", "hybrid", "fixed-income", "fund-of-funds", "index-funds")
+    _years: dict[int, list[tuple[str, str]]] | None = None
+
+    async def _titled(self, month_end: date) -> list[tuple[str, str]]:
+        self._years = self._years or {}
+        if month_end.year not in self._years:
+            rows: list[tuple[str, str]] = []
+            for kind in self.CLASSES:
+                found = await self._json(
+                    await self._http.get(
+                        self._page, {"year": str(month_end.year), "classification": kind}
+                    )
+                )
+                for row in found:
+                    for month in _MONTHS:
+                        url = row.get(f"{month[:3].capitalize()}Url")
+                        if url:
+                            rows.append((f"{month} {month_end.year} {row['Name']}", url))
+            self._years[month_end.year] = rows
+        return self._years[month_end.year]
+
+
+class LicPortfolioAdapter(AmcPortfolioAdapter):
+    """LIC: one form ``POST`` per month lists that month's consolidated workbooks.
+
+    The portfolios page's "Consolidated Portfolio" tab posts ``id=639`` (monthly), the
+    month's number and the year to ``licmf.com/downloads/consolidated-portfolio-files``,
+    which answers links to an equity and a debt workbook
+    (``LIC MF Monthly Equity Portfolio_Sep_26.xlsx``).
     """
 
     async def portfolio(self, month_end: date) -> RawFile | None:
-        """The month's report, or ``None`` when none is listed."""
-        listed = await self._http.post(self._page, self._listing or {}, self._headers)
+        """The month's workbooks as one zip, or ``None`` when none is listed."""
+        form = {"id": "639", "month": str(month_end.month), "year": str(month_end.year)}
+        listed = await self._http.post_form(self._page, form)
         if listed.status_code != 200:
             raise SourceError(f"{self._page} answered HTTP {listed.status_code}.")
-        rows = json.loads(listed.text).get("resultSetArray") or []
-        found = sorted(
-            row["fileurl"]
-            for row in rows
-            if row.get("fileurl") and self._names(str(row.get("title", "")), month_end)
-        )
-        return await self._fetch(found[0]) if found else None
+        found = [urljoin(self._page, m.group(1)) for m in _LINK.finditer(listed.text)]
+        links = self.picks(found, month_end)
+        return await self._bundle(links) if links else None
+
+
+class QuantPortfolioAdapter(AmcPortfolioAdapter):
+    """quant: one JSON ``POST`` per year lists that year's monthly workbooks.
+
+    The statutory-disclosures page posts ``{"id": "<year>", "cat": "MONTHLY PORTFOLIO"}``
+    to ``quantmutual.com/statutorydisclosures.aspx/displaydisclouser``, which answers
+    ``{"d": "<html>"}`` with links under ``/Admin/disclouser/``
+    (``Monthly_portfolio_sept_30092026.xlsx``, ``Monthly_Portfolio_July26.xlsx``). A
+    December file may be listed with the next year, so both years are read.
+    """
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """The month's workbook, or ``None`` when neither year lists one."""
+        links: list[str] = []
+        for year in (month_end.year, month_end.year + 1):
+            body: dict[str, object] = {"id": str(year), "cat": "MONTHLY PORTFOLIO"}
+            listed = await self._http.post(self._page, body)
+            if listed.status_code != 200:
+                raise SourceError(f"{self._page} answered HTTP {listed.status_code}.")
+            page = str(json.loads(listed.text).get("d") or "").replace("\\'", "'")
+            links += [urljoin(self._page, m.group(1)) for m in _LINK.finditer(page)]
+        link = self.pick(links, month_end)
+        return None if link is None else await self._fetch(link)
 
 
 class BarodaPortfolioAdapter(AmcPortfolioAdapter):
@@ -512,6 +722,7 @@ def amc_adapters(
         "whiteoak": WhiteOakPortfolioAdapter(
             "whiteoak",
             "https://cms.whiteoakamc.com/api/scheme-portfolios",
+            each=True,
             require=("monthly",),
             exclude=("fortnight",),
             min_interval_seconds=min_interval_seconds,
@@ -532,6 +743,61 @@ def amc_adapters(
                 "replaceField": "_slug_",
                 "replaceValue": "portfolio-monthly-disclosure",
             },
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "mirae": MiraePortfolioAdapter(
+            "mirae",
+            "https://www.miraeassetmf.co.in/AjaxService/GetDownloadsData",
+            each=True,
+            require=("portfolio",),
+            exclude=("fortnight", "half"),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "sundaram": SundaramPortfolioAdapter(
+            "sundaram",
+            "https://www.sundarammutual.com/ajax/"
+            "Modules_Disclosure_Monthly_Fortnightly_Adhoc_Portfolios,App_Web_0k2jxmrp.ashx"
+            "?_method=GetCategory&_session=no",
+            each=True,
+            require=("monthly", "portfolio"),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "lic": LicPortfolioAdapter(
+            "lic",
+            "https://www.licmf.com/downloads/consolidated-portfolio-files",
+            require=("monthly", "portfolio"),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "quant": QuantPortfolioAdapter(
+            "quant",
+            "https://quantmutual.com/statutorydisclosures.aspx/displaydisclouser",
+            require=("monthly", "portfolio"),
+            exclude=("fortnight",),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "quantum": QuantumPortfolioAdapter(
+            "quantum",
+            "https://www.quantumamc.com/portfolio/combined/-1/1/{year}/0",
+            require=("all funds",),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        ),
+        "invesco": InvescoPortfolioAdapter(
+            "invesco",
+            "https://www.invescomutualfund.com/api/CompleteMonthlyHoldings",
+            each=True,
+            require=(),
             min_interval_seconds=min_interval_seconds,
             timeout_seconds=timeout_seconds,
             max_attempts=max_attempts,

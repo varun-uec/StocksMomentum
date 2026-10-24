@@ -20,7 +20,7 @@ docker compose run --rm --entrypoint wickstreet wickstreet-migrate rights grant 
   --basis "Owner personal-mode decision per ADR-023 U10/U14; not AMFI permission" --by OPERATOR
 ```
 
-Analytics also needs `derived_metrics` for each underlying source, and research API reads need `display`. Provider import grants are separate: each AMC uses its own source name (`ppfas`, `dsp`, `nippon`, `sbi`, `icici`, `tata`, `motilal`, `uti`, `barodabnp`); RBI imports require `rbi` storage; MFAPI checks require `mfapi` automated retrieval and storage. The CLI checks rights before network retrieval and before database publication. SaaS mode currently has no supported identity adapter and no commercial source permissions.
+Analytics also needs `derived_metrics` for each underlying source, and research API reads need `display`. Provider import grants are separate: each AMC uses its own source name (`ppfas`, `dsp`, `nippon`, `sbi`, `icici`, `tata`, `motilal`, `uti`, `barodabnp`, `groww`, `samco`, `pgim`, `whiteoak`, `trust`, `mirae`, `invesco`, `sundaram`, `lic`, `quant`, `quantum`); RBI imports require `rbi` storage; MFAPI checks require `mfapi` automated retrieval and storage. The CLI checks rights before network retrieval and before database publication. SaaS mode currently has no supported identity adapter and no commercial source permissions.
 
 Shared HTTP policy from `WICKSTREET_*`: minimum interval 1 second per adapter, timeout 120 seconds (AMFI facts forces at least 180 seconds), maximum four attempts. Transport failures, 429 and 5xx retry with exponential backoff; other 4xx fail. No provider password or API token is configured. Each command prints outcomes and counts; a failed run is in `ingestion_run` and can be retried. Published/unchanged/unavailable periods skip unless a command has `--refetch`.
 
@@ -126,12 +126,42 @@ Automated sources and listing URLs:
 | `motilal` | `GET https://www.motilaloswalmf.com/content/aem-cloud-dept-backend-motilal-oswal/api/search-documents.json?year=&category=month%20end%20portfolio&month=&type=mf`; JSON listing `path` values are downloaded | One monthly workbook; filenames commonly say `Scheme Portfolio Details September 2026` or `Monthly Portfolio 31-07-2026-Final`. Adapter excludes fortnightly, half-yearly and performance files. |
 | `uti` | `GET https://www.utimf.com/api/get-consolidate-portfolio-disclosure?year=YYYY&month=Month` | JSON listing and one ZIP; all schemes stacked in scheme-code blocks; block closes at scheme total. |
 | `barodabnp` | [Baroda monthly portfolio page](https://www.barodabnpparibasmf.in/downloads/monthly-portfolio-scheme) and `POST https://www.barodabnpparibasmf.in/ajax-load-more-documents-new` | CSRF token/session and paginated HTML-in-JSON listing; finds all-funds workbook by title in the upload month and next month; up to 120 pages per month. |
+| `groww` | [Groww portfolio page](https://www.growwmf.in/statutory-disclosure/portfolio); the page script's `publicUrl` values | One workbook a month (`Monthly Portfolio - September 30, 2026.xlsx`); names start with a sheet code (`IB43-Groww …`); futures are filed in percent beside fractional holdings. |
+| `samco` | [Samco statutory disclosures](https://www.samcomf.com/StatutoryDisclosure) | One workbook per scheme a month (`IN_MF_MONTHLY_PORTFOLIO_September_2026_<scheme>_<stamp>.xlsx`), each on two hosts; the month is kept as one ZIP. Scheme named inside the title (`MONTHLY PORTFOLIO STATEMENT OF … AS ON …`). |
+| `pgim` | `POST https://www.pgimindia.com/api/v1/brochure/published/disclosure` (section `SECTION_747960037`, "Monthly Portfolio") | One workbook per scheme a month (`PGIM INDIA SMALL CAP FUND Sep 2026.xlsx`), kept as one ZIP. Files before June 2025 are binary `.xlsb`, which the parser does not read; import them by hand after converting. |
+| `whiteoak` | `GET https://cms.whiteoakamc.com/api/scheme-portfolios` (100 rows a page, `filters[period][$eq]=Monthly`) | One workbook per scheme a month; the month is read from `doc_name` ("… - 30th September2026"), not the file name. |
+| `trust` | `POST https://www.trustmf.com/api/api/Trust/GetData` (`GetDisclosureByType`, `portfolio-monthly-disclosure`) | One workbook a month; the month is read from the title ("… as on 30.09.2026"); the file URL redirects to `www`. |
+| `mirae` | `POST https://www.miraeassetmf.co.in/AjaxService/GetDownloadsData` (`portfolio_tab1`, 500 rows a page) | One workbook per scheme a month, titled "Portfolio Details as on 30th September 2026 for <scheme>"; target-maturity names carry other dates, so a title's first date decides. |
+| `invesco` | `GET https://www.invescomutualfund.com/api/CompleteMonthlyHoldings?year=YYYY&classification=…` for `equity`, `hybrid`, `fixed-income`, `fund-of-funds`, `index-funds` | A row per scheme with `JanUrl` … `DecUrl`; the month comes from the key. Kept as one ZIP a month. |
+| `sundaram` | Form `POST` `Catid=Monthly` to the portfolios page's `GetCategory` method (`/ajax/Modules_Disclosure_Monthly_Fortnightly_Adhoc_Portfolios,App_Web_0k2jxmrp.ashx`) | HTML links with titles; two workbooks a month (equity and FoF, fixed income), kept as one ZIP. |
+| `lic` | Form `POST` `id=639&month=M&year=YYYY` to `https://www.licmf.com/downloads/consolidated-portfolio-files` | Two consolidated workbooks a month (equity, debt), kept as one ZIP. |
+| `quant` | `POST https://quantmutual.com/statutorydisclosures.aspx/displaydisclouser` with `{"id": "YYYY", "cat": "MONTHLY PORTFOLIO"}` | One workbook a month under `/Admin/disclouser/`; names vary (`Monthly_Portfolio_July26`, `…_sept_30092026`). Seven months of 2024–2025 are not listed. |
+| `quantum` | `GET https://www.quantumamc.com/portfolio/combined/-1/1/YYYY/0` | One all-funds workbook a month; the title ("September 2026 - All Funds") names the month, the file name is a GUID. |
+
+Not fetched automatically (manual import only), with the reason found on 2026-10-24:
+
+| AMC | Reason |
+|---|---|
+| Kotak | Radware bot check on the site. |
+| HDFC, Edelweiss | HTTP 403 to clients other than a browser. |
+| Axis | Listing API answers 403 without the page's session token; `robots.txt` disallows `/cms/`. |
+| Bandhan, Mahindra Manulife, ITI, JM Financial | Listing APIs carry encrypted, signed payloads; Mahindra's `robots.txt` also disallows `/downloads`. |
+| Wealth Company | TSPD bot challenge. |
+| Canara Robeco | Files live under `/wp-content/uploads/`, which `robots.txt` disallows. |
+| ABSL, HSBC, Franklin Templeton, Jio BlackRock | Their terms bar robots, scrapers or automated access; the owner kept these to manual import. |
+| Union | The monthly list did not load (the site answered HTTP 500 and its list script failed) on 2026-10-24. |
+| Navi, Zerodha, Bank of India, Bajaj, 360 ONE, Shriram | No machine-readable monthly listing found yet. |
+
+A month that names its files only in titles, or that files one workbook per scheme, comes through `TitledPortfolioAdapter` or the `each` option: every matching file is fetched in turn and kept as one ZIP whose members are sorted and stamped 1980-01-01, so the same files give the same raw SHA-256.
+
+A scheme renamed by its AMC joins its older months by sheet code: the codes in the AMC's newest kept file, where the names are AMFI's current ones, join sheets whose old names join nothing. Motilal reuses sheet codes across funds of funds, so none is learnt there.
 
 Default command reads PPFAS and DSP for the last completed month. Choose an AMC explicitly and a month-end; `--start/--end` inclusive ranges are stepped monthly:
 
 ```bash
 docker compose run --rm api wickstreet mf portfolios --amc ppfas --amc dsp --start 2026-01-31 --end 2026-09-30
 docker compose run --rm api wickstreet mf portfolios --amc nippon --amc sbi --amc icici --amc tata --amc motilal --amc uti --amc barodabnp --start 2026-09-30 --end 2026-09-30
+docker compose run --rm api wickstreet mf portfolios --amc groww --amc samco --amc pgim --amc whiteoak --amc trust --amc mirae --amc invesco --amc sundaram --amc lic --amc quant --amc quantum --start 2026-09-30 --end 2026-09-30
 ```
 
 For parser-only replay, add `--reparse`; for provider refresh, use `--refetch`. `--refetch` with same file hash remains unchanged.
