@@ -138,7 +138,7 @@ Automated sources and listing URLs:
 | `quant` | `POST https://quantmutual.com/statutorydisclosures.aspx/displaydisclouser` with `{"id": "YYYY", "cat": "MONTHLY PORTFOLIO"}` | One workbook a month under `/Admin/disclouser/`; names vary (`Monthly_Portfolio_July26`, `…_sept_30092026`). Seven months of 2024–2025 are not listed. |
 | `quantum` | `GET https://www.quantumamc.com/portfolio/combined/-1/1/YYYY/0` | One all-funds workbook a month; the title ("September 2026 - All Funds") names the month, the file name is a GUID. |
 
-Not fetched automatically (manual import only), with the reason found on 2026-10-24:
+Not fetched, with the reason found on 2026-10-24. `mf import-portfolios` accepts only the 20 AMCs with an adapter, so none of these can be imported yet: each first needs an owner `storage` grant and a source entry that parses its layout.
 
 | AMC | Reason |
 |---|---|
@@ -148,7 +148,7 @@ Not fetched automatically (manual import only), with the reason found on 2026-10
 | Bandhan, Mahindra Manulife, ITI, JM Financial | Listing APIs carry encrypted, signed payloads; Mahindra's `robots.txt` also disallows `/downloads`. |
 | Wealth Company | TSPD bot challenge. |
 | Canara Robeco | Files live under `/wp-content/uploads/`, which `robots.txt` disallows. |
-| ABSL, HSBC, Franklin Templeton, Jio BlackRock | Their terms bar robots, scrapers or automated access; the owner kept these to manual import. |
+| ABSL, HSBC, Franklin Templeton, Jio BlackRock | Their terms bar robots, scrapers or automated access. The owner kept ABSL to manual import on 2026-10-24. |
 | Union | The monthly list did not load (the site answered HTTP 500 and its list script failed) on 2026-10-24. |
 | Navi, Zerodha, Bank of India, Bajaj, 360 ONE, Shriram | No machine-readable monthly listing found yet. |
 
@@ -166,7 +166,7 @@ docker compose run --rm api wickstreet mf portfolios --amc groww --amc samco --a
 
 For parser-only replay, add `--reparse`; for provider refresh, use `--refetch`. `--refetch` with same file hash remains unchanged.
 
-Manual fallback (one combined XLS/XLSX or ZIP for each AMC/month):
+Manual fallback for the 20 AMCs above (one combined XLS/XLSX or ZIP for each AMC/month):
 
 ```bash
 docker compose run --rm api wickstreet mf import-portfolios /path/monthly-portfolio.zip \
