@@ -16,6 +16,7 @@ from pathlib import Path
 import typer
 
 from platform_common.database import Database
+from wickstreet.analytics.infrastructure.snapshots import retire_snapshot
 from wickstreet.config import WickstreetSettings, get_settings
 from wickstreet.data_rights.domain.rights import Use
 from wickstreet.data_rights.infrastructure.register import (
@@ -487,6 +488,20 @@ def mf_report() -> None:
 def mf_metrics() -> None:
     """Compute the metric snapshot of the published revision; a no-op when it exists."""
     _compute(get_settings())
+
+
+@mf_app.command("retire-snapshot")
+def mf_retire_snapshot(
+    snapshot_id: int = typer.Argument(..., help="metric_snapshot id."),
+    reason: str = typer.Option(..., help="Why the snapshot must not be served."),
+    retired_by: str = typer.Option(..., "--by", help="Who retires it."),
+) -> None:
+    """Stop serving a snapshot; its row stays for audit and its revision can be recomputed."""
+    retired = _with_database(
+        get_settings().migration_database_url,
+        lambda db: retire_snapshot(db, snapshot_id, by=retired_by, reason=reason),
+    )
+    typer.echo("retired" if retired else "not retired: unknown id or already retired")
 
 
 @link_app.command("add")

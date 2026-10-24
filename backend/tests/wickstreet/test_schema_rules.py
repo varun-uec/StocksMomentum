@@ -187,4 +187,4 @@ async def test_mf_migrations_run_alone_and_leave_momentum25_untouched(
     await admin.dispose()
     assert before[0]
     assert after == before
-    assert mf_version == "0009_distributions"
+    assert mf_version == "0010_snapshot_retirement"

@@ -1,6 +1,7 @@
 """Stored metric snapshots, decoded once per process (MF-11).
 
-A snapshot never changes once stored, so the cache needs no invalidation.
+A snapshot's payload never changes once stored, so the cache needs no invalidation.
+Reads skip a retired snapshot: its row stays for audit, but it is never served.
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ class SqlSnapshotStore:
             found = await connection.scalar(
                 text(
                     "SELECT 1 FROM wickstreet.metric_snapshot "
-                    "WHERE revision_id = :r AND method_version = :m"
+                    "WHERE revision_id = :r AND method_version = :m AND retired_at IS NULL"
                 ),
                 {"r": revision, "m": method_version},
             )
@@ -54,7 +55,8 @@ class SqlSnapshotStore:
                     "INSERT INTO wickstreet.metric_snapshot (revision_id, method_version, as_of, "
                     "funds, sources, grant_ids, payload_sha256, payload) "
                     "VALUES (:r, :m, :as_of, :funds, :sources, :grants, :sha, :payload) "
-                    "ON CONFLICT (revision_id, method_version) DO NOTHING RETURNING id"
+                    "ON CONFLICT (revision_id, method_version) WHERE retired_at IS NULL "
+                    "DO NOTHING RETURNING id"
                 ),
                 {
                     "r": revision,
@@ -72,7 +74,9 @@ class SqlSnapshotStore:
 
     async def find(self, revision: int | None, method_version: int) -> Snapshot | None:
         """Return the snapshot at ``revision``, or the latest when it is ``None``."""
-        where = "method_version = :m" + ("" if revision is None else " AND revision_id = :r")
+        where = "retired_at IS NULL AND method_version = :m"
+        if revision is not None:
+            where += " AND revision_id = :r"
         async with self._database.engine.connect() as connection:
             snapshot_id = await connection.scalar(
                 text(
@@ -94,3 +98,20 @@ class SqlSnapshotStore:
         for old in sorted(self._cache)[:-_CACHE_SIZE]:
             del self._cache[old]
         return snapshot
+
+
+async def retire_snapshot(database: Database, snapshot_id: int, *, by: str, reason: str) -> bool:
+    """Stop serving a snapshot and keep its row; ``False`` when unknown or retired.
+
+    Runs as the owner login: the runtime role cannot update snapshots.
+    """
+    async with database.engine.begin() as connection:
+        retired = await connection.scalar(
+            text(
+                "UPDATE wickstreet.metric_snapshot "
+                "SET retired_at = now(), retired_by = :by, retired_reason = :reason "
+                "WHERE id = :id AND retired_at IS NULL RETURNING id"
+            ),
+            {"id": snapshot_id, "by": by, "reason": reason},
+        )
+    return retired is not None

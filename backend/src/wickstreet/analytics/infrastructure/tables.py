@@ -4,22 +4,25 @@ from __future__ import annotations
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
     Identity,
+    Index,
     Integer,
     LargeBinary,
     Table,
     Text,
-    UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from wickstreet.persistence.database import metadata
 
-# One snapshot per (revision, method version) (MF-11). The revision is MF data's id;
+# One serving snapshot per (revision, method version) (MF-11); a retired one stays
+# for audit and is never served. The revision is MF data's id;
 # no foreign key across contexts (A3 §7.1).
 metric_snapshot = Table(
     "metric_snapshot",
@@ -36,5 +39,19 @@ metric_snapshot = Table(
     Column("payload_sha256", Text, nullable=False),
     Column("payload", LargeBinary, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
-    UniqueConstraint("revision_id", "method_version", name="uq_metric_snapshot_revision"),
+    Column("retired_at", DateTime(timezone=True)),
+    Column("retired_by", Text),
+    Column("retired_reason", Text),
+    CheckConstraint(
+        "(retired_at IS NULL) = (retired_by IS NULL) "
+        "AND (retired_at IS NULL) = (retired_reason IS NULL)",
+        name="retired",
+    ),
+    Index(
+        "uq_metric_snapshot_revision",
+        "revision_id",
+        "method_version",
+        unique=True,
+        postgresql_where=text("retired_at IS NULL"),
+    ),
 )

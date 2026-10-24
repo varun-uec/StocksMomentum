@@ -11,6 +11,8 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from platform_common.database import Database
 from tests.wickstreet.amfi_files import master_file, nav_file
@@ -19,7 +21,7 @@ from tests.wickstreet.test_mf_ingestion import FakeSource
 from wickstreet import cli
 from wickstreet.analytics.application.research import ComputeSnapshot, cell
 from wickstreet.analytics.domain.metrics import METHOD_VERSION
-from wickstreet.analytics.infrastructure.snapshots import SqlSnapshotStore
+from wickstreet.analytics.infrastructure.snapshots import SqlSnapshotStore, retire_snapshot
 from wickstreet.app import create_app
 from wickstreet.config import WickstreetSettings
 from wickstreet.data_rights.application.gate import RightsGate
@@ -228,6 +230,48 @@ async def test_the_api_reads_one_pinned_snapshot(
     )
     assert reused.status_code == 422
     assert reused.json()["type"] == "urn:wickstreet:error:invalid-cursor"
+
+
+async def test_a_retired_snapshot_is_kept_but_never_served(
+    published: FakeSource, app_database: Database, mf_urls: Urls, client: TestClient
+) -> None:
+    first = await _compute(app_database).execute()
+    assert first.snapshot_id is not None
+    assert client.get("/funds/10001/metrics").status_code == 200
+
+    owner = Database(mf_urls.owner)
+    try:
+        assert await retire_snapshot(owner, first.snapshot_id, by="tests", reason="stale code")
+        assert not await retire_snapshot(owner, first.snapshot_id, by="tests", reason="again")
+        with pytest.raises(DBAPIError, match="permission denied"):
+            await retire_snapshot(app_database, first.snapshot_id, by="app", reason="no")
+
+        store = SqlSnapshotStore(app_database)
+        assert await store.find(None, METHOD_VERSION) is None
+        assert await store.find(first.revision, METHOD_VERSION) is None
+        pinned = client.get(f"/funds/10001/metrics?data_revision={first.revision}")
+        assert pinned.status_code == 404
+        assert pinned.json()["type"] == "urn:wickstreet:error:no-snapshot"
+
+        # The same revision computes again; the retired row stays for audit.
+        again = await _compute(app_database).execute()
+        assert again.status == "computed"
+        assert again.revision == first.revision
+        assert again.snapshot_id != first.snapshot_id
+        assert client.get("/funds/10001/metrics").json()["data_revision"] == first.revision
+        async with owner.engine.connect() as connection:
+            audit = (
+                await connection.execute(
+                    text(
+                        "SELECT retired_by, retired_reason, retired_at IS NOT NULL "
+                        "FROM wickstreet.metric_snapshot WHERE id = :id"
+                    ),
+                    {"id": first.snapshot_id},
+                )
+            ).one()
+        assert tuple(audit) == ("tests", "stale code", True)
+    finally:
+        await owner.dispose()
 
 
 async def test_fund_reads_search_compare_and_errors(

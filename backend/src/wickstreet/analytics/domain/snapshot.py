@@ -195,7 +195,7 @@ def payload_sha256(payload: bytes) -> str:
 
 
 class SnapshotStore(Protocol):
-    """Port: stored snapshots, one per (revision, method version)."""
+    """Port: stored snapshots, one served per (revision, method version); never a retired one."""
 
     async def exists(self, revision: int, method_version: int) -> bool:
         """Return whether the snapshot is stored."""
