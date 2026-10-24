@@ -173,6 +173,7 @@ class IngestFacts:
             documents = json.loads(raw.content)
             facts: list[Fact] = []
             isins: dict[str, int] = {}
+            codes: dict[str, int] = {}
             for sd_id, xml in sorted(documents.items(), key=lambda kv: int(kv[0])):
                 try:
                     one = self._source.parse_ssd(
@@ -182,7 +183,9 @@ class IngestFacts:
                     continue
                 facts.extend(one.facts)
                 isins |= one.isins
-            return SchemeFacts(facts, isins, unmatched=len(listed) - len(documents)), []
+                codes |= one.codes
+            unmatched = len(listed) - len(documents)
+            return SchemeFacts(facts, isins, unmatched, codes), []
 
         return await self._run(SSD, today, today, fetch, parse, refetch=refetch)
 

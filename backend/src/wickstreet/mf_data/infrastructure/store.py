@@ -88,6 +88,11 @@ def _row(columns: Sequence[str], alias: str) -> str:
     return "(" + ", ".join(f"{alias}.{c}" for c in columns) + ")"
 
 
+def _compacted(column: str) -> str:
+    """SQL for ``compact`` (domain/facts.py): lower case, & as and, letters and digits."""
+    return f"regexp_replace(lower(replace({column}, '&', 'and')), '[^a-z0-9]', '', 'g')"
+
+
 class SqlMfStore:
     """The ``MfStore`` port on PostgreSQL, as the runtime role."""
 
@@ -763,7 +768,7 @@ class SqlMfStore:
         found: SchemeFacts,
         revision_id: int,
     ) -> int:
-        """Write new or renamed schemes and new or moved ISIN joins; return how many."""
+        """Write new or renamed schemes and new or moved ISIN and code joins; return how many."""
         changed = 0
         if schemes:
             result = await connection.execute(
@@ -796,6 +801,36 @@ class SqlMfStore:
                     "WHERE scheme_isin.sd_id IS DISTINCT FROM excluded.sd_id"
                 ),
                 {"isins": list(found.isins), "ids": list(found.isins.values()), "r": revision_id},
+            )
+            changed += int(result.rowcount)
+        if found.codes:
+            # A code the SSD lists joins through that plan-option's master ISINs. Where an
+            # SSD lists the ISIN for another scheme, one of the two AMC filings is wrong:
+            # the code's scheme wins only when the plan-option's name contains its name
+            # and not the other scheme's.
+            result = await connection.execute(
+                text(
+                    "INSERT INTO wickstreet.scheme_isin (isin, sd_id, revision_id) "
+                    "SELECT DISTINCT ON (x.isin) x.isin, u.s, CAST(:r AS bigint) "
+                    "FROM unnest(CAST(:codes AS text[]), CAST(:ids AS int[])) AS u(c, s) "
+                    "JOIN wickstreet.plan_option p ON p.amfi_code = u.c "
+                    "JOIN wickstreet.plan_option_master m ON m.plan_option_id = p.id "
+                    "AND m.superseded_revision IS NULL "
+                    "CROSS JOIN LATERAL (VALUES (m.isin_growth), (m.isin_reinvest)) AS x(isin) "
+                    "WHERE x.isin IS NOT NULL "
+                    "AND EXISTS (SELECT 1 FROM wickstreet.scheme c WHERE c.sd_id = u.s) "
+                    "ORDER BY x.isin, u.s ON CONFLICT (isin) DO UPDATE "
+                    "SET sd_id = excluded.sd_id, revision_id = excluded.revision_id "
+                    "WHERE scheme_isin.sd_id <> excluded.sd_id AND EXISTS (SELECT 1 "
+                    "FROM wickstreet.plan_option_master m "
+                    "JOIN wickstreet.scheme a ON a.sd_id = excluded.sd_id "
+                    "JOIN wickstreet.scheme b ON b.sd_id = scheme_isin.sd_id "
+                    "WHERE m.superseded_revision IS NULL "
+                    "AND excluded.isin IN (m.isin_growth, m.isin_reinvest) "
+                    f"AND position({_compacted('a.name')} in {_compacted('m.nav_name')}) > 0 "
+                    f"AND position({_compacted('b.name')} in {_compacted('m.nav_name')}) = 0)"
+                ),
+                {"codes": list(found.codes), "ids": list(found.codes.values()), "r": revision_id},
             )
             changed += int(result.rowcount)
         return changed

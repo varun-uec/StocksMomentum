@@ -62,6 +62,8 @@ OPEN_ENDED = 1
 
 _EXCEL_EPOCH = date(1899, 12, 30)
 _ISIN = re.compile(r"INF[A-Z0-9]{9}")
+_AMFI_CODE = re.compile(r"(?<!\d)\d{6}(?!\d)")
+_CODES_TAG = "AMFI_Codes_To_be_phased_out"
 _RETURN = re.compile(
     r"^return(7Days|15Days|1Month|3Month|6Month|1Year|3Year|5Year|10Year|SinceLaunch)"
     r"(Regular|Direct|Benchmark|BenchmarkRegular|BenchmarkDirect)$"
@@ -277,7 +279,8 @@ def parse_ssd(raw: RawFile, sd_id: int, as_of: date) -> SchemeFacts:
         for tag, texts in filed.items()
     ]
     isins = dict.fromkeys(_ISIN.findall(" ".join(filed.get("ISINs", []))), sd_id)
-    return SchemeFacts(facts, isins)
+    codes = dict.fromkeys(_AMFI_CODE.findall(" ".join(filed.get(_CODES_TAG, []))), sd_id)
+    return SchemeFacts(facts, isins, codes=codes)
 
 
 def parse_ter(raw: RawFile, codes: Mapping[str, int], names: Mapping[str, int]) -> SchemeFacts:

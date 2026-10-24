@@ -139,11 +139,13 @@ class Fact:
 
 @dataclass(frozen=True, slots=True)
 class SchemeFacts:
-    """What one facts file gave: the facts and the ISINs that join plans to schemes."""
+    """What one facts file gave: the facts and the keys that join plans to schemes."""
 
     facts: list[Fact]
     isins: dict[str, int] = field(default_factory=dict)
     unmatched: int = 0
+    # AMFI code -> scheme, from an SSD's own list; an ISIN listed directly wins.
+    codes: dict[str, int] = field(default_factory=dict)
 
 
 # Monthly portfolio disclosures (doc 21 E4): one row per filed line of one scheme's

@@ -42,7 +42,16 @@ from wickstreet.mf_data.application.ingest import (
     Outcome,
     Reparse,
 )
-from wickstreet.mf_data.domain.model import AMFI, MFAPI, TIGZIG, NavRecord, RawFile
+from wickstreet.mf_data.domain.model import (
+    AMFI,
+    MFAPI,
+    TIGZIG,
+    NavRecord,
+    RawFile,
+    SchemeFacts,
+    SchemeRef,
+)
+from wickstreet.mf_data.domain.ports import Provenance
 from wickstreet.mf_data.infrastructure.amfi import parse_nav_file, parse_scheme_master
 from wickstreet.mf_data.infrastructure.raw_store import FileRawStore
 from wickstreet.mf_data.infrastructure.store import SqlMfStore
@@ -531,3 +540,34 @@ async def test_a_reparse_refuses_a_raw_file_that_does_not_match_its_hash(
     Path(path).write_bytes(gzip.compress(b"tampered"))
     outcome = await pipeline.days.reparse(day(1))
     assert outcome.status == "failed" and "SHA-256" in (outcome.error or "")
+
+
+async def test_ssd_codes_join_plans_and_settle_a_wrongly_listed_isin(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    """An SSD's AMFI codes join through the master's ISINs. A listed ISIN that points at
+    another scheme moves only when the plan's name names the code's scheme."""
+    source = FakeSource({}, master=master_file(["10001", "10002"]))
+    pipeline = _pipeline(app_database, tmp_path, source)
+    await pipeline.master.execute(day(1))
+    store = pipeline.store
+    run = await store.open_run(AMFI, "ssd", day(1), day(1))
+    [(grant,)] = await _rows(
+        app_database, "SELECT min(id) FROM wickstreet.rights_grant WHERE use = 'storage'"
+    )
+    provenance = Provenance(
+        "fake://ssd", "2026-09-01T00:00:00+00:00", "0" * 64, "x", "f", "c", None, grant
+    )
+    schemes = [SchemeRef(1, 1, "Example Fund 10001"), SchemeRef(2, 1, "Example Fund 10002")]
+    found = SchemeFacts(
+        [],
+        isins={"INF000X10001": 2, "INF000X10002": 2},  # the first is filed under the wrong scheme
+        codes={"10001": 1, "10002": 1},  # the second is filed under the wrong scheme
+    )
+    assert (await store.publish_facts(run.id, found, provenance, schemes)).revision is not None
+    assert dict(await _rows(app_database, "SELECT isin, sd_id FROM wickstreet.scheme_isin")) == {
+        "INF000X10001": 1,  # moved: "Example Fund 10001 - Direct Plan - Growth" names scheme 1
+        "INF000Y10001": 1,  # joined by code
+        "INF000X10002": 2,  # kept: the plan's name does not name scheme 1
+        "INF000Y10002": 1,  # joined by code; nothing listed it
+    }

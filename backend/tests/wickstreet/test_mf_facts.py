@@ -161,6 +161,7 @@ def test_ssd_rows_map_to_the_summary_elements() -> None:
         ("Fund Manager 3 - Name", "-"),
         ("Exit Load", "Yes"),
         ("ISINS", "INF247L01957"),
+        ("AMFI Codes to be phased out", "147625 and 147626"),
         ("SIP", ""),
         ("Frequency", "Annual"),
         ("", "Monthly"),
@@ -182,10 +183,12 @@ def test_ssd_rows_map_to_the_summary_elements() -> None:
         "ssd:Fund_Manager_From_Date": "Mr. A B - 6-Sep-2019, Ms. C D - 01/04/2024",
         "ssd:Exit_Load_if_applicable": "Yes",
         "ssd:ISINs": "INF247L01957",
+        "ssd:AMFI_Codes_To_be_phased_out": "147625 and 147626",
         "ssd:SIP_SWP__STP_Details_Frequency": "SIP - Annual, Monthly",
         "ssd:SIP_SWP__STP_Details_Minimum_amount": "SIP - Monthly: 500, Annual: 6000",
     }
     assert found.isins == {"INF247L01957": 9}
+    assert found.codes == {"147625": 9, "147626": 9}
     assert [d.isoformat() for _, d in e.manager_starts(facts["ssd:Fund_Manager_From_Date"])] == [
         "2019-09-06",
         "2024-04-01",
