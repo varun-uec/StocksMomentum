@@ -7,7 +7,9 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { CompareButton, WatchButton } from '../components/CompareTray';
 import { FundMark } from '../components/FundMark';
-import { Holdings, Profile } from '../components/fund/Profile';
+import { Benchmark, FactsAndCosts } from '../components/fund/Facts';
+import { Holdings } from '../components/fund/Holdings';
+import { Profile } from '../components/fund/Profile';
 import { FundHeadline, Overview } from '../components/fund/Overview';
 import { Peers } from '../components/fund/Peers';
 import { Performance } from '../components/fund/Performance';
@@ -27,8 +29,10 @@ const TABS = [
   { id: 'performance', label: 'Performance' },
   { id: 'risk', label: 'Risk' },
   { id: 'peers', label: 'Peers & rankings' },
+  { id: 'facts', label: 'Facts & costs' },
+  { id: 'benchmark', label: 'Benchmark' },
   { id: 'holdings', label: 'Holdings' },
-  { id: 'profile', label: 'Data & profile' },
+  { id: 'profile', label: 'Data sources' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 
@@ -209,7 +213,9 @@ export default function Fund() {
         {tab === 'performance' && <Performance {...props} />}
         {tab === 'risk' && <Risk {...props} />}
         {tab === 'peers' && <Peers {...props} />}
-        {tab === 'holdings' && <Holdings />}
+        {tab === 'facts' && <FactsAndCosts {...props} />}
+        {tab === 'benchmark' && <Benchmark {...props} />}
+        {tab === 'holdings' && <Holdings code={code} />}
         {tab === 'profile' && <Profile code={code} detail={fund.data} />}
       </div>
 

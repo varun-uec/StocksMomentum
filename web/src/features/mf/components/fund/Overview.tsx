@@ -239,6 +239,7 @@ function KeyMetrics({ metrics, fields }: Pick<FundTabProps, 'metrics' | 'fields'
 
 export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: Metrics }) {
   const f = detail.fund;
+  const v = metrics.values;
   const rows: [string, string][] = [
     ['Fund house', f.amc],
     ['Category', f.category],
@@ -259,19 +260,22 @@ export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: M
           </div>
         ))}
       </dl>
-      <div className="mt-4 space-y-2">
+      <dl className="mt-4 space-y-2.5 border-t border-mf-line pt-4 text-sm">
         {[
-          ['Expense ratio and AUM', 'E1 · AMC disclosures'],
-          ['Benchmark (TRI)', 'E3 · licensed index series'],
-        ].map(([title, needs]) => (
-          <p key={title} className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-mf-ink-soft">{title}</span>
-            <Badge tone="planned" className="shrink-0">
-              Planned · {needs.split(' · ')[0]}
-            </Badge>
-          </p>
+          ['Expense ratio', isNum(v.ter) ? `${pct(v.ter, 2)} a year${isNum(v.ter_cat_pct) ? ` · cheaper than ${Math.round(v.ter_cat_pct)}% of peers` : ''}` : missingLabel(metrics.states.ter)],
+          ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : missingLabel(metrics.states.aum_cr)],
+          ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : missingLabel(metrics.states.benchmark)],
+          ['Riskometer', typeof v.riskometer === 'string' ? v.riskometer : missingLabel(metrics.states.riskometer)],
+        ].map(([k, value]) => (
+          <div key={k}>
+            <dt className="text-xs text-mf-muted">{k}</dt>
+            <dd className="break-words text-mf-ink">{value}</dd>
+          </div>
         ))}
-      </div>
+      </dl>
+      <Link to="?tab=facts" className="mt-3 inline-flex text-xs font-medium text-mf-brand-strong hover:underline">
+        Costs, managers and exit load
+      </Link>
       {metrics.values.status !== 'active' && (
         <div className="mt-4">
           <DependencyPanel title="Historical plan" needs="a current NAV">

@@ -1,11 +1,11 @@
 /**
  * Profile: where the numbers come from (sources, NAV coverage, gaps, flags) and
- * what is not stored yet. Holdings: a named dependency (E4), never guessed data.
+ * what is not stored yet.
  */
 import type { FundDetail } from '../../api';
 import { date } from '../../format';
 import { useConfidence } from '../../queries';
-import { Badge, Card, DependencyPanel, ErrorState, Skeleton } from '../ui';
+import { Badge, Card, ErrorState, Skeleton } from '../ui';
 
 export function Profile({ code, detail }: { code: string; detail: FundDetail }) {
   const conf = useConfidence(code);
@@ -77,29 +77,10 @@ export function Profile({ code, detail }: { code: string; detail: FundDetail }) 
             ))}
           </dl>
         </Card>
-        <DependencyPanel title="Expense ratio, AUM, fund manager, exit load and riskometer" needs="E1, AMC monthly disclosures with a rights grant">
-          These come from AMC disclosures, not NAVs. They stay empty until a licensed source is imported; they are never estimated.
-        </DependencyPanel>
+<p className="text-xs text-mf-muted">
+          TER, AUM, riskometer, benchmark, managers and exit load come from AMFI&rsquo;s TER disclosure, fund performance report and the scheme summary document; see Facts & costs.
+        </p>
       </div>
-    </div>
-  );
-}
-
-export function Holdings() {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <DependencyPanel title="Portfolio holdings and their changes" needs="E4, dated AMC portfolio disclosures">
-        Holdings, top positions, sector weights and month-on-month changes need each AMC’s monthly portfolio file. The page will show the disclosure date and any weight it cannot resolve.
-      </DependencyPanel>
-      <DependencyPanel title="Overlap with other funds" needs="E4 holdings for both funds">
-        The Peers tab shows NAV correlation today. Correlation says two funds move together; it does not say they own the same stocks.
-      </DependencyPanel>
-      <DependencyPanel title="Sector, style and valuation" needs="E7, a security classification with dated coverage">
-        Style boxes and valuation ratios depend on holdings plus a stock data supplier.
-      </DependencyPanel>
-      <DependencyPanel title="Benchmark-relative risk" needs="E3, the scheme's licensed total-return index">
-        Alpha, beta, tracking error and capture ratios need the official benchmark. The Risk tab uses a NAV-built proxy and labels it.
-      </DependencyPanel>
     </div>
   );
 }

@@ -73,6 +73,12 @@ const MISSING: Record<string, string> = {
   too_few_peers: 'Too few peers',
   no_risk_free: 'No risk-free data',
   no_pair: 'No direct/regular pair',
+  no_scheme_join: 'Not in AMFI scheme data',
+  not_filed: 'Not filed with AMFI',
+  growth_option_only: 'AMFI reports growth only',
+  no_benchmark: 'No benchmark filed',
+  no_benchmark_proxy: 'No index fund tracks it',
+  no_year_ago_value: 'No value a year ago',
 };
 
 /** Why a value is missing, in words. Unknown reasons show as sent. */
@@ -104,6 +110,10 @@ export function formatValue(value: unknown, unit: Unit, type: FieldDef['type'] =
       return num(value, 2);
     case 'INR':
       return inr(value);
+    case 'INR crore':
+      return isNum(value) ? `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })} Cr` : '—';
+    case 'years':
+      return isNum(value) ? `${value.toFixed(1)} yrs` : '—';
     case 'quartile':
       if (!isNum(value)) return '—';
       return change ? signed(Math.abs(value).toFixed(0), value, true) : `Q${value}`;

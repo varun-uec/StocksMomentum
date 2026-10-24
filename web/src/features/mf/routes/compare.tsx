@@ -14,7 +14,7 @@ import { I } from '../components/icons';
 import { ScoreBadge } from '../components/ScoreBadge';
 import { Badge, Button, Card, Chip, EmptyState, ErrorState, Loading, PageHeader, Segmented, SnapshotNote, buttonClass, cx, useTitle } from '../components/ui';
 import { categoryShort, date, formatField, inr, inrTick, isNum, missingLabel, pct, schemeName } from '../format';
-import { useCompare, useFields } from '../queries';
+import { useCompare, useFields, useOverlap } from '../queries';
 import { heat, seriesColor, token } from '../theme/themes';
 import { COMPARE_LIMIT, setTray, useCompareTray, useRecordMutations, type WatchlistBody } from '../workspace';
 
@@ -57,6 +57,28 @@ const GROUPS: { title: string; rows: { id: string; better: Better; label?: strin
       { id: 'sharpe_3y', better: 'higher' },
       { id: 'sortino_3y', better: 'higher' },
       { id: 'ret_risk_3y', better: 'higher' },
+    ],
+  },
+  {
+    title: 'Costs and size',
+    rows: [
+      { id: 'ter', better: 'lower' },
+      { id: 'ter_cat_pct', better: 'higher' },
+      { id: 'aum_cr', better: null },
+      { id: 'riskometer', better: null },
+      { id: 'manager_tenure_y', better: null },
+    ],
+  },
+  {
+    title: 'Against its benchmark',
+    rows: [
+      { id: 'benchmark', better: null },
+      { id: 'excess_1y', better: 'higher' },
+      { id: 'excess_3y', better: 'higher' },
+      { id: 'excess_5y', better: 'higher' },
+      { id: 'ir_3y', better: 'higher' },
+      { id: 'beta_3y', better: null },
+      { id: 'down_capture_3y', better: 'lower' },
     ],
   },
   {
@@ -266,12 +288,9 @@ export default function Compare() {
                 ))}
               </table>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {['Expense ratio (E1)', 'Exit load (E1)', 'Holdings overlap (E4)'].map((t) => (
-                <Badge key={t} tone="planned">Planned · {t}</Badge>
-              ))}
-            </div>
           </Card>
+
+          <HoldingsOverlap codes={codes} />
 
           <Card title="Do their daily returns move together?" subtitle="Correlation of daily NAV returns over the dates both funds share. 1 means they move in lockstep. It does not measure shared holdings.">
             <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Table; scroll sideways for more columns">
@@ -312,5 +331,57 @@ export default function Compare() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Shared securities from each fund's latest disclosure: what NAV correlation cannot show. */
+function HoldingsOverlap({ codes }: { codes: string[] }) {
+  const overlap = useOverlap(codes);
+  const o = overlap.data;
+  if (overlap.isError) return <ErrorState error={overlap.error} compact />;
+  if (!o) return null;
+  const name = (code: string) => schemeName(o.funds.find((f) => f.code === code)?.name ?? code);
+  const known = o.pairs.filter((p) => isNum(p.weighted_overlap));
+  return (
+    <Card title="Do they own the same securities?" subtitle="Weighted overlap from each fund's latest monthly portfolio: the sum of the smaller weight over every security both hold">
+      {known.length === 0 ? (
+        <p className="text-sm text-mf-muted">
+          No pair has two stored portfolios. Wickstreet reads PPFAS and DSP files directly; import other AMCs&rsquo; files to compare them.
+        </p>
+      ) : (
+        <ul className="space-y-5">
+          {o.pairs.map((p) => (
+            <li key={p.a + p.b}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-sm text-mf-ink">
+                  {name(p.a)} <span className="text-mf-muted">and</span> {name(p.b)}
+                </p>
+                {isNum(p.weighted_overlap) ? (
+                  <p className="text-sm">
+                    <b className="tabular">{pct(p.weighted_overlap)}</b> <span className="text-mf-muted">overlap · {p.common_count} shared · sectors {pct(p.sector_overlap)}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-mf-muted">{missingLabel({ state: 'NA', reason: p.reason ?? 'not_filed' })}</p>
+                )}
+              </div>
+              {isNum(p.weighted_overlap) && (
+                <>
+                  <div className="mt-1.5 h-2 rounded-full bg-mf-sunken">
+                    <div className="h-2 rounded-full bg-mf-brand" style={{ width: `${Math.min(p.weighted_overlap, 1) * 100}%` }} />
+                  </div>
+                  {!p.same_month && <p className="mt-1 text-xs text-mf-warning">Portfolios are from different months: {date(p.a_as_of)} and {date(p.b_as_of)}.</p>}
+                  {(p.common?.length ?? 0) > 0 && (
+                    <p className="mt-1.5 text-xs text-mf-muted">
+                      Largest shared: {p.common!.slice(0, 5).map((c) => `${c.name} (${pct(c.a, 1)} / ${pct(c.b, 1)})`).join(', ')}
+                    </p>
+                  )}
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-4 text-xs text-mf-muted">{o.method}</p>
+    </Card>
   );
 }

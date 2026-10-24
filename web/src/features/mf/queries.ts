@@ -56,6 +56,11 @@ export const useRankHistory = (code?: string, enabled = true) => useQuery(fundQu
 export const useDirectRegular = (code?: string, enabled = true) => useQuery(fundQuery('dr', code, mfApi.directRegular, enabled));
 export const useNearDuplicates = (code?: string, enabled = true) => useQuery(fundQuery('dupes', code, mfApi.nearDuplicates, enabled));
 export const useFundRegimes = (code?: string, enabled = true) => useQuery(fundQuery('regimes', code, mfApi.fundRegimes, enabled));
+export const useProfile = (code?: string, enabled = true) => useQuery(fundQuery('profile', code, mfApi.profile, enabled));
+export const useHoldings = (code?: string, asOf?: string) => useQuery(fundQuery(`holdings-${asOf ?? 'latest'}`, code, (c, s) => mfApi.holdings(c, asOf, s)));
+export const useOverlap = (codes: string[]) =>
+  useQuery({ queryKey: ['mf', 'overlap', codes], queryFn: ({ signal }) => mfApi.overlap(codes, signal), enabled: codes.length >= 2, staleTime: FRESH });
+export const useBenchmark = (code?: string, enabled = true) => useQuery(fundQuery('benchmark', code, mfApi.benchmark, enabled));
 
 export const useRegimes = (enabled = true) =>
   useQuery({ queryKey: ['mf', 'regimes'], queryFn: ({ signal }) => mfApi.regimes(signal), staleTime: FRESH, enabled });

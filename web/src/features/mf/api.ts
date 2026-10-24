@@ -17,7 +17,7 @@ export interface Envelope {
   sources: string[];
 }
 
-export type Unit = 'fraction' | 'percentile' | 'count' | 'quartile' | 'rank' | 'days' | 'ratio' | 'INR' | null;
+export type Unit = 'fraction' | 'percentile' | 'count' | 'quartile' | 'rank' | 'days' | 'ratio' | 'INR' | 'INR crore' | 'years' | null;
 export type FieldType = 'number' | 'enum' | 'date' | 'boolean';
 
 export interface FieldDef {
@@ -407,7 +407,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   if (!res.ok) throw await problem(res);
-  return (await res.json()) as T;
+  return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
 /** Query string from defined values; arrays repeat the key (`code=a&code=b`). */
@@ -451,7 +451,15 @@ export const mfApi = {
   fundRegimes: (code: string, signal?: AbortSignal) => get<FundRegimes>(`/funds/${code}/regimes`, signal),
   rollingSip: (code: string, p: { tenor: string; amount: number; day?: number; step_up?: number }, signal?: AbortSignal) =>
     get<RollingSip>(`/funds/${code}/rolling-sip${qs(p)}`, signal),
+  profile: (code: string, signal?: AbortSignal) => get<FundProfile>(`/funds/${code}/profile`, signal),
+  holdings: (code: string, asOf?: string, signal?: AbortSignal) => get<FundHoldings>(`/funds/${code}/holdings${qs({ as_of: asOf })}`, signal),
+  overlap: (codes: string[], signal?: AbortSignal) => get<Overlap>(`/holdings/overlap${qs({ code: codes })}`, signal),
+  benchmark: (code: string, signal?: AbortSignal) => get<FundBenchmark>(`/funds/${code}/benchmark`, signal),
   regimes: (signal?: AbortSignal) => get<Regimes>('/regimes', signal),
+  portfolio: (target?: string, signal?: AbortSignal) => get<PortfolioView>(`/portfolio${qs({ target })}`, signal),
+  previewCas: (body: { pdf_base64: string; password: string }) => post<CasPreview>('/portfolio/preview', body),
+  importCas: (body: { pdf_base64: string; password: string }) => post<CasImport>('/portfolio/imports', body),
+  undoImport: (id: string) => request<void>(`/portfolio/imports/${id}`, { method: 'DELETE' }),
   riskFree: (signal?: AbortSignal) => get<RiskFree>('/risk-free', signal),
   compare: (codes: string[], start?: string, signal?: AbortSignal) =>
     get<CompareResponse>(`/compare${qs({ code: codes, start })}`, signal),
@@ -462,6 +470,179 @@ export const mfApi = {
   calculate: (kind: CalculatorKind, body: CalculatorRequest, signal?: AbortSignal) =>
     post<Simulation>(`/calculators/${kind}`, body, signal),
 };
+
+/** A dated value: `[date, value]`. TER and AUM rows hold only the dates the value changed. */
+export type Dated<T = number> = [string, T];
+
+/** AMFI's facts for one fund (doc 21 C14, C15): as filed, with their dates. */
+export interface FundProfile extends Envelope {
+  amfi_code: string;
+  scheme: { sd_id: number; name: string } | null;
+  reason?: string;
+  plan?: 'regular' | 'direct';
+  summary?: Record<string, string | number | null>;
+  states?: Record<string, Missing>;
+  document?: Record<string, { text: string; as_of: string } | null>;
+  managers?: { name: string; since: string; years: number }[];
+  ter?: Record<'regular' | 'direct', Dated[]>;
+  ter_base?: Record<'regular' | 'direct', Dated[]>;
+  aum_cr?: Dated[];
+  riskometer?: Dated<string>[];
+  source?: string;
+  notes?: string[];
+}
+
+export interface BenchmarkRow {
+  horizon: '1y' | '3y' | '5y' | '10y';
+  fund: number | null;
+  benchmark: number | string | null;
+  excess: number | string | null;
+  information_ratio: number | string | null;
+}
+
+/** AMFI's returns against the Tier 1 benchmark, and statistics against a labelled proxy (doc 21 C12). */
+export interface FundBenchmark extends Envelope {
+  amfi_code: string;
+  scheme: { sd_id: number; name: string } | null;
+  reason?: string;
+  plan?: string;
+  benchmark?: string | null;
+  riskometer_benchmark?: string | null;
+  official?: { as_of: string | null; rows: BenchmarkRow[]; history: Record<string, string | number | null>[]; source: string };
+  proxy?: { benchmark: string; code: string; name: string; tracking_error: number | null; gap_3y: number | null } | null;
+  proxy_stats?: Record<string, number | string | null>;
+  states?: Record<string, Missing>;
+  tracking_error_filed?: number | string | null;
+  method?: string;
+}
+
+export interface HoldingLine {
+  name: string;
+  isin: string | null;
+  industry: string | null;
+  section: string;
+  asset: 'equity' | 'debt' | 'cash' | 'derivative' | 'other';
+  weight: number;
+  value: number | null;
+  cap: string | null;
+}
+
+export interface HoldingsSummary {
+  as_of: string;
+  count: number;
+  weight_sum: number;
+  reconciled: boolean;
+  assets: Record<string, number>;
+  top10_weight: number;
+  effective_holdings: number | null;
+  sectors: Record<string, number>;
+  market_cap: Record<string, number>;
+  ratings: Record<string, number>;
+}
+
+export interface WeightMove {
+  name: string;
+  isin: string | null;
+  before: number;
+  after: number;
+  change: number;
+}
+
+/** A fund's monthly portfolio disclosure (doc 21 C16). */
+export interface FundHoldings extends Envelope {
+  amfi_code: string;
+  scheme: { sd_id: number; name: string } | null;
+  reason?: string;
+  portfolio_as_of?: string;
+  dates: string[];
+  summary?: HoldingsSummary;
+  lines?: HoldingLine[];
+  changes?: Record<'added' | 'removed' | 'increased' | 'decreased', WeightMove[]> | null;
+  previous_as_of?: string | null;
+  trend?: Record<string, number | string | null>[];
+  method?: string;
+}
+
+export interface OverlapPair {
+  a: string;
+  b: string;
+  reason?: string;
+  a_as_of?: string;
+  b_as_of?: string;
+  same_month?: boolean;
+  common_count?: number;
+  weighted_overlap?: number;
+  sector_overlap?: number;
+  common?: { name: string; isin: string | null; a: number; b: number }[];
+}
+
+export interface Overlap extends Envelope {
+  funds: { code: string; name: string; as_of: string | null }[];
+  pairs: OverlapPair[];
+  method: string;
+}
+
+/** A CAS preview: what an import would add. Nothing is stored. */
+export interface CasPreview {
+  file_sha256: string;
+  already_imported: boolean;
+  period_from: string | null;
+  period_to: string | null;
+  cas_type: string;
+  transactions: number;
+  schemes: { scheme: string; folio: string; isin: string | null; amfi_code: string | null; known: boolean; closing_units: string; statement_value: string | null }[];
+  warnings: string[];
+}
+
+export interface CasImport {
+  id: string;
+  file_sha256: string;
+  period_from: string | null;
+  period_to: string | null;
+  cas_type: string;
+  added: number;
+  duplicates: number;
+  closings: number;
+  created_at: string;
+  new?: boolean;
+}
+
+export interface PortfolioPosition {
+  scheme: string;
+  folio: string;
+  code: string | null;
+  isin: string | null;
+  units: string;
+  invested: number;
+  withdrawn: number;
+  value: number | null;
+  xirr: number | null;
+  reconciled: boolean | null;
+  fund: { name: string; category: string; asset_class: string; plan: string; ter: number | null; score: number | null; nav_date: string | null; holdings: string | null } | null;
+}
+
+/** The caller's portfolio, valued with the research snapshot (Slice 6). */
+export interface PortfolioView {
+  imports: CasImport[];
+  summary: {
+    as_of: string;
+    value: number;
+    invested: number;
+    withdrawn: number;
+    gain: number;
+    xirr: number | null;
+    positions: number;
+    unvalued: string[];
+    allocation: Record<string, Record<string, number>>;
+    costs: { weighted_ter: number | null; annual_cost: number; ter_coverage: number | null; regular_plan_share: number; direct_switch_saving: number };
+    reconciliation: { checked: number; matched: number; gaps: { scheme: string; folio: string; ledger: string; statement: string }[] };
+  };
+  positions: PortfolioPosition[];
+  look_through: { coverage: number; securities: { name: string; isin: string | null; weight: number; funds: string[] }[]; sectors: Record<string, number>; market_cap: Record<string, number> };
+  overlaps: { a: string; b: string; weighted_overlap: number; common_count: number; same_month: boolean }[];
+  alternatives: Record<string, { code: string; name: string; score: number | null; ter: number | null; cagr_3y: number | null; excess_3y: number | null }[]>;
+  rebalance: { asset_class: string; current: number; target: number; trade: number }[] | null;
+}
 
 export interface PeerGroup {
   category: string;
