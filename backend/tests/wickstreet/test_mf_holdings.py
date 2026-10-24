@@ -287,3 +287,31 @@ def test_small_weights_filed_as_percentages_are_read_as_percentages() -> None:
     ]
     found = parse_portfolios(_book(lines), {"dspexamplefund": 7})
     assert sum(x.weight for x in found.holdings) == Decimal("1")
+
+
+def test_a_second_portfolio_of_one_scheme_is_listed_not_merged() -> None:
+    """A segregated portfolio's name, its note dropped, joins the main scheme."""
+    main = [
+        ["SCHEME CODE080STARTS"],
+        ["SCHEME: UTI Credit Risk Fund"],
+        [
+            "NAME OF THE INSTRUMENT",
+            "RATING/INDUSTRY",
+            "QUANTITY",
+            "MARKET-VALUE",
+            "% TO NAV",
+            "ISIN",
+        ],
+        ["7.1% GOI 2034", "SOV", 10, 100, 100, "IN0020240019"],
+        ["TOTAL : UTI Credit Risk Fund"],
+    ]
+    segregated = [
+        ["SCHEME CODE081STARTS"],
+        ["SCHEME: UTI Credit Risk Fund ( Segregated -06032020)"],
+        *main[2:4],
+    ]
+    found = parse_portfolios(
+        _xlsx([*main, *segregated]), {"uticreditriskfund": 3}, date(2026, 9, 30)
+    )
+    assert [(x.sd_id, x.weight) for x in found.holdings] == [(3, Decimal("1"))]
+    assert found.unmatched == ["second portfolio of scheme 3"]

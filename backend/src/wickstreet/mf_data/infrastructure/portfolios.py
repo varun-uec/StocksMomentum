@@ -195,7 +195,7 @@ def _scheme(rows: list[Row], names: Mapping[str, int]) -> tuple[int | None, str]
     label = ""
     for row in rows:
         for text in row.values():
-            if len(text) < 6 or text.replace(".", "").isdigit():
+            if len(text) < 6 or text.replace(".", "").isdigit() or _BLOCK.match(text):
                 continue
             label = label or text
             for candidate in (text, text.split("(")[0], text.split(" - ")[0]):
@@ -354,7 +354,11 @@ def _workbooks(content: bytes) -> list[bytes]:
     book = zipfile.ZipFile(io.BytesIO(content))
     if any(n.startswith("xl/") for n in book.namelist()):
         return [content]
-    return [book.read(n) for n in sorted(book.namelist()) if n.lower().endswith((".xlsx", ".xls"))]
+    return [
+        book.read(n)
+        for n in sorted(book.namelist())
+        if n.lower().endswith((".xlsx", ".xlsm", ".xls"))
+    ]
 
 
 def parse_portfolios(
@@ -365,10 +369,17 @@ def parse_portfolios(
         raise SourceLayoutError("Not an XLS or XLSX workbook, or a zip of them.")
     holdings: list[Holding] = []
     unmatched: list[str] = []
+    seen: set[tuple[int, date]] = set()
     for workbook in _workbooks(content):
         for _, sheet in any_sheets(workbook):
             for rows in _blocks(sheet):
                 found, missing = _sheet(rows, names, fallback)
+                if found and (found[0].sd_id, found[0].as_of) in seen:
+                    # A second portfolio for one scheme and date, such as its
+                    # segregated portfolio: listed, never merged.
+                    missing, found = f"second portfolio of scheme {found[0].sd_id}", []
+                if found:
+                    seen.add((found[0].sd_id, found[0].as_of))
                 holdings.extend(found)
                 if missing:
                     unmatched.append(missing)
