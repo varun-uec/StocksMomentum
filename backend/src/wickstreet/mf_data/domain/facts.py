@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 
 from wickstreet.mf_data.domain.model import SchemeRef
@@ -14,21 +14,35 @@ def compact(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower().replace("&", "and"))
 
 
+# AMFI's scheme list adds this note to a name; AMC files and reports leave it out.
+_SEGREGATED_NOTE = re.compile(
+    r"\s*\(existing\s+number\s+of\s+segregated\s+portfolios?[^()]*\)", re.I
+)
+
+
 def scheme_keys(
     schemes: Sequence[SchemeRef], sebi_codes: Mapping[int, str]
 ) -> tuple[dict[str, int], dict[str, int]]:
-    """SEBI code to scheme id, and name to scheme id. A name two schemes share joins neither."""
+    """SEBI code to scheme id, and name to scheme id. A name two schemes share joins neither.
+
+    A name AMFI lists with a segregated-portfolio note also joins without it, unless
+    another scheme has that shorter name.
+    """
     codes = {compact(code): sd_id for sd_id, code in sebi_codes.items()}
-    names: dict[str, int] = {}
-    shared: set[str] = set()
-    for scheme in schemes:
-        key = compact(scheme.name)
-        if key in names and names[key] != scheme.sd_id:
-            shared.add(key)
-        names[key] = scheme.sd_id
-    for key in shared:
-        del names[key]
-    return codes, names
+
+    def keyed(name_of: Callable[[SchemeRef], str]) -> dict[str, int]:
+        found: dict[str, int] = {}
+        shared: set[str] = set()
+        for scheme in schemes:
+            key = compact(name_of(scheme))
+            if key in found and found[key] != scheme.sd_id:
+                shared.add(key)
+            found[key] = scheme.sd_id
+        return {k: v for k, v in found.items() if k not in shared}
+
+    names = keyed(lambda s: s.name)
+    bare = keyed(lambda s: _SEGREGATED_NOTE.sub("", s.name))
+    return codes, bare | names
 
 
 _TRAILING_NOTE = re.compile(r"\s*\([^()]*\)\s*$")

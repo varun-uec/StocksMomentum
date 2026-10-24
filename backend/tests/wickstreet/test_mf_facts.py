@@ -261,6 +261,18 @@ def test_a_name_two_schemes_share_joins_neither() -> None:
     assert codes == {"abco1": 3}
 
 
+def test_a_segregated_portfolio_note_is_optional_in_a_name() -> None:
+    schemes = [
+        SchemeRef(1, 9, "Credit Risk Fund (Existing Number of Segregated Portfolios - 1)"),
+        SchemeRef(2, 9, "Medium Term Fund (Existing number of Segregated Portfolios - 2)"),
+        SchemeRef(3, 9, "Medium Term Fund"),
+    ]
+    _, names = scheme_keys(schemes, {})
+    assert names["creditriskfund"] == 1
+    assert names["mediumtermfund"] == 3  # the shorter name is its own scheme
+    assert names["mediumtermfundexistingnumberofsegregatedportfolios2"] == 2
+
+
 @pytest.mark.parametrize(
     ("left", "right"),
     [

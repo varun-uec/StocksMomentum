@@ -8,9 +8,18 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
   before March 2026 a binary XLS), beside one file per scheme.
 - DSP: ``dspim.com/mandatory-disclosures/portfolio-disclosures``, one zip a
   month of workbooks (``monthend-portfolios_30_june_2026.zip``).
+- Nippon India: ``mf.nipponindiaim.com/investor-service/downloads/`` then
+  ``factsheet-portfolio-and-other-disclosures``, one workbook a month with a sheet
+  per scheme, mostly named with a two-digit year since 2024
+  (``NIMF-MONTHLY-PORTFOLIO-30-Sep-26.xls``, an XLSX), beside fortnightly files.
+- SBI: the portfolios page builds its list in the browser from one JSON ``POST`` to
+  ``sbimf.com/ajaxcall/CMS/GetSchemePortfolioSheets``, which answers HTML rows of
+  links to one workbook a month since 2023
+  (``all-schemes-monthly-portfolio---as-on-30th-september-2026.xlsx``).
 
-Other AMCs build their pages in the browser, so their files come in through
-``wickstreet mf import-portfolios``, which reads the same layouts.
+Other AMCs build their pages in the browser from sources not yet read, so their
+files come in through ``wickstreet mf import-portfolios``, which reads the same
+layouts.
 """
 
 from __future__ import annotations
@@ -35,7 +44,7 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.1"
+    adapter_version = "amc-portfolios-2026-10-24.2"
 
     def __init__(
         self,
@@ -45,16 +54,22 @@ class AmcPortfolioAdapter:
         require: tuple[str, ...],
         exclude: tuple[str, ...] = (),
         prefer: tuple[str, ...] = (),
+        listing: dict[str, object] | None = None,
         min_interval_seconds: float,
         timeout_seconds: float,
         max_attempts: int,
     ) -> None:
-        """Read ``page``; a link must hold every ``require`` word and no ``exclude`` word."""
+        """Read ``page``; a link must hold every ``require`` word and no ``exclude`` word.
+
+        With ``listing``, the page is an endpoint that lists the files when it is sent
+        that JSON body.
+        """
         self.name = name
         self._page = page
         self._require = require
         self._exclude = exclude
         self._prefer = prefer
+        self._listing = listing
         self._links: list[str] | None = None
         self._http = PacedClient(
             min_interval_seconds=min_interval_seconds,
@@ -69,7 +84,10 @@ class AmcPortfolioAdapter:
 
     async def _listed(self) -> list[str]:
         if self._links is None:
-            response = await self._http.get(self._page)
+            if self._listing is None:
+                response = await self._http.get(self._page)
+            else:
+                response = await self._http.post(self._page, self._listing)
             if response.status_code != 200:
                 raise SourceError(f"{self._page} answered HTTP {response.status_code}.")
             links = {urljoin(self._page, m.group(1)) for m in _LINK.finditer(response.text)}
@@ -79,18 +97,23 @@ class AmcPortfolioAdapter:
     def pick(self, links: list[str], month_end: date) -> str | None:
         """The link for ``month_end``: its month (full or short), year and words.
 
-        A link whose file name starts with a ``prefer`` prefix wins, such as an AMC's
+        The year is four digits anywhere, or two digits right after the month
+        ("30-Sep-26"), so a day such as the 26 in "26-Sep-2025" is never a year. A link
+        whose file name starts with a ``prefer`` prefix wins, such as an AMC's
         all-scheme workbook over its per-scheme files.
         """
         month = _MONTHS[month_end.month - 1]
+        short = rf"(?<![a-z])(?:{month}|{month[:3]})(?![a-z])"
+        two_digit = rf"{short}[^a-z0-9]{{0,2}}{month_end.year % 100:02d}(?!\d)"
         tails = {link: link.rsplit("/", 1)[-1].lower() for link in links}
         ordered = sorted(links, key=lambda k: (not tails[k].startswith(self._prefer or ("\0",)), k))
         for link in ordered:
             tail = link.rsplit("/", 1)[-1].lower().replace("%20", " ")
-            named = month in tail or re.search(rf"(?<![a-z]){month[:3]}(?![a-z])", tail)
+            named = month in tail or re.search(short, tail)
+            dated = str(month_end.year) in tail or re.search(two_digit, tail)
             if (
                 named
-                and str(month_end.year) in tail
+                and dated
                 and all(w in tail for w in self._require)
                 and not any(w in tail for w in self._exclude)
             ):
@@ -117,15 +140,21 @@ class AmcPortfolioAdapter:
 def amc_adapters(
     *, min_interval_seconds: float, timeout_seconds: float, max_attempts: int
 ) -> dict[str, AmcPortfolioAdapter]:
-    """The AMCs whose disclosure pages list their files in plain HTML."""
+    """The AMCs whose disclosure pages or listing endpoints give their files' links."""
 
-    def http(name: str, page: str, **words: tuple[str, ...]) -> AmcPortfolioAdapter:
+    def http(
+        name: str,
+        page: str,
+        listing: dict[str, object] | None = None,
+        **words: tuple[str, ...],
+    ) -> AmcPortfolioAdapter:
         return AmcPortfolioAdapter(
             name,
             page,
             require=words["require"],
             exclude=words.get("exclude", ()),
             prefer=words.get("prefer", ()),
+            listing=listing,
             min_interval_seconds=min_interval_seconds,
             timeout_seconds=timeout_seconds,
             max_attempts=max_attempts,
@@ -143,6 +172,20 @@ def amc_adapters(
             "dsp",
             "https://www.dspim.com/mandatory-disclosures/portfolio-disclosures",
             require=("month", ".zip"),
+            exclude=("fortnight", "half"),
+        ),
+        "nippon": http(
+            "nippon",
+            "https://mf.nipponindiaim.com/investor-service/downloads/"
+            "factsheet-portfolio-and-other-disclosures",
+            require=("monthly", "portfolio"),
+            exclude=("fortnight", "half"),
+        ),
+        "sbi": http(
+            "sbi",
+            "https://www.sbimf.com/ajaxcall/CMS/GetSchemePortfolioSheets",
+            {"FundId": "", "PSYear": "", "PSMonth": "", "PSFrequency": "Monthly"},
+            require=("all-scheme", "monthly", "portfolio"),
             exclude=("fortnight", "half"),
         ),
     }

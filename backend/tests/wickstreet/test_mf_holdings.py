@@ -13,6 +13,7 @@ import pytest
 from tests.wickstreet.test_mf_facts import _xlsx
 from wickstreet.analytics.domain import holdings as h
 from wickstreet.mf_data.domain.reads import HoldingRow, Portfolio
+from wickstreet.mf_data.infrastructure.amc import amc_adapters
 from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
 
 HEADER = [
@@ -147,3 +148,20 @@ def test_overlap_is_the_sum_of_the_smaller_weights_of_shared_securities() -> Non
     assert found["weighted_overlap"] == pytest.approx(0.2 + 0.3)
     assert found["common_count"] == 2
     assert found["same_month"] is True
+
+
+def test_an_amc_page_link_is_picked_by_month_year_and_words() -> None:
+    nippon = amc_adapters(min_interval_seconds=0, timeout_seconds=1, max_attempts=1)["nippon"]
+    base = "https://mf.example/docs/"
+    links = [
+        base + "NIMF-FORTNIGHTLY-PORTFOLIO-30-Sep-26.xls",
+        base + "NIMF-MONTHLY-PORTFOLIO-26-Sep-2025.xls",  # a day 26, not the year 2026
+        base + "NIMF-MONTHLY-PORTFOLIO-30-Sep-26.xls",
+        base + "NIMF-MONTHLY-PORTFOLIO-30-Nov-2024.xls",
+        base + "NIMF-MONTHLY-PORTFOLIO-Nov-25.xls",
+    ]
+    assert nippon.pick(links, date(2026, 9, 30)) == base + "NIMF-MONTHLY-PORTFOLIO-30-Sep-26.xls"
+    assert nippon.pick(links, date(2025, 9, 30)) == base + "NIMF-MONTHLY-PORTFOLIO-26-Sep-2025.xls"
+    assert nippon.pick(links, date(2024, 11, 30)) == base + "NIMF-MONTHLY-PORTFOLIO-30-Nov-2024.xls"
+    assert nippon.pick(links, date(2025, 11, 30)) == base + "NIMF-MONTHLY-PORTFOLIO-Nov-25.xls"
+    assert nippon.pick(links, date(2026, 8, 31)) is None
