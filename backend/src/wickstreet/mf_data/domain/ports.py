@@ -233,6 +233,10 @@ class MfStore(Protocol):
         """Where the run's last published revision came from, if it has one."""
         ...
 
+    async def latest_raw(self, source: str, dataset: str) -> StoredRaw | None:
+        """The kept file of the newest period of ``source`` that published, if any."""
+        ...
+
     async def first_nav_day(self, source: str) -> date | None:
         """The earliest single-date NAV run of ``source`` that published or was unchanged."""
         ...
@@ -372,7 +376,15 @@ class PortfolioSource(Protocol):
         ...
 
     def parse_portfolios(
-        self, raw: RawFile, names: Mapping[str, int], fallback: date | None
+        self,
+        raw: RawFile,
+        names: Mapping[str, int],
+        fallback: date | None,
+        codes: Mapping[str, int] | None = None,
     ) -> Portfolios:
-        """Every scheme portfolio in the file, joined by scheme name."""
+        """Every scheme portfolio in the file, joined by scheme name, else by sheet code."""
+        ...
+
+    def sheet_codes(self, raw: RawFile, names: Mapping[str, int]) -> dict[str, int]:
+        """Sheet code to scheme, for the sheets of ``raw`` that join by name."""
         ...

@@ -24,7 +24,7 @@ from wickstreet.mf_data.infrastructure.amc import (
     amc_adapters,
 )
 from wickstreet.mf_data.infrastructure.client import PacedClient
-from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
+from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios, sheet_codes
 
 HEADER = [
     "Sr",
@@ -551,3 +551,31 @@ async def test_whiteoak_and_trust_name_the_month_in_a_title_not_a_file_name() ->
     )
     found = await trust.portfolio(date(2026, 9, 30))
     assert found is not None and found.content == b"sep"
+
+
+def _one_scheme(scheme: str) -> bytes:
+    return _xlsx(
+        [
+            ["", scheme],
+            ["", "Portfolio as on September 30, 2026"],
+            HEADER,
+            [1, "HDFC Bank Limited", "INE040A01034", "Banks", 100, 100, 1],
+            ["", "Grand Total", "", "", "", 100, 1],
+        ]
+    )
+
+
+def test_a_renamed_scheme_joins_its_old_months_by_sheet_code() -> None:
+    """SBI renamed "SBI Arbitrage Opportunities Fund"; its sheet code stayed."""
+    names = {"sbiarbitragefund": 11608}
+    codes = sheet_codes(_one_scheme("SBI Arbitrage Fund"), names)
+    assert list(codes.values()) == [11608]
+    older = _one_scheme("SBI Arbitrage Opportunities Fund")
+    assert parse_portfolios(older, names).holdings == []
+    assert {x.sd_id for x in parse_portfolios(older, names, codes=codes).holdings} == {11608}
+    # A code that names two sheets, as two workbooks' "Sheet1" in a zip, never counts.
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as bundle:
+        bundle.writestr("a.xlsx", _one_scheme("SBI Arbitrage Fund"))
+        bundle.writestr("b.xlsx", _one_scheme("SBI Other Fund"))
+    assert sheet_codes(buffer.getvalue(), names | {"sbiotherfund": 2}) == {}

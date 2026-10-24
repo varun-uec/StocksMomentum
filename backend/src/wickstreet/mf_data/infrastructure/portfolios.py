@@ -22,6 +22,7 @@ from __future__ import annotations
 import io
 import re
 import zipfile
+from collections import Counter
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -235,13 +236,14 @@ def _scheme(rows: list[Row], names: Mapping[str, int]) -> tuple[int | None, str]
 
 
 def _sheet(
-    rows: list[Row], names: Mapping[str, int], fallback: date | None
+    rows: list[Row], names: Mapping[str, int], fallback: date | None, coded: int | None = None
 ) -> tuple[list[Holding], str | None]:
     found = _header(rows)
     if found is None:
         return [], None
     start, columns = found
     sd_id, label = _scheme(rows[:start], names)
+    sd_id = coded if sd_id is None else sd_id
     if sd_id is None:
         return [], label or "(no scheme name)"
     as_of = next((d for r in rows[:start] for t in r.values() if (d := _day(t))), None) or fallback
@@ -398,18 +400,27 @@ def _workbooks(content: bytes) -> list[bytes]:
 
 
 def parse_portfolios(
-    content: bytes, names: Mapping[str, int], fallback: date | None = None
+    content: bytes,
+    names: Mapping[str, int],
+    fallback: date | None = None,
+    codes: Mapping[str, int] | None = None,
 ) -> Portfolios:
-    """Every scheme portfolio in a workbook or a zip of workbooks."""
-    if content[:2] != b"PK" and content[:8] != XLS_SIGNATURE:
-        raise SourceLayoutError("Not an XLS or XLSX workbook, or a zip of them.")
+    """Every scheme portfolio in a workbook or a zip of workbooks.
+
+    A sheet whose name joins no scheme joins by its sheet code in ``codes``
+    (:func:`sheet_codes`): Nippon and SBI keep a scheme's sheet code when they rename
+    the scheme, so a month filed under the old name still joins.
+    """
+    _workbook(content)
     holdings: list[Holding] = []
     unmatched: list[str] = []
     seen: set[tuple[int, date]] = set()
     for workbook in _workbooks(content):
-        for _, sheet in any_sheets(workbook):
-            for rows in _blocks(sheet):
-                found, missing = _sheet(rows, names, fallback)
+        for code, sheet in any_sheets(workbook):
+            blocks = _blocks(sheet)
+            coded = (codes or {}).get(code) if len(blocks) == 1 else None
+            for rows in blocks:
+                found, missing = _sheet(rows, names, fallback, coded)
                 if found and (found[0].sd_id, found[0].as_of) in seen:
                     # A second portfolio for one scheme and date, such as its
                     # segregated portfolio: listed, never merged.
@@ -422,6 +433,34 @@ def parse_portfolios(
     if not holdings and not unmatched:
         raise SourceLayoutError("No sheet has an ISIN and a % to net assets header.")
     return Portfolios(holdings, unmatched)
+
+
+def sheet_codes(content: bytes, names: Mapping[str, int]) -> dict[str, int]:
+    """Each sheet code that names one scheme in this file, from a file whose names join.
+
+    Read from an AMC's newest file, where the names are AMFI's current ones. A code
+    counts only when it is one sheet holding one portfolio, and its scheme has no other
+    sheet: "Sheet1" in a zip of workbooks, or a stacked sheet, never counts.
+    """
+    _workbook(content)
+    sheets: Counter[str] = Counter()
+    joined: dict[str, int] = {}
+    for workbook in _workbooks(content):
+        for code, sheet in any_sheets(workbook):
+            sheets[code] += 1
+            found = _header(sheet)
+            if found is None or len(_blocks(sheet)) != 1:
+                continue
+            sd_id, _ = _scheme(sheet[: found[0]], names)
+            if sd_id is not None:
+                joined[code] = sd_id
+    schemes = Counter(joined.values())
+    return {c: s for c, s in joined.items() if sheets[c] == 1 and schemes[s] == 1}
+
+
+def _workbook(content: bytes) -> None:
+    if content[:2] != b"PK" and content[:8] != XLS_SIGNATURE:
+        raise SourceLayoutError("Not an XLS or XLSX workbook, or a zip of them.")
 
 
 def parse_market_caps(content: bytes) -> list[CapClass]:

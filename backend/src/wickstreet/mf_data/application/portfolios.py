@@ -3,7 +3,8 @@
 One AMC file is one run and, when any portfolio in it changed, one revision. A file
 an AMC lists is fetched under the AMC's retrieval grant; a file a person downloaded
 is imported under its storage grant alone. Sheets join AMFI schemes by name, so the
-scheme list must be read first.
+scheme list must be read first; a sheet filed under a scheme's old name joins by the
+sheet code the AMC's newest kept file gives that scheme.
 """
 
 from __future__ import annotations
@@ -41,6 +42,7 @@ class IngestPortfolios:
         self._store = store
         self._raw_store = raw_store
         self._rights = rights
+        self._learnt: dict[str, dict[str, int]] = {}
 
     async def _grant(self, run_id: int, source: str, use: Use) -> int:
         try:
@@ -57,10 +59,10 @@ class IngestPortfolios:
         month_end: date,
         retrieval: int | None,
     ) -> Outcome:
-        listed, codes = await self._store.scheme_keys()
-        _, names = scheme_keys(listed, codes)
+        listed, amfi_codes = await self._store.scheme_keys()
+        _, names = scheme_keys(listed, amfi_codes)
         try:
-            found = source.parse_portfolios(raw, names, month_end)
+            found = source.parse_portfolios(raw, names, month_end, await self._codes(source, names))
         except SourceLayoutError as exc:
             await self._store.close_run(run_id, "failed", error=str(exc))
             return Outcome(month_end, "failed", error=str(exc))
@@ -87,6 +89,19 @@ class IngestPortfolios:
             revision=published.revision,
             error="; ".join(found.unmatched[:5]) or None,
         )
+
+    async def _codes(self, source: PortfolioSource, names: Mapping[str, int]) -> dict[str, int]:
+        """Sheet codes learnt from the AMC's newest kept file, where names are current."""
+        newest = await self._store.latest_raw(source.name, HOLDINGS_MONTH)
+        if newest is None:
+            return {}
+        if newest.path not in self._learnt:
+            raw = RawFile(newest.url, newest.fetched_at, self._raw_store.load(newest.path))
+            try:
+                self._learnt[newest.path] = source.sheet_codes(raw, names)
+            except SourceLayoutError:
+                self._learnt[newest.path] = {}
+        return self._learnt[newest.path]
 
     async def month(self, name: str, month_end: date, *, refetch: bool = False) -> Outcome:
         """Fetch and publish one AMC's file for ``month_end``."""

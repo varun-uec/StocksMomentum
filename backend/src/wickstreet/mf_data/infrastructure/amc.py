@@ -61,7 +61,7 @@ from urllib.parse import urljoin, urlsplit
 from wickstreet.mf_data.domain.model import Portfolios, RawFile
 from wickstreet.mf_data.domain.ports import SourceError
 from wickstreet.mf_data.infrastructure.client import COMPATIBLE_USER_AGENT, PacedClient
-from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
+from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios, sheet_codes
 
 # A link in a page (href) or a JSON value in a listing or a page script ("url",
 # "path", "publicUrl"); Tata's page script holds its JSON escaped.
@@ -75,7 +75,7 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.4"
+    adapter_version = "amc-portfolios-2026-10-24.5"
 
     def __init__(
         self,
@@ -89,6 +89,7 @@ class AmcPortfolioAdapter:
         headers: dict[str, str] | None = None,
         files: str | None = None,
         each: bool = False,
+        stable_codes: bool = True,
         min_interval_seconds: float,
         timeout_seconds: float,
         max_attempts: int,
@@ -98,7 +99,8 @@ class AmcPortfolioAdapter:
         With ``listing``, the page is an endpoint that lists the files when it is sent
         that JSON body, with ``headers``. With ``files``, a listed path is read under
         that prefix rather than against the page. With ``each``, the AMC files one
-        workbook per scheme, and a month is every file that names it.
+        workbook per scheme, and a month is every file that names it. Without
+        ``stable_codes``, the AMC reuses sheet codes across schemes, so none is learnt.
         """
         self.name = name
         self._page = page
@@ -109,6 +111,7 @@ class AmcPortfolioAdapter:
         self._headers = headers
         self._files = files
         self._each = each
+        self._stable_codes = stable_codes
         self._links: list[str] | None = None
         self._http = PacedClient(
             min_interval_seconds=min_interval_seconds,
@@ -210,10 +213,18 @@ class AmcPortfolioAdapter:
         return RawFile(link, datetime.now(UTC), response.content)
 
     def parse_portfolios(
-        self, raw: RawFile, names: Mapping[str, int], fallback: date | None
+        self,
+        raw: RawFile,
+        names: Mapping[str, int],
+        fallback: date | None,
+        codes: Mapping[str, int] | None = None,
     ) -> Portfolios:
         """Every scheme portfolio in the file."""
-        return parse_portfolios(raw.content, names, fallback)
+        return parse_portfolios(raw.content, names, fallback, codes)
+
+    def sheet_codes(self, raw: RawFile, names: Mapping[str, int]) -> dict[str, int]:
+        """The sheet codes that name one scheme each in the file."""
+        return sheet_codes(raw.content, names) if self._stable_codes else {}
 
 
 def _tail(link: str) -> str:
@@ -397,6 +408,7 @@ def amc_adapters(
         headers: dict[str, str] | None = None,
         files: str | None = None,
         each: bool = False,
+        stable_codes: bool = True,
         **words: tuple[str, ...],
     ) -> AmcPortfolioAdapter:
         return AmcPortfolioAdapter(
@@ -409,6 +421,7 @@ def amc_adapters(
             headers=headers,
             files=files,
             each=each,
+            stable_codes=stable_codes,
             min_interval_seconds=min_interval_seconds,
             timeout_seconds=timeout_seconds,
             max_attempts=max_attempts,
@@ -491,6 +504,8 @@ def amc_adapters(
             "motilal",
             "https://www.motilaloswalmf.com/content/aem-cloud-dept-backend-motilal-oswal/api/"
             "search-documents.json?year=&category=month%20end%20portfolio&month=&type=mf",
+            # A code such as "YO27" named another fund of funds in 2024 (seen 2026-10-24).
+            stable_codes=False,
             require=("portfolio",),
             exclude=("fortnight", "forthnight", "half", "performance"),
         ),

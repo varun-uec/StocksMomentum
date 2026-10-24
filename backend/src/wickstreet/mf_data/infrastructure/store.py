@@ -252,6 +252,27 @@ class SqlMfStore:
             url=row.url, fetched_at=row.fetched_at, sha256=row.raw_sha256, path=row.raw_path
         )
 
+    async def latest_raw(self, source: str, dataset: str) -> StoredRaw | None:
+        """The kept file of the newest period of ``source`` that published, if any."""
+        async with self._database.engine.connect() as connection:
+            row = (
+                await connection.execute(
+                    text(
+                        "SELECT v.url, v.fetched_at, v.raw_sha256, v.raw_path "
+                        "FROM wickstreet.ingestion_run r "
+                        "JOIN wickstreet.revision v ON v.id = r.revision_id "
+                        "WHERE r.source = :s AND r.dataset = :d "
+                        "ORDER BY r.period_start DESC LIMIT 1"
+                    ),
+                    {"s": source, "d": dataset},
+                )
+            ).first()
+        if row is None:
+            return None
+        return StoredRaw(
+            url=row.url, fetched_at=row.fetched_at, sha256=row.raw_sha256, path=row.raw_path
+        )
+
     async def run_status(
         self, source: str, dataset: str, day: date, end: date | None = None
     ) -> str | None:

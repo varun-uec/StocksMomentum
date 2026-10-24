@@ -587,12 +587,19 @@ class FakeAmc:
     def __init__(self) -> None:
         self.kind = "other"
         self.fetches = 0
+        self.codes: list[dict[str, int]] = []
 
     async def portfolio(self, month_end: date) -> RawFile | None:
         self.fetches += 1
         return RawFile("fake://amc/2026-09", datetime.now(UTC), b"one file")
 
-    def parse_portfolios(self, raw: RawFile, names: Any, fallback: date | None) -> Portfolios:
+    def sheet_codes(self, raw: RawFile, names: Any) -> dict[str, int]:
+        return {"S1": 1}
+
+    def parse_portfolios(
+        self, raw: RawFile, names: Any, fallback: date | None, codes: Any = None
+    ) -> Portfolios:
+        self.codes.append(dict(codes or {}))
         line = Holding(
             1,
             D1,
@@ -643,6 +650,8 @@ async def test_a_portfolio_reparse_supersedes_lines_from_the_kept_file(
     assert (await ingest.month("fakeamc", D1, refetch=True)).status == "unchanged"
     fixed = await ingest.reparse("fakeamc", D1)
     assert (fixed.status, fixed.superseded, amc.fetches) == ("published", 1, 2)
+    # The first parse had no kept file to learn sheet codes from; the reparse had one.
+    assert amc.codes == [{}, {"S1": 1}]
     assert await _rows(
         app_database,
         "SELECT asset, superseded_revision IS NULL FROM wickstreet.holding ORDER BY revision_id",
