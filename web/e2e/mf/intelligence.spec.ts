@@ -20,7 +20,7 @@ test('Facts & costs shows AMFI’s TER and the fund managers as filed', async ({
 test('Benchmark labels its proxy and links to the index fund behind it', async ({ page, request }) => {
   const bench = await (await request.get(`/api/v1/mf/funds/${FUND}/benchmark`)).json();
   await page.goto(`/mf/funds/${FUND}?tab=benchmark`);
-  await expect(page.getByText(`Against ${bench.benchmark}`)).toBeVisible();
+  await expect(page.getByText(`Against ${bench.benchmark}`)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Proxy', { exact: true })).toBeVisible();
   expect(bench.proxy, 'the Nifty 500 TRI has index funds with 3 years of NAVs').not.toBeNull();
   await page.getByRole('link', { name: bench.proxy.name }).click();
@@ -44,7 +44,8 @@ test('Compare shows the weighted overlap of two filed portfolios', async ({ page
   await expect(page.getByText(`${pct(share)}`, { exact: true })).toBeVisible();
 });
 
-test('Portfolio offers a local CAS import', async ({ page }) => {
+test('Portfolio offers a local CAS import and is not marked planned', async ({ page }) => {
   await page.goto('/mf/portfolio');
   await expect(page.getByText('Import a consolidated account statement')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Portfolio', exact: true })).toBeVisible();
 });

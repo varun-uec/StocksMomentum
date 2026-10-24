@@ -51,7 +51,7 @@ const PRIMARY: NavItem[] = [
   { to: '/mf/studio', label: 'Analytics studio', icon: I.studio },
   { to: '/mf/compare', label: 'Compare', icon: I.compare },
   { to: '/mf/simulate', label: 'Investment lab', icon: I.lab },
-  { to: '/mf/portfolio', label: 'Portfolio', icon: I.portfolio, planned: true },
+  { to: '/mf/portfolio', label: 'Portfolio', icon: I.portfolio },
   { to: '/mf/ask', label: 'AI research', icon: I.ask, planned: true },
 ];
 

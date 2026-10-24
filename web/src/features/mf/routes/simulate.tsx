@@ -390,8 +390,8 @@ export default function Simulate() {
             <DependencyPanel title="Goal planner with assumed returns" needs="S1, an approved forward-scenario method">
               Forward projections need stated assumptions and their own method. Until then the lab shows history only.
             </DependencyPanel>
-            <DependencyPanel title="Exit loads in the result" needs="E1, AMC exit-load disclosures">
-              Exit loads are not deducted today; the cautions say so.
+            <DependencyPanel title="Exit loads in the result" needs="a parsed exit-load schedule per fund">
+              AMFI&rsquo;s scheme summaries file exit loads as text, shown on each fund&rsquo;s Facts &amp; costs tab. They are not deducted here; the cautions say so.
             </DependencyPanel>
           </div>
           {run.data && <SnapshotNote asOf={run.data.as_of} revision={run.data.data_revision} method={run.data.method_version} extra={` · calculator v${run.data.summary.calculator_version}`} />}
