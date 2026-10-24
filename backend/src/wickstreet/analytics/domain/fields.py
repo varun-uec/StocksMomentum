@@ -11,7 +11,7 @@ import json
 from dataclasses import asdict
 
 from wickstreet.analytics.domain import classify
-from wickstreet.analytics.domain.enrichment import FACT_FIELDS
+from wickstreet.analytics.domain.enrichment import FACT_FIELDS, IDCW_FIELDS
 from wickstreet.analytics.domain.fieldspec import Field
 from wickstreet.analytics.domain.holdings import HOLDING_FIELDS
 from wickstreet.analytics.domain.metrics import (
@@ -611,6 +611,7 @@ FIELDS: tuple[Field, ...] = (
         for stat, (label, description, unit) in _ROLLING_STATS.items()
     ),
     *FACT_FIELDS,
+    *IDCW_FIELDS,
     *HOLDING_FIELDS,
 )
 BY_ID = {field.id: field for field in FIELDS}

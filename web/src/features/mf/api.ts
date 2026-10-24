@@ -488,6 +488,8 @@ export interface FundProfile extends Envelope {
   ter_base?: Record<'regular' | 'direct', Dated[]>;
   aum_cr?: Dated[];
   riskometer?: Dated<string>[];
+  /** IDCW payouts of this plan-option: record date, ₹ per unit. */
+  idcw?: Dated[];
   source?: string;
   notes?: string[];
 }

@@ -45,6 +45,7 @@ from wickstreet.analytics.domain.enrichment import (
     fact_fields,
     facts_of,
     finite,
+    idcw_fields,
     manager_starts,
     proxy_fields,
 )
@@ -275,6 +276,7 @@ class ComputeSnapshot:
         )
         classes: list[dict[str, Value]] = []
         extra: dict[int, dict[str, Value]] = {}
+        options: dict[int, str] = {}
         cost_groups: dict[tuple[str, str, str], list[int]] = defaultdict(list)
         candidates: list[tuple[int, str, str, str, float | None, Value]] = []
         cagr_at = METRIC_FIELDS.index("cagr_3y")
@@ -288,6 +290,7 @@ class ComputeSnapshot:
             pid = fund.plan_option_id
             facts = facts_of(history.facts, pid, str(values["plan"]), str(values["fund_type"]))
             extra[pid] = fact_fields(facts, str(values["option"]), as_of)
+            options[pid] = str(values["option"])
             portfolio = history.facts.portfolios.get(facts.sd_id) if facts else None
             extra[pid] |= (
                 holding_fields(portfolio, history.facts.caps)
@@ -341,6 +344,8 @@ class ComputeSnapshot:
             else:
                 values |= proxy_fields(daily.get(pid), daily[proxy.pid], risk_free)
                 values["bench_proxy_gap_3y"] = proxy.gap_3y
+            payouts = history.facts.distributions.get(pid, ())
+            values |= idcw_fields(options[pid], payouts, daily.get(pid), as_of)
             for name in FACT_FIELD_IDS:
                 values.setdefault(name, Missing("NA", NO_PEER_GROUP))
             extra[pid] = finite(values)
@@ -1158,7 +1163,8 @@ class Research:
                     [(f.as_of, f.txt) for f in by.get(("riskometer", ""), [])]
                 )
             ],
-            "source": "AMFI: TER of MF schemes, fund performance and scheme summary documents",
+            "idcw": [[d.isoformat(), v] for d, v in scheme.payouts],
+            "source": "AMFI: TER, fund performance, scheme summary documents and IDCW history",
             "notes": notes,
         }
 

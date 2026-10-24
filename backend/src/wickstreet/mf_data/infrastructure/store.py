@@ -31,6 +31,7 @@ from wickstreet.mf_data.domain.model import (
     NAV_CONTRACT,
     Anomaly,
     CapClass,
+    Distribution,
     NavRecord,
     Portfolios,
     RatePoint,
@@ -664,12 +665,18 @@ class SqlMfStore:
             return [row.scheme_name for row in rows]
 
     async def latest_nav_day(self, on_or_before: date) -> date | None:
-        """The latest date on or before ``on_or_before`` with current NAVs."""
+        """The latest business day on or before ``on_or_before`` with current NAVs.
+
+        Liquid and overnight funds file NAVs on weekends and holidays too, so a day counts
+        only when it has at least half the NAVs of the busiest day in the 10 days before.
+        """
         async with self._database.engine.connect() as connection:
             found: date | None = await connection.scalar(
                 text(
-                    "SELECT max(nav_date) FROM wickstreet.nav WHERE nav_date <= :d "
-                    "AND nav_date > :d - 10 AND superseded_revision IS NULL"
+                    "WITH days AS (SELECT nav_date, count(*) AS n FROM wickstreet.nav "
+                    "WHERE nav_date <= :d AND nav_date > :d - 10 "
+                    "AND superseded_revision IS NULL GROUP BY nav_date) "
+                    "SELECT max(nav_date) FROM days WHERE n * 2 >= (SELECT max(n) FROM days)"
                 ),
                 {"d": on_or_before},
             )
@@ -916,6 +923,67 @@ class SqlMfStore:
                         "SELECT s.isin, s.as_of, s.name, s.market_cap_cr, s.cap_class, "
                         "CAST(:r AS bigint) FROM cap_stage s WHERE NOT EXISTS "
                         f"(SELECT 1 FROM wickstreet.security_class t WHERE {key})"
+                    ),
+                    {"r": revision_id},
+                )
+                if inserted.rowcount == 0:
+                    raise _NothingChangedError
+                await self._point(connection, revision_id)
+                await self._finish(
+                    connection,
+                    run_id,
+                    "published",
+                    raw_sha256=provenance.raw_sha256,
+                    revision_id=revision_id,
+                    rows=len(rows),
+                    inserted=int(inserted.rowcount),
+                    superseded=int(superseded.rowcount),
+                )
+        except _NothingChangedError:
+            await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
+            return Published(revision=None, inserted=0, superseded=0)
+        return Published(int(revision_id), int(inserted.rowcount), int(superseded.rowcount))
+
+    async def publish_distributions(
+        self, run_id: int, found: Sequence[Distribution], provenance: Provenance
+    ) -> Published:
+        """Publish IDCW payouts as revision R; a payout of an unknown code is skipped."""
+        rows = [(d.amfi_code, d.record_date, d.per_unit) for d in found]
+        key = (
+            "t.plan_option_id = s.plan_option_id AND t.record_date = s.record_date "
+            "AND t.superseded_revision IS NULL"
+        )
+        try:
+            async with self._database.engine.begin() as connection:
+                revision_id = await self._revision(connection, run_id, provenance)
+                await self._stage(
+                    connection,
+                    "idcw_stage",
+                    "amfi_code text, record_date date, per_unit numeric",
+                    ("amfi_code", "record_date", "per_unit"),
+                    rows,
+                )
+                await connection.execute(
+                    text(
+                        "CREATE TEMPORARY TABLE idcw_keyed ON COMMIT DROP AS SELECT p.id AS "
+                        "plan_option_id, s.record_date, s.per_unit FROM idcw_stage s "
+                        "JOIN wickstreet.plan_option p ON p.amfi_code = s.amfi_code"
+                    )
+                )
+                superseded = await connection.execute(
+                    text(
+                        f"UPDATE wickstreet.distribution t SET superseded_revision = :r "
+                        f"FROM idcw_keyed s WHERE {key} AND t.per_unit <> s.per_unit"
+                    ),
+                    {"r": revision_id},
+                )
+                inserted = await connection.execute(
+                    text(
+                        "INSERT INTO wickstreet.distribution "
+                        "(plan_option_id, record_date, per_unit, revision_id) "
+                        "SELECT s.plan_option_id, s.record_date, s.per_unit, CAST(:r AS bigint) "
+                        "FROM idcw_keyed s WHERE NOT EXISTS "
+                        f"(SELECT 1 FROM wickstreet.distribution t WHERE {key})"
                     ),
                     {"r": revision_id},
                 )

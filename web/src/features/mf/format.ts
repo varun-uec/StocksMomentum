@@ -79,6 +79,8 @@ const MISSING: Record<string, string> = {
   no_benchmark: 'No benchmark filed',
   no_benchmark_proxy: 'No index fund tracks it',
   no_year_ago_value: 'No value a year ago',
+  not_idcw_option: 'Growth option, no IDCW',
+  no_equity: 'No equity holdings',
 };
 
 /** Why a value is missing, in words. Unknown reasons show as sent. */

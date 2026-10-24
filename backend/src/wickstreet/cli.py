@@ -287,7 +287,7 @@ def _months(first: date, last: date) -> list[date]:
 @mf_app.command("facts")
 def mf_facts(
     dataset: str = typer.Argument(
-        ..., help="schemes, ssd, ter, performance, tracking-error or market-caps."
+        ..., help="schemes, ssd, ter, performance, tracking-error, market-caps or idcw."
     ),
     start: str | None = typer.Option(None, help="First date, YYYY-MM-DD; default the end."),
     end: str | None = typer.Option(None, help="Last date, YYYY-MM-DD; default today."),
@@ -331,6 +331,9 @@ def mf_facts(
             for month in _months(first, last):
                 outcomes.append(await facts.ter(month, refetch=refetch))
                 _print(outcomes[-1])
+        elif dataset == "idcw":
+            outcomes = [await facts.idcw(last, refetch=refetch)]
+            _print(outcomes[0])
         elif dataset == "market-caps":
             outcomes = []
             for month in _months(first, last):

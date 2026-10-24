@@ -395,3 +395,28 @@ def test_the_proxy_is_the_lowest_filed_tracking_error_then_the_lower_id() -> Non
     )
     assert chosen[e.benchmark_key("Nifty 50 TRI")].pid == 4
     assert chosen[e.benchmark_key("Nifty 500 TRI")].pid == 6
+
+
+def test_idcw_rows_join_by_amfi_code_and_keep_positive_rates() -> None:
+    rows = {
+        "2082": [
+            {"SD_ID": 122168, "Div_year": "2026-03-02T00:00:00.000Z", "Rate_of_div": "0.0700"},
+            {"SD_ID": 122168, "Div_year": "2026-03-02T00:00:00.000Z", "Rate_of_div": "0.0700"},
+            {"SD_ID": 122168, "Div_year": "2026-04-01T00:00:00.000Z", "Rate_of_div": "0"},
+        ]
+    }
+    found = a.parse_idcw(_raw(json.dumps(rows).encode()))
+    assert [(d.amfi_code, d.record_date, str(d.per_unit)) for d in found] == [
+        ("122168", date(2026, 3, 2), "0.0700")
+    ]
+
+
+def test_returns_with_idcw_reinvest_each_payout_at_its_record_date_nav() -> None:
+    days, levels = _series(date(2025, 8, 1), np.zeros(300))  # NAV flat at 100, over a year
+    as_of = days[-1]
+    payout_day = days[200]
+    got = e.idcw_fields("idcw", [(payout_day, 2.0)], DailyNavs(1, days, levels), as_of)
+    assert got["idcw_count_1y"] == 1
+    assert got["idcw_yield_1y"] == pytest.approx(0.02)
+    assert got["ret_1y_with_idcw"] == pytest.approx(0.02)
+    assert e.idcw_fields("growth", [], None, as_of)["idcw_1y"] == Missing("NM", "not_idcw_option")

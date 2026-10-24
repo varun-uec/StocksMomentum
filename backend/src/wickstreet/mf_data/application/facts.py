@@ -24,6 +24,7 @@ from wickstreet.mf_data.application.ingest import SETTLED, Outcome
 from wickstreet.mf_data.domain.facts import compact, nav_index, scheme_keys
 from wickstreet.mf_data.domain.model import (
     FACT_CONTRACT,
+    IDCW,
     MARKET_CAP,
     PERFORMANCE_DAY,
     SCHEME_LIST,
@@ -215,6 +216,49 @@ class IngestFacts:
             lambda: self._source.performance(day, closed_ended=closed_ended),
             lambda raw: (self._source.parse_performance(raw, day, names, navs), []),
             refetch=refetch,
+        )
+
+    async def idcw(
+        self, today: date, *, refetch: bool = False, progress: Progress | None = None
+    ) -> Outcome:
+        """Read every listed IDCW payout of each scheme with a recent NAV, as of ``today``."""
+        listed, _ = await self._store.scheme_keys()
+        active = {compact(n) for n in await self._store.active_scheme_names(today - RECENT)}
+        schemes = [(s.mf_id, s.sd_id) for s in listed if compact(s.name) in active]
+        run = await self._store.open_run(self._source.name, IDCW, today, today)
+        if run.status in SETTLED and not refetch:
+            return Outcome(today, "skipped")
+        retrieval = await self._grant(run.id, Use.AUTOMATED_RETRIEVAL)
+        try:
+            raw = await self._source.idcw(schemes)
+        except SourceError as exc:
+            await self._store.close_run(run.id, "failed", error=str(exc))
+            return Outcome(today, "failed", error=str(exc))
+        path = self._raw_store.save(self._source.name, IDCW, today, raw)
+        try:
+            found = self._source.parse_idcw(raw)
+        except SourceLayoutError as exc:
+            await self._store.close_run(run.id, "failed", error=str(exc))
+            return Outcome(today, "failed", error=str(exc))
+        storage = await self._grant(run.id, Use.STORAGE)
+        provenance = Provenance(
+            url=raw.url,
+            fetched_at_iso=raw.fetched_at.isoformat(),
+            raw_sha256=raw.sha256,
+            raw_path=path,
+            adapter_version=self._source.adapter_version,
+            contract=FACT_CONTRACT,
+            retrieval_grant_id=retrieval,
+            storage_grant_id=storage,
+        )
+        published = await self._store.publish_distributions(run.id, found, provenance)
+        return Outcome(
+            today,
+            "published" if published.revision is not None else "unchanged",
+            rows=len(found),
+            inserted=published.inserted,
+            superseded=published.superseded,
+            revision=published.revision,
         )
 
     async def market_caps(self, period_end: date, *, refetch: bool = False) -> Outcome:

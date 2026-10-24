@@ -36,6 +36,7 @@ from wickstreet.mf_data.domain.model import (
     REGULAR,
     SCHEME,
     CapClass,
+    Distribution,
     Fact,
     RawFile,
     SchemeFacts,
@@ -53,6 +54,7 @@ TER_URL = SITE + "/api/populate-te-rdata-revised"
 TRACKING_ERROR_URL = SITE + "/api/tracking-error-data"
 GATEWAY = SITE + "/gateway/pollingsebi/api/amfi/"
 SSD_URL = "https://portal.amfiindia.com/spages/SSD_{sd_id}.xml"
+IDCW_URL = SITE + "/api/scheme-dividend"
 # Half-yearly average market cap per company and its SEBI class (large, mid, small).
 CATEGORISATION_PAGE = SITE + "/otherdata/categorisation-of-stocks"
 FUND_HOUSE_IDS = range(1, 121)
@@ -265,6 +267,27 @@ def _squeeze(url: str) -> str:
     return re.sub(r"[\s_.]", "", url.replace("%20", ""))
 
 
+def parse_idcw(raw: RawFile) -> list[Distribution]:
+    """IDCW payouts from the combined scheme-dividend file: AMFI code, record date, ₹ per unit.
+
+    ``SD_ID`` in AMFI's rows is the plan-option's AMFI code; ``Div_year`` is the record date.
+    """
+    found = _json(raw)
+    if not isinstance(found, dict):
+        raise SourceLayoutError("Not a combined IDCW file.")
+    seen: dict[tuple[str, date], Distribution] = {}
+    for rows in found.values():
+        for row in rows:
+            rate = _number(row.get("Rate_of_div"))
+            day = str(row.get("Div_year") or "")[:10]
+            code = str(row.get("SD_ID") or "")
+            if rate is None or rate <= 0 or not code.isdigit() or len(day) != 10:
+                continue
+            record = Distribution(code, date.fromisoformat(day), rate)
+            seen.setdefault((record.amfi_code, record.record_date), record)
+    return sorted(seen.values(), key=lambda d: (d.amfi_code, d.record_date))
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
 
@@ -364,6 +387,20 @@ class AmfiFactsAdapter:
                     queries.append({"body": body, "data": answer.get("data") or []})
         content = json.dumps({"day": day.isoformat(), "queries": queries}).encode()
         return RawFile(GATEWAY + "fundperformance", _now(), content)
+
+    async def idcw(self, schemes: list[tuple[int, int]]) -> RawFile:
+        """Every listed IDCW payout of each (fund-house id, scheme id), in one JSON file."""
+        combined = {}
+        for mf_id, sd_id in schemes:
+            found = await self._json_get(
+                IDCW_URL, {"MF_ID": str(mf_id), "strSDid": str(sd_id), "strYear": "All"}
+            )
+            rows = found.get("data") if isinstance(found, dict) else None
+            if rows:
+                combined[str(sd_id)] = rows
+        return RawFile(IDCW_URL, _now(), json.dumps(combined, sort_keys=True).encode())
+
+    parse_idcw = staticmethod(parse_idcw)
 
     async def market_caps(self, period_end: date) -> RawFile | None:
         """AMFI's market-cap list for the half-year ending ``period_end`` (30 Jun or 31 Dec)."""

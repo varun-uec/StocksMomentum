@@ -3,7 +3,7 @@
  * its date, and statistics against a labelled index-fund proxy. A value AMFI did not
  * file shows its reason, never an estimate.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { BenchmarkRow, Dated, FundBenchmark, FundProfile, Missing } from '../../api';
 import { pctTick } from '../../axis';
@@ -95,6 +95,41 @@ function AumChart({ profile }: { profile: FundProfile }) {
   );
 }
 
+function Idcw({ profile, tile }: { profile: FundProfile; tile: (id: string, label?: string, plain?: string) => ReactNode }) {
+  const payouts = profile.idcw ?? [];
+  const recent = [...payouts].reverse().slice(0, 12);
+  return (
+    <Card title="IDCW payouts" subtitle="Record dates and ₹ per unit as AMFI lists them; returns reinvest each payout at its record-date NAV">
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {tile('idcw_1y', 'Paid in a year', payouts.length ? `${payouts.length} payouts listed` : undefined)}
+        {tile('idcw_yield_1y', 'IDCW yield 1Y')}
+        {tile('ret_1y_with_idcw', 'Return 1Y with IDCW')}
+        {tile('cagr_3y_with_idcw', 'CAGR 3Y with IDCW')}
+      </div>
+      {recent.length ? (
+        <table className="w-full text-sm tabular">
+          <thead>
+            <tr className="text-left text-xs text-mf-muted">
+              <th className="py-1 font-normal">Record date</th>
+              <th className="py-1 text-right font-normal">₹ per unit</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-mf-line">
+            {recent.map(([d, v]) => (
+              <tr key={d}>
+                <td className="py-1.5">{date(d)}</td>
+                <td className="py-1.5 text-right">{v.toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-sm text-mf-muted">AMFI lists no payouts for this option.</p>
+      )}
+    </Card>
+  );
+}
+
 export function FactsAndCosts({ code, metrics, fields }: FundTabProps) {
   const profile = useProfile(code);
   const p = profile.data;
@@ -157,6 +192,7 @@ export function FactsAndCosts({ code, metrics, fields }: FundTabProps) {
           </Card>
         </div>
       </div>
+      {metrics.states.idcw_1y?.reason !== 'not_idcw_option' && <Idcw profile={p} tile={tile} />}
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card title="Mandate" subtitle="The scheme's own description">
           <Dl

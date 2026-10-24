@@ -116,6 +116,8 @@ class FactView:
     # Each scheme's latest portfolio, and each ISIN's market-cap classes by period end.
     portfolios: Mapping[int, Portfolio] = field(default_factory=dict)
     caps: Mapping[str, Sequence[tuple[date, str]]] = field(default_factory=dict)
+    # Each plan-option's IDCW payouts as (record-date ordinal, ₹ per unit), in date order.
+    distributions: Mapping[int, Sequence[tuple[int, float]]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +138,8 @@ class SchemeProfile:
     sd_id: int
     scheme_name: str
     facts: Sequence[SchemeFactRow]
+    # This plan-option's IDCW payouts as (record date, ₹ per unit), oldest first.
+    payouts: Sequence[tuple[date, float]] = ()
 
 
 @dataclass(frozen=True, slots=True)

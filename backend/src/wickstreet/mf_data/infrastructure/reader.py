@@ -131,6 +131,10 @@ _LATEST_PORTFOLIOS = text(
     f"SELECT {_HOLDING_COLUMNS} FROM v h JOIN latest l USING (sd_id, as_of) "
     "ORDER BY h.sd_id, h.seq"
 )
+_DISTRIBUTIONS = text(
+    "SELECT d.plan_option_id, (d.record_date - DATE '0001-01-01') + 1, d.per_unit::float8 "
+    f"FROM wickstreet.distribution d WHERE {_visible('d')} ORDER BY d.plan_option_id, d.record_date"
+)
 _CAPS = text(
     f"SELECT c.isin, c.as_of, c.cap_class FROM wickstreet.security_class c WHERE {_visible('c')} "
     "ORDER BY c.isin, c.as_of"
@@ -168,9 +172,13 @@ async def _fact_view(connection: AsyncConnection, revision: int) -> FactView:
     found = await connection.execute(_SERIES_FACTS, params | {"names": list(SERIES_FACTS)})
     for sd_id, name, plan, day, num, txt in found:
         series.setdefault(sd_id, {}).setdefault((name, plan), []).append(FactPoint(day, num, txt))
+    distributions: dict[int, list[tuple[int, float]]] = {}
+    for pid, day, rate in await connection.execute(_DISTRIBUTIONS, params):
+        distributions.setdefault(pid, []).append((day, rate))
     latest_portfolios = await connection.execute(_LATEST_PORTFOLIOS, params)
     portfolios = {sd_id: found[-1] for sd_id, found in _portfolios(latest_portfolios).items()}
-    return FactView(scheme_of, latest, series, portfolios, await _caps(connection, revision))
+    caps = await _caps(connection, revision)
+    return FactView(scheme_of, latest, series, portfolios, caps, distributions)
 
 
 def _record(row: Sequence[Any]) -> FundRecord:
@@ -369,7 +377,18 @@ class SqlMfReader:
             s=sd_id,
             r=revision,
         )
-        return SchemeProfile(sd_id, name, [SchemeFactRow(*row) for row in rows])
+        payouts = await self._rows(
+            text(
+                "SELECT d.record_date, d.per_unit::float8 FROM wickstreet.distribution d "
+                "JOIN wickstreet.plan_option p ON p.id = d.plan_option_id "
+                f"WHERE p.amfi_code = :c AND {_visible('d')} ORDER BY d.record_date"
+            ),
+            c=code,
+            r=revision,
+        )
+        return SchemeProfile(
+            sd_id, name, [SchemeFactRow(*row) for row in rows], [(d, v) for d, v in payouts]
+        )
 
     async def scheme_portfolios(self, code: str, revision: int) -> SchemePortfolios | None:
         """Every visible portfolio of the plan-option's scheme, oldest first."""

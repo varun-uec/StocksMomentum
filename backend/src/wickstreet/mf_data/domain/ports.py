@@ -12,6 +12,7 @@ from typing import Protocol
 from wickstreet.mf_data.domain.model import (
     Anomaly,
     CapClass,
+    Distribution,
     NavRecord,
     Portfolios,
     RatePoint,
@@ -245,7 +246,7 @@ class MfStore(Protocol):
         ...
 
     async def latest_nav_day(self, on_or_before: date) -> date | None:
-        """The latest date on or before ``on_or_before`` with current NAVs."""
+        """The latest business day on or before ``on_or_before`` with current NAVs."""
         ...
 
     async def scheme_navs(self, day: date) -> dict[int, list[Decimal]]:
@@ -260,6 +261,12 @@ class MfStore(Protocol):
         self, run_id: int, found: Portfolios, provenance: Provenance
     ) -> Published:
         """Write changed portfolios as a new revision, atomically."""
+        ...
+
+    async def publish_distributions(
+        self, run_id: int, found: Sequence[Distribution], provenance: Provenance
+    ) -> Published:
+        """Write new and changed IDCW payouts as a new revision, atomically."""
         ...
 
     async def publish_market_caps(
@@ -307,6 +314,14 @@ class FactSource(Protocol):
 
     async def market_caps(self, period_end: date) -> RawFile | None:
         """Fetch the market-cap list for the half-year ending ``period_end``."""
+        ...
+
+    async def idcw(self, schemes: list[tuple[int, int]]) -> RawFile:
+        """Fetch every IDCW payout of each (fund-house id, scheme id)."""
+        ...
+
+    def parse_idcw(self, raw: RawFile) -> list[Distribution]:
+        """The payouts: AMFI code, record date, ₹ per unit."""
         ...
 
     def parse_market_caps(self, raw: RawFile) -> list[CapClass]:

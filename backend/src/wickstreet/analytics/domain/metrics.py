@@ -33,7 +33,9 @@ from typing import Literal
 # v6: E1 and E3 — AMFI scheme facts (TER, AUM, riskometer, benchmark, SSD), TER category
 # ranks, AMFI benchmark-relative returns, statistics against a labelled index-fund proxy,
 # and E4 holdings fields from monthly portfolio disclosures.
-METHOD_VERSION = 6
+# v7: E5 — AMFI IDCW history: payouts, IDCW yield and returns with payouts reinvested;
+# monthly facts read on the latest business day of the month.
+METHOD_VERSION = 7
 # The longest gap between two valid NAVs an anchor or a window may span.
 MAX_GAP_DAYS = 7
 # A fund is active when its last valid NAV is this close to the as-of date.
@@ -67,6 +69,8 @@ NO_PROXY = "no_benchmark_proxy"
 NO_YEAR_AGO = "no_year_ago_value"
 # Holdings (v6): the portfolio holds no equity, so an equity share is not meaningful.
 NO_EQUITY = "no_equity"
+# IDCW (v6): a growth option has no payouts to add back.
+NOT_IDCW = "not_idcw_option"
 # A window may end at most this long after the last auction it uses.
 RISK_FREE_STALE_DAYS = 35
 REASONS = frozenset(
@@ -90,6 +94,7 @@ REASONS = frozenset(
         NO_PROXY,
         NO_YEAR_AGO,
         NO_EQUITY,
+        NOT_IDCW,
     }
 )
 

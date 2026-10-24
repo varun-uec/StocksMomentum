@@ -35,6 +35,7 @@ from wickstreet.analytics.domain.metrics import (
     NO_SCHEME,
     NO_YEAR_AGO,
     NOT_FILED,
+    NOT_IDCW,
     TOO_FEW_PEERS,
     YEAR_DAYS,
     Missing,
@@ -227,7 +228,43 @@ FACT_FIELDS = (
         "The proxy fund's 3Y CAGR less AMFI's 3Y benchmark return: how far the proxy lags.",
     ),
 )
-FACT_FIELD_IDS = tuple(f.id for f in FACT_FIELDS)
+IDCW_FIELDS = (
+    Field("idcw_last", "Last IDCW record date", "IDCW", "date", None, "As AMFI lists it."),
+    Field("idcw_count_1y", "IDCW payouts 1Y", "IDCW", "number", "count", "Record dates in a year."),
+    Field(
+        "idcw_1y",
+        "IDCW paid 1Y",
+        "IDCW",
+        "number",
+        "INR",
+        "₹ per unit with a record date in a year.",
+    ),
+    Field(
+        "idcw_yield_1y",
+        "IDCW yield 1Y",
+        "IDCW",
+        "number",
+        "fraction",
+        "IDCW paid in a year over the latest NAV.",
+    ),
+    Field(
+        "ret_1y_with_idcw",
+        "Return 1Y with IDCW",
+        "IDCW",
+        "number",
+        "fraction",
+        "NAV return with each listed payout reinvested at the NAV of its record date.",
+    ),
+    Field(
+        "cagr_3y_with_idcw",
+        "CAGR 3Y with IDCW",
+        "IDCW",
+        "number",
+        "fraction",
+        "As Return 1Y with IDCW, a year over 3 years.",
+    ),
+)
+FACT_FIELD_IDS = tuple(f.id for f in (*FACT_FIELDS, *IDCW_FIELDS))
 
 
 def benchmark_key(name: str) -> str:
@@ -613,3 +650,42 @@ def change_points(points: Sequence[tuple[date, object]]) -> list[tuple[date, obj
         if not found or found[-1][1] != value:
             found.append((day, value))
     return found
+
+
+def _reinvested(daily: DailyNavs, payouts: Sequence[tuple[int, float]], start: int) -> float | None:
+    """Growth from the first NAV on or after ``start`` to the last, payouts reinvested."""
+    days, levels = daily.days, daily.levels
+    first = next((i for i, d in enumerate(days) if d >= start), None)
+    if first is None or start - days[0] < 0 or days[first] - start > MAX_GAP_DAYS:
+        return None
+    growth = levels[-1] / levels[first]
+    for day, rate in payouts:
+        if days[first] < day <= days[-1]:
+            at = next(i for i, d in enumerate(days) if d >= day)
+            growth *= 1 + rate / levels[at]
+    return growth
+
+
+def idcw_fields(
+    option: str, payouts: Sequence[tuple[int, float]], daily: DailyNavs | None, as_of: int
+) -> dict[str, Value]:
+    """IDCW payouts in the last year and returns with them reinvested (M13: sourced only)."""
+    ids = [f.id for f in IDCW_FIELDS]
+    if option != "idcw":
+        return dict.fromkeys(ids, Missing("NM", NOT_IDCW))
+    if not payouts:
+        return dict.fromkeys(ids, Missing("NA", NOT_FILED))
+    year = [(d, r) for d, r in payouts if as_of - 365 < d <= as_of]
+    paid = math.fsum(r for _, r in year)
+    nav = daily.levels[-1] if daily is not None and daily.levels else None
+    short = Missing("NA", HISTORY_TOO_SHORT)
+    one = _reinvested(daily, payouts, as_of - 365) if daily is not None else None
+    three = _reinvested(daily, payouts, as_of - 1096) if daily is not None else None
+    return {
+        "idcw_last": date.fromordinal(payouts[-1][0]).isoformat(),
+        "idcw_count_1y": len(year),
+        "idcw_1y": paid,
+        "idcw_yield_1y": paid / nav if nav else short,
+        "ret_1y_with_idcw": one - 1 if one is not None else short,
+        "cagr_3y_with_idcw": three ** (YEAR_DAYS / 1096) - 1 if three is not None else short,
+    }

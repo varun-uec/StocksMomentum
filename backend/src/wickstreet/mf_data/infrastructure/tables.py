@@ -291,3 +291,22 @@ security_class = Table(
         postgresql_where=text("superseded_revision IS NULL"),
     ),
 )
+
+# IDCW payouts per plan-option (doc 21 E5): ₹ per unit on the record date.
+distribution = Table(
+    "distribution",
+    metadata,
+    Column("plan_option_id", Integer, ForeignKey(plan_option.c.id), nullable=False),
+    Column("record_date", Date, nullable=False),
+    Column("per_unit", Numeric, nullable=False),
+    Column("revision_id", BigInteger, ForeignKey(revision.c.id), nullable=False),
+    Column("superseded_revision", BigInteger),
+    PrimaryKeyConstraint("plan_option_id", "record_date", "revision_id", name="pk_distribution"),
+    Index(
+        "uq_distribution_current",
+        "plan_option_id",
+        "record_date",
+        unique=True,
+        postgresql_where=text("superseded_revision IS NULL"),
+    ),
+)

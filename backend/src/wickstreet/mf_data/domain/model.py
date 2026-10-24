@@ -189,3 +189,16 @@ class CapClass:
     name: str
     market_cap_cr: Decimal | None
     cap_class: str
+
+
+# IDCW payouts as AMFI lists them (doc 21 E5, M13): sourced records only, never inferred.
+IDCW = "idcw"
+
+
+@dataclass(frozen=True, slots=True)
+class Distribution:
+    """One IDCW payout of one plan-option: ₹ per unit, on its record date."""
+
+    amfi_code: str
+    record_date: date
+    per_unit: Decimal
