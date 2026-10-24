@@ -22,6 +22,7 @@ code or by scheme name; a row it cannot join is counted, never guessed.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 from collections.abc import Mapping
@@ -189,7 +190,8 @@ _ROW_PLAN_FIELDS = {
 
 
 def _filed(text: str | None) -> str | None:
-    text = " ".join((text or "").split())
+    # Some SSDs escape twice ("&amp;amp;"); the XML parser undoes only one level.
+    text = " ".join(html.unescape(text or "").split())
     return None if text.lower().rstrip(".") in _NOT_FILED else text
 
 

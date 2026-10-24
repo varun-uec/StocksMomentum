@@ -85,7 +85,7 @@ class IngestFacts:
         A reparse is for a parser or join fix: nothing is fetched, a changed fact becomes
         a new revision and the old value stays as history (MF-5).
         """
-        if reparse and await self._store.run_status(self._source.name, dataset, start) is None:
+        if reparse and await self._store.run_status(self._source.name, dataset, start, end) is None:
             return Outcome(end, "skipped")
         run = await self._store.open_run(self._source.name, dataset, start, end)
         if run.status in SETTLED and not (refetch or reparse):

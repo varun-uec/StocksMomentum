@@ -223,8 +223,10 @@ class MfStore(Protocol):
         """The latest AMFI NAV date with a published or unchanged run."""
         ...
 
-    async def run_status(self, source: str, dataset: str, day: date) -> str | None:
-        """Status of the run for one single-date period, if it exists."""
+    async def run_status(
+        self, source: str, dataset: str, day: date, end: date | None = None
+    ) -> str | None:
+        """Status of the run for the period ``day`` to ``end`` (default one date), if any."""
         ...
 
     async def stored_raw(self, run_id: int) -> StoredRaw | None:

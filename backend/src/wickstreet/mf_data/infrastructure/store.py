@@ -252,16 +252,18 @@ class SqlMfStore:
             url=row.url, fetched_at=row.fetched_at, sha256=row.raw_sha256, path=row.raw_path
         )
 
-    async def run_status(self, source: str, dataset: str, day: date) -> str | None:
-        """Status of the run for one single-date period, if it exists."""
+    async def run_status(
+        self, source: str, dataset: str, day: date, end: date | None = None
+    ) -> str | None:
+        """Status of the run for the period ``day`` to ``end`` (default one date), if any."""
         async with self._database.engine.connect() as connection:
             result: str | None = await connection.scalar(
                 text(
                     "SELECT status FROM wickstreet.ingestion_run "
                     "WHERE source = :s AND dataset = :d "
-                    "AND period_start = :day AND period_end = :day"
+                    "AND period_start = :day AND period_end = :end"
                 ),
-                {"s": source, "d": dataset, "day": day},
+                {"s": source, "d": dataset, "day": day, "end": end or day},
             )
         return result
 

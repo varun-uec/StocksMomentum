@@ -664,6 +664,14 @@ class FakeFacts:
         self.fetches += 1
         return RawFile("fake://te", datetime.now(UTC), b"one file")
 
+    async def ter_month(self, month: date) -> RawFile:
+        self.fetches += 1
+        return RawFile("fake://ter", datetime.now(UTC), b"one month")
+
+    def parse_ter(self, raw: RawFile, codes: Any, names: Any) -> SchemeFacts:
+        self.names_seen.append(len(names))
+        return SchemeFacts([Fact(1, "ter", "direct", D1, num=Decimal(len(self.names_seen)))])
+
     def parse_tracking_error(self, raw: RawFile, day: date, names: Any) -> SchemeFacts:
         self.names_seen.append(len(names))
         value = Decimal("0.05") if len(self.names_seen) == 1 else Decimal("0.04")
@@ -707,4 +715,8 @@ async def test_a_facts_reparse_supersedes_from_the_kept_file_and_fetches_nothing
         "SELECT num, superseded_revision IS NULL FROM wickstreet.scheme_fact ORDER BY revision_id",
     ) == [(Decimal("0.05"), False), (Decimal("0.04"), True)]
     assert (await facts.tracking_error(day(9), reparse=True)).status == "skipped"
+    # A month-long period (TER) reparses too.
+    assert (await facts.ter(D1)).status == "published"
+    month = await facts.ter(D1, reparse=True)
+    assert (month.status, month.superseded, source.fetches) == ("published", 1, 2)
     assert await store.run_status("fakefacts", "tracking-error-day", day(9)) is None
