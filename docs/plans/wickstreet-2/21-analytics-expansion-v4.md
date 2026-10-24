@@ -27,15 +27,15 @@ A registered field is not a usable dimension. A field counts toward completion o
 | C5 Drawdown | Yes | Yes | — |
 | C6 Risk-return efficiency | Yes | Yes | — |
 | C7 Correlation | Yes | Yes | — |
-| C8 IDCW total return | Yes (v7) | Yes (AMFI IDCW history) | Growth-vs-IDCW comparison of one scheme not built |
+| C8 IDCW total return | Yes (v7) | Partly: AMFI lists payouts for 196 schemes (634 plan-options, 20,058 payouts) | Other schemes need AMC IDCW histories; growth-vs-IDCW comparison of one scheme not built |
 | C9 Classification | Partly | Yes | SEBI 2026 categories (Unclassified 1,102 → 111) and fund type done; categories as filed at past dates have no source |
 | C10 Selection backtesting | Yes | Yes | — |
 | C11 Investor-level attribution | No | No | Needs a real CAS; market, timing, fee and tax split not built |
-| C12 Benchmark analytics | Yes (v6) | AMFI benchmark returns: yes; TRI: no (labelled index-fund proxy) | Official TRI blocked by NSE/BSE terms |
+| C12 Benchmark analytics | Yes (v6) | AMFI benchmark returns: 65% of active direct growth plans (3Y); proxy statistics: 30% | Official TRI blocked by NSE/BSE terms; 985 plans have no index fund on their benchmark |
 | C13 Risk-free metrics | Yes | Yes (E2, RBI, 2016-07 to 2026-10) | Rates must be imported as RBI publishes them; stale after 35 days |
-| C14 Fund costs | Yes (v6) | Yes (AMFI TER) | Exit-load drag not modelled |
-| C15 Fund profiles | Yes (v6) | Yes (AMFI SSD, fund performance) | Manager history before the current team has no source |
-| C16 Holdings intelligence | Yes (v6) | Partly: PPFAS and DSP fetched; other AMCs by import | Style drift needs E7 |
+| C14 Fund costs | Yes (v6) | Yes: TER 99.6% of active direct growth plans, 2019-01 to 2026-10 | Exit loads stored as text; drag not modelled |
+| C15 Fund profiles | Yes (v6) | Yes: AUM 97%, riskometer 98%, manager tenure 74% | Manager history before the current team has no source |
+| C16 Holdings intelligence | Yes (v6) | Partly: PPFAS and DSP, 1,720 portfolios (72 active direct growth plans); other AMCs by import | About 55 AMCs build their pages in JavaScript; style drift needs E7 |
 | C17–C18 Debt intelligence | Partly: ratings mix from filed labels | Partly | Duration, YTM and rating history not parsed |
 | C19 ETF and index funds | Partly: AMFI tracking error, proxy gap | Partly | ETF price, premium/discount: E6 blocked by NSE/BSE terms |
 | C20–C21 Valuation, attribution | No | No | E7: no licensed fundamentals source |
