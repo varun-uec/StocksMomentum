@@ -37,7 +37,7 @@ const SERIES_LABELS: Record<string, string> = {
   source_value: 'Source fund value',
   target_value: 'Target fund value',
 };
-const TAX_LABEL: Record<string, string> = { equity: 'Equity-oriented', debt: 'Debt-oriented', other: 'Other (hybrid, FoF, gold…)' };
+const TAX_LABEL: Record<string, string> = { equity: 'Equity-oriented', debt: 'Debt-oriented', other: 'Other (overseas, hybrid, FoF, gold…)' };
 
 const PLOTTED = ['value', 'invested', 'source_value', 'target_value'];
 const SERIES_COLOR: Record<string, string> = { value: seriesColor(0), target_value: seriesColor(0), source_value: seriesColor(1), invested: token('muted') };
@@ -65,7 +65,7 @@ function FundChoice({ code, onChange, label }: { code: string; onChange: (code: 
 }
 
 const TAX_REASONS: Record<string, string> = {
-  tax_class_needed: 'This fund’s category does not settle how it is taxed (for example index funds, fund of funds, gold and dynamic hybrids). Choose a tax class in the scenario to see an estimate.',
+  tax_class_needed: 'This fund’s category does not settle how it is taxed (for example sectoral and thematic funds, which may invest overseas, index funds, fund of funds, gold and dynamic hybrids). Choose a tax class in the scenario to see an estimate.',
   slab_rate_needed: 'Some gains are taxed at your income-tax slab. Enter your slab rate to see an estimate.',
 };
 
@@ -321,7 +321,15 @@ export default function Simulate() {
             )}
             <Field
               label="Tax class"
-              hint={inputs.taxClass ? 'Your choice. It resets when you change the fund.' : category ? `Taken from the category, ${categoryShort(category)}, where it settles the class.` : 'Taken from the fund’s category where it settles the class.'}
+              hint={
+                inputs.taxClass
+                  ? 'Your choice. It resets when you change the fund.'
+                  : run.data?.tax?.reason === 'tax_class_needed'
+                    ? `The category${category ? `, ${categoryShort(category)},` : ''} does not settle the class. Choose one.`
+                    : category
+                      ? `Taken from the category, ${categoryShort(category)}, where it settles the class.`
+                      : 'Taken from the fund’s category where it settles the class.'
+              }
             >
               <select className={inputClass} value={inputs.taxClass} onChange={(e) => set({ taxClass: e.target.value as TaxClass | '' })}>
                 <option value="">From the fund’s category</option>

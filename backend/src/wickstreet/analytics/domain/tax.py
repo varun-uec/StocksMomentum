@@ -23,6 +23,15 @@ Holding periods are calendar months, as the Income-tax Act defines them. A unit 
 "over 12 months" is sold after the 12-month anniversary of its purchase date, so a sale
 on the anniversary itself is short term. A purchase on a day the anniversary month
 lacks (29 Feb, 31st) uses that month's last day.
+
+Overseas equity funds and funds of funds are ``other``. Section 50AA puts their units
+bought from 2023-04-01 and sold before 2025-04-01 on the slab rate; no such unit is
+held over 24 months, so the ``other`` rules give the same slab treatment. From
+2025-04-01 section 50AA no longer covers them and the 24-month rule applies.
+
+The category settles the class only where SEBI's mandate keeps the fund in domestic
+equity or in debt. Sectoral and thematic funds may invest wholly overseas (an
+international equity fund is filed as thematic), so their class is never inferred.
 """
 
 from __future__ import annotations
@@ -65,11 +74,15 @@ _EQUITY_HYBRIDS = frozenset(
         "Hybrid Scheme - Equity Savings",
     }
 )
+# Equity categories whose mandate allows mostly foreign equity (independent review R-01).
+_MAYBE_OVERSEAS = frozenset({"Equity Scheme - Sectoral/ Thematic"})
 SHORT, LONG, SLAB = "short", "long", "slab"
 
 
 def tax_class_of(category: str, asset_class: str) -> TaxClass | None:
     """The tax class a category implies, or ``None`` when the fund's own mix decides it."""
+    if category in _MAYBE_OVERSEAS:
+        return None
     if asset_class == "Equity" or category in _EQUITY_HYBRIDS:
         return "equity"
     if asset_class == "Debt" or category == "Hybrid Scheme - Conservative Hybrid Fund":

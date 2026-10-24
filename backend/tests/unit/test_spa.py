@@ -55,3 +55,25 @@ def test_paths_outside_the_build_are_never_served(client: TestClient) -> None:
 def test_missing_build_fails_fast(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="index.html"):
         mount_spa(FastAPI(), tmp_path)
+
+
+def test_mf_routes_get_their_own_page_and_assets_are_compressed(tmp_path: Path) -> None:
+    # Acceptance review R-02: /mf loads mf.html, which skips the stock app's code.
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "big.js").write_text("x" * 5000)
+    (tmp_path / "index.html").write_text("stock")
+    (tmp_path / "mf.html").write_text("mf")
+    app = FastAPI()
+    mount_spa(app, tmp_path)
+    client = TestClient(app)
+    for path in ("/mf", "/mf/funds/122639", "/mf/simulate?code=1"):
+        assert client.get(path).text == "mf"
+    for path in ("/", "/mfx", "/chart/RELIANCE"):
+        assert client.get(path).text == "stock"
+    response = client.get("/assets/big.js", headers={"Accept-Encoding": "gzip"})
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.text == "x" * 5000
+
+
+def test_mf_routes_fall_back_to_index_without_mf_page(client: TestClient) -> None:
+    assert client.get("/mf/funds/1").text == "<div id=root></div>"

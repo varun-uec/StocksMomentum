@@ -4,35 +4,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router';
 import RootLayout from './app/layout';
+import { mfRoute } from './features/mf/route';
+import { page } from './lib/lazy-page';
 import { importLocalDrawings, importLocalPresentation } from './lib/local-import';
 
-type PageModule = { default: React.ComponentType };
-
-/** One code-split chunk per route, as the Next.js build had. */
-function page(load: () => Promise<PageModule>): Pick<RouteObject, 'lazy'> {
-  return { lazy: async () => ({ Component: (await load()).default }) };
-}
-
 const routes: RouteObject[] = [
-  {
-    // Wickstreet 2.0 mutual funds: its own shell, so no stock chrome or stock queries mount.
-    path: 'mf',
-    ...page(() => import('./features/mf/routes/layout')),
-    // The shell loads lazily; nothing renders until it arrives.
-    HydrateFallback: () => null,
-    children: [
-      { index: true, ...page(() => import('./features/mf/routes/discover')) },
-      { path: 'screen', ...page(() => import('./features/mf/routes/screen')) },
-      { path: 'funds/:code', ...page(() => import('./features/mf/routes/fund')) },
-      { path: 'studio', ...page(() => import('./features/mf/routes/studio')) },
-      { path: 'compare', ...page(() => import('./features/mf/routes/compare')) },
-      { path: 'simulate', ...page(() => import('./features/mf/routes/simulate')) },
-      { path: 'workspace', ...page(() => import('./features/mf/routes/workspace')) },
-      { path: 'portfolio', ...page(() => import('./features/mf/routes/portfolio')) },
-      { path: 'ask', ...page(() => import('./features/mf/routes/ask')) },
-      { path: '*', ...page(() => import('./features/mf/routes/not-found')) },
-    ],
-  },
+  mfRoute,
   {
     element: <RootLayout />,
     children: [

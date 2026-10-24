@@ -366,6 +366,46 @@ def test_debt_and_other_tax_and_reasons() -> None:
     assert tax_class_of("Other Scheme - Index Funds", "Other") is None
 
 
+def test_overseas_funds_are_never_taxed_as_domestic_equity() -> None:
+    # Independent review R-01: an international equity fund (119517) is filed as
+    # thematic, so no thematic or overseas category implies the equity class.
+    for category, asset_class in (
+        ("Equity Scheme - Sectoral/ Thematic", "Equity"),
+        ("Other Scheme - FoF Overseas", "Other"),
+        ("Other Scheme - FoF Domestic", "Other"),
+        ("Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage", "Hybrid"),
+    ):
+        assert tax_class_of(category, asset_class) is None
+    for category in ("Flexi Cap Fund", "ELSS", "Small Cap Fund", "Value Fund"):
+        assert tax_class_of("Equity Scheme - " + category, "Equity") == "equity"
+    # 119517, ₹10 lakh, 24 Jul 2023 -> 25 Jul 2024: the live gain at the 30% slab.
+    gain = 49_103.06868
+    overseas = [sale("2023-07-24", "2024-07-25", 0, gain)]
+    assert capital_gains_tax(overseas, "other", 0.3, None).total == pytest.approx(
+        15_320.16, abs=0.01
+    )
+    assert capital_gains_tax(overseas, "equity", 0.3, None).total == 0  # the old error
+
+
+def test_overseas_units_follow_section_50aa_across_rule_changes() -> None:
+    def term(bought: str, sold: str) -> str:
+        year = capital_gains_tax([sale(bought, sold, 0, 1000)], "other", 0.3, None).years[0]
+        return next(t for t in ("short_term", "long_term", "slab") if year[t])
+
+    # Bought from April 2023 and sold before April 2025: slab whatever the holding.
+    assert term("2023-04-01", "2025-03-31") == "slab"
+    # From April 2025 section 50AA no longer covers them: over 24 months is long term.
+    assert term("2023-04-01", "2025-04-01") == "slab"
+    assert term("2023-04-01", "2025-04-02") == "long_term"
+    # Bought before April 2023: 36 months (indexed 20%) until 22 Jul 2024, then 24 months.
+    assert term("2022-01-03", "2024-07-22") == "slab"
+    assert term("2022-01-03", "2024-07-23") == "long_term"
+    indexed = capital_gains_tax([sale("2020-05-04", "2024-07-22", 100, 200)], "other", 0.3, None)
+    assert indexed.total == pytest.approx((200 - 100 * 363 / 301) * 0.20 * 1.04)
+    after = capital_gains_tax([sale("2022-01-03", "2024-07-23", 100, 200)], "other", 0.3, None)
+    assert after.total == pytest.approx(100 * 0.125 * 1.04)
+
+
 def test_schedule_clamps_to_month_end() -> None:
     days = calculators.schedule(date(2024, 1, 15), date(2024, 4, 30), 31)
     assert [date.fromordinal(d).isoformat() for d in days] == [

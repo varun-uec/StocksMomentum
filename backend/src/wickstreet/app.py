@@ -14,6 +14,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from platform_common.database import Database
 from platform_common.http import (
@@ -135,6 +136,8 @@ def create_app(settings: WickstreetSettings | None = None) -> FastAPI:
         max_overflow=settings.db_max_overflow,
     )
 
+    # Compression (acceptance review R-02): NAV series run to hundreds of kB of JSON.
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     # Outermost first, as in Momentum25.
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(

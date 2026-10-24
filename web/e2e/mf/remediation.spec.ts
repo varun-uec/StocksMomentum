@@ -30,10 +30,10 @@ test("F-01: the regimes chart draws one band per window", async ({
 test("F-02: risk-return gridline labels are round values", async ({ page }) => {
   await page.goto(`/mf/studio?mode=frontier&code=${FUND}`);
   const chart = page.getByRole("img", { name: "Risk-return scatter of peers" });
-  await expect(chart).toBeVisible();
-  const ticks = await chart
-    .locator(".recharts-cartesian-axis-tick-value")
-    .allTextContents();
+  // The plot draws after its box, once the chart code arrives (acceptance review R-02).
+  const tick = chart.locator(".recharts-cartesian-axis-tick-value");
+  await expect(tick.first()).toBeVisible();
+  const ticks = await tick.allTextContents();
   expect(ticks.length).toBeGreaterThan(4);
   // Every label is a whole or half percentage: a gridline at 11.4% can no longer read "11%".
   for (const t of ticks) expect(t).toMatch(/^−?\d+(\.5)?%$/);

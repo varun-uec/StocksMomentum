@@ -9,6 +9,15 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // /mf has its own page, so it loads none of the stock app's code (acceptance review R-02).
+  build: {
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        mf: fileURLToPath(new URL('./mf.html', import.meta.url)),
+      },
+    },
+  },
   server: {
     port: 5173,
     // In development the dev server stands in for the API's own origin: Host and
