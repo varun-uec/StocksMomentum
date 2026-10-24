@@ -146,6 +146,15 @@ export default function Compare() {
   const windowStart = last && period !== 'All' ? `${Number(last.slice(0, 4)) - PERIODS[period]}${last.slice(4)}` : null;
   const available = (p: Period) => p === 'All' || (!!last && !!data && `${Number(last.slice(0, 4)) - PERIODS[p]}${last.slice(4)}` >= data.start);
   const series = windowStart && available(period) ? full.map((s) => ({ ...s, points: rebase(s.points, 100, windowStart) })) : full;
+  const labParams = new URLSearchParams();
+  if (codes[0]) labParams.set('code', codes[0]);
+  if (dataRevision !== undefined) labParams.set('rev', String(dataRevision));
+  const labStart = series[0]?.points[0]?.[0];
+  if (labStart && last) {
+    labParams.set('start', period === 'All' ? data?.start ?? labStart : windowStart ?? labStart);
+    labParams.set('end', last);
+  }
+  const labHref = `/mf/simulate?${labParams}`;
 
   const header = (
     <div className="space-y-3">
@@ -188,7 +197,7 @@ export default function Compare() {
         lead="The same start date, the same metrics, side by side."
         actions={
           <>
-            <Link to={`/mf/simulate?code=${codes[0]}`} className={buttonClass('secondary')}>
+            <Link to={labHref} className={buttonClass('secondary')}>
               <I.lab className="h-4 w-4" />
               Test an investment
             </Link>

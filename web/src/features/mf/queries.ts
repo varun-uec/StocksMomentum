@@ -43,7 +43,8 @@ function fundQuery<T>(name: string, code: string | undefined, fn: (code: string,
 }
 
 export const useFund = (code?: string) => useQuery(fundQuery('detail', code, mfApi.fund));
-export const useMetrics = (code?: string) => useQuery(fundQuery('metrics', code, mfApi.metrics));
+export const useMetrics = (code?: string, dataRevision?: number) =>
+  useQuery(fundQuery(`metrics${dataRevision === undefined ? '' : `-${dataRevision}`}`, code, (c, s) => mfApi.metrics(c, s, dataRevision)));
 export const useScore = (code?: string) => useQuery(fundQuery('score', code, mfApi.score));
 export const useConfidence = (code?: string, enabled = true) => useQuery(fundQuery('confidence', code, mfApi.confidence, enabled));
 export const useNavs = (code?: string) => useQuery(fundQuery('navs', code, (c, s) => mfApi.navs(c, undefined, s)));

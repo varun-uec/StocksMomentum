@@ -42,8 +42,8 @@ const TAX_LABEL: Record<string, string> = { equity: 'Equity-oriented', debt: 'De
 const PLOTTED = ['value', 'invested', 'source_value', 'target_value'];
 const SERIES_COLOR: Record<string, string> = { value: seriesColor(0), target_value: seriesColor(0), source_value: seriesColor(1), invested: token('muted') };
 
-function FundChoice({ code, onChange, label }: { code: string; onChange: (code: string) => void; label: string }) {
-  const m = useMetrics(code || undefined);
+function FundChoice({ code, onChange, label, dataRevision }: { code: string; onChange: (code: string) => void; label: string; dataRevision?: number }) {
+  const m = useMetrics(code || undefined, dataRevision);
   return (
     <div>
       <p className="mb-1 text-[13px] font-medium text-mf-ink-soft">{label}</p>
@@ -228,7 +228,7 @@ export default function Simulate() {
   const example = !linked && !recent.includes(inputs.code);
   const set = (patch: Partial<Inputs>) => setInputs((i) => ({ ...i, ...patch }));
   const { create } = useRecordMutations<{ kind: CalculatorKind; request: CalculatorRequest; summary: Simulation['summary']; provenance: ScenarioProvenance }>('scenario');
-  const fund = useMetrics(inputs.code || undefined);
+  const fund = useMetrics(inputs.code || undefined, pinned);
   const { body: request, error } = toRequest(inputs, now);
   const body = request && pinned != null ? { ...request, data_revision: pinned } : request;
   // Results follow the inputs: the request runs 400 ms after the last change.
@@ -287,8 +287,8 @@ export default function Simulate() {
             <Segmented label="Investment kind" size="md" value={inputs.kind} onChange={(k) => set({ kind: k, ...KIND_DEFAULTS[k] })} options={KINDS.map((k) => ({ value: k.value, label: k.label }))} />
             <p className="text-xs text-mf-muted">{kind.lead}</p>
             {/* A new fund needs its own tax decision: a class chosen for the old one does not carry over. */}
-            <FundChoice code={inputs.code} onChange={(code) => set({ code, taxClass: '' })} label={inputs.kind === 'stp' ? 'Transfer from' : 'Fund'} />
-            {inputs.kind === 'stp' && <FundChoice code={inputs.target} onChange={(target) => set({ target })} label="Transfer into" />}
+            <FundChoice code={inputs.code} onChange={(code) => set({ code, taxClass: '' })} label={inputs.kind === 'stp' ? 'Transfer from' : 'Fund'} dataRevision={pinned} />
+            {inputs.kind === 'stp' && <FundChoice code={inputs.target} onChange={(target) => set({ target })} label="Transfer into" dataRevision={pinned} />}
             <MoneyField label={amountLabel} value={inputs.amount} onChange={(amount) => set({ amount })} range={inputs.kind === 'sip' ? 'monthly' : 'corpus'} />
             {(inputs.kind === 'swp' || inputs.kind === 'stp') && (
               <MoneyField label={inputs.kind === 'swp' ? 'Monthly withdrawal (₹)' : 'Monthly transfer (₹)'} value={inputs.instalment} onChange={(instalment) => set({ instalment })} range="monthly" />

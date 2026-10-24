@@ -78,6 +78,33 @@ test('Compare preserves its window and pinned snapshot through browser navigatio
   expect(afterRemoval.searchParams.getAll('code')).toEqual(codes.slice(0, 2));
   expect(afterRemoval.searchParams.get('period')).toBe('5Y');
   expect(afterRemoval.searchParams.get('rev')).toBe(String(revision));
+
+  const end = prior.series[FUND].at(-1)[0] as string;
+  const start = `${Number(end.slice(0, 4)) - 5}${end.slice(4)}`;
+  const labLink = page.getByRole('link', { name: 'Test an investment' });
+  const href = await labLink.getAttribute('href');
+  expect(href).not.toBeNull();
+  const handoff = new URL(href!, 'http://localhost');
+  expect(handoff.pathname).toBe('/mf/simulate');
+  expect(handoff.searchParams.get('code')).toBe(FUND);
+  expect(handoff.searchParams.get('rev')).toBe(String(revision));
+  expect(handoff.searchParams.get('start')).toBe(start);
+  expect(handoff.searchParams.get('end')).toBe(end);
+
+  const pinnedMetrics = page.waitForRequest((r) => {
+    const url = new URL(r.url());
+    return url.pathname.endsWith(`/api/v1/mf/funds/${FUND}/metrics`) && url.searchParams.get('data_revision') === String(revision);
+  });
+  const pinnedCalculation = page.waitForRequest((r) => {
+    const url = new URL(r.url());
+    return url.pathname.endsWith('/api/v1/mf/calculators/sip') && r.method() === 'POST' && r.postDataJSON()?.data_revision === revision;
+  });
+  await labLink.click();
+  await Promise.all([pinnedMetrics, pinnedCalculation]);
+  await expect(page).toHaveURL(new RegExp(`/mf/simulate\\?code=${FUND}.*rev=${revision}`));
+  const dateInputs = page.locator('input[type="date"]');
+  await expect(dateInputs.nth(0)).toHaveValue(start);
+  await expect(dateInputs.nth(1)).toHaveValue(end);
 });
 
 test('Compare default funds do not discard a URL period or snapshot pin', async ({ page }) => {

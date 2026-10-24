@@ -434,7 +434,8 @@ export const mfApi = {
   sparklines: (codes: string[], signal?: AbortSignal) =>
     get<Envelope & { series: Record<string, Point[]> }>(`/funds/sparklines${qs({ code: codes })}`, signal),
   fund: (code: string, signal?: AbortSignal) => get<FundDetail>(`/funds/${code}`, signal),
-  metrics: (code: string, signal?: AbortSignal) => get<Metrics>(`/funds/${code}/metrics`, signal),
+  metrics: (code: string, signal?: AbortSignal, dataRevision?: number) =>
+    get<Metrics>(`/funds/${code}/metrics${qs({ data_revision: dataRevision })}`, signal),
   score: (code: string, signal?: AbortSignal) => get<Score>(`/funds/${code}/score`, signal),
   confidence: (code: string, signal?: AbortSignal) => get<Confidence>(`/funds/${code}/confidence`, signal),
   navs: (code: string, start?: string, signal?: AbortSignal) =>
