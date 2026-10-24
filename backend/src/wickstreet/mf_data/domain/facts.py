@@ -26,22 +26,27 @@ _SEGREGATED_NOTE = re.compile(
 def scheme_keys(
     schemes: Sequence[SchemeRef], sebi_codes: Mapping[int, str]
 ) -> tuple[dict[str, int], dict[str, int]]:
-    """SEBI code to scheme id, and name to scheme id. A name two schemes share joins neither.
+    """SEBI code to scheme id, and name to scheme id.
 
-    A name AMFI lists with a segregated-portfolio or former-name note also joins
-    without it, unless another scheme has that shorter name.
+    A name two schemes share joins the one that is ``live``, when only one is (AMFI
+    lists "ICICI Prudential Liquid Fund", "... Fund -" and "... Fund-"; current plans
+    join the second); else it joins neither, and a NAV pair may join the row. A name
+    AMFI lists with a segregated-portfolio or former-name note also joins without it,
+    unless another scheme has that shorter name.
     """
     codes = {compact(code): sd_id for sd_id, code in sebi_codes.items()}
 
     def keyed(name_of: Callable[[SchemeRef], str]) -> dict[str, int]:
-        found: dict[str, int] = {}
-        shared: set[str] = set()
+        sharers: dict[str, set[SchemeRef]] = {}
         for scheme in schemes:
-            key = compact(name_of(scheme))
-            if key in found and found[key] != scheme.sd_id:
-                shared.add(key)
-            found[key] = scheme.sd_id
-        return {k: v for k, v in found.items() if k not in shared}
+            sharers.setdefault(compact(name_of(scheme)), set()).add(scheme)
+        found: dict[str, int] = {}
+        for key, group in sharers.items():
+            ids = {s.sd_id for s in group}
+            live = {s.sd_id for s in group if s.live}
+            if len(ids) == 1 or len(live) == 1:
+                found[key] = min(ids) if len(ids) == 1 else live.pop()
+        return found
 
     names = keyed(lambda s: s.name)
     bare = keyed(lambda s: _SEGREGATED_NOTE.sub("", s.name))

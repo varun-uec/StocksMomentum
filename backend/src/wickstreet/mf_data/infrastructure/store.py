@@ -40,6 +40,7 @@ from wickstreet.mf_data.domain.model import (
     SchemeRef,
 )
 from wickstreet.mf_data.domain.ports import Provenance, Published, Run, StoredRaw
+from wickstreet.mf_data.infrastructure.reader import SCHEME_OF
 from wickstreet.mf_data.infrastructure.tables import compacted
 
 # Key of the session-level advisory lock held by one ingestion runner (MF-10).
@@ -638,10 +639,26 @@ class SqlMfStore:
     async def scheme_keys(self) -> tuple[list[SchemeRef], dict[int, str]]:
         """Every listed scheme, and each scheme's current SEBI code from its SSD."""
         async with self._database.engine.connect() as connection:
+            newest = await connection.scalar(text("SELECT max(id) FROM wickstreet.revision"))
             schemes = [
-                SchemeRef(r.sd_id, r.mf_id, r.name)
+                SchemeRef(r.sd_id, r.mf_id, r.name, r.live)
                 for r in await connection.execute(
-                    text("SELECT sd_id, mf_id, name FROM wickstreet.scheme ORDER BY sd_id")
+                    text(
+                        f"WITH link AS ({SCHEME_OF}), recent AS (SELECT "
+                        f"{compacted('m.scheme_name')} AS k, l.sd_id FROM link l "
+                        "JOIN wickstreet.plan_option_master m ON m.plan_option_id = "
+                        "l.plan_option_id AND m.superseded_revision IS NULL "
+                        "WHERE EXISTS (SELECT 1 FROM wickstreet.nav n "
+                        "WHERE n.plan_option_id = l.plan_option_id "
+                        "AND n.superseded_revision IS NULL "
+                        "AND n.nav_date >= (SELECT max(nav_date) FROM wickstreet.nav) - 90)), "
+                        "sole AS (SELECT k, min(sd_id) AS sd_id FROM recent GROUP BY k "
+                        "HAVING count(DISTINCT sd_id) = 1) "
+                        "SELECT s.sd_id, s.mf_id, s.name, EXISTS (SELECT 1 FROM sole o "
+                        f"WHERE o.sd_id = s.sd_id AND o.k = {compacted('s.name')}) AS live "
+                        "FROM wickstreet.scheme s ORDER BY s.sd_id"
+                    ),
+                    {"r": newest or 0},
                 )
             ]
             codes = {

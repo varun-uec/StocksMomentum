@@ -103,8 +103,10 @@ _RATES = text(
 
 
 # A plan-option joins its scheme through the ISINs or AMFI codes its scheme's SSD lists
-# (doc 21 E1); failing that, by its master scheme name when one listed scheme has it.
-_SCHEME_OF = (
+# (doc 21 E1); failing that, by its master scheme name when one listed scheme has it;
+# failing that, by the scheme with exactly that name, as ``scheme_keys`` joins a name
+# that several schemes share.
+SCHEME_OF = (
     "SELECT DISTINCT ON (j.plan_option_id) j.plan_option_id, j.sd_id FROM ("
     "SELECT m.plan_option_id, i.sd_id, 0 AS via, m.effective_from "
     "FROM wickstreet.plan_option_master m JOIN wickstreet.scheme_isin i "
@@ -113,7 +115,10 @@ _SCHEME_OF = (
     "FROM wickstreet.plan_option_master m JOIN ("
     f"SELECT {compacted('s.name')} AS k, min(s.sd_id) AS sd_id FROM wickstreet.scheme s "
     f"GROUP BY 1 HAVING count(*) = 1) n ON n.k = {compacted('m.scheme_name')} "
-    f"WHERE {_visible('m')}) j "
+    f"WHERE {_visible('m')} "
+    "UNION ALL SELECT m.plan_option_id, s.sd_id, 2, m.effective_from "
+    "FROM wickstreet.plan_option_master m JOIN wickstreet.scheme s "
+    f"ON btrim(s.name) = btrim(m.scheme_name) WHERE {_visible('m')}) j "
     "ORDER BY j.plan_option_id, j.via, j.effective_from DESC, j.sd_id"
 )
 _FACT_DAY = "(f.as_of - DATE '0001-01-01') + 1"
@@ -180,7 +185,7 @@ async def _streamed(
 async def _fact_view(connection: AsyncConnection, revision: int) -> FactView:
     params = {"r": revision}
     scheme_of: dict[int, int] = {}
-    for pid, sd_id in await connection.execute(text(_SCHEME_OF), params):
+    for pid, sd_id in await connection.execute(text(SCHEME_OF), params):
         scheme_of[pid] = sd_id
     # The fact queries stream: buffering the TER and AUM series (~670k rows) whole
     # cost ~180 MB at the compute's peak.
@@ -378,7 +383,7 @@ class SqlMfReader:
         """The scheme of one plan-option and every fact visible for it at ``revision``."""
         found = await self._rows(
             text(
-                f"SELECT j.sd_id, s.name FROM ({_SCHEME_OF}) j "
+                f"SELECT j.sd_id, s.name FROM ({SCHEME_OF}) j "
                 "JOIN wickstreet.scheme s ON s.sd_id = j.sd_id "
                 "JOIN wickstreet.plan_option p ON p.id = j.plan_option_id WHERE p.amfi_code = :c"
             ),
@@ -414,7 +419,7 @@ class SqlMfReader:
         """Every visible portfolio of the plan-option's scheme, oldest first."""
         profile = await self._rows(
             text(
-                f"SELECT j.sd_id, s.name FROM ({_SCHEME_OF}) j "
+                f"SELECT j.sd_id, s.name FROM ({SCHEME_OF}) j "
                 "JOIN wickstreet.scheme s ON s.sd_id = j.sd_id "
                 "JOIN wickstreet.plan_option p ON p.id = j.plan_option_id WHERE p.amfi_code = :c"
             ),

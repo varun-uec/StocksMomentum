@@ -115,11 +115,18 @@ SCHEME, REGULAR, DIRECT = "", "regular", "direct"
 
 @dataclass(frozen=True, slots=True)
 class SchemeRef:
-    """One AMFI scheme: its id, its fund house's AMFI id and its name as listed."""
+    """One AMFI scheme: its id, its fund house's AMFI id and its name as listed.
+
+    ``live`` when every plan-option priced in the last 90 days whose master scheme name
+    is this name joins this scheme (through its SSD's ISINs, else its name): of schemes
+    that share a name, that one is the current one. Where such plans join two schemes,
+    none is.
+    """
 
     sd_id: int
     mf_id: int
     name: str
+    live: bool = False
 
 
 @dataclass(frozen=True, slots=True)

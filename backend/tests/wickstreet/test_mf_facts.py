@@ -286,6 +286,19 @@ def test_two_rows_under_one_name_keep_the_one_whose_navs_are_the_schemes() -> No
     assert {f.sd_id: f.num for f in lone.facts if f.name == "ret_10y"} == {9240: Decimal("8.37")}
 
 
+def test_a_name_two_schemes_share_joins_the_live_one_when_only_one_is() -> None:
+    schemes = [
+        SchemeRef(133, 20, "ICICI Prudential Liquid Fund"),
+        SchemeRef(1555, 20, "ICICI Prudential Liquid Fund -", live=True),
+        SchemeRef(770, 20, "ICICI Prudential Liquid Fund-"),
+        SchemeRef(6749, 25, "Tata Retirement Savings Fund Progressive Plan", live=True),
+        SchemeRef(6751, 25, "Tata Retirement Savings Fund-Progressive Plan", live=True),
+    ]
+    _, names = scheme_keys(schemes, {})
+    assert join_by_name(names, "ICICI Prudential Liquid Fund") == 1555
+    assert join_by_name(names, "TATA RETIREMENT SAVINGS FUND-PROGRESSIVE PLAN") is None
+
+
 def test_a_name_two_schemes_share_joins_neither() -> None:
     schemes = [SchemeRef(1, 9, "Alpha Fund"), SchemeRef(2, 9, "ALPHA  fund"), SchemeRef(3, 9, "B")]
     codes, names = scheme_keys(schemes, {3: "ABC / O / 1"})
