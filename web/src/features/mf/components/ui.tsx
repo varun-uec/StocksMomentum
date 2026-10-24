@@ -71,15 +71,15 @@ export function PageHeader({ title, lead, actions, eyebrow }: { title: ReactNode
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-mf-brand text-mf-on-brand hover:bg-mf-brand-strong border border-transparent',
-  secondary: 'bg-mf-surface text-mf-ink border border-mf-line-strong hover:bg-mf-sunken',
+  primary: 'bg-gradient-to-b from-mf-brand-alt to-mf-brand text-mf-on-brand border border-mf-brand-strong/30 shadow-card hover:to-mf-brand-strong hover:shadow-raised',
+  secondary: 'bg-mf-surface text-mf-ink border border-mf-line-strong shadow-card hover:border-mf-brand/50 hover:text-mf-brand-strong',
   ghost: 'bg-transparent text-mf-ink-soft border border-transparent hover:bg-mf-sunken',
   danger: 'bg-mf-surface text-mf-loss border border-mf-line-strong hover:bg-mf-loss-soft',
 };
 
 export function buttonClass(variant: Variant = 'secondary', size: 'sm' | 'md' = 'md') {
   return cx(
-    'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+    'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50',
     size === 'sm' ? 'mf-tap h-8 px-2.5 text-[13px]' : 'mf-tap h-10 px-4 text-sm',
     VARIANTS[variant],
   );
@@ -110,7 +110,7 @@ export function Chip({
 }) {
   const base = cx(
     'mf-tap inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150',
-    pressed ? 'border-mf-brand bg-mf-brand-soft text-mf-brand-strong' : 'border-mf-line-strong bg-mf-surface text-mf-ink-soft hover:bg-mf-sunken',
+    pressed ? 'border-mf-brand bg-mf-brand font-medium text-mf-on-brand shadow-card' : 'border-mf-line-strong bg-mf-surface text-mf-ink-soft hover:border-mf-brand/50 hover:text-mf-brand-strong',
     className,
   );
   if (onRemove)
@@ -187,8 +187,8 @@ export function TabLinks({ label, tabs, active }: { label: string; tabs: { id: s
               to={t.to}
               aria-current={t.id === active ? 'page' : undefined}
               className={cx(
-                '-mb-px inline-flex h-11 items-center border-b-2 px-3 text-sm font-medium transition-colors duration-150',
-                t.id === active ? 'border-mf-brand text-mf-brand-strong' : 'border-transparent text-mf-muted hover:text-mf-ink',
+                '-mb-px inline-flex h-11 items-center border-b-[3px] px-3 text-sm transition-colors duration-150',
+                t.id === active ? 'border-mf-brand font-semibold text-mf-ink' : 'border-transparent font-medium text-mf-muted hover:border-mf-line-strong hover:text-mf-ink',
               )}
             >
               {t.label}
@@ -260,7 +260,7 @@ export function Stat({
   help?: ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-[12px] border border-mf-line bg-mf-surface px-4 py-3">
+    <div className="mf-lift min-w-0 rounded-[12px] border border-mf-line bg-mf-surface px-4 py-3">
       <div className="flex items-center gap-1 text-xs text-mf-muted">
         {label}
         {help && <InfoTip label={typeof label === 'string' ? label : 'About this value'}>{help}</InfoTip>}
@@ -314,7 +314,7 @@ export function Meter({ value, label }: { value: number | null | undefined; labe
   const v = typeof value === 'number' ? Math.max(0, Math.min(100, value)) : null;
   return (
     <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={v ?? undefined} className="h-1.5 w-full overflow-hidden rounded-full bg-mf-sunken">
-      {v !== null && <div className="h-full rounded-full bg-mf-brand transition-[width] duration-300" style={{ width: `${v}%` }} />}
+      {v !== null && <div className="h-full rounded-full bg-gradient-to-r from-mf-brand to-mf-brand-alt transition-[width] duration-300" style={{ width: `${v}%` }} />}
     </div>
   );
 }

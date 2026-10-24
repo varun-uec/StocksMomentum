@@ -4,7 +4,7 @@
  * stock workstation's chrome. The palette comes from theme/themes.ts; light and
  * dark follow the app-wide theme setting.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { useTheme, type ThemeMode } from '@/app/theme-provider';
 import { DEFAULT_THEME, THEMES, themeCss, type ThemeId } from '../theme/themes';
@@ -69,7 +69,7 @@ function RailLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
   const className = (isActive: boolean) =>
     cx(
       'flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm transition-colors duration-150',
-      isActive ? 'bg-mf-brand-soft font-medium text-mf-brand-strong' : 'text-mf-ink-soft hover:bg-mf-sunken hover:text-mf-ink',
+      isActive ? 'bg-mf-brand-soft font-semibold text-mf-brand-strong shadow-[inset_3px_0_0_rgb(var(--mf-brand))]' : 'text-mf-ink-soft hover:bg-mf-sunken hover:text-mf-ink',
     );
   const body = (
     <>
@@ -92,11 +92,20 @@ function RailLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
 }
 
 function Wordmark() {
+  // Unique per copy: a gradient defined inside a hidden copy would not paint the other.
+  const gradient = useId();
   return (
     <Link to="/mf" className="flex items-center gap-2 rounded-[8px] px-1" aria-label="Wickstreet mutual funds, home">
       <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true">
-        <rect width="32" height="32" rx="9" className="fill-mf-brand" />
+        <defs>
+          <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="rgb(var(--mf-brand-alt))" />
+            <stop offset="1" stopColor="rgb(var(--mf-brand-strong))" />
+          </linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="9" fill={`url(#${gradient})`} />
         <path d="M7 10l3.6 12L14 13l2 6 2-6 3.4 9L25 10" fill="none" className="stroke-mf-on-brand" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="25" cy="10" r="2.6" className="fill-mf-accent" />
       </svg>
       <span className="font-display text-[21px] leading-none text-mf-ink">Wickstreet</span>
     </Link>

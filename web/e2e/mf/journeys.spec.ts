@@ -181,10 +181,10 @@ test.describe('theme and layout', () => {
     await page.goto('/mf');
     await expect(page.locator('.mf-root')).toBeVisible();
     const brand = () => page.evaluate(() => getComputedStyle(document.querySelector('.mf-root')!).getPropertyValue('--mf-brand').trim());
-    expect(await brand()).toBe('23 107 85');
+    expect(await brand()).toBe('4 120 87');
     await page.getByRole('button', { name: 'Use dark theme' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
-    expect(await brand()).toBe('131 209 179');
+    expect(await brand()).toBe('52 211 153');
     await page.getByRole('button', { name: 'Appearance', exact: true }).click();
     await page.getByRole('radio', { name: 'Monsoon' }).check();
     expect(await brand()).toBe('147 182 238');

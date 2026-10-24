@@ -1,13 +1,14 @@
 /* MF workstation base styles. Every colour reads a --mf-* variable from theme/themes.ts. */
 .mf-root {
   min-height: 100dvh;
-  background: rgb(var(--mf-paper));
+  /* A soft brand glow at the top of every page; flat paper below. */
+  background: radial-gradient(1100px 520px at 85% -12%, rgb(var(--mf-hero-from) / 0.7), transparent 65%), rgb(var(--mf-paper));
   color: rgb(var(--mf-ink));
   font-family: var(--mf-font-sans);
   font-feature-settings: 'cv11', 'ss01', 'tnum';
   -webkit-font-smoothing: antialiased;
 }
-.mf-root .font-display { font-family: var(--mf-font-display); font-weight: 500; letter-spacing: -0.01em; }
+.mf-root .font-display { font-family: var(--mf-font-display); font-weight: 600; letter-spacing: -0.015em; }
 .mf-root :focus-visible { outline: 3px solid rgb(var(--mf-focus)); outline-offset: 2px; border-radius: 6px; }
 .mf-root ::selection { background: rgb(var(--mf-brand-soft)); }
 .mf-root .tabular { font-variant-numeric: tabular-nums; }
@@ -16,6 +17,11 @@
 /* Scroll areas: thin, theme-coloured. Positioned, so an absolute child (an sr-only label) is clipped with them. */
 .mf-root .mf-scroll { scrollbar-width: thin; scrollbar-color: rgb(var(--mf-line-strong)) transparent; }
 .mf-root :is(.overflow-x-auto, .overflow-auto):not(.absolute):not(.fixed) { position: relative; }
+
+/* Hover lift for tiles and clickable cards; none under reduced motion. */
+.mf-root .mf-lift { transition: transform 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms; }
+.mf-root .mf-lift:hover { transform: translateY(-2px); box-shadow: var(--mf-shadow-raised); border-color: rgb(var(--mf-line-strong)); }
+@media (prefers-reduced-motion: reduce) { .mf-root .mf-lift:hover { transform: none; } }
 
 /* Entry motion: short, and off under prefers-reduced-motion (globals.css). */
 @keyframes mf-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

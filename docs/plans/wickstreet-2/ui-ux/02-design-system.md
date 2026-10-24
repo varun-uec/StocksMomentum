@@ -2,7 +2,9 @@
 
 ## Visual direction
 
-**Paper, ink and a living margin.** Warm paper surfaces, crisp ink, a deep sea-green accent, editorial headings and disciplined numeric tables. Use whitespace and typography instead of a field of decorative dashboard boxes. Botanical linework may appear in empty discovery states; charts never carry decorative illustrations. The desktop hero is a compact invitation to research, not a marketing billboard. Original components are informed by consumer simplicity and analytical tools; no competitor assets or copied layouts.
+**Clear paper, deep ink, a vivid emerald and a saffron spark** (refreshed 2026-10-24). Cool paper surfaces, deep ink, emerald for action and gain, saffron for highlights, editorial serif headings and disciplined numeric tables. A soft emerald glow sits at the top of each page; cards lift slightly on hover. Charts never carry decorative illustrations. The fund page opens as a dossier: growth chart and dated key facts first. Original components; no competitor assets or copied layouts.
+
+`web/src/features/mf/theme/themes.ts` is the source of truth. The table below summarises it; `themes.test.ts` checks every text role at WCAG AA on surface, paper and sunken in both themes.
 
 ## Product-wide interaction rule
 
@@ -12,21 +14,26 @@
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `paper` | `#F6F5F0` | `#12221E` | Page |
-| `surface` | `#FFFFFF` | `#192D27` | Cards, tables, dialogs |
-| `ink` | `#172D27` | `#EEF4EF` | Primary text |
-| `muted` | `#53675E` | `#B5C6BC` | Secondary text; never the only state indicator |
-| `line` | `#D6DED5` | `#3A5045` | Dividers/grid; controls also have clear labels/outlines |
-| `accent` | `#176B55` | `#83D1B3` | Primary action and evidence highlights |
-| `accent-soft` | `#E3EFE7` | `#233F32` | Selected background |
-| `warning` | `#84581E` | `#F0C47B` | Cautions and partial coverage |
-| `loss` | `#A64340` | `#FFAAA3` | Negative returns with minus sign/text |
-| `info` | `#3C6380` | `#A5CBE5` | Context or planned dependencies |
-| `focus` | `#176B55` | `#A2E5CB` | 3 px focus ring, 3 px offset |
+| `paper` | `#F3F6F4` | `#08130F` | Page |
+| `surface` | `#FFFFFF` | `#0F1E19` | Cards, tables, dialogs |
+| `ink` | `#0D1F1A` | `#EAF5F0` | Primary text |
+| `muted` | `#56685F` | `#98AFA5` | Secondary text; never the only state indicator |
+| `line` | `#DFE7E2` | `#1F322B` | Dividers/grid; controls also have clear labels/outlines |
+| `brand` | `#047857` | `#34D399` | Primary action and evidence highlights |
+| `brand-soft` | `#D9F2E6` | `#0F3A2C` | Selected background |
+| `accent` | `#E8890C` | `#F5A524` | Saffron highlight: fills, markers, hero glow; never body text |
+| `accent-ink` | `#8A4B00` | `#FBBF4D` | Saffron text on `accent-soft` |
+| `gain` | `#0F7A45` | `#4ADE80` | Positive returns with plus sign |
+| `loss` | `#C0312B` | `#FF8578` | Negative returns with minus sign/text |
+| `warning` | `#965400` | `#FBBF4D` | Cautions and partial coverage |
+| `info` | `#2C5BA6` | `#8FB8F7` | Context or planned dependencies |
+| `focus` | `#047857` | `#6EE7B7` | 3 px focus ring, 2 px offset |
+
+Radii 10 (controls), 16 (cards), 20 (dialogs). Shadows are ink-tinted in light and deeper in dark (`shadows.light`, `shadows.dark`).
 
 Do not override global `--ws-*` tokens until regression-tested. Scope these under an MF root and map reusable primitives deliberately. Target WCAG 2.2 AA: 4.5:1 body text, 3:1 large text and meaningful chart/control strokes. Muted text must pass against its actual surface; measure the delivered palette in both themes. Planned badges always say “Planned”; colour alone communicates nothing.
 
-**Charts:** sea green `#176B55`, ochre `#976320`, violet `#655A9B`, blue `#356C8A`, rose `#A34B65`. Up to five distinguishable funds, with direct labels and solid/dashed/dotted patterns. Keep series identity stable when a fund is removed. Use a zero line on return plots and a visible benchmark label.
+**Charts:** emerald `#047857`, saffron `#E8890C`, indigo `#5B5BD6`, sky `#1D8BC4`, rose `#D6457A` (dark: `#34D399`, `#F5A524`, `#A5A3FF`, `#6CC4F0`, `#F589B0`). Up to five distinguishable funds, with direct labels and solid/dashed/dotted patterns. Keep series identity stable when a fund is removed. Use a zero line on return plots and a visible benchmark label.
 
 ## Typography and geometry
 

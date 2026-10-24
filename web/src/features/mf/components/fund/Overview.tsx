@@ -1,17 +1,20 @@
 /**
- * Fund overview (ui-ux doc 03 §03): three balanced evidence statements, the score
- * with its three equal parts, key metrics by window, essentials, then the growth
- * journey and the rolling distribution. A high score never hides a recent loss.
+ * Fund overview (ui-ux doc 03 §03): a first-screen dossier. The growth chart and the
+ * dated key facts (cost, size, risk, benchmark, managers, portfolio) come first; then
+ * what happened, three balanced evidence statements, the score with its three equal
+ * parts, key metrics by window, the rolling distribution and essentials. A high score
+ * never hides a recent loss.
  */
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { FundDetail, Metrics } from '../../api';
 import { categoryShort, date, formatField, isNum, missingLabel, pct } from '../../format';
 import { Link } from 'react-router';
-import { useDrawdowns, useFundRegimes, useScore } from '../../queries';
+import { useDrawdowns, useFundRegimes, useHoldings, useProfile, useScore } from '../../queries';
 import { fallVerdict, recentVerdict } from '../../verdicts';
 import { ScoreRing } from '../ScoreBadge';
 import { I } from '../icons';
 import { Badge, Card, Delta, DependencyPanel, ErrorState, InfoTip, Meter, Segmented, Skeleton, cx } from '../ui';
+import { ShareBar } from './Holdings';
 import { GrowthChart, MetricTile, RollingDistribution, type FundTabProps } from './shared';
 
 const PART_LABELS: Record<string, string> = {
@@ -112,18 +115,14 @@ function Evidence({ metrics, fields }: Pick<FundTabProps, 'metrics' | 'fields'>)
   );
 }
 
-/** The verdict line and the three numbers a first-time investor asks for (audit U-02, U-13). */
+/** The score and the three numbers a first-time investor asks for, in one row (audit U-02, U-13). */
 export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics }) {
   const score = useScore(code);
-  const regimes = useFundRegimes(code);
-  const drawdowns = useDrawdowns(code);
-  const verdict = regimes.data && drawdowns.data ? fallVerdict(regimes.data.windows, drawdowns.data.drawdowns) : null;
-  const recent = recentVerdict(metrics.values);
   const v = metrics.values;
   const category = categoryShort(String(v.category));
   const s = score.data;
   return (
-    <div className="mt-2 grid gap-2 border-t border-mf-line pt-2 sm:mt-5 sm:gap-4 sm:pt-4 md:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+    <div className="mt-2 flex flex-col gap-2 border-t border-mf-line pt-2 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pt-4">
       <div className="flex items-center gap-2 sm:gap-3">
         <span className="sm:hidden"><ScoreRing score={s?.score} size={44} /></span>
         <span className="hidden sm:inline-flex"><ScoreRing score={s?.score} /></span>
@@ -134,10 +133,40 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
           <Link to="?tab=peers" className="text-xs font-medium text-mf-brand hover:underline">How it ranks</Link>
         </div>
       </div>
-      <div className="hidden space-y-2 text-[14px] leading-relaxed text-mf-ink-soft sm:text-[15px] md:order-none md:block" data-testid="fund-verdict">
+      {/* On phones the three numbers stay on one line, so they fit the first screen. */}
+      <p className="text-xs font-medium tabular text-mf-ink-soft sm:hidden">
+        1Y {isNum(v.ret_1y) ? <Delta value={v.ret_1y} /> : '—'}
+        <span className="mx-1 text-mf-muted">·</span>3Y {isNum(v.cagr_3y) ? <Delta value={v.cagr_3y} /> : '—'}
+        <span className="mx-1 text-mf-muted">·</span>Worst 3Y {isNum(v.mdd_3y) ? <Delta value={v.mdd_3y} /> : '—'}
+      </p>
+      <dl className="hidden grid-cols-3 gap-2 text-center sm:grid sm:w-[360px]">
+        {[
+          ['1Y return', v.ret_1y, 'ret_1y'],
+          ['3Y CAGR', v.cagr_3y, 'cagr_3y'],
+          ['Worst 3Y fall', v.mdd_3y, 'mdd_3y'],
+        ].map(([label, value, id]) => (
+          <div key={String(id)} className="rounded-[12px] bg-mf-surface/85 px-2 py-2.5 shadow-card ring-1 ring-mf-line">
+            <dt className="text-[11px] text-mf-muted">{String(label)}</dt>
+            <dd className="mt-0.5 text-lg font-semibold">{isNum(value) ? <Delta value={value} /> : <span className="text-mf-muted" title={missingLabel(metrics.states[String(id)])}>—</span>}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** What happened: the recent year and the deepest market fall the fund lived through. */
+function Verdict({ code, metrics }: { code: string; metrics: Metrics }) {
+  const regimes = useFundRegimes(code);
+  const drawdowns = useDrawdowns(code);
+  const verdict = regimes.data && drawdowns.data ? fallVerdict(regimes.data.windows, drawdowns.data.drawdowns) : null;
+  const recent = recentVerdict(metrics.values);
+  return (
+    <Card title="What happened" subtitle="In plain words, from the NAV record">
+      <div className="space-y-2 text-[15px] leading-relaxed text-mf-ink-soft" data-testid="fund-verdict">
         {recent && (
           <p>
-            <span className="mr-1.5 inline-block rounded-full bg-mf-sunken px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-mf-muted">Recent</span>
+            <span className="mr-1.5 inline-block rounded-full bg-mf-accent-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-mf-accent-ink">Recent</span>
             {recent}
           </p>
         )}
@@ -155,25 +184,113 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
           <p>This fund has no NAV in a market-proxy fall window yet, so there is no fall to read.</p>
         )}
       </div>
-      {/* On phones the three numbers come before the narrative, so they stay on the first screen. */}
-      <p className="order-1 text-xs font-medium tabular text-mf-ink-soft sm:hidden">
-        1Y {isNum(v.ret_1y) ? <Delta value={v.ret_1y} /> : '—'}
-        <span className="mx-1 text-mf-muted">·</span>3Y {isNum(v.cagr_3y) ? <Delta value={v.cagr_3y} /> : '—'}
-        <span className="mx-1 text-mf-muted">·</span>Worst 3Y {isNum(v.mdd_3y) ? <Delta value={v.mdd_3y} /> : '—'}
-      </p>
-      <dl className="hidden grid-cols-3 gap-2 text-center sm:order-none sm:grid md:col-span-2 lg:col-span-1 lg:w-[300px]">
-        {[
-          ['1Y return', v.ret_1y, 'ret_1y'],
-          ['3Y CAGR', v.cagr_3y, 'cagr_3y'],
-          ['Worst 3Y fall', v.mdd_3y, 'mdd_3y'],
-        ].map(([label, value, id]) => (
-          <div key={String(id)} className="rounded-[12px] bg-mf-surface/80 px-2 py-2 ring-1 ring-mf-line">
-            <dt className="text-[11px] text-mf-muted">{String(label)}</dt>
-            <dd className="mt-0.5 text-base font-semibold">{isNum(value) ? <Delta value={value} /> : <span className="text-mf-muted" title={missingLabel(metrics.states[String(id)])}>—</span>}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+    </Card>
+  );
+}
+
+/** One fact: a label, the value, what it means, and where and when it was filed. */
+function Fact({ label, value, sub, source, to }: { label: string; value: ReactNode; sub?: ReactNode; source?: string; to?: string }) {
+  const body = (
+    <>
+      <dt className="text-xs font-medium text-mf-muted">{label}</dt>
+      <dd className="mt-0.5 text-[15px] font-semibold leading-snug text-mf-ink">{value}</dd>
+      {sub && <dd className="mt-0.5 text-xs leading-snug text-mf-ink-soft">{sub}</dd>}
+      {source && <dd className="mt-1 text-[11px] text-mf-muted">{source}</dd>}
+    </>
+  );
+  return to ? (
+    <Link to={to} className="mf-lift block rounded-[12px] border border-mf-line bg-mf-surface px-3.5 py-3 hover:border-mf-brand/40">
+      <dl>{body}</dl>
+    </Link>
+  ) : (
+    <dl className="rounded-[12px] border border-mf-line bg-mf-surface px-3.5 py-3">{body}</dl>
+  );
+}
+
+/**
+ * Key facts for the first screen (live assessment 2026-10-24, reasons 3 and 6): cost,
+ * size, risk, benchmark, managers and the latest portfolio, each with its filing date.
+ * A missing value says why; it never disappears.
+ */
+export function KeyFacts({ code, metrics }: { code: string; metrics: Metrics }) {
+  const profile = useProfile(code);
+  const holdings = useHoldings(code);
+  const v = metrics.values;
+  const why = (id: string) => missingLabel(metrics.states[id]);
+  const managers = profile.data?.managers ?? [];
+  const h = holdings.data;
+  const top = h?.lines?.[0];
+  const sector = Object.entries(h?.summary?.sectors ?? {}).sort((a, b) => b[1] - a[1])[0];
+  const mix: [string, number][] = [
+    ['Equity', v.equity_share],
+    ['Debt', v.debt_share],
+    ['Cash', v.cash_share],
+  ].filter((p): p is [string, number] => isNum(p[1]));
+  return (
+    <Card
+      title="Key facts"
+      subtitle="Latest filings, each with its date"
+      action={
+        <Link to="?tab=facts" className="text-xs font-medium text-mf-brand hover:underline">
+          All facts and costs
+        </Link>
+      }
+    >
+      <div className="grid grid-cols-2 gap-2.5">
+        <Fact
+          label="Expense ratio"
+          value={isNum(v.ter) ? `${pct(v.ter, 2)} a year` : why('ter')}
+          sub={isNum(v.ter_cat_pct) ? `Cheaper than ${Math.round(v.ter_cat_pct)}% of peers` : undefined}
+          source={isNum(v.ter) ? `AMFI as of ${date(v.ter_as_of)}` : undefined}
+          to="?tab=facts"
+        />
+        <Fact
+          label="Fund size (AUM)"
+          value={isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : why('aum_cr')}
+          sub={isNum(v.aum_change_1y) ? `${pct(v.aum_change_1y, 1, true)} in a year` : undefined}
+          source={isNum(v.aum_cr) ? `AMFI as of ${date(v.aum_as_of)}` : undefined}
+          to="?tab=facts"
+        />
+        <Fact
+          label="Riskometer"
+          value={typeof v.riskometer === 'string' ? v.riskometer : why('riskometer')}
+          sub={isNum(v.riskometer_level) ? `Level ${v.riskometer_level} of 6` : undefined}
+          source={profile.data?.riskometer_as_of ? `AMFI as of ${date(profile.data.riskometer_as_of)}` : undefined}
+        />
+        <Fact
+          label="Benchmark"
+          value={typeof v.benchmark === 'string' ? v.benchmark : why('benchmark')}
+          sub={isNum(v.excess_3y) ? `${pct(v.excess_3y, 1, true)} a year over it, 3Y` : undefined}
+          source={typeof v.perf_as_of === 'string' ? `Tier 1, AMFI report of ${date(v.perf_as_of)}` : undefined}
+          to="?tab=benchmark"
+        />
+        <Fact
+          label={managers.length > 1 ? `Fund managers (${managers.length})` : 'Fund manager'}
+          value={managers.length ? managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '') : profile.isLoading ? <Skeleton className="h-5 w-32" /> : 'Not filed'}
+          sub={
+            managers.length > 1
+              ? `and ${managers.length - 1} more · longest tenure ${Math.max(...managers.map((m) => m.years)).toFixed(1)} yrs`
+              : managers.length
+                ? `Since ${date(managers[0].since)}`
+                : undefined
+          }
+          source={managers.length ? 'Start dates as filed' : undefined}
+          to="?tab=facts"
+        />
+        <Fact
+          label="Portfolio"
+          value={isNum(v.top10_weight) ? `Top 10: ${pct(v.top10_weight)}` : why('top10_weight')}
+          sub={top ? `Largest: ${top.name.replace(/ (Limited|Ltd\.?)$/, '')} ${pct(top.weight)}${sector ? ` · ${sector[0]} ${pct(sector[1])} of equity` : ''}` : undefined}
+          source={typeof v.holdings_as_of === 'string' ? `Portfolio of ${date(v.holdings_as_of)}, as filed` : undefined}
+          to="?tab=holdings"
+        />
+      </div>
+      {mix.length > 0 && (
+        <div className="mt-3">
+          <ShareBar label="Asset mix" parts={mix} />
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -246,7 +363,6 @@ function KeyMetrics({ metrics, fields }: Pick<FundTabProps, 'metrics' | 'fields'
 
 export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: Metrics }) {
   const f = detail.fund;
-  const v = metrics.values;
   const rows: [string, string][] = [
     ['Fund house', f.amc],
     ['Category', f.category],
@@ -267,22 +383,6 @@ export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: M
           </div>
         ))}
       </dl>
-      <dl className="mt-4 space-y-2.5 border-t border-mf-line pt-4 text-sm">
-        {[
-          ['Expense ratio', isNum(v.ter) ? `${pct(v.ter, 2)} a year${isNum(v.ter_cat_pct) ? ` · cheaper than ${Math.round(v.ter_cat_pct)}% of peers` : ''}` : missingLabel(metrics.states.ter)],
-          ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : missingLabel(metrics.states.aum_cr)],
-          ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : missingLabel(metrics.states.benchmark)],
-          ['Riskometer', typeof v.riskometer === 'string' ? v.riskometer : missingLabel(metrics.states.riskometer)],
-        ].map(([k, value]) => (
-          <div key={k}>
-            <dt className="text-xs text-mf-muted">{k}</dt>
-            <dd className="break-words text-mf-ink">{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <Link to="?tab=facts" className="mt-3 inline-flex text-xs font-medium text-mf-brand-strong hover:underline">
-        Costs, managers and exit load
-      </Link>
       {metrics.values.status !== 'active' && (
         <div className="mt-4">
           <DependencyPanel title="Historical plan" needs="a current NAV">
@@ -297,17 +397,19 @@ export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: M
 export function Overview({ code, metrics, fields, detail }: FundTabProps & { detail: FundDetail }) {
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
-      <div className="order-2 lg:order-1"><Evidence metrics={metrics} fields={fields} /></div>
-      <div className="order-3 grid items-start gap-6 lg:order-2 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
-        <ScoreCard code={code} metrics={metrics} />
-        <div className="lg:col-span-2 xl:col-span-1">
-          <KeyMetrics metrics={metrics} fields={fields} />
-        </div>
-        <Essentials detail={detail} metrics={metrics} />
+      <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <GrowthChart code={code} metrics={metrics} height={300} />
+        <KeyFacts code={code} metrics={metrics} />
       </div>
-      <div className="order-1 grid items-start gap-6 lg:order-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <GrowthChart code={code} metrics={metrics} />
+      <Verdict code={code} metrics={metrics} />
+      <Evidence metrics={metrics} fields={fields} />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <ScoreCard code={code} metrics={metrics} />
+        <KeyMetrics metrics={metrics} fields={fields} />
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <RollingDistribution code={code} metrics={metrics} fields={fields} />
+        <Essentials detail={detail} metrics={metrics} />
       </div>
     </div>
   );

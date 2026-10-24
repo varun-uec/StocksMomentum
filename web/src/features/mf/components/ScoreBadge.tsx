@@ -29,19 +29,21 @@ export function ScoreBadge({ score, size = 'md' }: { score: number | null | unde
 /** The score as a ring, for a fund's headline: the arc fills to the score out of 100. */
 export function ScoreRing({ score, size = 76 }: { score: number | null | undefined; size?: number }) {
   const has = typeof score === 'number' && Number.isFinite(score);
-  const r = size / 2 - 6;
+  // Stroke and text scale with the ring, so a small ring keeps its number inside.
+  const stroke = Math.max(4, Math.round(size * 0.09));
+  const r = size / 2 - stroke / 2 - 2;
   const length = 2 * Math.PI * r;
   return (
     <span className="relative inline-grid shrink-0 place-items-center" style={{ width: size, height: size }} role="img" aria-label={has ? `Score ${Math.round(score)} of 100` : 'No score'}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={7} className="stroke-mf-sunken" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-mf-sunken" />
         {has && (
           <circle
             cx={size / 2}
             cy={size / 2}
             r={r}
             fill="none"
-            strokeWidth={7}
+            strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${(length * Math.max(0, Math.min(100, score))) / 100} ${length}`}
             className={cx('transition-[stroke-dasharray] duration-700', score >= 50 ? 'stroke-mf-brand' : 'stroke-mf-warning')}
@@ -50,8 +52,8 @@ export function ScoreRing({ score, size = 76 }: { score: number | null | undefin
       </svg>
       <span className="absolute inset-0 grid place-items-center text-center leading-none" aria-hidden="true">
         <span>
-          <span className="block text-[22px] font-semibold tabular text-mf-ink">{has ? Math.round(score) : '—'}</span>
-          <span className="text-[10px] text-mf-muted">/100</span>
+          <span className="block font-semibold tabular text-mf-ink" style={{ fontSize: Math.round(size * 0.3) }}>{has ? Math.round(score) : '—'}</span>
+          {size >= 60 && <span className="text-[10px] text-mf-muted">/100</span>}
         </span>
       </span>
     </span>

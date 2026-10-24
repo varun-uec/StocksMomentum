@@ -26,6 +26,9 @@ export interface ColorTokens {
   brandAlt: string; // second brand colour (sea green)
   heroFrom: string; // hero wash, top
   heroTo: string; // hero wash, bottom
+  accent: string; // warm highlight: fills, markers, the hero glow; never body text
+  accentSoft: string; // accent background behind ink text
+  accentInk: string; // accent-coloured text
   // Semantic
   gain: string;
   loss: string;
@@ -52,74 +55,84 @@ export interface Theme {
   dark: ColorTokens;
 }
 
-/** Paper and ink with forest-green and sea-green accents (ui-ux doc 02). */
+/**
+ * Wickstreet: clear paper, deep ink, a vivid emerald for action and gain, and a
+ * saffron accent for highlights (ui-ux doc 02, 2026-10-24 refresh). Every text
+ * role meets WCAG AA on surface, paper and sunken (themes.test.ts checks it).
+ */
 const paperAndInk: Theme = {
-  label: 'Paper & ink',
+  label: 'Wickstreet',
   light: {
-    paper: '#F6F5F0',
+    paper: '#F3F6F4',
     surface: '#FFFFFF',
-    sunken: '#F0EFE8',
-    ink: '#172D27',
-    inkSoft: '#34483F',
-    muted: '#53675E',
-    line: '#E2E5DD',
-    lineStrong: '#C9D2C7',
-    brand: '#176B55',
-    brandStrong: '#0F5543',
-    brandSoft: '#E3EFE7',
+    sunken: '#ECF1EE',
+    ink: '#0D1F1A',
+    inkSoft: '#2B3F38',
+    muted: '#56685F',
+    line: '#DFE7E2',
+    lineStrong: '#C2CFC8',
+    brand: '#047857',
+    brandStrong: '#065F46',
+    brandSoft: '#D9F2E6',
     onBrand: '#FFFFFF',
-    brandAlt: '#2E8B74',
-    heroFrom: '#EEF3EC',
-    heroTo: '#F8F7F2',
-    gain: '#176B55',
-    loss: '#A64340',
-    lossSoft: '#F7E6E3',
-    warning: '#84581E',
-    warningSoft: '#F6ECDC',
-    info: '#3C6380',
-    infoSoft: '#E5EDF3',
-    focus: '#176B55',
-    scrim: '#0A1410',
-    chart1: '#176B55',
-    chart2: '#976320',
-    chart3: '#655A9B',
-    chart4: '#356C8A',
-    chart5: '#A34B65',
-    chartBand: '#9CCDB8',
-    chartGrid: '#E6E8E1',
+    brandAlt: '#10A37F',
+    heroFrom: '#D6F0E4',
+    heroTo: '#F3F6F4',
+    accent: '#E8890C',
+    accentSoft: '#FFF1DC',
+    accentInk: '#8A4B00',
+    gain: '#0F7A45',
+    loss: '#C0312B',
+    lossSoft: '#FDE8E6',
+    warning: '#965400',
+    warningSoft: '#FDF0D9',
+    info: '#2C5BA6',
+    infoSoft: '#E5EDFA',
+    focus: '#047857',
+    scrim: '#06110D',
+    chart1: '#047857',
+    chart2: '#E8890C',
+    chart3: '#5B5BD6',
+    chart4: '#1D8BC4',
+    chart5: '#D6457A',
+    chartBand: '#A7E3C9',
+    chartGrid: '#E6ECE8',
   },
   dark: {
-    paper: '#0F1C18',
-    surface: '#162722',
-    sunken: '#12211D',
-    ink: '#EEF4EF',
-    inkSoft: '#D2DED6',
-    muted: '#AFC2B7',
-    line: '#2A3F37',
-    lineStrong: '#3A5045',
-    brand: '#83D1B3',
-    brandStrong: '#A2E5CB',
-    brandSoft: '#1F3C31',
-    onBrand: '#0B1915',
-    brandAlt: '#5DBB9C',
-    heroFrom: '#17302A',
-    heroTo: '#0F1C18',
-    gain: '#83D1B3',
-    loss: '#FFAAA3',
-    lossSoft: '#3A2422',
-    warning: '#F0C47B',
-    warningSoft: '#3A2F1C',
-    info: '#A5CBE5',
-    infoSoft: '#1E3140',
-    focus: '#A2E5CB',
+    paper: '#08130F',
+    surface: '#0F1E19',
+    sunken: '#0B1814',
+    ink: '#EAF5F0',
+    inkSoft: '#C6D8D0',
+    muted: '#98AFA5',
+    line: '#1F322B',
+    lineStrong: '#30483F',
+    brand: '#34D399',
+    brandStrong: '#6EE7B7',
+    brandSoft: '#0F3A2C',
+    onBrand: '#03130D',
+    brandAlt: '#2BB88A',
+    heroFrom: '#0F3A2C',
+    heroTo: '#08130F',
+    accent: '#F5A524',
+    accentSoft: '#3A2A10',
+    accentInk: '#FBBF4D',
+    gain: '#4ADE80',
+    loss: '#FF8578',
+    lossSoft: '#3A1C19',
+    warning: '#FBBF4D',
+    warningSoft: '#3A2C12',
+    info: '#8FB8F7',
+    infoSoft: '#172846',
+    focus: '#6EE7B7',
     scrim: '#000000',
-    chart1: '#83D1B3',
-    chart2: '#E0B061',
-    chart3: '#B4A9EE',
-    chart4: '#86BFE0',
-    chart5: '#EE9AB4',
-    chartBand: '#2F6B57',
-    chartGrid: '#233730',
+    chart1: '#34D399',
+    chart2: '#F5A524',
+    chart3: '#A5A3FF',
+    chart4: '#6CC4F0',
+    chart5: '#F589B0',
+    chartBand: '#1C5A46',
+    chartGrid: '#1A2C26',
   },
 };
 
@@ -177,11 +190,18 @@ export const typography = {
   sans: "'Inter Variable', ui-sans-serif, system-ui, sans-serif",
 } as const;
 
-export const radii = { control: '8px', card: '14px', dialog: '18px' } as const;
+export const radii = { control: '10px', card: '16px', dialog: '20px' } as const;
 
+/** Ink-tinted shadows in light; deeper, with a faint top edge, in dark. */
 export const shadows = {
-  card: '0 1px 2px rgb(16 32 26 / 0.04), 0 1px 1px rgb(16 32 26 / 0.03)',
-  raised: '0 12px 32px rgb(16 32 26 / 0.12), 0 2px 6px rgb(16 32 26 / 0.06)',
+  light: {
+    card: '0 1px 2px rgb(13 31 26 / 0.05), 0 6px 18px -10px rgb(13 31 26 / 0.12)',
+    raised: '0 22px 44px -18px rgb(13 31 26 / 0.28), 0 4px 10px rgb(13 31 26 / 0.06)',
+  },
+  dark: {
+    card: 'inset 0 1px 0 rgb(255 255 255 / 0.03), 0 8px 22px -12px rgb(0 0 0 / 0.7)',
+    raised: 'inset 0 1px 0 rgb(255 255 255 / 0.05), 0 26px 52px -18px rgb(0 0 0 / 0.8)',
+  },
 } as const;
 
 export const COLOR_ROLES = Object.keys(paperAndInk.light) as (keyof ColorTokens)[];
@@ -205,11 +225,11 @@ function declarations(tokens: ColorTokens): string {
 export function themeCss(theme: Theme): string {
   const shared =
     `--mf-font-display:${typography.display};--mf-font-sans:${typography.sans};` +
-    `--mf-radius-control:${radii.control};--mf-radius-card:${radii.card};--mf-radius-dialog:${radii.dialog};` +
-    `--mf-shadow-card:${shadows.card};--mf-shadow-raised:${shadows.raised};`;
+    `--mf-radius-control:${radii.control};--mf-radius-card:${radii.card};--mf-radius-dialog:${radii.dialog};`;
+  const shadow = (mode: 'light' | 'dark') => `--mf-shadow-card:${shadows[mode].card};--mf-shadow-raised:${shadows[mode].raised};`;
   return (
-    `.mf-root{color-scheme:light;${shared}${declarations(theme.light)}}` +
-    `.dark .mf-root{color-scheme:dark;${declarations(theme.dark)}}`
+    `.mf-root{color-scheme:light;${shared}${shadow('light')}${declarations(theme.light)}}` +
+    `.dark .mf-root{color-scheme:dark;${shadow('dark')}${declarations(theme.dark)}}`
   );
 }
 

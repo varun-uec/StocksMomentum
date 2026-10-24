@@ -172,7 +172,7 @@ export default function Fund() {
       </div>
 
       {tab === 'overview' ? (
-        <header className="order-1 relative overflow-hidden rounded-[20px] border border-mf-line p-3 shadow-card sm:p-6" style={{ background: `linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 65%)` }}>
+        <header className="order-1 relative overflow-hidden rounded-[20px] border border-mf-line p-3 shadow-card sm:p-6" style={{ background: `radial-gradient(420px 220px at 100% 0%, ${token('accent', 0.14)}, transparent 70%), linear-gradient(135deg, ${token('heroFrom')}, ${token('surface')} 62%)` }}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="flex min-w-0 items-start gap-3 sm:gap-4">
               <FundMark amc={f.amc} size="lg" className="hidden sm:inline-grid" />
