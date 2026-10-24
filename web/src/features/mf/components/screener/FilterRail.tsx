@@ -22,7 +22,7 @@ export const METRIC_AS_OF_FIELDS: Record<string, string> = {
 const UNIT_SUFFIX: Record<string, string> = { fraction: ' (%)', INR: ' (₹)', 'INR crore': ' (₹ cr)', days: ' (days)', years: ' (years)', percentile: ' (0–100)' };
 
 /** Minimum and maximum inputs; a number field also shows the snapshot's value range. */
-function RangeControl({ field, min, max, onChange }: { field: FieldDef; min: unknown; max: unknown; onChange: (control: BasicControl) => void }) {
+function RangeControl({ field, min, max, onChange, onScreen }: { field: FieldDef; min: unknown; max: unknown; onChange: (control: BasicControl) => void; onScreen?: { range: [number, number]; count: number } }) {
   const date = field.type === 'date';
   const shown = (v: unknown) => (v == null ? '' : date ? String(v) : String(fromApi(field, Number(v))));
   const [low, setLow] = useState(shown(min));
@@ -72,6 +72,7 @@ function RangeControl({ field, min, max, onChange }: { field: FieldDef; min: unk
       {input('Maximum', high, setHigh)}
       {inverted && <p className="col-span-2 text-xs text-mf-loss" role="alert">Minimum must be less than or equal to maximum. Results keep the last valid range.</p>}
       <p className="col-span-2 text-[11px] text-mf-muted">
+        {onScreen ? `The ${onScreen.count.toLocaleString('en-IN')} funds shown run from ${formatField(field, onScreen.range[0])} to ${formatField(field, onScreen.range[1])}. ` : ''}
         {field.range ? `All ${field.coverage.values.toLocaleString('en-IN')} plan options with a value run from ${formatField(field, field.range[0])} to ${formatField(field, field.range[1])}. ` : ''}
         Results update as you type. Leave both empty to keep all funds.
       </p>
@@ -103,7 +104,7 @@ function ValuesControl({ field, picked, onChange }: { field: FieldDef; picked: s
   );
 }
 
-function RefineControl({ field, control, onChange }: { field: FieldDef; control: BasicControl; onChange: (control: BasicControl) => void }) {
+function RefineControl({ field, control, onChange, shown }: { field: FieldDef; control: BasicControl; onChange: (control: BasicControl) => void; shown?: { range: [number, number]; count: number } }) {
   if (control.kind === 'values') return <ValuesControl field={field} picked={control.picked} onChange={onChange} />;
   if (control.kind === 'flag')
     return (
@@ -114,7 +115,7 @@ function RefineControl({ field, control, onChange }: { field: FieldDef; control:
         options={[{ value: 'any', label: 'Any' }, { value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]}
       />
     );
-  return <RangeControl field={field} min={control.min} max={control.max} onChange={onChange} />;
+  return <RangeControl field={field} min={control.min} max={control.max} onChange={onChange} onScreen={shown} />;
 }
 
 function MetricRow({
@@ -128,6 +129,7 @@ function MetricRow({
   onAdvanced,
   open,
   onOpenToggle,
+  shownRange,
 }: {
   field: FieldDef;
   shown: boolean;
@@ -139,6 +141,7 @@ function MetricRow({
   onAdvanced: () => void;
   open: boolean;
   onOpenToggle: (field: FieldDef) => void;
+  shownRange?: { range: [number, number]; count: number };
 }) {
   const control = basicControl(field, conditions);
   const own = conditions.filter((n): n is Condition => isCondition(n) && n.field === field.id);
@@ -181,7 +184,7 @@ function MetricRow({
       {open && (
         <div className="pb-3 pl-7 pr-1" aria-label={`${field.label} filter`} role="group">
           {control ? (
-            <RefineControl field={field} control={control} onChange={(next) => onConditionChange(field, basicCondition(field, next))} />
+            <RefineControl field={field} control={control} shown={shownRange} onChange={(next) => onConditionChange(field, basicCondition(field, next))} />
           ) : own.length ? (
             <p className="text-xs text-mf-ink-soft">
               {own.map((c) => describe(c, new Map([[field.id, field]]), valueLabel)).join('; ')}.{' '}
@@ -208,6 +211,8 @@ export function FilterRail({
   onEditField,
   openField,
   onOpenField,
+  shownRanges,
+  matched,
   mode,
   onModeChange,
   maxColumns,
@@ -220,6 +225,8 @@ export function FilterRail({
   onEditField: (field: FieldDef) => void;
   openField: string | null;
   onOpenField: (id: string | null) => void;
+  shownRanges?: Map<string, [number, number]>;
+  matched?: number;
   mode: FilterMode;
   onModeChange: (mode: FilterMode) => void;
   maxColumns: number;
@@ -256,6 +263,7 @@ export function FilterRail({
       onAdvanced={() => onModeChange('advanced')}
       open={openField === field.id}
       onOpenToggle={(picked) => onOpenField(openField === picked.id ? null : picked.id)}
+      shownRange={shownRanges?.has(field.id) && matched ? { range: shownRanges.get(field.id)!, count: matched } : undefined}
     />
   );
 

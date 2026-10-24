@@ -1,4 +1,4 @@
-// Before/after screens for the premium transformation: 7 routes × desktop/phone × light/dark.
+// Before/after screens for the premium transformation: 9 routes × desktop/phone × light/dark.
 // Run from web/: node ../docs/plans/wickstreet-2/ui-ux/premium-2026-10-24/scripts/capture.cjs <before|after> [route-filter]
 // Workspace records are mocked empty, so no personal record appears.
 const { chromium } = require(process.cwd() + '/node_modules/playwright');
@@ -17,6 +17,8 @@ const ROUTES = [
   ['portfolio', '/mf/portfolio'],
   ['studio', '/mf/studio?code=122639'],
   ['lab', '/mf/simulate?code=122639'],
+  ['workspace', '/mf/workspace'],
+  ['ask', '/mf/ask'],
 ];
 const VIEWS = [['d', { width: 1440, height: 1000 }], ['m', { width: 390, height: 844 }]];
 (async () => {

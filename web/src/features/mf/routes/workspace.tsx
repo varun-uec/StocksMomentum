@@ -8,11 +8,14 @@ import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { mfApi, type CalculatorKind, type CalculatorRequest } from '../api';
+import { WatchButton } from '../components/CompareTray';
+import { FundRow } from '../components/FundRow';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { Badge, Button, Delta, DependencyPanel, EmptyState, ErrorState, Field, Loading, PageHeader, TabLinks, buttonClass, cx, inputClass, useTitle } from '../components/ui';
 import { categoryShort, date, inr, pct, schemeName } from '../format';
-import { useFields } from '../queries';
+import { EXAMPLES, useRecentFunds } from '../context';
+import { useFields, useMetrics } from '../queries';
 import { scenarioHref, type ScenarioProvenance } from '../scenario';
 import { describe, encodeView, type ScreenView } from '../view-spec';
 import { isConflict, saveToggle, useDraft, useDraftIds, useRecordMutations, useRecords, type NoteBody, type RecordKind, type ResearchRecord, type WatchlistBody } from '../workspace';
@@ -299,6 +302,41 @@ function NewRecord({ kind, label }: { kind: 'watchlist' | 'note'; label: string 
   );
 }
 
+/** An empty section starts with something useful: funds to watch, or the tool that makes this kind of record. */
+function StartHere({ kind }: { kind: RecordKind | null | undefined }) {
+  const recent = useRecentFunds();
+  if (kind === 'watchlist') {
+    const codes = recent.length ? recent.slice(0, 5) : EXAMPLES.map((e) => e.code);
+    return (
+      <div>
+        <h2 className="font-display text-xl text-mf-ink">Start a watchlist</h2>
+        <p className="mt-1 text-sm text-mf-muted">Press the star on any fund. {recent.length ? 'Funds you opened recently:' : 'Some well-known funds to start with:'}</p>
+        <div className="mt-2 divide-y divide-mf-line">
+          {codes.map((code) => (
+            <FundRow key={code} code={code} action={<FundRowStar code={code} />} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  const where =
+    kind === 'screen'
+      ? { title: 'No saved screens yet', text: 'Open the screener, set it up, then press Save screen.', to: '/mf/screen', label: 'Open the screener' }
+      : kind === 'scenario'
+        ? { title: 'No saved scenarios yet', text: 'Replay a SIP, lump sum or withdrawal in the investment lab, then save it.', to: '/mf/simulate', label: 'Open the investment lab' }
+        : { title: 'No notes yet', text: 'Name a new note, or press Notes on any fund page.', to: '/mf/screen', label: 'Find a fund' };
+  return (
+    <EmptyState title={where.title} action={<Link to={where.to} className={buttonClass('primary')}>{where.label}</Link>}>
+      {where.text}
+    </EmptyState>
+  );
+}
+
+function FundRowStar({ code }: { code: string }) {
+  const metrics = useMetrics(code);
+  return metrics.data ? <WatchButton code={code} name={metrics.data.name} /> : null;
+}
+
 export default function Workspace() {
   useTitle('Your workspace');
   const [params, setParams] = useSearchParams();
@@ -347,7 +385,7 @@ export default function Workspace() {
           </aside>
           <section aria-label="Selected record" className="min-w-0 rounded-card border border-mf-line bg-mf-surface p-5 shadow-card">
             {!selected ? (
-              <EmptyState title="Nothing selected">Choose a record on the left, or create one.</EmptyState>
+              list.length === 0 && !archived ? <StartHere kind={def.kind} /> : <EmptyState title="Nothing selected">Choose a record on the left, or create one.</EmptyState>
             ) : (
               <div key={selected.id}>
                 {def.kind === 'watchlist' && <WatchlistDetail record={selected as unknown as ResearchRecord<WatchlistBody>} />}

@@ -9,6 +9,7 @@ import { Link } from 'react-router';
 import type { Condition, Preset, ScreenRequest } from '../api';
 import { ChartFrame, Sparkline, TimeChart, thin } from '../components/charts';
 import { FundSearch } from '../components/FundSearch';
+import { FundRow } from '../components/FundRow';
 import { HeroArt } from '../components/HeroArt';
 import { I } from '../components/icons';
 import { ScoreBadge } from '../components/ScoreBadge';
@@ -315,28 +316,6 @@ function MarketContext() {
   );
 }
 
-function WatchRow({ code }: { code: string }) {
-  const metrics = useMetrics(code);
-  const m = metrics.data;
-  if (!m) return <Skeleton className="my-2 h-10" />;
-  return (
-    <Link to={`/mf/funds/${code}`} className="group flex items-center gap-3 py-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium group-hover:text-mf-brand-strong">{schemeName(m.name)}</p>
-        <p className="text-xs text-mf-muted">{categoryShort(String(m.values.category))}</p>
-      </div>
-      <div className="text-right text-xs">
-        <p className="tabular text-sm font-medium">{pct(m.values.cagr_3y)}</p>
-        <p className="text-mf-muted">3Y CAGR</p>
-      </div>
-      <div className="w-16 text-right text-xs">
-        <Delta value={m.values.ret_1y} className="text-sm font-medium" />
-        <p className="text-mf-muted">1Y</p>
-      </div>
-    </Link>
-  );
-}
-
 function YourResearch() {
   const watch = useWatchlist();
   const recent = useRecentFunds();
@@ -350,7 +329,7 @@ function YourResearch() {
             <p className="pb-1 text-xs font-medium uppercase tracking-[0.06em] text-mf-muted">Opened recently</p>
             <div className="divide-y divide-mf-line">
               {recent.slice(0, 5).map((code) => (
-                <WatchRow key={code} code={code} />
+                <FundRow key={code} code={code} />
               ))}
             </div>
             <p className="pt-3 text-xs text-mf-muted">Star a fund to keep it here for good.</p>
@@ -360,7 +339,7 @@ function YourResearch() {
             <p className="text-sm text-mf-ink-soft">Nothing here yet. Start with one of these:</p>
             <div className="mt-2 divide-y divide-mf-line">
               {EXAMPLES.map((e) => (
-                <WatchRow key={e.code} code={e.code} />
+                <FundRow key={e.code} code={e.code} />
               ))}
             </div>
           </div>
@@ -368,7 +347,7 @@ function YourResearch() {
       ) : (
         <div className="divide-y divide-mf-line">
           {watch.codes.slice(0, 6).map((code) => (
-            <WatchRow key={code} code={code} />
+            <FundRow key={code} code={code} />
           ))}
         </div>
       )}

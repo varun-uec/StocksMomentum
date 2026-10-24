@@ -90,6 +90,16 @@ export default function Screen() {
   });
   const first = results.data?.pages[0];
   const rows: ScreenRow[] = useMemo(() => results.data?.pages.flatMap((p) => p.rows) ?? [], [results.data]);
+  // Each shown number's range across the funds on screen, once every match is loaded.
+  const shownRanges = useMemo(() => {
+    const ranges = new Map<string, [number, number]>();
+    if (!first || rows.length !== first.matched || !rows.length) return ranges;
+    for (const id of Object.keys(rows[0].values)) {
+      const values = rows.map((r) => r.values[id]).filter((v): v is number => typeof v === 'number');
+      if (values.length) ranges.set(id, [Math.min(...values), Math.max(...values)]);
+    }
+    return ranges;
+  }, [rows, first]);
   const stale = results.isPlaceholderData || (results.isFetching && !results.isFetchingNextPage) || requestKey !== debouncedKey;
 
   const [editing, setEditing] = useState<{ field: FieldDef; index?: number } | null>(null);
@@ -223,7 +233,7 @@ export default function Screen() {
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside aria-label="Filters" className="hidden lg:block">
           <div className="mf-scroll sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-1">
-            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} onConditionChange={setBasicCondition} onEditField={editField} openField={refining} onOpenField={setRefining} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
+            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} onConditionChange={setBasicCondition} onEditField={editField} openField={refining} onOpenField={setRefining} shownRanges={stale ? undefined : shownRanges} matched={first?.matched} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
           </div>
         </aside>
 
@@ -446,6 +456,8 @@ export default function Screen() {
               }}
               openField={refining}
               onOpenField={setRefining}
+              shownRanges={stale ? undefined : shownRanges}
+              matched={first?.matched}
               mode={filterMode}
               onModeChange={changeFilterMode}
               maxColumns={MAX_COLUMNS}

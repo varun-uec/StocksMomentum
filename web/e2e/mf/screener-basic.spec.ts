@@ -56,6 +56,8 @@ test('Basic metric selection shows real values without adding a filter', async (
   });
   await expect(page.getByRole('button', { name: 'Filter by Return 1Y' })).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByText(/plan options with a value run from −?[\d.,]+% to [\d.,]+%/)).toBeVisible();
+  // The range of the funds on screen, so a threshold relates to this result set.
+  await expect(page.getByText(new RegExp(`The ${shown.matched} funds shown run from −?[\\d.,]+% to −?[\\d.,]+%`))).toBeVisible();
   const minimum = page.getByRole('spinbutton', { name: 'Minimum Return 1Y' });
   await expect(minimum).toBeVisible();
   const thresholdResult = page.waitForResponse((response) =>

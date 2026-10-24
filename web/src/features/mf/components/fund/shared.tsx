@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import type { FieldDef, Metrics } from '../../api';
 import { pctTick } from '../../axis';
-import { date, formatField, inr, inrTick, missingLabel, pct } from '../../format';
+import { date, formatField, inr, inrTick, isNum, missingLabel, pct } from '../../format';
 import { useNavs, useRegimes, useRolling } from '../../queries';
 import { availableWindows, navPoints, rebase, sinceYears, WINDOWS, type WindowKey } from '../../series';
 import { seriesColor, token } from '../../theme/themes';
@@ -14,6 +14,8 @@ export interface FundTabProps {
   metrics: Metrics;
   fields: Map<string, FieldDef>;
 }
+
+const RISK_FREE: Record<string, string> = { sharpe_1y: 'rf_1y', sharpe_3y: 'rf_3y' };
 
 /** One registry value as a tile, with its category median or rank underneath when given. */
 export function MetricTile({
@@ -41,6 +43,9 @@ export function MetricTile({
   if (missing) sub = missingLabel(state);
   else if (median && metrics.values[median] != null) sub = `category median ${formatField(fields.get(median), metrics.values[median], fields)}`;
   else if (rank && metrics.values[rank] != null) sub = `rank ${metrics.values[rank]} of ${metrics.values[rank.replace(/_rank$/, '_count')] ?? '—'} in category`;
+  // A Sharpe ratio depends on its risk-free rate; print it, so a different figure elsewhere reads as a method difference (review 1, rank 9).
+  const rf = RISK_FREE[id] ? metrics.values[RISK_FREE[id]] : null;
+  if (!missing && isNum(rf)) sub = `${sub ? `${sub} · ` : ''}risk-free ${pct(rf, 2)}`;
   const negative = typeof value === 'number' && value < 0 && field?.unit === 'fraction';
   return (
     <Stat
