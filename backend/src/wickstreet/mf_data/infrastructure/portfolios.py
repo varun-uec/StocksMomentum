@@ -62,7 +62,7 @@ _MONTHS = {
 _AS_ON = re.compile(
     r"(?:as\s*(?:on|at)|ended|ending)\s*:?\s*"
     r"(?:(\d{1,2})(?:st|nd|rd|th)?[\s\-/.]+([A-Za-z]{3,9}|\d{1,2})[\s\-/.,]+(\d{2,4})"
-    r"|([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4}))",
+    r"|([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4}))",
     re.I,
 )
 # Section and line words to asset kinds, checked in this order.
@@ -117,10 +117,15 @@ _CONTRACT = re.compile(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\d{2
 def _asset(section: str, industry: str | None, name: str, isin: str | None) -> str:
     """A line's asset kind: a derivative by industry or contract month, else by section.
 
-    A futures line is a derivative ("Stock Futures") whatever section it is filed
-    under. Other kinds come from the section, then from the line's name.
+    A futures or swap line is a derivative ("Stock Futures", "Interest Rate Swaps- MD
+    ...") whatever section it is filed under. Other kinds come from the section, then
+    from the line's name.
     """
-    if _kind(industry or "") == DERIVATIVE or (isin is None and _CONTRACT.search(name)):
+    if (
+        _kind(industry or "") == DERIVATIVE
+        or (isin is None and _CONTRACT.search(name))
+        or "swap" in name.lower()
+    ):
         return DERIVATIVE
     return _kind(section) or _kind(name) or (EQUITY if isin and isin.startswith("INE") else OTHER)
 
@@ -157,6 +162,10 @@ def _day(text: str) -> date | None:
         return date(full, number or 0, int(day))
     except ValueError:
         return None
+
+
+# One filed line: name, ISIN, industry, section, quantity, value, weight.
+_Line = tuple[str, str | None, str | None, str, Decimal | None, Decimal | None, Decimal]
 
 
 def _header(rows: list[Row]) -> tuple[int, dict[str, str]] | None:
@@ -211,9 +220,7 @@ def _sheet(
     as_of = next((d for r in rows[:start] for t in r.values() if (d := _day(t))), None) or fallback
     if as_of is None:
         raise SourceLayoutError(f"No disclosure date above the header for {label}.")
-    lines: list[
-        tuple[str, str | None, str | None, str, Decimal | None, Decimal | None, Decimal]
-    ] = []
+    lines: list[_Line] = []
     section = ""
     for row in rows[start + 1 :]:
         name = row.get(columns["name"], "") or next((t for t in row.values() if t), "")
@@ -244,6 +251,7 @@ def _sheet(
             )
         )
     percent = any(abs(w) > Decimal("1.5") for *_, w in lines)
+    lines = _without_subtotals(lines, Decimal(100) if percent else Decimal(1))
     holdings = [
         Holding(
             sd_id,
@@ -261,6 +269,63 @@ def _sheet(
         for seq, (name, isin, industry, section, quantity, value, weight) in enumerate(lines)
     ]
     return holdings, None
+
+
+def _off(lines: list[_Line], whole: Decimal) -> Decimal:
+    """How far the lines miss net assets, with or without derivatives, whichever is closer."""
+    every = sum((w for *_, w in lines), Decimal(0))
+    held = sum(
+        (
+            w
+            for name, isin, industry, section, *_, w in lines
+            if _asset(section, industry, name, isin) != DERIVATIVE
+        ),
+        Decimal(0),
+    )
+    return min(abs(every - whole), abs(held - whole))
+
+
+def _without_subtotals(lines: list[_Line], whole: Decimal) -> list[_Line]:
+    """Drop headings filed with their section's total weight, as ICICI files them.
+
+    A line with a weight but no ISIN and no quantity is such a heading when the
+    securities under it (lines with an ISIN or a quantity, up to the next cash or swap
+    line) add up to its weight, within 0.05% of net assets. Headings are found from
+    the bottom up, so a nested one is known before the heading above it, and its
+    securities count once. They are dropped only when the sheet is more than 2% off its net assets
+    with them and within 2% without them, counted with or without derivatives as the
+    holdings check counts them; a sheet that reconciles is left alone. A line under
+    dropped headings takes their names as its section, outermost first
+    ("Debt Instruments / Listed").
+    """
+    tolerance, near = whole * Decimal("0.0005"), whole * Decimal("0.02")
+    ends: dict[int, int] = {}
+    for i in range(len(lines) - 1, -1, -1):
+        _, isin, _, _, quantity, _, weight = lines[i]
+        if isin is not None or quantity is not None:
+            continue
+        total = Decimal(0)
+        for j in range(i + 1, len(lines)):
+            if j in ends:
+                continue
+            if lines[j][1] is None and lines[j][4] is None:
+                break  # a cash or swap line ends the section
+            total += lines[j][-1]
+            if abs(total - weight) <= tolerance:
+                ends[i] = j
+                break
+    kept = [line for k, line in enumerate(lines) if k not in ends]
+    if not ends or _off(lines, whole) <= near or _off(kept, whole) > near:
+        return lines
+    result = []
+    for k, (name, isin, industry, section, quantity, value, weight) in enumerate(lines):
+        if k in ends:
+            continue
+        headings = [lines[h][0] for h in sorted(ends) if h < k <= ends[h]]
+        result.append(
+            (name, isin, industry, " / ".join(headings) or section, quantity, value, weight)
+        )
+    return result
 
 
 def _workbooks(content: bytes) -> list[bytes]:

@@ -13,7 +13,7 @@ import pytest
 from tests.wickstreet.test_mf_facts import _xlsx
 from wickstreet.analytics.domain import holdings as h
 from wickstreet.mf_data.domain.reads import HoldingRow, Portfolio
-from wickstreet.mf_data.infrastructure.amc import amc_adapters
+from wickstreet.mf_data.infrastructure.amc import _LINK, amc_adapters
 from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
 
 HEADER = [
@@ -79,6 +79,67 @@ def test_futures_are_derivatives_and_never_section_headings() -> None:
         "Axis Bank Limited Oct26": ("derivative", "ARBITRAGE"),
         "NIFTY 23300 Call Oct26": ("derivative", "ARBITRAGE"),
     }
+
+
+def _icici(lines: list[list[str | float]]) -> bytes:
+    """ICICI's layout: a section heading carries its section's total weight."""
+    return _xlsx(
+        [
+            ["", "ICICI Prudential Example Fund"],
+            ["", "Portfolio as on Sep 30,2026"],
+            HEADER,
+            *lines,
+            ["", "Total Net Assets", "", "", "", 100, 1],
+        ]
+    )
+
+
+def test_headings_filed_with_their_total_weight_are_not_holdings() -> None:
+    content = _icici(
+        [
+            ["", "Equity & Equity Related Instruments", "", "", "", 70, 0.70],
+            ["", "Listed / Awaiting Listing On Stock Exchanges", "", "", "", 70, 0.70],
+            [1, "HDFC Bank Ltd.", "INE040A01034", "Banks", 100, 40, 0.40],
+            [2, "Infosys Ltd.", "INE009A01021", "IT - Software", 50, 30, 0.30],
+            ["", "Debt Instruments", "", "", "", 25, 0.25],
+            ["", "Listed / Awaiting Listing On Stock Exchanges", "", "", "", 25, 0.25],
+            [3, "7.10% GOI 2034", "IN0020240019", "SOV", 2500, 25, 0.25],
+            ["", "TREPS", "", "", "", 3, 0.03],
+            ["", "Interest Rate Swaps- MD -21-Feb-2029", "", "", "", 1, 0.01],
+            ["", "Interest Rate Swaps- MD -21-Feb-2029", "", "", "", 1, 0.01],
+            ["", "Net Current Assets", "", "", "", 2, 0.02],
+        ]
+    )
+    found = parse_portfolios(content, {"iciciprudentialexamplefund": 9})
+    assert [(x.name, x.asset, x.weight) for x in found.holdings] == [
+        ("HDFC Bank Ltd.", "equity", Decimal("0.40")),
+        ("Infosys Ltd.", "equity", Decimal("0.30")),
+        ("7.10% GOI 2034", "debt", Decimal("0.25")),
+        ("TREPS", "cash", Decimal("0.03")),
+        ("Interest Rate Swaps- MD -21-Feb-2029", "derivative", Decimal("0.01")),
+        ("Interest Rate Swaps- MD -21-Feb-2029", "derivative", Decimal("0.01")),
+        ("Net Current Assets", "cash", Decimal("0.02")),
+    ]
+    assert found.holdings[2].section == (
+        "Debt Instruments / Listed / Awaiting Listing On Stock Exchanges"
+    )
+
+
+def test_a_sheet_that_reconciles_keeps_a_cash_line_equal_to_the_lines_below() -> None:
+    """Without double counting there is nothing to drop, whatever the sums look like."""
+    content = _book(
+        [
+            [1, "HDFC Bank Limited", "INE040A01034", "Banks", 100, 60, 0.6],
+            [2, "Cash and margin", "", "", "", 20, 0.2],
+            [3, "Axis Bank Limited", "INE238A01034", "Banks", 50, 20, 0.2],
+        ]
+    )
+    found = parse_portfolios(content, {"dspexamplefund": 7})
+    assert [x.name for x in found.holdings] == [
+        "HDFC Bank Limited",
+        "Cash and margin",
+        "Axis Bank Limited",
+    ]
 
 
 def _row(
@@ -165,3 +226,15 @@ def test_an_amc_page_link_is_picked_by_month_year_and_words() -> None:
     assert nippon.pick(links, date(2024, 11, 30)) == base + "NIMF-MONTHLY-PORTFOLIO-30-Nov-2024.xls"
     assert nippon.pick(links, date(2025, 11, 30)) == base + "NIMF-MONTHLY-PORTFOLIO-Nov-25.xls"
     assert nippon.pick(links, date(2026, 8, 31)) is None
+
+
+def test_links_are_read_from_pages_and_json_listings() -> None:
+    text = (
+        '<a href="/docs/NIMF-MONTHLY-PORTFOLIO-30-Sep-26.xls?v=2">x</a>'
+        '{"url":"/downloads/Files/2026/Sep/Monthly-Portfolio-Disclosure-September-2026.zip"}'
+        '{"url":"/downloads/Files/factsheet.pdf"}'
+    )
+    assert _LINK.findall(text) == [
+        "/docs/NIMF-MONTHLY-PORTFOLIO-30-Sep-26.xls",
+        "/downloads/Files/2026/Sep/Monthly-Portfolio-Disclosure-September-2026.zip",
+    ]

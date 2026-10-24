@@ -55,9 +55,11 @@ class PacedClient:
         """Return the first response that is not a 429 or 5xx, or raise :class:`SourceError`."""
         return await self._send("GET", url, params=params)
 
-    async def post(self, url: str, body: dict[str, object]) -> httpx.Response:
+    async def post(
+        self, url: str, body: dict[str, object], headers: dict[str, str] | None = None
+    ) -> httpx.Response:
         """``POST`` a JSON body, paced and retried as :meth:`get` is."""
-        return await self._send("POST", url, json=body)
+        return await self._send("POST", url, json=body, headers=headers)
 
     async def _send(self, method: str, url: str, **request: object) -> httpx.Response:
         problem = ""

@@ -16,6 +16,11 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
   ``sbimf.com/ajaxcall/CMS/GetSchemePortfolioSheets``, which answers HTML rows of
   links to one workbook a month since 2023
   (``all-schemes-monthly-portfolio---as-on-30th-september-2026.xlsx``).
+- ICICI Prudential: the downloads page lists its files from one JSON ``POST`` to
+  ``apimf.icicipruamc.com/nms/v1/downloads/files`` (header ``env: api``), which
+  answers JSON with each file's path. The page opens a path under
+  ``www.icicipruamc.com/blob``: one zip a month of a workbook per scheme
+  (``Monthly-Portfolio-Disclosure-September-2026.zip``).
 
 Other AMCs build their pages in the browser from sources not yet read, so their
 files come in through ``wickstreet mf import-portfolios``, which reads the same
@@ -34,7 +39,8 @@ from wickstreet.mf_data.domain.ports import SourceError
 from wickstreet.mf_data.infrastructure.client import COMPATIBLE_USER_AGENT, PacedClient
 from wickstreet.mf_data.infrastructure.portfolios import parse_portfolios
 
-_LINK = re.compile(r"""href=["']([^"']+\.(?:xlsx?|zip))(?:\?[^"']*)?["']""", re.I)
+# A link in a page (href) or in a JSON listing ("url").
+_LINK = re.compile(r"""(?:href=|"url"\s*:\s*)["']([^"']+\.(?:xlsx?|zip))(?:\?[^"']*)?["']""", re.I)
 _MONTHS = (
     "january", "february", "march", "april", "may", "june",
     "july", "august", "september", "october", "november", "december",
@@ -44,7 +50,7 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.2"
+    adapter_version = "amc-portfolios-2026-10-24.3"
 
     def __init__(
         self,
@@ -55,6 +61,8 @@ class AmcPortfolioAdapter:
         exclude: tuple[str, ...] = (),
         prefer: tuple[str, ...] = (),
         listing: dict[str, object] | None = None,
+        headers: dict[str, str] | None = None,
+        files: str | None = None,
         min_interval_seconds: float,
         timeout_seconds: float,
         max_attempts: int,
@@ -62,7 +70,8 @@ class AmcPortfolioAdapter:
         """Read ``page``; a link must hold every ``require`` word and no ``exclude`` word.
 
         With ``listing``, the page is an endpoint that lists the files when it is sent
-        that JSON body.
+        that JSON body, with ``headers``. With ``files``, a listed path is read under
+        that prefix rather than against the page.
         """
         self.name = name
         self._page = page
@@ -70,6 +79,8 @@ class AmcPortfolioAdapter:
         self._exclude = exclude
         self._prefer = prefer
         self._listing = listing
+        self._headers = headers
+        self._files = files
         self._links: list[str] | None = None
         self._http = PacedClient(
             min_interval_seconds=min_interval_seconds,
@@ -87,10 +98,14 @@ class AmcPortfolioAdapter:
             if self._listing is None:
                 response = await self._http.get(self._page)
             else:
-                response = await self._http.post(self._page, self._listing)
+                response = await self._http.post(self._page, self._listing, self._headers)
             if response.status_code != 200:
                 raise SourceError(f"{self._page} answered HTTP {response.status_code}.")
-            links = {urljoin(self._page, m.group(1)) for m in _LINK.finditer(response.text)}
+            found = (m.group(1) for m in _LINK.finditer(response.text))
+            links = {
+                urljoin(self._page, link) if self._files is None else self._files + link
+                for link in found
+            }
             self._links = sorted(links)
         return self._links
 
@@ -146,6 +161,8 @@ def amc_adapters(
         name: str,
         page: str,
         listing: dict[str, object] | None = None,
+        headers: dict[str, str] | None = None,
+        files: str | None = None,
         **words: tuple[str, ...],
     ) -> AmcPortfolioAdapter:
         return AmcPortfolioAdapter(
@@ -155,6 +172,8 @@ def amc_adapters(
             exclude=words.get("exclude", ()),
             prefer=words.get("prefer", ()),
             listing=listing,
+            headers=headers,
+            files=files,
             min_interval_seconds=min_interval_seconds,
             timeout_seconds=timeout_seconds,
             max_attempts=max_attempts,
@@ -186,6 +205,24 @@ def amc_adapters(
             "https://www.sbimf.com/ajaxcall/CMS/GetSchemePortfolioSheets",
             {"FundId": "", "PSYear": "", "PSMonth": "", "PSFrequency": "Monthly"},
             require=("all-scheme", "monthly", "portfolio"),
+            exclude=("fortnight", "half"),
+        ),
+        "icici": http(
+            "icici",
+            "https://apimf.icicipruamc.com/nms/v1/downloads/files",
+            {
+                "categoryId": "26a073d7-08d2-4a95-95fa-f83a4ee51e40",
+                "schemeCategory": "",
+                "userType": "Investor",
+                "fileType": "All",
+                "page": "1",
+                "size": "200",
+                "filter": [],
+                "categoryName": "OTHERS",
+            },
+            {"env": "api"},
+            "https://www.icicipruamc.com/blob",
+            require=("monthly-portfolio-disclosure",),
             exclude=("fortnight", "half"),
         ),
     }
