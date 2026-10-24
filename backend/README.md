@@ -47,6 +47,17 @@ uv run wickstreet mf reparse     # after a parser fix: re-derive AMFI dates from
 uv run wickstreet mf report      # coverage, gaps, anomalies and conflicts as JSON
 ```
 
+Wickstreet also ingests AMFI fund facts, monthly AMC holdings and manually downloaded
+RBI 91-day T-bill data. Their exact source URLs, date semantics, commands, supported
+parser-only routes and manual-import alternatives are in
+[`docs/operations/mf-source-runbooks.md`](../docs/operations/mf-source-runbooks.md).
+The as-built source/schema/pipeline reference is
+[`docs/current/mf-data-architecture.md`](../docs/current/mf-data-architecture.md);
+paired dump/raw restoration and clean rebuild instructions are in
+[`docs/operations/mf-data-recovery.md`](../docs/operations/mf-data-recovery.md).
+These documents describe the implemented CLI, including datasets without an offline
+replay command.
+
 MF analytics (Slice 2). The owner also grants `derived_metrics` and `display` for each source.
 Every publishing command above computes the snapshot after it; these run it by hand.
 ```bash

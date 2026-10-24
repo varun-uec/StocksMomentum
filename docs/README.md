@@ -7,12 +7,15 @@ All project documentation lives in this folder. Start with `current/`.
 | Page | Answers |
 |---|---|
 | [current/architecture.md](current/architecture.md) | What runs, how the layers fit, where the code differs from the approved ADD |
+| [current/mf-data-architecture.md](current/mf-data-architecture.md) | Wickstreet MF sources, schemas, adapters, processing, reconciliation and reproducibility |
+| [operations/mf-source-runbooks.md](operations/mf-source-runbooks.md) | Exact MF acquisition commands, formats, source-specific quirks and manual imports |
+| [operations/mf-data-recovery.md](operations/mf-data-recovery.md) | Paired database/raw backup, isolated restore, replay verification and fresh rebuild order |
 | [current/design.md](current/design.md) | How the screener and the backtest decide: pipeline, rules, gates, scores, determinism |
 | [current/capabilities.md](current/capabilities.md) | What the product does: every API endpoint, web page and CLI command |
 | [current/state.md](current/state.md) | Where things stand: checks, delivery record, research verdicts, open defects, data gaps |
 | [current/reference/keyboard-shortcuts.md](current/reference/keyboard-shortcuts.md) | Every key the chart workspace answers |
 
-`current/` was verified against the code on 2026-10-18. When the code changes, update it in the same commit.
+Each `current/` page carries its own verification date. When the code changes, update the affected page in the same commit.
 
 ## Folders
 

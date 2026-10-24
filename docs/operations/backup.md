@@ -5,6 +5,13 @@
 Momentum25 uses PostgreSQL for persistent storage and Redis for caching. This document
 describes the backup strategy for production deployments.
 
+For Wickstreet 2.0, the PostgreSQL database and the external `WICKSTREET_RAW_DIR`
+must be backed up as a pair. The raw files are referenced by absolute path and SHA-256
+from `wickstreet.revision`; a database-only restore cannot replay source files. Follow
+the dedicated [MF data recovery runbook](mf-data-recovery.md) for the exact Compose
+commands, separate-database restore and replay check. That runbook is authoritative for
+the Wickstreet MF store; the generic recipes below describe the Momentum25 database.
+
 ## Database Backup (PostgreSQL)
 
 ### Automated Backups

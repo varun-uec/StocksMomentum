@@ -4,6 +4,8 @@ Verified against the code on branch `wickstreet/m10-m11` (M10) on 2026-10-18. Th
 
 The approved blueprint is the [ADD](../architecture/ADD.md) and its [ADRs](../architecture/adr/). This page says what the code does today, and where it differs from that blueprint. When this page and the ADD disagree, the ADD still governs. The differences in [Drift from the ADD](#drift-from-the-add) need a decision.
 
+For the detailed as-built MF source catalogue, adapter behavior, PostgreSQL model, reconciliation rules and recovery sequence, see [MF data architecture](mf-data-architecture.md), [source runbooks](../operations/mf-source-runbooks.md) and [MF data recovery](../operations/mf-data-recovery.md).
+
 ## System
 
 ```mermaid
