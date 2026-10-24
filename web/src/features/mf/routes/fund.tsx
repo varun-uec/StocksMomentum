@@ -202,7 +202,7 @@ export default function Fund() {
           <LastNav code={code} compact />
         </header>
       )}
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex gap-2 overflow-x-auto border-t border-mf-line bg-mf-surface/95 px-3 py-2 backdrop-blur sm:hidden" role="group" aria-label="Fund actions">
+      <div tabIndex={0} className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex gap-2 overflow-x-auto border-t border-mf-line bg-mf-surface/95 px-3 py-2 backdrop-blur sm:hidden" role="group" aria-label="Fund actions; scroll horizontally for more actions">
         {actions}
       </div>
 

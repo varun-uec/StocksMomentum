@@ -2,7 +2,7 @@
  * Fund facts, benchmark, holdings, overlap and portfolio screens (doc 21 C12, C14–C16,
  * C25). Each test reads the live API first and checks the screen shows the same value.
  */
-import { FUND, OTHER, expect, test } from './fixtures';
+import { FUND, OTHER, expect, expectNoSideScroll, test } from './fixtures';
 
 const pct = (v: number, digits = 1) => `${v < 0 ? '−' : ''}${Math.abs(v * 100).toFixed(digits)}%`;
 const filedDate = (value: unknown) => {
@@ -84,4 +84,21 @@ test.describe('on a phone', () => {
       expect(scroll).toBeLessThanOrEqual(client);
     });
   }
+});
+
+test.describe('at 320 px', () => {
+  test.use({ viewport: { width: 320, height: 720 } });
+
+  test('Fund Overview keeps its research actions reachable without horizontal overflow', async ({ page }) => {
+    await page.goto(`/mf/funds/${FUND}?tab=overview`);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    const actions = page.getByRole('group', { name: 'Fund actions' });
+    await expect(actions).toBeVisible();
+    await expect(actions).toHaveAttribute('tabindex', '0');
+    await actions.focus();
+    for (let i = 0; i < 20; i++) await actions.press('ArrowRight');
+    await expect(page.getByRole('link', { name: 'Test an investment' })).toBeInViewport();
+    await expect(actions.getByRole('button', { name: 'Notes' })).toBeInViewport({ ratio: 1 });
+    await expectNoSideScroll(page);
+  });
 });
