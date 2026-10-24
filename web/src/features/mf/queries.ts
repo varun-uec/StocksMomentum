@@ -58,8 +58,8 @@ export const useNearDuplicates = (code?: string, enabled = true) => useQuery(fun
 export const useFundRegimes = (code?: string, enabled = true) => useQuery(fundQuery('regimes', code, mfApi.fundRegimes, enabled));
 export const useProfile = (code?: string, enabled = true) => useQuery(fundQuery('profile', code, mfApi.profile, enabled));
 export const useHoldings = (code?: string, asOf?: string) => useQuery(fundQuery(`holdings-${asOf ?? 'latest'}`, code, (c, s) => mfApi.holdings(c, asOf, s)));
-export const useOverlap = (codes: string[]) =>
-  useQuery({ queryKey: ['mf', 'overlap', codes], queryFn: ({ signal }) => mfApi.overlap(codes, signal), enabled: codes.length >= 2, staleTime: FRESH });
+export const useOverlap = (codes: string[], dataRevision?: number) =>
+  useQuery({ queryKey: ['mf', 'overlap', codes, dataRevision], queryFn: ({ signal }) => mfApi.overlap(codes, signal, dataRevision), enabled: codes.length >= 2, staleTime: FRESH });
 export const useBenchmark = (code?: string, enabled = true) => useQuery(fundQuery('benchmark', code, mfApi.benchmark, enabled));
 
 export const useRegimes = (enabled = true) =>
@@ -67,10 +67,10 @@ export const useRegimes = (enabled = true) =>
 export const useRiskFree = () =>
   useQuery({ queryKey: ['mf', 'risk-free'], queryFn: ({ signal }) => mfApi.riskFree(signal), staleTime: FRESH });
 
-export const useCompare = (codes: string[]) =>
+export const useCompare = (codes: string[], dataRevision?: number) =>
   useQuery({
-    queryKey: ['mf', 'compare', codes],
-    queryFn: ({ signal }) => mfApi.compare(codes, undefined, signal),
+    queryKey: ['mf', 'compare', codes, dataRevision],
+    queryFn: ({ signal }) => mfApi.compare(codes, undefined, signal, dataRevision),
     enabled: codes.length >= 2,
     staleTime: FRESH,
     placeholderData: keepPreviousData,

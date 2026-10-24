@@ -17,6 +17,7 @@ import { categoryShort, date, formatField, inr, inrTick, isNum, missingLabel, pc
 import { useCompare, useFields, useOverlap } from '../queries';
 import { heat, seriesColor, token } from '../theme/themes';
 import { COMPARE_LIMIT, setTray, useCompareTray, useRecordMutations, type WatchlistBody } from '../workspace';
+import { revisionFromSearch } from '../scenario';
 
 type Better = 'higher' | 'lower' | null;
 const PERIODS = { '1Y': 1, '3Y': 3, '5Y': 5, All: 0 } as const;
@@ -96,8 +97,11 @@ export default function Compare() {
   const [params, setParams] = useSearchParams();
   const tray = useCompareTray();
   const codes = useMemo(() => params.getAll('code').filter((c, i, a) => /^\d{1,9}$/.test(c) && a.indexOf(c) === i).slice(0, COMPARE_LIMIT), [params]);
+  const dataRevision = revisionFromSearch(params);
+  const selectedPeriod = params.get('period');
+  const period = (selectedPeriod && Object.prototype.hasOwnProperty.call(PERIODS, selectedPeriod) ? selectedPeriod : 'All') as Period;
   const fields = useFields();
-  const compare = useCompare(codes);
+  const compare = useCompare(codes, dataRevision);
   const { create } = useRecordMutations<WatchlistBody>('watchlist');
 
   // Opening /mf/compare with no codes takes the tray's selection, else the funds
@@ -108,9 +112,18 @@ export default function Compare() {
     if (codes.length) return;
     const start = tray.funds.length ? { codes: tray.funds.map((f) => f.code), example: false } : startingFunds(recent, 3);
     setExample(start.example);
-    setParams(new URLSearchParams(start.codes.map((c) => ['code', c])), { replace: true });
-  }, [codes.length, tray.funds, recent, setParams]);
-  const [period, setPeriod] = useState<Period>('All');
+    const next = new URLSearchParams(params);
+    next.delete('code');
+    start.codes.forEach((code) => next.append('code', code));
+    setParams(next, { replace: true });
+  }, [codes.length, tray.funds, recent, params, setParams]);
+
+  const setPeriod = (nextPeriod: Period) => {
+    const next = new URLSearchParams(params);
+    if (nextPeriod === 'All') next.delete('period');
+    else next.set('period', nextPeriod);
+    setParams(next);
+  };
 
   // Keep the tray in step with the page, so other pages show the same selection.
   const data = compare.data;
@@ -120,7 +133,10 @@ export default function Compare() {
 
   const setCodes = (next: string[]) => {
     setExample(false);
-    setParams(new URLSearchParams(next.map((c) => ['code', c])));
+    const nextParams = new URLSearchParams(params);
+    nextParams.delete('code');
+    next.forEach((code) => nextParams.append('code', code));
+    setParams(nextParams);
   };
   const funds = codes.map((code) => data?.funds.find((f) => f.amfi_code === code)).filter((f) => !!f);
   const categories = new Set(funds.map((f) => String(f.values.category)));
@@ -290,7 +306,7 @@ export default function Compare() {
             </div>
           </Card>
 
-          <HoldingsOverlap codes={codes} />
+          <HoldingsOverlap codes={codes} dataRevision={dataRevision} />
 
           <Card title="Do their daily returns move together?" subtitle="Correlation of daily NAV returns over the dates both funds share. 1 means they move in lockstep. It does not measure shared holdings.">
             <div className="mf-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Table; scroll sideways for more columns">
@@ -335,8 +351,8 @@ export default function Compare() {
 }
 
 /** Shared securities from each fund's latest disclosure: what NAV correlation cannot show. */
-function HoldingsOverlap({ codes }: { codes: string[] }) {
-  const overlap = useOverlap(codes);
+function HoldingsOverlap({ codes, dataRevision }: { codes: string[]; dataRevision?: number }) {
+  const overlap = useOverlap(codes, dataRevision);
   const o = overlap.data;
   if (overlap.isError) return <ErrorState error={overlap.error} compact />;
   if (!o) return null;

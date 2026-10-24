@@ -11,6 +11,7 @@ const filedDate = (value: unknown) => {
   return `${Number(day)} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(month) - 1]} ${year}`;
 };
 const DSP_FLEXI = '119076'; // DSP Flexi Cap Fund Direct Growth: DSP files its portfolio monthly
+const PRIOR_SNAPSHOT = 5891; // A retained method-v8 snapshot in the local research store.
 
 test('Facts & costs shows AMFI’s TER and the fund managers as filed', async ({ page, request }) => {
   const metrics = await (await request.get(`/api/v1/mf/funds/${FUND}/metrics`)).json();
@@ -34,6 +35,60 @@ test('Compare includes TER and states the NAV snapshot date', async ({ page, req
   await expect(terRow).toContainText(pct(comparison.funds[0].values.ter, 2));
   await expect(terRow).toContainText(pct(comparison.funds[1].values.ter, 2));
   await expect(page.getByText(`NAV data as of ${filedDate(comparison.as_of)}`, { exact: false })).toBeVisible();
+});
+
+test('Compare preserves its window and pinned snapshot through browser navigation', async ({ page, request }) => {
+  const codes = [FUND, OTHER, DSP_FLEXI];
+  const codeQuery = codes.map((code) => `code=${code}`).join('&');
+  const latest = await (await request.get(`/api/v1/mf/compare?${codeQuery}`)).json();
+  const prior = await (await request.get(`/api/v1/mf/compare?${codeQuery}&data_revision=${PRIOR_SNAPSHOT}`)).json();
+  const revision = prior.data_revision as number;
+  expect(revision).toBe(PRIOR_SNAPSHOT);
+  expect(latest.data_revision).toBeGreaterThan(revision);
+  const pinnedRequest = page.waitForRequest((r) => {
+    const url = new URL(r.url());
+    return url.pathname.endsWith('/api/v1/mf/compare') && url.searchParams.get('data_revision') === String(revision);
+  });
+  const pinnedOverlapRequest = page.waitForRequest((r) => {
+    const url = new URL(r.url());
+    return url.pathname.endsWith('/api/v1/mf/holdings/overlap') && url.searchParams.get('data_revision') === String(revision);
+  });
+  await page.goto(`/mf/compare?${codeQuery}&rev=${revision}`);
+  await Promise.all([pinnedRequest, pinnedOverlapRequest]);
+  await expect(page.getByText(`snapshot ${revision}`, { exact: false })).toBeVisible();
+
+  const window = page.getByRole('radiogroup', { name: 'Window' });
+  await expect(window.getByRole('radio', { name: 'All' })).toHaveAttribute('aria-checked', 'true');
+  await window.getByRole('radio', { name: '3Y' }).click();
+  await expect(page).toHaveURL(new RegExp(`period=3Y.*rev=${revision}|rev=${revision}.*period=3Y`));
+  await window.getByRole('radio', { name: '5Y' }).click();
+  await expect(window.getByRole('radio', { name: '5Y' })).toHaveAttribute('aria-checked', 'true');
+
+  await page.goBack();
+  await expect(window.getByRole('radio', { name: '3Y' })).toHaveAttribute('aria-checked', 'true');
+  expect(new URL(page.url()).searchParams.get('rev')).toBe(String(revision));
+  await page.goForward();
+  await expect(window.getByRole('radio', { name: '5Y' })).toHaveAttribute('aria-checked', 'true');
+  expect(new URL(page.url()).searchParams.get('rev')).toBe(String(revision));
+  await page.reload();
+  await expect(window.getByRole('radio', { name: '5Y' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText(`snapshot ${revision}`, { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove condition' }).nth(2).click();
+  const afterRemoval = new URL(page.url());
+  expect(afterRemoval.searchParams.getAll('code')).toEqual(codes.slice(0, 2));
+  expect(afterRemoval.searchParams.get('period')).toBe('5Y');
+  expect(afterRemoval.searchParams.get('rev')).toBe(String(revision));
+});
+
+test('Compare default funds do not discard a URL period or snapshot pin', async ({ page }) => {
+  await page.goto(`/mf/compare?period=5Y&rev=${PRIOR_SNAPSHOT}`);
+  const window = page.getByRole('radiogroup', { name: 'Window' });
+  await expect(window.getByRole('radio', { name: '5Y' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText(`snapshot ${PRIOR_SNAPSHOT}`, { exact: false })).toBeVisible();
+  const resolved = new URL(page.url());
+  expect(resolved.searchParams.getAll('code').length).toBeGreaterThanOrEqual(2);
+  expect(resolved.searchParams.get('period')).toBe('5Y');
+  expect(resolved.searchParams.get('rev')).toBe(String(PRIOR_SNAPSHOT));
 });
 
 test('Benchmark labels its proxy and links to the index fund behind it', async ({ page, request }) => {

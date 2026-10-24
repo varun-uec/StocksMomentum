@@ -453,7 +453,8 @@ export const mfApi = {
     get<RollingSip>(`/funds/${code}/rolling-sip${qs(p)}`, signal),
   profile: (code: string, signal?: AbortSignal) => get<FundProfile>(`/funds/${code}/profile`, signal),
   holdings: (code: string, asOf?: string, signal?: AbortSignal) => get<FundHoldings>(`/funds/${code}/holdings${qs({ as_of: asOf })}`, signal),
-  overlap: (codes: string[], signal?: AbortSignal) => get<Overlap>(`/holdings/overlap${qs({ code: codes })}`, signal),
+  overlap: (codes: string[], signal?: AbortSignal, dataRevision?: number) =>
+    get<Overlap>(`/holdings/overlap${qs({ code: codes, data_revision: dataRevision })}`, signal),
   benchmark: (code: string, signal?: AbortSignal) => get<FundBenchmark>(`/funds/${code}/benchmark`, signal),
   regimes: (signal?: AbortSignal) => get<Regimes>('/regimes', signal),
   portfolio: (target?: string, signal?: AbortSignal) => get<PortfolioView>(`/portfolio${qs({ target })}`, signal),
@@ -461,8 +462,8 @@ export const mfApi = {
   importCas: (body: { pdf_base64: string; password: string }) => post<CasImport>('/portfolio/imports', body),
   undoImport: (id: string) => request<void>(`/portfolio/imports/${id}`, { method: 'DELETE' }),
   riskFree: (signal?: AbortSignal) => get<RiskFree>('/risk-free', signal),
-  compare: (codes: string[], start?: string, signal?: AbortSignal) =>
-    get<CompareResponse>(`/compare${qs({ code: codes, start })}`, signal),
+  compare: (codes: string[], start?: string, signal?: AbortSignal, dataRevision?: number) =>
+    get<CompareResponse>(`/compare${qs({ code: codes, start, data_revision: dataRevision })}`, signal),
   frontier: (g: PeerGroup, signal?: AbortSignal) => get<Frontier>(`/peers/frontier${qs({ ...g })}`, signal),
   transitions: (g: PeerGroup, signal?: AbortSignal) => get<Transitions>(`/peers/transitions${qs({ ...g })}`, signal),
   backtest: (body: PeerGroup & { signal: 'ret_1y' | 'cagr_3y'; top: number }, signal?: AbortSignal) =>
