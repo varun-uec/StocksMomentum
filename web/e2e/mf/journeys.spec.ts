@@ -72,8 +72,8 @@ test.describe('MF workstation journeys against the live snapshot', () => {
     await expect(page.getByRole('figure', { name: 'Drawdown from peak over time' })).toBeVisible();
     await expect(page.getByText(/Sharpe uses the RBI 91-day T-bill/)).toBeVisible();
     await page.getByRole('link', { name: 'Holdings' }).click();
-    await expect(page.getByText('Planned').first()).toBeVisible();
-    await expect(page.getByText(/E4, dated AMC portfolio disclosures/)).toBeVisible();
+    await expect(page.getByText(/^Portfolio of /)).toBeVisible();
+    await expect(page.getByText('Effective number of stocks')).toBeVisible();
   });
 
   test('every chart can show its data as a table', async ({ page }) => {
