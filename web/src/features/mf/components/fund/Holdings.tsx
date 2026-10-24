@@ -106,7 +106,7 @@ function Lines({ lines }: { lines: HoldingLine[] }) {
 
 function Moves({ title, rows }: { title: string; rows: WeightMove[] }) {
   return (
-    <div>
+    <div className="min-w-0">
       <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-mf-brand">{title}</h3>
       {rows.length ? (
         <ul className="mt-2 space-y-1.5 text-sm">

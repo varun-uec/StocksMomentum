@@ -49,3 +49,20 @@ test('Portfolio offers a local CAS import and is not marked planned', async ({ p
   await expect(page.getByText('Import a consolidated account statement')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Portfolio', exact: true })).toBeVisible();
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  for (const [tab, code, text] of [
+    ['facts', FUND, 'Expense ratio over time'],
+    ['benchmark', FUND, 'Risk against the benchmark'],
+    ['holdings', DSP_FLEXI, 'What changed'],
+  ] as const) {
+    test(`the ${tab} tab does not scroll sideways`, async ({ page }) => {
+      await page.goto(`/mf/funds/${code}?tab=${tab}`);
+      await expect(page.getByText(text).first()).toBeVisible({ timeout: 20_000 });
+      const [scroll, client] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+      expect(scroll).toBeLessThanOrEqual(client);
+    });
+  }
+});
