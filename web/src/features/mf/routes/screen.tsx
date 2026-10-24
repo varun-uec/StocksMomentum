@@ -229,7 +229,7 @@ export default function Screen() {
 
         <div className="min-w-0 space-y-4">
           {/* Conditions */}
-          <section aria-label="Conditions" className="rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
+          <section aria-label="Conditions" className="lg:rounded-card lg:border lg:border-mf-line lg:bg-mf-surface lg:p-4 lg:shadow-card">
             <div className="flex flex-wrap items-center gap-2">
               {filterMode === 'advanced' && <Segmented
                 label="Match"
@@ -251,7 +251,7 @@ export default function Screen() {
                   {describe(c, byId, short)}
                 </Chip>
               ))}
-              <Button size="sm" variant="ghost" className="lg:hidden" onClick={() => { setDraft(filterMode === 'advanced' ? view : null); setFiltersOpen(true); }}>
+              <Button size="sm" variant="primary" className="lg:hidden" onClick={() => { setDraft(filterMode === 'advanced' ? view : null); setFiltersOpen(true); }}>
                 <I.screen className="h-4 w-4" />
                 Filters ({view.conditions.length})
               </Button>
@@ -283,10 +283,10 @@ export default function Screen() {
           </section>
 
           {/* Result controls */}
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
-              Category
-              <select className={cx(inputClass, 'h-9 w-auto max-w-[200px]')} value={categoryOf(view) ?? ''} onChange={(e) => setView(withCategory(view, e.target.value || null))}>
+          <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+            <label className="flex min-w-0 items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
+              <span className="max-sm:sr-only">Category</span>
+              <select className={cx(inputClass, 'h-9 max-sm:w-full sm:w-auto sm:max-w-[200px]')} value={categoryOf(view) ?? ''} onChange={(e) => setView(withCategory(view, e.target.value || null))}>
                 <option value="">All categories</option>
                 {(fields.byId.get('category')?.values ?? []).filter((c) => c !== 'Unclassified').map((c) => (
                   <option key={c} value={c}>
@@ -295,9 +295,9 @@ export default function Screen() {
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
-              Sort by
-              <select className={cx(inputClass, 'h-9 w-auto')} value={view.sort[0]?.field ?? ''} onChange={(e) => setView({ ...view, sort: [{ field: e.target.value, dir: view.sort[0]?.dir ?? 'desc' }] })}>
+            <label className="flex min-w-0 items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
+              <span className="max-sm:sr-only">Sort by</span>
+              <select className={cx(inputClass, 'h-9 max-sm:w-full sm:w-auto')} value={view.sort[0]?.field ?? ''} onChange={(e) => setView({ ...view, sort: [{ field: e.target.value, dir: view.sort[0]?.dir ?? 'desc' }] })}>
                 {[...new Set([...(view.sort[0] ? [view.sort[0].field] : []), ...view.columns])].map((c) => (
                   <option key={c} value={c}>
                     {columnLabel(c, byId)}
@@ -306,11 +306,11 @@ export default function Screen() {
               </select>
             </label>
             {view.sort[0] && (
-              <Button size="sm" variant="ghost" onClick={() => onSort(view.sort[0].field)} title="Reverse the sort">
+              <Button size="sm" variant="ghost" className="justify-self-start" onClick={() => onSort(view.sort[0].field)} title="Reverse the sort">
                 {view.sort[0].dir === 'desc' ? 'High to low' : 'Low to high'}
               </Button>
             )}
-            <div className="ml-auto flex gap-2">
+            <div className="flex justify-end gap-2 sm:ml-auto">
               <Button size="sm" onClick={() => setColumnsOpen(true)}>
                 <I.grid className="h-4 w-4" />
                 Columns ({view.columns.length})
