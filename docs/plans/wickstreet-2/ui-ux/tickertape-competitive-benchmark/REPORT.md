@@ -1,6 +1,6 @@
 # Wickstreet 2.0 vs Tickertape — Mutual Fund Competitive Benchmark
 
-> **ARCHIVED: superseded on 24 October 2026.** This earlier report contains obsolete runtime observations, incorrect claims about gated filters, and arbitrary weighted scores that are withdrawn. Do not use its ratings or journey conclusions as the current verdict. Use [the live assessment](LIVE_ASSESSMENT_2026-10-24.md), which exercises both running products and records the evidence limits.
+> **ARCHIVED: superseded on 24 October 2026.** This earlier report contains obsolete runtime observations, incorrect claims about gated filters, and arbitrary weighted scores that are withdrawn. Do not use its ratings or journey conclusions as the current verdict. The [25 October independent benchmark](LIVE_ASSESSMENT_2026-10-25.md) is the latest review; [the 24 October live assessment](LIVE_ASSESSMENT_2026-10-24.md) remains prior-day evidence only.
 
 **Independent review · 24 October 2026 · Mutual funds only**  
 **Verdict: Wickstreet does not surpass Tickertape today.** Tickertape remains the more complete investment-research product; Wickstreet is stronger in historical NAV analysis, explainable peer ranking, scenario simulation, and visual craft. The gap is material: Wickstreet cannot yet connect those strengths to costs, official benchmarks, actual holdings, and an investor’s whole portfolio.

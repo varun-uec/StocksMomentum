@@ -2,6 +2,8 @@
 
 **Independent live review · 24 October 2026 · Tickertape's currently accessible mutual-fund workflows only**
 
+> **Historical baseline.** This report records the 24 October live state. The [25 October independent benchmark](LIVE_ASSESSMENT_2026-10-25.md) supersedes it for current visual, benchmark, first-screen facts, and workflow observations. Keep this file for its prior-day Tickertape profile/screener/portfolio evidence only; do not treat its overall verdict as the 25 October verdict.
+
 ## Verdict
 
 **Partially — Wickstreet is better in specific historical analytics and replayable research, but Tickertape is currently the better overall mutual-fund research product for an investor who needs a current fund dossier and portfolio context.** This is the closest of the permitted verdicts. The evidence does not support an overall Wickstreet win.
