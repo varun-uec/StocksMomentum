@@ -178,7 +178,7 @@ function Analysis({ view }: { view: PortfolioView }) {
               {view.positions.filter((p) => p.value !== 0).map((p) => (
                 <tr key={p.folio + (p.code ?? p.scheme)} className="border-b border-mf-line/60 last:border-0">
                   <td className="py-2 pr-3">
-                    {p.code && p.fund ? <Link className="text-mf-ink hover:underline" to={`/mf/fund/${p.code}`}>{schemeName(p.scheme)}</Link> : <span>{p.scheme}</span>}
+                    {p.code && p.fund ? <Link className="text-mf-ink hover:underline" to={`/mf/funds/${p.code}`}>{schemeName(p.scheme)}</Link> : <span>{p.scheme}</span>}
                     <span className="block text-[11px] text-mf-muted">
                       folio {p.folio} · {p.fund ? `${categoryShort(p.fund.category)} · ${p.fund.plan}` : 'not in Wickstreet data'}
                       {p.reconciled === false && ' · units differ from the statement'}
@@ -241,7 +241,7 @@ function Analysis({ view }: { view: PortfolioView }) {
                 <ul className="mt-1.5 space-y-1 text-sm">
                   {alts.map((x) => (
                     <li key={x.code} className="flex items-baseline justify-between gap-2">
-                      <Link className="min-w-0 truncate text-mf-ink-soft hover:underline" to={`/mf/fund/${x.code}`}>{schemeName(x.name)}</Link>
+                      <Link className="min-w-0 truncate text-mf-ink-soft hover:underline" to={`/mf/funds/${x.code}`}>{schemeName(x.name)}</Link>
                       <span className="shrink-0 text-xs tabular text-mf-muted">score {isNum(x.score) ? Math.round(x.score) : '—'} · TER {isNum(x.ter) ? pct(x.ter, 2) : '—'}</span>
                     </li>
                   ))}

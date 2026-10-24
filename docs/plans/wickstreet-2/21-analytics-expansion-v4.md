@@ -16,28 +16,35 @@
 
 A registered field is not a usable dimension. A field counts toward completion only when its coverage on real data is reported (values, `NA` and `NM` by reason). An endpoint alone completes nothing.
 
-**Tracker** (updated 2026-10-23, after v4; [as built](../../current/architecture.md#wickstreet-20-nav-analytics-v4)). Slices 2 and 3 delivered the base: 120 fields, the screener, trailing and rolling returns, annual returns, drawdown episodes, downside risk, ranks, consistency, the score, compare and the calculators. v4 adds 31 fields (151 in all), per-field coverage and 12 endpoints.
+**Tracker** (updated 2026-10-24, after v7; [as built](../../current/architecture.md#wickstreet-20-fund-facts-benchmark-holdings-idcw-and-portfolio-e1-e3e5-slice-6-methods-v6v7); before that, after v4; [as built](../../current/architecture.md#wickstreet-20-nav-analytics-v4)). Slices 2 and 3 delivered the base: 120 fields, the screener, trailing and rolling returns, annual returns, drawdown episodes, downside risk, ranks, consistency, the score, compare and the calculators. v4 adds 31 fields (151 in all), per-field coverage and 12 endpoints.
 
 | Item | Implemented | Data-ready | Open |
 |---|---|---|---|
 | C1 Historical peer rankings | Yes | Yes | Survivorship reduced, not removed (§5) |
 | C2 Rolling performance | Yes | Yes | — |
 | C3 Advanced SIP | Yes | Yes | — |
-| C4 Direct vs regular | NAV part | NAV: yes; TER: no | Cost drag needs E1 |
+| C4 Direct vs regular | Yes | Yes (E1 TER, 2019-01 to 2026-10) | Cost drag shows as the filed TER gap of the two plans; no separate field |
 | C5 Drawdown | Yes | Yes | — |
 | C6 Risk-return efficiency | Yes | Yes | — |
 | C7 Correlation | Yes | Yes | — |
-| C8 IDCW total return | No | No (E5) | E5 |
+| C8 IDCW total return | Yes (v7) | Yes (AMFI IDCW history) | Growth-vs-IDCW comparison of one scheme not built |
 | C9 Classification | Partly | Yes | SEBI 2026 categories (Unclassified 1,102 → 111) and fund type done; categories as filed at past dates have no source |
 | C10 Selection backtesting | Yes | Yes | — |
-| C11 Investor-level attribution | No | No | Slice 6, E1 |
-| C12 Benchmark analytics | No | Risk-free: yes; TRI: no | E3 |
+| C11 Investor-level attribution | No | No | Needs a real CAS; market, timing, fee and tax split not built |
+| C12 Benchmark analytics | Yes (v6) | AMFI benchmark returns: yes; TRI: no (labelled index-fund proxy) | Official TRI blocked by NSE/BSE terms |
 | C13 Risk-free metrics | Yes | Yes (E2, RBI, 2016-07 to 2026-10) | Rates must be imported as RBI publishes them; stale after 35 days |
-| C14–C21 | No | No | E1, E3–E7 ([doc 22](22-e1-e7-source-research.md)) |
+| C14 Fund costs | Yes (v6) | Yes (AMFI TER) | Exit-load drag not modelled |
+| C15 Fund profiles | Yes (v6) | Yes (AMFI SSD, fund performance) | Manager history before the current team has no source |
+| C16 Holdings intelligence | Yes (v6) | Partly: PPFAS and DSP fetched; other AMCs by import | Style drift needs E7 |
+| C17–C18 Debt intelligence | Partly: ratings mix from filed labels | Partly | Duration, YTM and rating history not parsed |
+| C19 ETF and index funds | Partly: AMFI tracking error, proxy gap | Partly | ETF price, premium/discount: E6 blocked by NSE/BSE terms |
+| C20–C21 Valuation, attribution | No | No | E7: no licensed fundamentals source |
 | C22 Tax-aware analysis | Partly | Yes | Rules back to 2018-04-01 done; exit loads (E1), switching costs and post-tax comparison across funds not built |
 | C23 Market regimes | Proxy | Yes | Index regimes need E3 |
 | C24 Deterioration detection | Yes | Yes | — |
-| C25–C28, C30 | No | — | Slice 6 |
+| C25 Portfolio X-Ray | Yes | Synthetic statements only | No real CAS file supplied yet |
+| C26 Portfolio optimisation | Partly: rebalancing trades, higher-ranked alternatives | Synthetic statements only | Model allocations, diversification score |
+| C27, C28, C30 | No | — | Slice 6 |
 | C29 Explainable rankings | Yes | Yes | — |
 
 Gates for the v4 items: G1, G4, G6 and G8 met. G2: month-end ranks match an independent pandas rebuild from SQL rows, and the §5 limits are stated. G3: per-field coverage and `as_of` on every response; no separate calculation timestamp. G5: independent real-data checks cover C1, C3, C4, C5, C7, C10, C13 and C23. G7: measured against the Slice 3 baseline ([as built](../../current/architecture.md#wickstreet-20-nav-analytics-v4)); the event-loop stall grew from 75 ms to about 170 ms.
