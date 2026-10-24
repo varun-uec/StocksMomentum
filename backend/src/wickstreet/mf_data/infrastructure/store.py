@@ -240,7 +240,8 @@ class SqlMfStore:
             row = (
                 await connection.execute(
                     text(
-                        "SELECT v.url, v.fetched_at, v.raw_sha256, v.raw_path "
+                        "SELECT v.url, v.fetched_at, v.raw_sha256, v.raw_path, "
+                        "v.retrieval_grant_id "
                         "FROM wickstreet.ingestion_run r "
                         "JOIN wickstreet.revision v ON v.id = r.revision_id WHERE r.id = :id"
                     ),
@@ -250,7 +251,11 @@ class SqlMfStore:
         if row is None:
             return None
         return StoredRaw(
-            url=row.url, fetched_at=row.fetched_at, sha256=row.raw_sha256, path=row.raw_path
+            url=row.url,
+            fetched_at=row.fetched_at,
+            sha256=row.raw_sha256,
+            path=row.raw_path,
+            retrieval_grant_id=row.retrieval_grant_id,
         )
 
     async def latest_raw(self, source: str, dataset: str) -> StoredRaw | None:
@@ -259,7 +264,8 @@ class SqlMfStore:
             row = (
                 await connection.execute(
                     text(
-                        "SELECT v.url, v.fetched_at, v.raw_sha256, v.raw_path "
+                        "SELECT v.url, v.fetched_at, v.raw_sha256, v.raw_path, "
+                        "v.retrieval_grant_id "
                         "FROM wickstreet.ingestion_run r "
                         "JOIN wickstreet.revision v ON v.id = r.revision_id "
                         "WHERE r.source = :s AND r.dataset = :d "
@@ -271,7 +277,11 @@ class SqlMfStore:
         if row is None:
             return None
         return StoredRaw(
-            url=row.url, fetched_at=row.fetched_at, sha256=row.raw_sha256, path=row.raw_path
+            url=row.url,
+            fetched_at=row.fetched_at,
+            sha256=row.raw_sha256,
+            path=row.raw_path,
+            retrieval_grant_id=row.retrieval_grant_id,
         )
 
     async def run_status(

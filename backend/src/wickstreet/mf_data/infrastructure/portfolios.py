@@ -19,13 +19,17 @@ A sheet joins its AMFI scheme by name. A sheet it cannot join is listed, never g
 
 from __future__ import annotations
 
+import csv
 import io
 import re
 import zipfile
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from xml.etree import ElementTree
+
+from xlrd import XLRDError  # type: ignore[import-untyped]
 
 from wickstreet.mf_data.domain.facts import compact, loose
 from wickstreet.mf_data.domain.model import (
@@ -392,13 +396,15 @@ def _workbooks(content: bytes) -> list[bytes]:
     """The workbooks in a file: the file itself, or each workbook inside a zip of them."""
     if content[:8] == XLS_SIGNATURE:
         return [content]
+    if content[:2] != b"PK":
+        return [content]
     book = zipfile.ZipFile(io.BytesIO(content))
     if any(n.startswith("xl/") for n in book.namelist()):
         return [content]
     return [
         book.read(n)
         for n in sorted(book.namelist())
-        if n.lower().endswith((".xlsx", ".xlsm", ".xls"))
+        if n.lower().endswith((".xlsx", ".xlsm", ".xls", ".csv"))
     ]
 
 
@@ -418,8 +424,8 @@ def parse_portfolios(
     holdings: list[Holding] = []
     unmatched: list[str] = []
     seen: set[tuple[int, date]] = set()
-    for workbook in _workbooks(content):
-        for code, sheet in any_sheets(workbook):
+    for book in _books(content):
+        for code, sheet in book:
             blocks = _blocks(sheet)
             coded = (codes or {}).get(code) if len(blocks) == 1 else None
             for rows in blocks:
@@ -448,8 +454,8 @@ def sheet_codes(content: bytes, names: Mapping[str, int]) -> dict[str, int]:
     _workbook(content)
     sheets: Counter[str] = Counter()
     joined: dict[str, int] = {}
-    for workbook in _workbooks(content):
-        for code, sheet in any_sheets(workbook):
+    for book in _books(content):
+        for code, sheet in book:
             sheets[code] += 1
             found = _header(sheet)
             if found is None or len(_blocks(sheet)) != 1:
@@ -461,9 +467,72 @@ def sheet_codes(content: bytes, names: Mapping[str, int]) -> dict[str, int]:
     return {c: s for c, s in joined.items() if sheets[c] == 1 and schemes[s] == 1}
 
 
+def _books(content: bytes) -> Iterator[list[tuple[str, list[Row]]]]:
+    """Each workbook's sheets, one workbook at a time; an unreadable one fails clearly."""
+    try:
+        for workbook in _workbooks(content):
+            if workbook[:2] == b"PK" or workbook[:8] == XLS_SIGNATURE:
+                yield any_sheets(workbook)
+            else:
+                yield [("CSV", _csv_rows(workbook))]
+    except (
+        csv.Error,
+        zipfile.BadZipFile,
+        KeyError,
+        ValueError,
+        ElementTree.ParseError,
+        XLRDError,
+    ) as exc:
+        raise SourceLayoutError(
+            f"The file cannot be read as a workbook ({type(exc).__name__}: {exc}). Download "
+            "it again; save an .xlsb or password-protected workbook as .xlsx first."
+        ) from exc
+
+
 def _workbook(content: bytes) -> None:
-    if content[:2] != b"PK" and content[:8] != XLS_SIGNATURE:
-        raise SourceLayoutError("Not an XLS or XLSX workbook, or a zip of them.")
+    if content[:2] == b"PK" or content[:8] == XLS_SIGNATURE:
+        return
+    try:
+        _csv_rows(content)
+    except (UnicodeDecodeError, csv.Error, ValueError) as exc:
+        raise SourceLayoutError(
+            "Not an XLS, XLSX, CSV or ZIP of portfolio files. PDF, XLSB and "
+            "password-protected workbooks are unsupported; export a faithful, unprotected "
+            "table as XLSX or CSV."
+        ) from exc
+
+
+def _csv_rows(content: bytes) -> list[Row]:
+    """Read a UTF-8 delimited table into the same sparse rows used by workbook sheets."""
+    decoded = content.decode("utf-8-sig")
+    for delimiter in (",", ";", "\t", "|"):
+        rows = _csv_table(decoded, delimiter)
+        if rows and _header(rows) is not None:
+            return rows
+    raise ValueError("CSV has no recognized ISIN and net-assets weight header.")
+
+
+def _csv_table(decoded: str, delimiter: str) -> list[Row]:
+    """Parse one candidate delimiter into sparse Excel-style row mappings."""
+    rows = []
+    for values in csv.reader(io.StringIO(decoded), delimiter=delimiter, strict=True):
+        cells = {
+            _column(index): value.strip()
+            for index, value in enumerate(values)
+            if value.strip()
+        }
+        rows.append(cells)
+    return rows
+
+
+def _column(index: int) -> str:
+    """Return an Excel-style column name for a zero-based index."""
+    name = ""
+    index += 1
+    while index:
+        index, rest = divmod(index - 1, 26)
+        name = chr(ord("A") + rest) + name
+    return name
 
 
 def parse_market_caps(content: bytes) -> list[CapClass]:

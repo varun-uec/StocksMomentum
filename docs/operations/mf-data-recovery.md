@@ -122,7 +122,7 @@ Use when no usable DB dump is available. This sequence reconstructs from provide
    The AMFI command records its available date range; the TigZig command requires a stored AMFI cutoff. Review each summary for failed/unavailable runs and conflicts.
 
 4. Load AMFI fact dependencies: `schemes` before SSD, then TER, performance and tracking error; IDCW and market caps can follow once source IDs/NAVs exist. Some endpoints only retain current disclosures, so a new rebuild cannot recreate old versions that their source no longer serves.
-5. Load monthly AMC holdings for the desired historical span. If automated retrieval is unavailable, acquire one publisher file manually and use `mf import-portfolios` with the true source URL. Load RBI handbook and auction HTML files manually through `mf import-rates`.
+5. Load monthly AMC holdings for the desired historical span. If automated retrieval is unavailable, use the registered manual-import route in the [AMC runbook](mf-source-runbooks.md#manual-portfolio-import), confirm the source has its storage-only owner decision, then import the owner-downloaded disclosure with its true source URL. Preserve the file for raw recovery and independently verify a source's first layout before classifying it as operational. Load RBI handbook and auction HTML files manually through `mf import-rates`.
 6. Run `mf report`, review per-dataset ingestion statuses, and compute `mf metrics`. Each successful CLI publication normally computes the snapshot automatically; `mf metrics` is safe to run again and is a no-op if current.
 7. Start the app only after a clean report and a current snapshot. The Compose API mounts the host raw directory; confirm `WICKSTREET_RAW_DIR` points to the same path used by CLI jobs.
 

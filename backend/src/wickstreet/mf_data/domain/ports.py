@@ -142,6 +142,7 @@ class StoredRaw:
     fetched_at: datetime
     sha256: str
     path: str
+    retrieval_grant_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -366,10 +367,16 @@ class FactSource(Protocol):
 
 
 class PortfolioSource(Protocol):
-    """A supplier of monthly portfolio disclosures (doc 21 E4)."""
+    """A supplier of monthly portfolio disclosures (doc 21 E4).
+
+    ``layout_verified`` is ``True`` once the parser has read the AMC's genuine files and
+    their portfolios reconcile; until then a portfolio that does not reconcile is not
+    stored.
+    """
 
     name: str
     adapter_version: str
+    layout_verified: bool
 
     async def portfolio(self, month_end: date) -> RawFile | None:
         """Fetch the month's disclosure; ``None`` when the source lists none."""

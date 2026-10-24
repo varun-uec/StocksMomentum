@@ -5,6 +5,7 @@ Synthetic workbooks only, shaped like the PPFAS and DSP files.
 
 from __future__ import annotations
 
+import csv
 import io
 import json
 import zipfile
@@ -70,6 +71,33 @@ def test_the_parser_reads_lines_to_the_grand_total_as_fractions() -> None:
     ]
     assert found.holdings[0].as_of == date(2026, 9, 30)
     assert found.holdings[0].sd_id == 7
+
+
+def test_manual_parser_reads_a_standard_csv_and_a_zip_of_csv_files() -> None:
+    rows = [
+        ["", "DSP Example Fund"],
+        ["", "Portfolio as on September 30, 2026"],
+        HEADER,
+        ["", "EQUITY & EQUITY RELATED"],
+        [1, "HDFC Bank Limited", "INE040A01034", "Banks", 100, 60, 0.6],
+        [2, "ICICI Bank Limited", "INE090A01021", "Banks", 100, 40, 0.4],
+        ["", "Grand Total", "", "", "", 100, 1],
+    ]
+    text = io.StringIO()
+    writer = csv.writer(text)
+    writer.writerows(rows)
+    content = text.getvalue().encode()
+
+    direct = parse_portfolios(content, {"dspexamplefund": 7})
+    assert [(line.name, line.weight) for line in direct.holdings] == [
+        ("HDFC Bank Limited", Decimal("0.6")),
+        ("ICICI Bank Limited", Decimal("0.4")),
+    ]
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as files:
+        files.writestr("fund.csv", content)
+    zipped = parse_portfolios(bundle.getvalue(), {"dspexamplefund": 7})
+    assert zipped.holdings == direct.holdings
 
 
 def test_futures_are_derivatives_and_never_section_headings() -> None:

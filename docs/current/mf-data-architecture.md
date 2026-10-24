@@ -14,7 +14,7 @@ All endpoints and observed file layouts below are the endpoints the adapters cal
 | AMFI facts | [Scheme list](https://www.amfiindia.com/api/populate-scheme?MF_ID=1); [SSD XML](https://portal.amfiindia.com/spages/SSD_1.xml); [TER workbook](https://www.amfiindia.com/api/populate-te-rdata-revised); performance gateway `https://www.amfiindia.com/gateway/pollingsebi/api/amfi/`; [tracking error](https://www.amfiindia.com/api/tracking-error-data); [IDCW](https://www.amfiindia.com/api/scheme-dividend); [market-cap listing](https://www.amfiindia.com/otherdata/categorisation-of-stocks) | JSON lists/reports and a combined retained JSON file; one XML per scheme; monthly XLSX for TER; XLS/XLSX half-yearly market-cap list. Performance reports are observed from 2019 onward; earlier coverage varies by report. SSD and IDCW are fetched for schemes with NAVs in the preceding 30 days. | Operator-run. Scheme list queries fund-house IDs 1–120; each SSD/IDCW query is per eligible scheme; TER is one request per month; performance and tracking error are requested on stored NAV dates; market caps are June 30 and December 31. Public endpoints, no credentials in code. `amfi_facts.py`. |
 | TigZig | [Full AMFI NAV archive](https://api.tigzig.com/mf/v1/download/amfi_nav_master.csv.gz); [latest scheme snapshot](https://api.tigzig.com/mf/v1/download/amfi_nav_master_latest.csv.gz) | Gzipped UTF-8 CSV. Archive columns: `scheme_code,date,nav,scheme_name,isin,source`; MF rows from 2006-04-01 are reported by the publisher. Snapshot is a compressed CSV. Archive NAV precision is four decimals. | Downloaded for `mf archive`; no API key in code. The adapter downloads the complete archive, filters the requested range locally and stages month files outside the repository. `tigzig.py`. |
 | MFAPI | `GET https://api.mfapi.in/mf/{amfi_code}` | JSON `meta`, `data[{date: DD-MM-YYYY, nav: string}]`, `status`. Provider describes historical NAV data; actual date coverage varies by scheme. | `mf crosscheck` only; no reference values are published into MF tables. One sequential request per sampled scheme, default sample 50. No credentials in code. `mfapi.py`. |
-| AMCs | 20 AMCs: PPFAS, DSP, Nippon India, SBI, ICICI Prudential, UTI, Baroda BNP Paribas, Tata, Motilal Oswal, Groww, Samco, PGIM India, WhiteOak, Trust, Mirae Asset, Invesco, Sundaram, LIC, quant and Quantum. Listing endpoints and file shapes are in the [AMC runbook](../operations/mf-source-runbooks.md#amc-monthly-portfolios). | Monthly XLS/XLSX workbooks, ZIPs of workbooks, or one workbook per scheme kept as one ZIP a month. Layouts are AMC-specific but normalized by one parser. `portfolios.py` and `amc.py`. | Operator-run for an as-of month. HTTP retrieval is implemented for these 20 providers. `mf import-portfolios` accepts files only for these 20 too; see [AMCs not fetched](#amcs-not-fetched). No login is configured. |
+| AMCs | 20 automated adapters plus 21 manual-import registrations. Names and current status are in the [AMC runbook](../operations/mf-source-runbooks.md#manual-portfolio-import). | Shared XLS/XLSX/CSV parser and ZIP-of-workbooks parser. A generic parser match is not AMC layout verification; a manual source stays unverified until a genuine disclosure imports and reconciles. `portfolios.py` and `amc.py`. | Operator-run. Automated retrieval remains limited to the 20 existing adapters. `mf import-portfolios` accepts all 41 registered sources. Manual imports require that source's local storage grant and record no retrieval grant. No login is configured. |
 | RBI | [DBIE](https://data.rbi.org.in/DBIE/) and RBI publications/releases | Manual XLSX from the Handbook of Statistics on the Indian Economy or HTML for “Treasury Bills: Full Auction Result”. The stored series is the 91-day T-bill implicit yield at cut-off price. | Human download only; Wickstreet has no RBI fetcher. Handbook is annual; auction releases are weekly when published. `rbi.py`. |
 | Local CAS import | User-selected CAMS, KFintech, NSDL or CDSL statement through `wickstreet.portfolio.infrastructure.cas` | Parsed locally into the tenant-owned portfolio ledger. The original CAS file and password are not retained; the database stores a file hash and normalized transactions. | User action only. This is personal portfolio input, not a reference-data provider. Never put real CAS files or details into Git, fixtures, docs or logs. |
 
@@ -53,9 +53,39 @@ Each automated AMC source holds five grants (`automated_retrieval`, `storage`, `
 | LIC (`lic`) | No copying or reuse "for any purpose" without written consent. | Owner risk acceptance | 102–106 |
 | Quantum (`quantum`) | Personal use only; no copying, reproduction or derivative works. | Owner risk acceptance | 112–116 |
 
-#### AMCs not fetched
+#### Manual portfolio imports
 
-21 AMCs are not fetched. The owner's risk acceptance of 2026-10-24 covers 11 of them, but it never covers working around an access control. Reasons found on 2026-10-24:
+All 21 sources below are registered for files the owner downloads and imports. Registration and local storage grants are owner decisions, not permissions from an AMC. Wickstreet does not fetch these sources or work around access controls. Each source uses the shared XLS/XLSX/CSV/ZIP parser. The parser-supported label means that the file type can be read; it does not establish that the AMC's layout parses correctly. No real file for these AMCs was found in the repository, so every row remains `Not real-file-verified`.
+
+| AMC source | Status | Why Wickstreet does not fetch |
+|---|---|---|
+| Kotak | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Radware bot check |
+| HDFC | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | HTTP 403 to clients other than a browser |
+| Edelweiss | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | HTTP 403 to clients other than a browser |
+| Wealth Company | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | TSPD bot check |
+| ABSL | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Terms bar robots and systematic retrieval |
+| HSBC | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Terms bar robots and automated access |
+| Franklin Templeton | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Terms bar robots and automated access |
+| Jio BlackRock | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Terms bar robots and automated access |
+| Axis | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Listing needs a session token; `robots.txt` disallows `/cms/` |
+| Bandhan | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Listing API carries encrypted, signed payloads |
+| Mahindra Manulife | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Listing API carries encrypted, signed payloads |
+| ITI | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Listing API carries encrypted, signed payloads |
+| JM Financial | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Listing API carries encrypted, signed payloads |
+| Canara Robeco | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | `robots.txt` disallows `/wp-content/uploads/` |
+| Union | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | Monthly listing did not load |
+| Bank of India | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | No machine-readable monthly listing found |
+| Bajaj Finserv | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | No machine-readable monthly listing found |
+| 360 ONE | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | No machine-readable monthly listing found |
+| Shriram | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | No machine-readable monthly listing found |
+| Navi | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | No machine-readable monthly listing found |
+| Zerodha | Registered; generic XLS/XLSX/CSV/ZIP parser-supported; real file unverified | No machine-readable monthly listing found |
+
+On 2026-10-24, the owner authorised local personal-use storage of manually downloaded files for these 21 sources. Each source's `storage` grant records that owner decision and states that it is not AMC permission. This decision does not grant retrieval, display, derived-metric, export or AI-processing use. Active grants are instance data; verify them with `wickstreet rights list`.
+
+#### Automated acquisition exclusions
+
+These sources are not fetched. Reasons found on 2026-10-24:
 
 | AMC | Why not fetched | Owner decision |
 |---|---|---|
@@ -64,25 +94,23 @@ Each automated AMC source holds five grants (`automated_retrieval`, `storage`, `
 | Canara Robeco | Files sit under `/wp-content/uploads/`, which `robots.txt` disallows. | Risk accepted |
 | Union | The monthly list did not load (HTTP 500). | Risk accepted |
 | Bank of India, Bajaj Finserv, 360 ONE, Shriram | No machine-readable monthly listing found. | Risk accepted |
-| Kotak, Wealth Company | Bot checks (Radware, TSPD). | None |
-| HDFC, Edelweiss | HTTP 403 to clients other than a browser. | None |
+| Kotak, Wealth Company | Bot checks (Radware, TSPD). | Manual storage only (owner, 2026-10-24) |
+| HDFC, Edelweiss | HTTP 403 to clients other than a browser. | Manual storage only (owner, 2026-10-24) |
 | ABSL | Terms bar robots and systematic retrieval. | Manual import only (owner, 2026-10-24) |
-| HSBC, Franklin Templeton, Jio BlackRock | Terms bar robots, scrapers or automated access. | None |
-| Navi, Zerodha | No machine-readable monthly listing found. | None |
-
-**Gap: no manual route yet.** `mf import-portfolios` looks the AMC up among the 20 adapters and stores the file under that AMC's `storage` grant. None of these 21 AMCs has an adapter entry or a grant, so their files cannot be imported today. Each needs an owner `storage` grant (and the other non-retrieval uses) and a source entry whose parser reads its layout.
+| HSBC, Franklin Templeton, Jio BlackRock | Terms bar robots, scrapers or automated access. | Manual storage only (owner, 2026-10-24) |
+| Navi, Zerodha | No machine-readable monthly listing found. | Manual storage only (owner, 2026-10-24) |
 
 #### Acquisition procedure for a new AMC
 
 1. Read the AMC's terms of use, disclaimer and `robots.txt`. Summarise them in the table above.
-2. If the listing sits behind a bot check, a session token, an encrypted API or a `robots.txt` rule, stop. Record the AMC under [AMCs not fetched](#amcs-not-fetched).
+2. If the listing sits behind a bot check, a session token, an encrypted API or a `robots.txt` rule, stop. Record the AMC under [Automated acquisition exclusions](#automated-acquisition-exclusions). Manual import remains separate and must follow [Manual portfolio imports](#manual-portfolio-imports).
 3. Ask the owner. Only after the owner decides, record the decision as five grants: `wickstreet rights grant SOURCE --use automated_retrieval --use storage --use display --use derived_metrics --use ai_processing_internal --by OWNER --basis "..."`. The basis states owner direction or owner risk acceptance, quotes the terms, and says the grant is not a permission from the AMC.
 4. Ingest the months: `wickstreet mf portfolios --amc SOURCE --start ... --end ... --no-compute`.
 5. Reparse once with `--reparse`. A first ingest reads oldest months first and learns no sheet codes. Check that each sheet joined only by sheet code is a rename of that scheme.
 6. Check the unmatched sheet names and the portfolios off 100% by more than 2%. After a parser or join change, compare the parsed schemes and fact keys of every stored file under the old and new code. Explain every lost key before publishing.
 7. Compute the snapshot (`wickstreet mf metrics`) and measure coverage.
 
-**Provenance.** Each fetched month is one `ingestion_run` and, when anything changed, one `revision` with the file's URL, fetch time, SHA-256, raw path, adapter version (`amc-portfolios-2026-10-24.7`; revisions 5583–5617, SBI and part of Baroda BNP Paribas, were parsed with the .7 rules under the .6 label) and the retrieval and storage grant ids. For an AMC that files per scheme, the raw file is the month's ZIP of every fetched workbook, and its URL is the listing endpoint. A manual import records no retrieval grant.
+**Provenance.** Each fetched month is one `ingestion_run` and, when anything changed, one `revision` with the file's URL, fetch time, SHA-256, raw path, adapter version (`amc-portfolios-2026-10-24.8` adds shared CSV parsing and unverified-layout reconciliation; existing fetched files stay on their recorded version) and the retrieval and storage grant ids. For an AMC that files per scheme, the raw file is the month's ZIP of every fetched workbook, and its URL is the listing endpoint. A manual import records no retrieval grant.
 
 The active per-instance record is inspected with `wickstreet rights list`. It is not committed because the register is deployment data. `basis`, `mode`, and `use` should describe the owner's decision precisely; do not copy credentials into that text.
 
@@ -96,7 +124,7 @@ The implementation and its fixture tests are the parser specifications. The sour
 | TigZig archive | Header must match exactly; validates gzip/UTF-8/CSV and ISO dates, skips rows whose `source` is not `MF` (including SIF), filters the requested interval, preserves month order and imports four-decimal values. Latest snapshot lacks launch/closure/minimum fields; it fills only missing master codes. | `test_archive_sources.py`, `test_mf_ingestion.py`. |
 | MFAPI | Requires JSON `status == SUCCESS`; parses `DD-MM-YYYY`; malformed/non-numeric NAV is retained as missing for comparison. Comparison tolerance is `0.0001`; two missing values compare equal. | `test_archive_sources.py`, `test_mf_ingestion.py`. |
 | AMFI facts | SSD XML accepts `SchemeSummary` elements and label/value `<records>` layouts; text is compacted and known “not filed” values omitted. TER XLSX uses the first sheet, exact header anchors, Excel serial dates and change points. Scheme, performance, tracking-error, IDCW and caps use named JSON/XML/XLSX layouts. Fact rows join by source code/name, or performance by the regular/direct NAV pair; unjoined items are counted, never guessed. A name joins exactly, then without AMFI's segregated-portfolio, former-name or erstwhile note, then without its own trailing note (a ticker), then by the loose key. A filed tenure never drops to meet the loose key, so "SBI Debt Fund Series C - 27 (1260 Days)" never joins "... (391 Days)". | `test_mf_facts.py`, `test_mf_ingestion.py`. |
-| AMC holdings | XLS/XLSX magic bytes are detected; ZIP may contain a workbook or several. Parser searches the first 60 rows for an ISIN and `% to net assets` header, reads scheme/date above it, skips totals/subtotals and stops at grand total. It detects percentage vs fraction weights (derivatives judged apart: Groww files futures in percent), section totals in some ICICI sheets, derivatives by line/industry/contract month or a negative quantity, lettered sections, IRS section and `Net Assets` end marker, UTI scheme blocks and duplicate scheme/date portfolios. Scheme joins are normalized name matches, also without a leading sheet code (`IB43-`) or inside a statement title, then by the sheet code the AMC's newest file gives the scheme. Last, a whole sheet name joins by a loose key ("Fund of Funds" as "FOF", a month as three letters, and AMFI's name without its tenure, so "FMP - Series 1" joins "FMP - Series 1 (3668 Days)"). Titled listings pick a month by the first date in each title. | `test_mf_holdings.py`, `test_mf_ingestion.py` cover synthetic workbooks, picks, redirects, month ZIPs, titled listings (WhiteOak, Trust, Mirae, Invesco, Quantum), title dates, sheet-code joins and loose-key joins through a mock transport. Live listing pages are not fixtured. |
+| AMC holdings | XLS/XLSX magic bytes are detected; CSV rows with the same ISIN and `% to net assets` header are accepted; ZIP may contain one or more of these files. Parser searches the first 60 rows for the header, reads scheme/date above it, skips totals/subtotals and stops at grand total. It detects percentage vs fraction weights (derivatives judged apart: Groww files futures in percent), section totals in some ICICI sheets, derivatives by line/industry/contract month or a negative quantity, lettered sections, IRS section and `Net Assets` end marker, UTI scheme blocks and duplicate scheme/date portfolios. Scheme joins are normalized name matches, also without a leading sheet code (`IB43-`) or inside a statement title, then by the sheet code the AMC's newest file gives the scheme. Last, a whole sheet name joins by a loose key ("Fund of Funds" as "FOF", a month as three letters, and AMFI's name without its tenure, so "FMP - Series 1" joins "FMP - Series 1 (3668 Days)"). Titled listings pick a month by the first date in each title. PDF, XLSB and password-protected files are unsupported. | `test_mf_holdings.py`, `test_mf_ingestion.py` cover synthetic XLSX/CSV, ZIPs, picks, redirects, month archives, titled listings (WhiteOak, Trust, Mirae, Invesco, Quantum), title dates, sheet-code joins, loose-key joins, malformed files and manual-import trust gates through a mock transport. Live listing pages are not fixtured. |
 | RBI | XLSX first sheet finds date and “Implicit Yield at Cut-off Price”; accepts Excel serials or `DD-Mon-YYYY` text. HTML parser locates the 91-day column at the cut-off row; weeks without accepted bids yield no rate. Rates are quantized to four decimals and validated in `(0, 25]`. | `test_mf_rates.py`. |
 
 ## PostgreSQL data model and identity

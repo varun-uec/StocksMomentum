@@ -7,12 +7,20 @@ methodology, decided with the metric formulas.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from wickstreet.mf_data.domain.model import Anomaly, NavRecord, RatePoint, SchemeRecord
+from wickstreet.mf_data.domain.model import (
+    DERIVATIVE,
+    Anomaly,
+    Holding,
+    NavRecord,
+    RatePoint,
+    SchemeRecord,
+)
 
 
 class BlockingError(Exception):
@@ -123,6 +131,26 @@ def compare_series(
         reference_only=len(reference.keys() - stored.keys()),
         stored_only=len(stored.keys() - reference.keys()),
         examples=tuple(examples),
+    )
+
+
+# A portfolio reconciles when its lines sum to 100% of net assets within this, with or
+# without its derivative lines (a hedged sheet nets its futures; others list them apart).
+RECONCILE_TOLERANCE = Decimal("0.02")
+
+
+def unreconciled(holdings: Iterable[Holding]) -> list[tuple[int, date, Decimal]]:
+    """Each portfolio that does not reconcile: its scheme, date and total of all lines."""
+    every: defaultdict[tuple[int, date], Decimal] = defaultdict(Decimal)
+    held: defaultdict[tuple[int, date], Decimal] = defaultdict(Decimal)
+    for line in holdings:
+        every[line.sd_id, line.as_of] += line.weight
+        if line.asset != DERIVATIVE:
+            held[line.sd_id, line.as_of] += line.weight
+    return sorted(
+        (sd_id, day, total)
+        for (sd_id, day), total in every.items()
+        if min(abs(total - 1), abs(held[sd_id, day] - 1)) > RECONCILE_TOLERANCE
     )
 
 

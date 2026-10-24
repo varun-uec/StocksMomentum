@@ -2,8 +2,10 @@
 
 One AMC file is one run and, when any portfolio in it changed, one revision. A file
 an AMC lists is fetched under the AMC's retrieval grant; a file a person downloaded
-is imported under its storage grant alone. Sheets join AMFI schemes by name, so the
-scheme list must be read first; a sheet filed under a scheme's old name joins by the
+is imported under its storage grant alone. A file that gives no portfolio fails. From
+an AMC whose layout is unverified, a portfolio that does not reconcile is held back.
+Sheets join AMFI schemes by name, so the scheme list must be read first; a sheet filed
+under a scheme's old name joins by the
 sheet code the AMC's newest kept file gives that scheme.
 """
 
@@ -16,7 +18,7 @@ from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.domain.rights import RightsDeniedError, Use
 from wickstreet.mf_data.application.ingest import SETTLED, Outcome
 from wickstreet.mf_data.domain.facts import scheme_keys
-from wickstreet.mf_data.domain.model import HOLDINGS_CONTRACT, HOLDINGS_MONTH, RawFile
+from wickstreet.mf_data.domain.model import HOLDINGS_CONTRACT, HOLDINGS_MONTH, Portfolios, RawFile
 from wickstreet.mf_data.domain.ports import (
     MfStore,
     PortfolioSource,
@@ -25,6 +27,7 @@ from wickstreet.mf_data.domain.ports import (
     SourceError,
     SourceLayoutError,
 )
+from wickstreet.mf_data.domain.validation import RECONCILE_TOLERANCE, unreconciled
 
 
 class IngestPortfolios:
@@ -63,6 +66,7 @@ class IngestPortfolios:
         _, names = scheme_keys(listed, amfi_codes)
         try:
             found = source.parse_portfolios(raw, names, month_end, await self._codes(source, names))
+            found = _trusted(source, raw, found)
         except SourceLayoutError as exc:
             await self._store.close_run(run_id, "failed", error=str(exc))
             return Outcome(month_end, "failed", error=str(exc))
@@ -141,13 +145,52 @@ class IngestPortfolios:
             error = f"Raw file {stored.path} does not match its recorded SHA-256."
             await self._store.close_run(run.id, "failed", error=error)
             return Outcome(month_end, "failed", error=error)
-        retrieval = await self._grant(run.id, name, Use.AUTOMATED_RETRIEVAL)
-        return await self._publish(source, run.id, raw, month_end, retrieval)
+        # A reparse fetches nothing: it keeps the retrieval grant the file came under,
+        # or none for a file a person imported.
+        return await self._publish(source, run.id, raw, month_end, stored.retrieval_grant_id)
 
     async def import_file(self, name: str, raw: RawFile, month_end: date) -> Outcome:
         """Publish a file a person downloaded from AMC ``name``; Wickstreet fetched nothing."""
-        source = self._sources[name]
+        source = self._sources.get(name)
+        if source is None:
+            known = ", ".join(sorted(self._sources))
+            return Outcome(month_end, "failed", error=f"Unknown AMC {name!r}. Known: {known}.")
         run = await self._store.open_run(name, HOLDINGS_MONTH, month_end, month_end)
         if raw.sha256 == run.raw_sha256:
             return Outcome(month_end, "unchanged")
         return await self._publish(source, run.id, raw, month_end, None)
+
+
+def _trusted(source: PortfolioSource, raw: RawFile, found: Portfolios) -> Portfolios:
+    """The portfolios of ``found`` that may be stored; :class:`SourceLayoutError` if none.
+
+    A file must give at least one portfolio. From an AMC whose layout is unverified, a
+    portfolio that does not reconcile is held back and listed: a line read wrongly
+    shows in its total.
+    """
+    if not found.holdings:
+        unmatched = found.unmatched[:5]
+        named = f" Names that joined no scheme: {', '.join(unmatched)}." if unmatched else ""
+        raise SourceLayoutError(
+            f"No portfolio in {raw.url} joined an AMFI scheme. A sheet needs an ISIN "
+            "column and a '% to net assets' header in its first 60 rows, with the scheme's "
+            f"name above the header.{named} If the file is a month-end disclosure, its "
+            "layout needs a parser."
+        )
+    off = [] if source.layout_verified else unreconciled(found.holdings)
+    if not off:
+        return found
+    held_back = {(sd_id, day) for sd_id, day, _ in off}
+    kept = [line for line in found.holdings if (line.sd_id, line.as_of) not in held_back]
+    if not kept:
+        raise SourceLayoutError(
+            f"{source.name}'s layout is unverified, and none of its {len(off)} portfolios "
+            f"sums to 100% within {RECONCILE_TOLERANCE:.0%} (scheme {off[0][0]}: "
+            f"{off[0][2]:.2%}). Nothing was stored. Check the file; if it is genuine, its "
+            "layout needs a parser fix before it can be imported."
+        )
+    notes = [
+        f"scheme {sd_id} on {day} sums to {total:.2%}; held back (unverified layout)"
+        for sd_id, day, total in off
+    ]
+    return Portfolios(kept, [*notes, *found.unmatched])

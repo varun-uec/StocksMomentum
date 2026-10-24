@@ -13,6 +13,7 @@ All project documentation lives in this folder. Start with `current/`.
 | [current/design.md](current/design.md) | How the screener and the backtest decide: pipeline, rules, gates, scores, determinism |
 | [current/capabilities.md](current/capabilities.md) | What the product does: every API endpoint, web page and CLI command |
 | [current/state.md](current/state.md) | Where things stand: checks, delivery record, research verdicts, open defects, data gaps |
+| [plans/wickstreet-2/execution-ledger.md](plans/wickstreet-2/execution-ledger.md) | Ranked Wickstreet 2.0 investor backlog, acceptance evidence and next action |
 | [current/reference/keyboard-shortcuts.md](current/reference/keyboard-shortcuts.md) | Every key the chart workspace answers |
 
 Each `current/` page carries its own verification date. When the code changes, update the affected page in the same commit.

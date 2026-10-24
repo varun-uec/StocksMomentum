@@ -46,9 +46,7 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
 - Baroda BNP Paribas: see :class:`BarodaPortfolioAdapter`.
 - UTI: see :class:`UtiPortfolioAdapter`.
 
-Other AMCs build their pages in the browser from sources not yet read, so their
-files come in through ``wickstreet mf import-portfolios``, which reads the same
-layouts.
+The AMCs in :data:`MANUAL` are never fetched: see :class:`ManualPortfolioSource`.
 """
 
 from __future__ import annotations
@@ -79,7 +77,8 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.7"
+    adapter_version = "amc-portfolios-2026-10-24.8"
+    layout_verified = True
 
     def __init__(
         self,
@@ -604,6 +603,76 @@ class UtiPortfolioAdapter(AmcPortfolioAdapter):
                     raise SourceError(f"{row['url']} answered HTTP {response.status_code}.")
                 return RawFile(row["url"], datetime.now(UTC), response.content)
         return None
+
+
+# AMCs whose files a person downloads, with why Wickstreet does not fetch them
+# (checked 2026-10-24; the owner authorised manual import and local storage).
+MANUAL = {
+    "kotak": "a Radware bot check guards the site",
+    "hdfc": "the site answers HTTP 403 to clients other than a browser",
+    "edelweiss": "the site answers HTTP 403 to clients other than a browser",
+    "absl": "its terms bar robots and systematic retrieval",
+    "wealthco": "a TSPD bot check guards the site",
+    "hsbc": "its terms bar robots and automated access",
+    "franklin": "its terms bar robots and automated access",
+    "jio": "its terms bar robots and automated access",
+    "axis": "the listing needs the page's session token; robots.txt disallows /cms/",
+    "bandhan": "the listing API carries encrypted, signed payloads",
+    "mahindra": "the listing API carries encrypted, signed payloads",
+    "iti": "the listing API carries encrypted, signed payloads",
+    "jm": "the listing API carries encrypted, signed payloads",
+    "canara": "robots.txt disallows /wp-content/uploads/, where the files sit",
+    "union": "the monthly listing does not load",
+    "boi": "no machine-readable monthly listing was found",
+    "bajaj": "no machine-readable monthly listing was found",
+    "360one": "no machine-readable monthly listing was found",
+    "shriram": "no machine-readable monthly listing was found",
+    "navi": "no machine-readable monthly listing was found",
+    "zerodha": "no machine-readable monthly listing was found",
+}
+
+
+class ManualPortfolioSource:
+    """An AMC whose files a person downloads in a browser; Wickstreet fetches nothing.
+
+    Its files come in through ``wickstreet mf import-portfolios`` and the parser the
+    fetched AMCs use. Its layout is unverified until one of its genuine files has been
+    imported and checked, so a portfolio that does not reconcile is held back.
+    """
+
+    adapter_version = AmcPortfolioAdapter.adapter_version
+    layout_verified = False
+
+    def __init__(self, name: str, why: str) -> None:
+        """``why`` says why Wickstreet does not fetch the AMC's files."""
+        self.name = name
+        self._why = why
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """Refuse: this AMC is manual import only."""
+        raise SourceError(
+            f"{self.name} is manual import only: {self._why}. Download the month's file "
+            "in a browser and run `wickstreet mf import-portfolios`."
+        )
+
+    def parse_portfolios(
+        self,
+        raw: RawFile,
+        names: Mapping[str, int],
+        fallback: date | None,
+        codes: Mapping[str, int] | None = None,
+    ) -> Portfolios:
+        """Every scheme portfolio in the file."""
+        return parse_portfolios(raw.content, names, fallback, codes)
+
+    def sheet_codes(self, raw: RawFile, names: Mapping[str, int]) -> dict[str, int]:
+        """The sheet codes that name one scheme each in the file."""
+        return sheet_codes(raw.content, names)
+
+
+def manual_sources() -> dict[str, ManualPortfolioSource]:
+    """Every manual-import AMC, by name."""
+    return {name: ManualPortfolioSource(name, why) for name, why in MANUAL.items()}
 
 
 def amc_adapters(

@@ -30,7 +30,11 @@ from wickstreet.mf_data.application.ingest import (
     Reparse,
 )
 from wickstreet.mf_data.application.portfolios import IngestPortfolios
-from wickstreet.mf_data.infrastructure.amc import AmcPortfolioAdapter, amc_adapters
+from wickstreet.mf_data.infrastructure.amc import (
+    AmcPortfolioAdapter,
+    amc_adapters,
+    manual_sources,
+)
 from wickstreet.mf_data.infrastructure.amfi import AmfiAdapter
 from wickstreet.mf_data.infrastructure.amfi_facts import AmfiFactsAdapter
 from wickstreet.mf_data.infrastructure.mfapi import MfapiAdapter
@@ -108,7 +112,7 @@ def build_ingestion(settings: WickstreetSettings, database: Database) -> Ingesti
         reparse=Reparse(day, store),
         rates=ImportRates(RbiAdapter(), store, raw_store, rights),
         facts=IngestFacts(facts, store, raw_store, rights),
-        portfolios=IngestPortfolios(amcs, store, raw_store, rights),
+        portfolios=IngestPortfolios({**amcs, **manual_sources()}, store, raw_store, rights),
         amcs=tuple(amcs.values()),
     )
 

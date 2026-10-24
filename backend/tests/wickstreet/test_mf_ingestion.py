@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import gzip
+import io
 import time
+import zipfile
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
@@ -27,6 +29,8 @@ from tests.wickstreet.archive_files import (
     tigzig_adapter,
 )
 from tests.wickstreet.conftest import Urls
+from tests.wickstreet.test_mf_facts import _xlsx
+from tests.wickstreet.test_mf_holdings import HEADER
 from wickstreet.app import create_app
 from wickstreet.config import WickstreetSettings
 from wickstreet.data_rights.application.gate import RightsGate
@@ -56,7 +60,8 @@ from wickstreet.mf_data.domain.model import (
     SchemeFacts,
     SchemeRef,
 )
-from wickstreet.mf_data.domain.ports import Provenance
+from wickstreet.mf_data.domain.ports import Provenance, SourceError
+from wickstreet.mf_data.infrastructure.amc import manual_sources
 from wickstreet.mf_data.infrastructure.amfi import parse_nav_file, parse_scheme_master
 from wickstreet.mf_data.infrastructure.raw_store import FileRawStore
 from wickstreet.mf_data.infrastructure.store import SqlMfStore
@@ -583,6 +588,7 @@ class FakeAmc:
 
     name = "fakeamc"
     adapter_version = "fake-1"
+    layout_verified = True
 
     def __init__(self) -> None:
         self.kind = "other"
@@ -657,6 +663,130 @@ async def test_a_portfolio_reparse_supersedes_lines_from_the_kept_file(
         "SELECT asset, superseded_revision IS NULL FROM wickstreet.holding ORDER BY revision_id",
     ) == [("other", False), ("derivative", True)]
     assert (await ingest.reparse("fakeamc", D1 + timedelta(days=31))).status == "skipped"
+
+
+def _example_month(first: float, second: float, scheme: str = "Example Fund") -> bytes:
+    """One month of ``scheme``: two equity lines, as fractions of net assets."""
+    return _xlsx(
+        [
+            ["", scheme],
+            ["", "Portfolio as on September 30, 2026"],
+            HEADER,
+            ["", "EQUITY & EQUITY RELATED"],
+            [1, "HDFC Bank Limited", "INE040A01034", "Banks", 100, 600, first],
+            [2, "ICICI Bank Limited", "INE090A01021", "Banks", 100, 400, second],
+            ["", "Grand Total", "", "", "", 1000, first + second],
+        ]
+    )
+
+
+async def test_a_manual_amc_imports_under_storage_alone_and_refuses_what_it_cannot_trust(
+    app_database: Database, mf_urls: Urls, tmp_path: Path
+) -> None:
+    owner = Database(mf_urls.owner)
+    await record_grants(
+        owner,
+        source="kotak",
+        mode="personal",
+        uses=[Use.STORAGE],
+        basis="test",
+        granted_by="tests",
+    )
+    await owner.dispose()
+    store = SqlMfStore(app_database)
+    run = await store.open_run(AMFI, "scheme-list", D1, D1)
+    [(grant,)] = await _rows(app_database, "SELECT min(id) FROM wickstreet.rights_grant")
+    provenance = Provenance(
+        "fake://list", "2026-09-01T00:00:00+00:00", "1" * 64, "x", "f", "c", None, grant
+    )
+    await store.publish_facts(
+        run.id,
+        SchemeFacts([]),
+        provenance,
+        [SchemeRef(1, 1, "Example Fund"), SchemeRef(2, 1, "Second Fund")],
+    )
+    ingest = IngestPortfolios(
+        manual_sources(),
+        store,
+        FileRawStore(tmp_path),
+        RightsGate(SqlRightsRegister(app_database, "personal")),
+    )
+    month = date(2026, 9, 30)
+
+    def downloaded(content: bytes) -> RawFile:
+        return RawFile("https://amc.example/sep.xlsx", datetime.now(UTC), content)
+
+    # An unverified layout stores no portfolio that does not reconcile.
+    half = await ingest.import_file("kotak", downloaded(_example_month(0.3, 0.2)), month)
+    assert half.status == "failed" and "none of its 1 portfolios" in (half.error or "")
+    empty = await ingest.import_file("kotak", downloaded(_xlsx([["", "Notes"]])), month)
+    assert empty.status == "failed" and "No sheet has an ISIN" in (empty.error or "")
+    stranger = _example_month(0.6, 0.4, "Unknown Fund")
+    unjoined = await ingest.import_file("kotak", downloaded(stranger), month)
+    assert unjoined.status == "failed" and "joined no scheme: Unknown Fund" in (
+        unjoined.error or ""
+    )
+    pdf = await ingest.import_file("kotak", downloaded(b"%PDF-1.7"), month)
+    assert pdf.status == "failed" and "Not an XLS, XLSX, CSV or ZIP" in (pdf.error or "")
+    cut = await ingest.import_file("kotak", downloaded(_example_month(0.6, 0.4)[:300]), month)
+    assert cut.status == "failed" and "cannot be read as a workbook" in (cut.error or "")
+    assert await _rows(app_database, "SELECT count(*) FROM wickstreet.holding") == [(0,)]
+
+    # Of two portfolios, the one that reconciles is stored and the other is listed.
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as files:
+        files.writestr("a.xlsx", _example_month(0.6, 0.4))
+        files.writestr("b.xlsx", _example_month(0.3, 0.2, "Second Fund"))
+    month_file = downloaded(bundle.getvalue())
+    first = await ingest.import_file("kotak", month_file, month)
+    assert (first.status, first.rows, first.anomalies) == ("published", 2, 1)
+    assert "scheme 2 on 2026-09-30 sums to 50.00%; held back" in (first.error or "")
+    assert await _rows(app_database, "SELECT DISTINCT sd_id FROM wickstreet.holding") == [(1,)]
+    again = await ingest.import_file("kotak", month_file, month)
+    assert again.status == "unchanged"
+    # A reparse needs no retrieval grant, and its revision records none.
+    assert (await ingest.reparse("kotak", month)).status == "unchanged"
+    assert await _rows(
+        app_database,
+        "SELECT count(*), count(v.retrieval_grant_id) FROM wickstreet.revision v "
+        "JOIN wickstreet.ingestion_run r ON r.id = v.run_id WHERE r.source = 'kotak'",
+    ) == [(1, 0)]
+    unknown = await ingest.import_file("nosuchamc", downloaded(b""), month)
+    assert unknown.status == "failed" and "Known: 360one" in (unknown.error or "")
+    assert "kotak" in (unknown.error or "")
+    with pytest.raises(RightsDeniedError):  # no retrieval grant, so nothing is fetched
+        await ingest.month("kotak", date(2026, 8, 31))
+
+
+async def test_a_manual_amc_never_fetches() -> None:
+    sources = manual_sources()
+    assert set(sources) == {
+        "kotak",
+        "hdfc",
+        "edelweiss",
+        "absl",
+        "wealthco",
+        "hsbc",
+        "franklin",
+        "jio",
+        "axis",
+        "bandhan",
+        "mahindra",
+        "iti",
+        "jm",
+        "canara",
+        "union",
+        "boi",
+        "bajaj",
+        "360one",
+        "shriram",
+        "navi",
+        "zerodha",
+    }
+    assert not any(s.layout_verified for s in sources.values())
+    for name, source in sources.items():
+        with pytest.raises(SourceError, match=f"{name} is manual import only"):
+            await source.portfolio(date(2026, 9, 30))
 
 
 class FakeFacts:

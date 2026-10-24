@@ -20,7 +20,7 @@ docker compose run --rm --entrypoint wickstreet wickstreet-migrate rights grant 
   --basis "Owner personal-mode decision per ADR-023 U10/U14; not AMFI permission" --by OPERATOR
 ```
 
-Analytics also needs `derived_metrics` for each underlying source, and research API reads need `display`. Provider import grants are separate: each AMC uses its own source name (`ppfas`, `dsp`, `nippon`, `sbi`, `icici`, `tata`, `motilal`, `uti`, `barodabnp`, `groww`, `samco`, `pgim`, `whiteoak`, `trust`, `mirae`, `invesco`, `sundaram`, `lic`, `quant`, `quantum`); RBI imports require `rbi` storage; MFAPI checks require `mfapi` automated retrieval and storage. The CLI checks rights before network retrieval and before database publication. SaaS mode currently has no supported identity adapter and no commercial source permissions.
+Analytics also needs `derived_metrics` for each underlying source, and research API reads need `display`. Automated AMC retrieval grants remain source-specific. Manual imports use the 21 names in [Manual portfolio import](#manual-portfolio-import) and need that source's `storage` grant only. RBI imports require `rbi` storage; MFAPI checks require `mfapi` automated retrieval and storage. The CLI checks rights before network retrieval and before database publication. SaaS mode currently has no supported identity adapter and no commercial source permissions.
 
 Shared HTTP policy from `WICKSTREET_*`: minimum interval 1 second per adapter, timeout 120 seconds (AMFI facts forces at least 180 seconds), maximum four attempts. Transport failures, 429 and 5xx retry with exponential backoff; other 4xx fail. No provider password or API token is configured. Each command prints outcomes and counts; a failed run is in `ingestion_run` and can be retried. Published/unchanged/unavailable periods skip unless a command has `--refetch`.
 
@@ -138,7 +138,7 @@ Automated sources and listing URLs:
 | `quant` | `POST https://quantmutual.com/statutorydisclosures.aspx/displaydisclouser` with `{"id": "YYYY", "cat": "MONTHLY PORTFOLIO"}` | One workbook a month under `/Admin/disclouser/`; names vary (`Monthly_Portfolio_July26`, `…_sept_30092026`). Seven months of 2024–2025 are not listed. |
 | `quantum` | `GET https://www.quantumamc.com/portfolio/combined/-1/1/YYYY/0` | One all-funds workbook a month; the title ("September 2026 - All Funds") names the month, the file name is a GUID. |
 
-Not fetched, with the reason found on 2026-10-24. `mf import-portfolios` accepts only the 20 AMCs with an adapter, so none of these can be imported yet: each first needs an owner `storage` grant and a source entry that parses its layout.
+Not fetched automatically, with the reason found on 2026-10-24. These 21 names are registered for manual import; their source-specific storage-only owner decisions are recorded separately in the [manual-import procedure](#manual-portfolio-import). None is real-file-verified yet. The reasons below explain why Wickstreet does not retrieve files for them.
 
 | AMC | Reason |
 |---|---|
@@ -166,14 +166,24 @@ docker compose run --rm api wickstreet mf portfolios --amc groww --amc samco --a
 
 For parser-only replay, add `--reparse`; for provider refresh, use `--refetch`. `--refetch` with same file hash remains unchanged.
 
-Manual fallback for the 20 AMCs above (one combined XLS/XLSX or ZIP for each AMC/month):
+### Manual portfolio import
+
+The importer recognizes the 20 automated sources and 21 manual sources: `kotak`, `hdfc`, `edelweiss`, `wealthco`, `absl`, `hsbc`, `franklin`, `jio`, `axis`, `bandhan`, `mahindra`, `iti`, `jm`, `canara`, `union`, `boi`, `bajaj`, `360one`, `shriram`, `navi`, and `zerodha`. Registration means the name is accepted; it does not verify an AMC's file layout. The shared parser supports XLS, XLSX, CSV with recognized tabular headers, and ZIPs containing those formats. PDF, XLSB and password-protected workbooks are unsupported. Do not convert a PDF if conversion changes or loses table values.
+
+The owner authorized local personal-use storage of manually downloaded disclosures for these 21 sources on 2026-10-24. This is a Wickstreet owner decision, not AMC permission. Each source needs only a local `storage` grant for this import path; this authorization does not grant retrieval, display, derived-metric, export or AI-processing use. Check the live register first:
+
+```bash
+docker compose run --rm --entrypoint wickstreet wickstreet-migrate rights list
+```
+
+Import one disclosure per AMC/month. For per-scheme downloads, pass every file together or zip them so one import run contains the month's set. Preserve the original file and truthful source URL:
 
 ```bash
 docker compose run --rm api wickstreet mf import-portfolios /path/monthly-portfolio.zip \
-  --amc ppfas --month 2026-09-30 --url 'https://amc.example/path/to/file.zip'
+  --amc kotak --month 2026-09-30 --url 'https://amc.example/path/to/file.zip'
 ```
 
-If the AMC publishes one workbook per scheme, combine those workbooks into a single ZIP before import so one run contains the whole monthly disclosure. The command stores the supplied file in the raw store and records retrieval grant as absent (Wickstreet did not fetch it); storage still needs a source-specific grant. Do not import CAS statements here.
+The importer stores raw bytes, SHA-256, acquisition time, source URL and parser version. It records no retrieval grant because Wickstreet fetched nothing. Reimporting the same file for the same month is idempotent. Until an AMC has passed real-file verification, portfolios must reconcile within 2% or are held back; if none reconcile, the run fails. Unmatched schemes and held-back portfolios appear in the result. These checks reduce the risk of a bad parse but do not verify layout accuracy. Do not import CAS statements here.
 
 ## RBI 91-day T-bill rates
 
