@@ -21,6 +21,7 @@ file by the month and year in its link, and fetches it. Pages observed on 2026-1
   answers JSON with each file's path. The page opens a path under
   ``www.icicipruamc.com/blob``: one zip a month of a workbook per scheme
   (``Monthly-Portfolio-Disclosure-September-2026.zip``).
+- Baroda BNP Paribas: see :class:`BarodaPortfolioAdapter`.
 
 Other AMCs build their pages in the browser from sources not yet read, so their
 files come in through ``wickstreet mf import-portfolios``, which reads the same
@@ -29,9 +30,10 @@ layouts.
 
 from __future__ import annotations
 
+import json
 import re
-from collections.abc import Mapping
-from datetime import UTC, date, datetime
+from collections.abc import AsyncIterator, Mapping
+from datetime import UTC, date, datetime, timedelta
 from urllib.parse import urljoin
 
 from wickstreet.mf_data.domain.model import Portfolios, RawFile
@@ -152,6 +154,70 @@ class AmcPortfolioAdapter:
         return parse_portfolios(raw.content, names, fallback)
 
 
+class BarodaPortfolioAdapter(AmcPortfolioAdapter):
+    """Baroda BNP Paribas: a form ``POST`` lists the files uploaded in one month.
+
+    The portfolios page (``barodabnpparibasmf.in/downloads/monthly-portfolio-scheme``)
+    issues a CSRF token and a session cookie and sends both with its listing request
+    to ``ajax-load-more-documents-new``; the adapter does the same. A month end's files
+    are uploaded in the next month or the one after. The listing answers JSON with HTML
+    entries; the all-funds workbook is the one titled "Monthly Portfolio - all funds as
+    on 30th September 2026". File names carry only numeric dates, so the title picks it.
+    """
+
+    _LISTING = "https://www.barodabnpparibasmf.in/ajax-load-more-documents-new"
+    _TOKEN = re.compile(r'name="csrf_test_name" value="([^"]+)"')
+    _ENTRY = re.compile(r'file-name">([^<]+)<.*?href="([^"]+)"', re.S)
+    # ponytail: the listing honours its month filter only some of the time (observed
+    # 2026-10-24), so pages are read until the title shows; cap the walk.
+    _MAX_PAGES = 120
+
+    async def _entries(self, token: str, upload: date) -> AsyncIterator[tuple[str, str]]:
+        """Every listed (title, link) for an upload month, page by page as "Load more" reads."""
+        page, total, remaining = "0", "48", "0"
+        for _ in range(self._MAX_PAGES):
+            listed = await self._http.post_form(
+                self._LISTING,
+                {
+                    "csrf_test_name": token,
+                    "cnt": total,
+                    "pagination": page,
+                    "send_category": "17",
+                    "send_year": str(upload.year),
+                    "send_month": str(upload.month),
+                    "remaining_cnt": remaining,
+                },
+                {"X-Requested-With": "XMLHttpRequest", "Referer": self._page},
+            )
+            if listed.status_code != 200:
+                raise SourceError(f"{self._LISTING} answered HTTP {listed.status_code}.")
+            body = json.loads(listed.text)
+            for entry in self._ENTRY.findall(body.get("data", "")):
+                yield entry
+            if body.get("status") != "Y":
+                return
+            page, total = str(body["pagination"]), str(body["total_row"])
+            remaining = str(body["remaining_cnt"])
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        """The month's all-funds workbook, or ``None`` when no upload lists it."""
+        page = await self._http.get(self._page)
+        token = self._TOKEN.search(page.text)
+        if page.status_code != 200 or token is None:
+            raise SourceError(f"{self._page} gave no listing token (HTTP {page.status_code}).")
+        title = f"{_MONTHS[month_end.month - 1]} {month_end.year}"
+        upload = month_end + timedelta(days=1)
+        for _ in range(2):
+            async for name, link in self._entries(token.group(1), upload):
+                if "all funds" in name.lower() and title in name.lower():
+                    response = await self._http.get(link)
+                    if response.status_code != 200:
+                        raise SourceError(f"{link} answered HTTP {response.status_code}.")
+                    return RawFile(link, datetime.now(UTC), response.content)
+            upload = (upload.replace(day=28) + timedelta(days=4)).replace(day=1)
+        return None
+
+
 def amc_adapters(
     *, min_interval_seconds: float, timeout_seconds: float, max_attempts: int
 ) -> dict[str, AmcPortfolioAdapter]:
@@ -224,5 +290,13 @@ def amc_adapters(
             "https://www.icicipruamc.com/blob",
             require=("monthly-portfolio-disclosure",),
             exclude=("fortnight", "half"),
+        ),
+        "barodabnp": BarodaPortfolioAdapter(
+            "barodabnp",
+            "https://www.barodabnpparibasmf.in/downloads/monthly-portfolio-scheme",
+            require=(),
+            min_interval_seconds=min_interval_seconds,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
         ),
     }

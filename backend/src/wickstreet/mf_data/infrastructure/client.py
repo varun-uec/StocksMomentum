@@ -61,6 +61,12 @@ class PacedClient:
         """``POST`` a JSON body, paced and retried as :meth:`get` is."""
         return await self._send("POST", url, json=body, headers=headers)
 
+    async def post_form(
+        self, url: str, form: dict[str, str], headers: dict[str, str] | None = None
+    ) -> httpx.Response:
+        """``POST`` form fields, paced and retried as :meth:`get` is; cookies persist."""
+        return await self._send("POST", url, data=form, headers=headers)
+
     async def _send(self, method: str, url: str, **request: object) -> httpx.Response:
         problem = ""
         for attempt in range(1, self._attempts + 1):
