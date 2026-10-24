@@ -10,7 +10,9 @@ import { Link } from 'react-router';
 import { mfApi, type CasPreview, type PortfolioView } from '../api';
 import { ShareBar, Weights } from '../components/fund/Holdings';
 import { ScoreBadge } from '../components/ScoreBadge';
+import { I } from '../components/icons';
 import { Badge, Button, Card, Delta, EmptyState, ErrorState, Field, PageHeader, Skeleton, Stat, inputClass, useTitle } from '../components/ui';
+import { startingFunds, useRecentFunds } from '../context';
 import { categoryShort, date, inr, isNum, pct, schemeName } from '../format';
 
 async function asBase64(file: File): Promise<string> {
@@ -39,7 +41,7 @@ function ImportCard({ onDone }: { onDone: () => void }) {
     <Card title="Import a consolidated account statement" subtitle="A CAMS or KFintech CAS PDF. It is read on this machine; the file and password are never stored, only a hash of the file.">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end">
         <Field label="CAS file (PDF)">
-          <input className={inputClass} type="file" accept="application/pdf,.pdf" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }} />
+          <input className={`${inputClass} h-auto py-1.5 file:mr-3 file:rounded-control file:border-0 file:bg-mf-brand-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-mf-brand-strong hover:file:bg-mf-brand hover:file:text-mf-on-brand`} type="file" accept="application/pdf,.pdf" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }} />
         </Field>
         <Field label="Password" hint="Usually your PAN, as the statement email says.">
           <input className={inputClass} type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -75,6 +77,53 @@ function ImportCard({ onDone }: { onDone: () => void }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/** Before a statement: what the page will show, how to get a CAS, and what works now. */
+function PortfolioStart() {
+  const recent = useRecentFunds();
+  const start = startingFunds(recent, 5);
+  const compare = `/mf/compare?${start.codes.map((c) => `code=${c}`).join('&')}`;
+  return (
+    <section aria-label="Get started" className="grid gap-4 lg:grid-cols-3">
+      <Card title="What you will see" subtitle="Computed on this machine from your statement">
+        <ul className="space-y-2 text-sm text-mf-ink-soft">
+          {['Your XIRR on your own cash flows', 'Value, gain and what your expense ratios cost a year', 'Asset and category mix', 'Look-through holdings and overlap', 'Higher-ranked funds in the same categories', 'A plan to rebalance to your target mix'].map((t) => (
+            <li key={t} className="flex gap-2">
+              <I.check className="mt-0.5 h-4 w-4 shrink-0 text-mf-brand" />
+              {t}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-xs text-mf-muted">The statement reader is tested on sample statements. Check the preview against your statement before you import.</p>
+      </Card>
+      <Card title="Get a detailed CAS" subtitle="Free, by email, in a few minutes">
+        <ol className="space-y-2.5 text-sm text-mf-ink-soft">
+          <li><b className="text-mf-ink">1.</b> Request a consolidated account statement from <a className="font-medium text-mf-brand underline-offset-2 hover:underline" href="https://www.camsonline.com" target="_blank" rel="noreferrer">CAMS</a>, <a className="font-medium text-mf-brand underline-offset-2 hover:underline" href="https://mfs.kfintech.com" target="_blank" rel="noreferrer">KFintech</a> or <a className="font-medium text-mf-brand underline-offset-2 hover:underline" href="https://www.mfcentral.com" target="_blank" rel="noreferrer">MF Central</a>.</li>
+          <li><b className="text-mf-ink">2.</b> Choose the detailed statement with every transaction, for all folios, from the start.</li>
+          <li><b className="text-mf-ink">3.</b> Import the PDF above with the password the statement email names.</li>
+        </ol>
+      </Card>
+      <Card title="Start now, without a statement">
+        <div className="space-y-2.5">
+          <Link to={compare} className="mf-lift flex items-start gap-3 rounded-[12px] border border-mf-line p-3 hover:border-mf-brand/40">
+            <I.compare className="mt-0.5 h-5 w-5 shrink-0 text-mf-brand" />
+            <span>
+              <span className="block text-sm font-medium text-mf-ink">Do my funds overlap?</span>
+              <span className="block text-xs text-mf-muted">Compare up to five funds: returns, falls, costs and shared holdings.{start.example ? ' Starts with example funds.' : ' Starts with the funds you opened last.'}</span>
+            </span>
+          </Link>
+          <Link to="/mf/simulate" className="mf-lift flex items-start gap-3 rounded-[12px] border border-mf-line p-3 hover:border-mf-brand/40">
+            <I.lab className="mt-0.5 h-5 w-5 shrink-0 text-mf-brand" />
+            <span>
+              <span className="block text-sm font-medium text-mf-ink">What would my SIP have made?</span>
+              <span className="block text-xs text-mf-muted">Replay a SIP, lump sum or withdrawal plan on real NAVs, with tax.</span>
+            </span>
+          </Link>
+        </div>
+      </Card>
+    </section>
   );
 }
 
@@ -272,7 +321,7 @@ export default function Portfolio() {
       ) : !view.data ? (
         <Skeleton className="h-64" />
       ) : view.data.imports.length === 0 ? (
-        <EmptyState title="No statement imported yet">Download a detailed CAS from CAMS, KFintech or MF Central and import it above.</EmptyState>
+        <PortfolioStart />
       ) : (
         <>
           <Analysis view={view.data} />

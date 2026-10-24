@@ -9,6 +9,7 @@ import { pctTick } from '../axis';
 import { ChartFrame, LegendDot, PeerScatter, TimeChart, mergeSeries, thin } from '../components/charts';
 import { startingFunds, useRecentFunds } from '../context';
 import { rebase } from '../series';
+import type { Missing } from '../api';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { ScoreBadge } from '../components/ScoreBadge';
@@ -222,6 +223,7 @@ export default function Compare() {
           {example && (
             <p className="text-sm text-mf-muted">These are example funds. Remove them and add your own, or use the compare button on any fund.</p>
           )}
+          <AtAGlance funds={funds} codes={codes} dataRevision={dataRevision} />
           <ChartFrame
             title={period === 'All' ? 'Growth of ₹10,000 from the common start' : `Growth of ₹10,000 over ${period}`}
             subtitle={`From ${date(series[0]?.points[0]?.[0])}; NAV rebased, before tax`}
@@ -356,6 +358,74 @@ export default function Compare() {
         </div>
       )}
     </div>
+  );
+}
+
+type CompareFund = { amfi_code: string; name: string; values: Record<string, unknown>; states: Record<string, Missing> };
+
+/**
+ * The answer first: for each question an investor asks of a comparison, the stronger
+ * fund and every fund's value. Details follow in the chart and the table.
+ */
+function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes: string[]; dataRevision?: number }) {
+  const overlap = useOverlap(codes, dataRevision);
+  const questions: { title: string; id: string; better: 'higher' | 'lower'; digits?: number; note?: string }[] = [
+    { title: 'Higher 3Y return', id: 'cagr_3y', better: 'higher', note: 'a year' },
+    { title: 'Shallower 3Y fall', id: 'mdd_3y', better: 'higher', note: 'peak to trough' },
+    { title: 'Lower cost', id: 'ter', better: 'lower', digits: 2, note: 'expense ratio a year' },
+    { title: 'Ahead of benchmark', id: 'excess_3y', better: 'higher', note: 'a year over its own benchmark, 3Y' },
+  ];
+  const pair = overlap.data?.pairs.filter((q) => isNum(q.weighted_overlap)).sort((x, y) => (y.weighted_overlap ?? 0) - (x.weighted_overlap ?? 0))[0];
+  const short = (name: string) => schemeName(name).replace(/ Fund$/, '');
+  return (
+    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="At a glance">
+      {questions.map((q) => {
+        const known = funds.map((f, i) => ({ f, i, v: f.values[q.id] })).filter((x): x is { f: CompareFund; i: number; v: number } => isNum(x.v));
+        const best = known.length > 1 ? known.reduce((a, b) => ((q.better === 'higher' ? b.v > a.v : b.v < a.v) ? b : a)) : null;
+        return (
+          <li key={q.id} className="mf-lift rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
+            <p className="text-xs font-medium uppercase tracking-[0.06em] text-mf-muted">{q.title}</p>
+            {best ? (
+              <>
+                <p className="mt-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-mf-ink">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: seriesColor(best.i) }} aria-hidden="true" />
+                  <span className="truncate" title={best.f.name}>{short(best.f.name)}</span>
+                </p>
+                <ul className="mt-1.5 space-y-0.5 text-xs text-mf-ink-soft">
+                  {known.map((x) => (
+                    <li key={x.f.amfi_code} className="flex justify-between gap-2">
+                      <span className="truncate">{short(x.f.name)}</span>
+                      <span className={cx('shrink-0 tabular', x === best && 'font-semibold text-mf-ink')}>{pct(x.v, q.digits ?? 1, q.id !== 'ter')}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-[11px] text-mf-muted">{q.note}</p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-sm text-mf-muted">
+                Fewer than two funds have a value{funds[0] && !isNum(funds[0].values[q.id]) ? `: ${missingLabel(funds[0].states[q.id]).toLowerCase()}` : ''}.
+              </p>
+            )}
+          </li>
+        );
+      })}
+      <li className="mf-lift rounded-card border border-mf-line bg-mf-surface p-4 shadow-card">
+        <p className="text-xs font-medium uppercase tracking-[0.06em] text-mf-muted">Shared holdings</p>
+        {pair ? (
+          <>
+            <p className="mt-1.5 text-[15px] font-semibold text-mf-ink tabular">{pct(pair.weighted_overlap)} overlap</p>
+            <p className="mt-1.5 text-xs text-mf-ink-soft">{pair.common_count} securities in common; the most among these funds.</p>
+            <p className="mt-1 text-[11px] text-mf-muted">Portfolios of {date(pair.a_as_of)}{pair.same_month ? '' : ` and ${date(pair.b_as_of)}`}</p>
+          </>
+        ) : (
+          <p className="mt-1.5 text-sm text-mf-muted">
+            {overlap.isLoading
+              ? 'Reading portfolios…'
+              : `No stored portfolio for ${overlap.data?.funds.filter((f) => !f.as_of).map((f) => short(f.name)).join(', ') || 'two of these funds'}, so overlap cannot be read.`}
+          </p>
+        )}
+      </li>
+    </ul>
   );
 }
 
