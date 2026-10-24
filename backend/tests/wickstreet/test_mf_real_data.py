@@ -532,6 +532,207 @@ async def test_v5_risk_free_and_sharpe_match_pandas(real: Database) -> None:
     assert checked >= 30
 
 
+# ---- v6 and v7: fund facts, benchmark proxy, holdings, IDCW
+
+_VISIBLE = (
+    "{a}.revision_id <= :r AND ({a}.superseded_revision IS NULL OR {a}.superseded_revision > :r)"
+)
+
+
+async def _valid_navs(connection: Any, code: str, start: str, end: str, revision: int) -> Any:
+    """A fund's valid NAVs in [start, end] from SQL, as a pandas series by date."""
+    import pandas as pd
+
+    rows = (
+        await connection.execute(
+            text(
+                "SELECT n.nav_date, n.nav::float8 FROM wickstreet.nav n "
+                "JOIN wickstreet.plan_option p ON p.id = n.plan_option_id "
+                "WHERE p.amfi_code = :c AND n.nav > 0 AND n.nav <> 'NaN' "
+                "AND n.nav_date BETWEEN :a AND :b AND " + _VISIBLE.format(a="n")
+            ),
+            {
+                "c": code,
+                "a": date.fromisoformat(start),
+                "b": date.fromisoformat(end),
+                "r": revision,
+            },
+        )
+    ).all()
+    return pd.Series({pd.Timestamp(d): v for d, v in rows}).sort_index()
+
+
+def _with(snapshot: Snapshot, field: str, limit: int = 15) -> list[str]:
+    found = [r.amfi_code for r in snapshot.rows if isinstance(cell(r, field), float)]
+    return sorted(found, key=lambda c: hashlib.md5(c.encode()).hexdigest())[:limit]  # noqa: S324
+
+
+async def _scheme_of(connection: Any, code: str, revision: int) -> int | None:
+    """The plan's scheme, rebuilt in Python: an ISIN join on the newest master row that
+    has one, else the one listed scheme with the plan's master scheme name."""
+    from wickstreet.mf_data.domain.facts import compact
+
+    masters = (
+        await connection.execute(
+            text(
+                "SELECT m.isin_growth, m.isin_reinvest, m.scheme_name "
+                "FROM wickstreet.plan_option_master m "
+                "JOIN wickstreet.plan_option p ON p.id = m.plan_option_id "
+                "WHERE p.amfi_code = :c AND " + _VISIBLE.format(a="m") + " "
+                "ORDER BY m.effective_from DESC"
+            ),
+            {"c": code, "r": revision},
+        )
+    ).all()
+    joins = dict(
+        (await connection.execute(text("SELECT isin, sd_id FROM wickstreet.scheme_isin"))).all()
+    )
+    for growth, reinvest in ((g, r) for g, r, _ in masters):
+        found = [joins[i] for i in (growth, reinvest) if i in joins]
+        if found:
+            return min(found)
+    names: dict[str, list[int]] = {}
+    for sd_id, name in await connection.execute(text("SELECT sd_id, name FROM wickstreet.scheme")):
+        names.setdefault(compact(name), []).append(sd_id)
+    same = names.get(compact(masters[0][2]), []) if masters else []
+    return same[0] if len(same) == 1 else None
+
+
+async def test_v6_ter_is_the_filed_fact_of_the_plans_scheme(real: Database) -> None:
+    """ter is AMFI's latest filed TER for the plan of its scheme, the join rebuilt in Python."""
+    snapshot = await _snapshot(real)
+    codes = _with(snapshot, "ter", 40)
+    assert len(codes) == 40
+    async with real.engine.connect() as connection:
+        for code in codes:
+            row = snapshot.by_code[code]
+            sd_id = await _scheme_of(connection, code, snapshot.revision)
+            found = (
+                await connection.execute(
+                    text(
+                        "SELECT f.num::float8 FROM wickstreet.scheme_fact f WHERE f.sd_id = :s "
+                        "AND f.name = 'ter' AND f.plan = :plan AND "
+                        + _VISIBLE.format(a="f")
+                        + " ORDER BY f.as_of DESC LIMIT 1"
+                    ),
+                    {"s": sd_id, "plan": cell(row, "plan"), "r": snapshot.revision},
+                )
+            ).scalar_one()
+            assert cell(row, "ter") == pytest.approx(found / 100, abs=1e-12), code
+
+
+async def test_v6_proxy_statistics_match_pandas(real: Database) -> None:
+    """Beta, tracking error, R², information ratio and capture rebuilt from SQL NAVs."""
+    import pandas as pd
+
+    from wickstreet.analytics.domain.enrichment import benchmark_key
+
+    snapshot = await _snapshot(real)
+    proxies = snapshot.tables["benchmark_proxies"]
+    codes = _with(snapshot, "beta_3y")
+    assert len(codes) == 15
+    async with real.engine.connect() as connection:
+        for code in codes:
+            row = snapshot.by_code[code]
+            start, end = row.anchors["cagr_3y"], cell(row, "last_nav_date")
+            proxy = proxies[benchmark_key(cell(row, "benchmark"))]["code"]
+            proxy_row = snapshot.by_code[proxy]
+            f = await _valid_navs(connection, code, start, end, snapshot.revision)
+            b = await _valid_navs(
+                connection,
+                proxy,
+                proxy_row.anchors["cagr_3y"],
+                cell(proxy_row, "last_nav_date"),
+                snapshot.revision,
+            )
+            both = pd.concat([f, b], axis=1, join="inner").dropna()
+            gaps = both.index.to_series().diff().dt.days.iloc[1:] <= 7
+            r = both.pct_change().iloc[1:][gaps.to_numpy()]
+            rf, rp = r.iloc[:, 0], r.iloc[:, 1]
+            beta = rf.cov(rp) / rp.var()
+            te = (rf - rp).std() * math.sqrt(252)
+            assert cell(row, "beta_3y") == pytest.approx(beta, rel=1e-6), code
+            assert cell(row, "te_3y") == pytest.approx(te, rel=1e-6), code
+            assert cell(row, "r2_3y") == pytest.approx(rf.corr(rp) ** 2, rel=1e-6), code
+            years = (both.index[-1] - both.index[0]).days / 365.25
+            growth = both.iloc[-1] / both.iloc[0]
+            cagr, proxy_cagr = growth ** (1 / years) - 1
+            assert cell(row, "ir_3y_proxy") == pytest.approx((cagr - proxy_cagr) / te, rel=1e-6)
+            monthly = both.groupby(both.index.to_period("M")).last().pct_change().iloc[1:]
+            up = monthly[monthly.iloc[:, 1] > 0]
+            if len(up) >= 6:
+                geo = (1 + up).prod() ** (1 / len(up)) - 1
+                assert cell(row, "up_capture_3y") == pytest.approx(
+                    geo.iloc[0] / geo.iloc[1], rel=1e-6
+                )
+
+
+async def test_v7_idcw_reinvested_return_matches_pandas(real: Database) -> None:
+    """ret_1y_with_idcw: NAV growth with each payout bought back at its record-date NAV."""
+    import pandas as pd
+
+    snapshot = await _snapshot(real)
+    codes = _with(snapshot, "ret_1y_with_idcw")
+    assert len(codes) == 15
+    async with real.engine.connect() as connection:
+        for code in codes:
+            row = snapshot.by_code[code]
+            start, end = row.anchors["cagr_3y"], cell(row, "last_nav_date")
+            navs = await _valid_navs(connection, code, start, end, snapshot.revision)
+            paid = (
+                await connection.execute(
+                    text(
+                        "SELECT d.record_date, d.per_unit::float8 FROM wickstreet.distribution d "
+                        "JOIN wickstreet.plan_option p ON p.id = d.plan_option_id "
+                        "WHERE p.amfi_code = :c AND " + _VISIBLE.format(a="d")
+                    ),
+                    {"c": code, "r": snapshot.revision},
+                )
+            ).all()
+            as_of = pd.Timestamp(snapshot.as_of)
+            last = navs.index[-1]
+            window = navs[navs.index >= as_of - pd.Timedelta(days=365)]
+            growth = window.iloc[-1] / window.iloc[0]
+            for day, rate in paid:
+                day = pd.Timestamp(day)
+                if window.index[0] < day <= last:
+                    growth *= 1 + rate / navs[navs.index >= day].iloc[0]
+            assert cell(row, "ret_1y_with_idcw") == pytest.approx(growth - 1, rel=1e-9), code
+            year = sum(
+                r for d, r in paid if as_of - pd.Timedelta(days=365) < pd.Timestamp(d) <= as_of
+            )
+            assert cell(row, "idcw_1y") == pytest.approx(year, rel=1e-9), code
+
+
+async def test_v6_holdings_shares_match_sql(real: Database) -> None:
+    """equity_share and top10_weight from the latest visible portfolio lines in SQL."""
+    snapshot = await _snapshot(real)
+    codes = _with(snapshot, "top10_weight")
+    assert codes
+    async with real.engine.connect() as connection:
+        for code in codes:
+            row = snapshot.by_code[code]
+            sd_id = await _scheme_of(connection, code, snapshot.revision)
+            lines = (
+                await connection.execute(
+                    text(
+                        "SELECT h.asset, h.weight::float8 FROM wickstreet.holding h "
+                        "WHERE h.sd_id = :s AND h.as_of = :d AND " + _VISIBLE.format(a="h")
+                    ),
+                    {
+                        "s": sd_id,
+                        "d": date.fromisoformat(cell(row, "holdings_as_of")),
+                        "r": snapshot.revision,
+                    },
+                )
+            ).all()
+            weights = sorted((w for _, w in lines), reverse=True)
+            assert cell(row, "holdings_count") == len(lines), code
+            assert cell(row, "top10_weight") == pytest.approx(math.fsum(weights[:10]), abs=1e-9)
+            equity = math.fsum(w for a, w in lines if a == "equity")
+            assert cell(row, "equity_share") == pytest.approx(equity, abs=1e-9), code
+
+
 # ---- fund search (audit F-04)
 
 SEARCH_EXPECTED = {

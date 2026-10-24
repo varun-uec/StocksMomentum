@@ -6,10 +6,11 @@ differ by AMC, but each sheet has one header row with an ISIN column and a "% to
 assets" column. This parser finds that row, reads the scheme name and the date above
 it, and reads every line under it:
 
-- a line with a weight is a holding; a line without one is a section heading
-  ("Equity & Equity related", "Debt Instruments", "TREPS");
+- a line with a weight is a holding; a line with no weight and no figures is a section
+  heading ("Equity & Equity related", "Debt Instruments", "TREPS");
 - "Total" and "Sub Total" lines are skipped, and the portfolio ends at "Grand Total";
-- the asset kind comes from the section, else from the line itself (TREPS is cash);
+- a futures or options line is a derivative, by its industry or contract month; other
+  kinds come from the section, else from the line itself (TREPS is cash);
 - weights filed as percentages are divided by 100, so every weight is a fraction.
 
 A sheet joins its AMFI scheme by name. A sheet it cannot join is listed, never guessed.
@@ -109,6 +110,21 @@ _KINDS = (
 )
 
 
+# A futures or options contract: "Tata Steel Limited Oct26", "NIFTY 23300 Call Oct26".
+_CONTRACT = re.compile(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\d{2}$", re.I)
+
+
+def _asset(section: str, industry: str | None, name: str, isin: str | None) -> str:
+    """A line's asset kind: a derivative by industry or contract month, else by section.
+
+    A futures line is a derivative ("Stock Futures") whatever section it is filed
+    under. Other kinds come from the section, then from the line's name.
+    """
+    if _kind(industry or "") == DERIVATIVE or (isin is None and _CONTRACT.search(name)):
+        return DERIVATIVE
+    return _kind(section) or _kind(name) or (EQUITY if isin and isin.startswith("INE") else OTHER)
+
+
 def _kind(text: str) -> str | None:
     lowered = text.lower()
     for kind, words in _KINDS:
@@ -206,10 +222,14 @@ def _sheet(
             break
         if not name or _TOTAL.match(name):
             continue
-        if weight is None:
-            section = name
-            continue
         isin = row.get(columns["isin"]) or None
+        quantity = _number(row.get(columns.get("quantity", "")))
+        value = _number(row.get(columns.get("value", "")))
+        if weight is None:
+            # A heading has no figures; a line with figures but no weight is skipped.
+            if isin is None and quantity is None and value is None:
+                section = name
+            continue
         lines.append(
             (
                 name,
@@ -218,8 +238,8 @@ def _sheet(
                 else None,
                 row.get(columns.get("industry", "")) or None,
                 section,
-                _number(row.get(columns.get("quantity", ""))),
-                _number(row.get(columns.get("value", ""))),
+                quantity,
+                value,
                 weight,
             )
         )
@@ -233,7 +253,7 @@ def _sheet(
             isin,
             industry,
             section,
-            _kind(section) or _kind(name) or (EQUITY if isin and isin.startswith("INE") else OTHER),
+            _asset(section, industry, name, isin),
             quantity,
             value,
             weight / 100 if percent else weight,

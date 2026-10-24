@@ -8,6 +8,7 @@ import math
 import zipfile
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from xml.sax.saxutils import escape
 
 import numpy as np
 import pandas as pd
@@ -52,7 +53,7 @@ def _xlsx(rows: list[list[str | float]]) -> bytes:
         cells.append(f'<row r="{r}">{"".join(out)}</row>')
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as book:
-        shared = "".join(f"<si><t>{s}</t></si>" for s in strings)
+        shared = "".join(f"<si><t>{escape(s)}</t></si>" for s in strings)
         book.writestr("xl/sharedStrings.xml", f'<sst xmlns="{_SHEET}">{shared}</sst>')
         body = f'<worksheet xmlns="{_SHEET}"><sheetData>{"".join(cells)}</sheetData></worksheet>'
         book.writestr("xl/worksheets/sheet1.xml", body)

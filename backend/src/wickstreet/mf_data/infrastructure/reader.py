@@ -37,6 +37,7 @@ from wickstreet.mf_data.domain.reads import (
     SchemeProfile,
     search_terms,
 )
+from wickstreet.mf_data.infrastructure.tables import compacted
 
 
 class NothingPublishedError(RuntimeError):
@@ -101,12 +102,19 @@ _RATES = text(
 )
 
 
-# A plan-option joins its scheme through the ISINs its scheme's SSD lists (doc 21 E1).
+# A plan-option joins its scheme through the ISINs or AMFI codes its scheme's SSD lists
+# (doc 21 E1); failing that, by its master scheme name when one listed scheme has it.
 _SCHEME_OF = (
-    "SELECT DISTINCT ON (m.plan_option_id) m.plan_option_id, i.sd_id "
+    "SELECT DISTINCT ON (j.plan_option_id) j.plan_option_id, j.sd_id FROM ("
+    "SELECT m.plan_option_id, i.sd_id, 0 AS via, m.effective_from "
     "FROM wickstreet.plan_option_master m JOIN wickstreet.scheme_isin i "
-    "ON i.isin IN (m.isin_growth, m.isin_reinvest) "
-    f"WHERE {_visible('m')} ORDER BY m.plan_option_id, m.effective_from DESC, i.sd_id"
+    f"ON i.isin IN (m.isin_growth, m.isin_reinvest) WHERE {_visible('m')} "
+    "UNION ALL SELECT m.plan_option_id, n.sd_id, 1, m.effective_from "
+    "FROM wickstreet.plan_option_master m JOIN ("
+    f"SELECT {compacted('s.name')} AS k, min(s.sd_id) AS sd_id FROM wickstreet.scheme s "
+    f"GROUP BY 1 HAVING count(*) = 1) n ON n.k = {compacted('m.scheme_name')} "
+    f"WHERE {_visible('m')}) j "
+    "ORDER BY j.plan_option_id, j.via, j.effective_from DESC, j.sd_id"
 )
 _FACT_DAY = "(f.as_of - DATE '0001-01-01') + 1"
 _LATEST_FACTS = text(

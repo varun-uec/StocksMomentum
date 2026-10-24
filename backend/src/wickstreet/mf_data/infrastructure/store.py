@@ -40,6 +40,7 @@ from wickstreet.mf_data.domain.model import (
     SchemeRef,
 )
 from wickstreet.mf_data.domain.ports import Provenance, Published, Run, StoredRaw
+from wickstreet.mf_data.infrastructure.tables import compacted
 
 # Key of the session-level advisory lock held by one ingestion runner (MF-10).
 _LOCK_KEY = 2_000_100_017
@@ -86,11 +87,6 @@ class _NothingChangedError(Exception):
 
 def _row(columns: Sequence[str], alias: str) -> str:
     return "(" + ", ".join(f"{alias}.{c}" for c in columns) + ")"
-
-
-def _compacted(column: str) -> str:
-    """SQL for ``compact`` (domain/facts.py): lower case, & as and, letters and digits."""
-    return f"regexp_replace(lower(replace({column}, '&', 'and')), '[^a-z0-9]', '', 'g')"
 
 
 class SqlMfStore:
@@ -827,8 +823,8 @@ class SqlMfStore:
                     "JOIN wickstreet.scheme b ON b.sd_id = scheme_isin.sd_id "
                     "WHERE m.superseded_revision IS NULL "
                     "AND excluded.isin IN (m.isin_growth, m.isin_reinvest) "
-                    f"AND position({_compacted('a.name')} in {_compacted('m.nav_name')}) > 0 "
-                    f"AND position({_compacted('b.name')} in {_compacted('m.nav_name')}) = 0)"
+                    f"AND position({compacted('a.name')} in {compacted('m.nav_name')}) > 0 "
+                    f"AND position({compacted('b.name')} in {compacted('m.nav_name')}) = 0)"
                 ),
                 {"codes": list(found.codes), "ids": list(found.codes.values()), "r": revision_id},
             )

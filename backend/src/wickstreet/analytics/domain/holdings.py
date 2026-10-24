@@ -120,7 +120,12 @@ def summary(portfolio: Portfolio, caps: Mapping[str, Sequence[tuple[date, str]]]
         if r.asset == "debt":
             ratings[r.industry or "Not filed"] += r.weight
     ordered = sorted(rows, key=lambda r: (-r.weight, r.name))
-    total = sum(r.weight for r in rows)
+    # AMCs file a hedge's short futures as notional lines outside the 100%, but count
+    # long futures and options in it; the closer of the two totals is the check.
+    total = min(
+        (sum(r.weight for r in rows), sum(r.weight for r in rows if r.asset != "derivative")),
+        key=lambda t: abs(t - 1),
+    )
     return {
         "as_of": portfolio.as_of.isoformat(),
         "count": len(rows),

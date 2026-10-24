@@ -310,3 +310,8 @@ distribution = Table(
         postgresql_where=text("superseded_revision IS NULL"),
     ),
 )
+
+
+def compacted(column: str) -> str:
+    """SQL for ``compact`` (domain/facts.py): lower case, & as and, letters and digits."""
+    return f"regexp_replace(lower(replace({column}, '&', 'and')), '[^a-z0-9]', '', 'g')"
