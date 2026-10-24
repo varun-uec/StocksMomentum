@@ -17,7 +17,7 @@ import { Badge, Button, Chip, EmptyState, ErrorState, Field, Loading, PageHeader
 import { download, screenCsv } from '../csv';
 import { categoryShort, enumLabel } from '../format';
 import { useFields, usePresets } from '../queries';
-import { DEFAULT_CATEGORY, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, presetView, type ScreenView } from '../view-spec';
+import { DEFAULT_CATEGORY, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, presetView, toApi, type ScreenView } from '../view-spec';
 import { isConflict, useRecordMutations, useRecords, type ResearchRecord } from '../workspace';
 import { useDebounced } from '../use-debounced';
 
@@ -130,6 +130,29 @@ export default function Screen() {
     setEditing(null);
   };
 
+  const setBasicRange = (field: FieldDef, minimum: string, maximum: string) => {
+    const parse = (text: string) => {
+      if (!text.trim()) return null;
+      const n = Number(text);
+      return Number.isFinite(n) ? toApi(field, n) : NaN;
+    };
+    const min = parse(minimum);
+    const max = parse(maximum);
+    if (Number.isNaN(min) || Number.isNaN(max) || (min !== null && max !== null && min > max)) return;
+    const conditions = view.conditions.filter((node) => !(isCondition(node) && node.field === field.id));
+    if (min !== null || max !== null) {
+      const condition: Condition = { field: field.id, op: 'between', value: [min, max] };
+      conditions.push(condition);
+    }
+    const columns = [...view.columns];
+    const companion = METRIC_AS_OF_FIELDS[field.id];
+    for (const id of [field.id, ...(companion ? [companion] : [])]) {
+      if (!columns.includes(id) && byId.has(id) && columns.length < MAX_COLUMNS) columns.push(id);
+    }
+    const next = { ...view, conditions, columns };
+    if (JSON.stringify(next.conditions) !== JSON.stringify(view.conditions) || JSON.stringify(next.columns) !== JSON.stringify(view.columns)) setView(next);
+  };
+
   const toggleMetric = (field: FieldDef, shown: boolean) => {
     if (shown && view.columns.includes(field.id)) return;
     const companion = METRIC_AS_OF_FIELDS[field.id];
@@ -202,7 +225,7 @@ export default function Screen() {
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside aria-label="Filters" className="hidden lg:block">
           <div className="mf-scroll sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-1">
-            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
+            <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} onRangeChange={setBasicRange} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
           </div>
         </aside>
 
@@ -414,6 +437,7 @@ export default function Screen() {
               view={filterMode === 'advanced' ? draft! : view}
               fields={byId}
               onShowMetric={toggleMetric}
+              onRangeChange={setBasicRange}
               mode={filterMode}
               onModeChange={changeFilterMode}
               maxColumns={MAX_COLUMNS}

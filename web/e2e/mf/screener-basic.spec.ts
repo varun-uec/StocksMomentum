@@ -49,13 +49,29 @@ test('Basic metric selection shows real values without adding a filter', async (
   const readyMs = Date.now() - started;
   console.info(`Basic Return 1Y: ${clicks} click, latest values displayed, matched count unchanged, ${responseMs} ms to API response, ${readyMs} ms to visible column.`);
 
-  // Thresholding is available only after an explicit Filter action.
+  // A common threshold uses direct range fields and updates the live result set.
+  let rangeClicks = 0;
+  await page.evaluate(() => {
+    (window as Window & { __mfClicks?: number }).__mfClicks = 0;
+  });
   await page.getByRole('button', { name: 'Filter by Return 1Y' }).click();
-  const editor = page.getByRole('dialog', { name: 'Add condition: Return 1Y' });
-  await expect(editor).toBeVisible();
-  await expect(editor.getByLabel('Condition', { exact: true })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(count).toHaveText(before);
+  const minimum = page.getByRole('spinbutton', { name: 'Minimum Return 1Y' });
+  await expect(minimum).toBeVisible();
+  const thresholdResult = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/mf/screener/run') && response.request().method() === 'POST' &&
+    response.request().postDataJSON().filter.all?.some((condition: { field: string }) => condition.field === 'ret_1y'),
+  );
+  await minimum.fill('-10');
+  const thresholdResponse = await thresholdResult;
+  const thresholdRequest = thresholdResponse.request().postDataJSON();
+  expect(thresholdRequest.filter.all).toContainEqual({ field: 'ret_1y', op: 'between', value: [-0.1, null] });
+  const thresholdData = await thresholdResponse.json();
+  expect(thresholdData.matched).toBeGreaterThan(0);
+  expect(thresholdData.matched).toBeLessThan(initial.matched);
+  await expect(count).not.toHaveText(before);
+  rangeClicks = await page.evaluate(() => (window as Window & { __mfClicks?: number }).__mfClicks ?? 0);
+  expect(rangeClicks).toBe(1);
+  console.info(`Basic Return 1Y threshold: one Filter click plus one value entry applied a minimum without a dialog; ${before} → ${await count.innerText()}.`);
 });
 
 test('a second metric adds a value column without changing saved conditions', async ({ page }) => {
@@ -172,6 +188,21 @@ test('phone Basic metrics update results immediately; Advanced retains the full 
   await expect(page.getByRole('list', { name: 'Screen results' }).getByText('Return 1Y').first()).toBeVisible();
   await expect(count).toHaveText(before);
 
+  await page.getByRole('button', { name: /^Filters \(\d+\)$/ }).click();
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: 'Filter by Return 1Y' }).click();
+  const phoneMinimum = sheet.getByRole('spinbutton', { name: 'Minimum Return 1Y' });
+  const phoneRange = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/mf/screener/run') && response.request().method() === 'POST' &&
+    response.request().postDataJSON().filter.all?.some((condition: { field: string }) => condition.field === 'ret_1y'),
+  );
+  await phoneMinimum.fill('-10');
+  const phoneRangeResponse = await phoneRange;
+  expect(phoneRangeResponse.request().postDataJSON().filter.all).toContainEqual({ field: 'ret_1y', op: 'between', value: [-0.1, null] });
+  await expect(count).toHaveText('37 funds');
+
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
   await page.getByRole('button', { name: /^Filters \(\d+\)$/ }).click();
   await expect(sheet).toBeVisible();
   await sheet.getByRole('radio', { name: 'Advanced' }).click();

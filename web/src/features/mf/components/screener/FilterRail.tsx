@@ -3,9 +3,9 @@
  * the result universe. Filtering is a separate, explicit action. Advanced keeps
  * the full condition editor and query language.
  */
-import { useMemo, useState } from 'react';
-import type { FieldDef, FilterNode } from '../../api';
-import { isGate } from '../../view-spec';
+import { useEffect, useMemo, useState } from 'react';
+import type { Condition, FieldDef, FilterNode } from '../../api';
+import { fromApi, isGate, isPercent, toApi } from '../../view-spec';
 import { I } from '../icons';
 import { Segmented, cx, inputClass } from '../ui';
 
@@ -24,15 +24,46 @@ function MetricRow({
   canShow,
   onToggle,
   onFilter,
+  activeCondition,
+  onRangeChange,
+  rangeOpen,
+  onRangeToggle,
 }: {
   field: FieldDef;
   shown: boolean;
   canShow: boolean;
   onToggle: (field: FieldDef, shown: boolean) => void;
   onFilter: (field: FieldDef) => void;
+  activeCondition?: Condition;
+  onRangeChange: (field: FieldDef, minimum: string, maximum: string) => void;
+  rangeOpen: boolean;
+  onRangeToggle: (field: FieldDef) => void;
 }) {
+  const quickRange = field.type === 'number';
+  const pair = activeCondition?.op === 'between' && Array.isArray(activeCondition.value)
+    ? activeCondition.value
+    : [];
+  const initialMinimum = activeCondition?.op === 'between' ? pair[0]
+    : activeCondition && ['>=', '>'].includes(activeCondition.op) ? activeCondition.value : null;
+  const initialMaximum = activeCondition?.op === 'between' ? pair[1]
+    : activeCondition && ['<=', '<'].includes(activeCondition.op) ? activeCondition.value : null;
+  const [minimum, setMinimum] = useState(initialMinimum == null ? '' : String(fromApi(field, Number(initialMinimum))));
+  const [maximum, setMaximum] = useState(initialMaximum == null ? '' : String(fromApi(field, Number(initialMaximum))));
+  const rangeError = minimum.trim() && maximum.trim() && Number(minimum) > Number(maximum);
+
+  useEffect(() => {
+    const nextPair = activeCondition?.op === 'between' && Array.isArray(activeCondition.value) ? activeCondition.value : [];
+    const nextMinimum = activeCondition?.op === 'between' ? nextPair[0]
+      : activeCondition && ['>=', '>'].includes(activeCondition.op) ? activeCondition.value : null;
+    const nextMaximum = activeCondition?.op === 'between' ? nextPair[1]
+      : activeCondition && ['<=', '<'].includes(activeCondition.op) ? activeCondition.value : null;
+    setMinimum(nextMinimum == null ? '' : String(fromApi(field, Number(nextMinimum))));
+    setMaximum(nextMaximum == null ? '' : String(fromApi(field, Number(nextMaximum))));
+  }, [activeCondition, field]);
+
   return (
-    <div className="flex min-h-11 items-center gap-2 rounded-[8px] px-2 hover:bg-mf-sunken">
+    <div className="rounded-[8px] px-2 hover:bg-mf-sunken">
+    <div className="flex min-h-11 items-center gap-2">
       <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 py-2 text-sm text-mf-ink">
         <input
           type="checkbox"
@@ -47,13 +78,53 @@ function MetricRow({
       <button
         type="button"
         disabled={!field.available}
-        onClick={() => onFilter(field)}
+        onClick={() => quickRange ? onRangeToggle(field) : onFilter(field)}
         className="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-mf-brand hover:bg-mf-brand-soft disabled:opacity-50"
         aria-label={`Filter by ${field.label}`}
-        title={`Add an optional ${field.label} condition`}
+        aria-expanded={quickRange ? rangeOpen : undefined}
+        title={quickRange ? `Set an optional ${field.label} range` : `Add an optional ${field.label} condition`}
       >
-        Filter
+        {quickRange && rangeOpen ? 'Close' : 'Filter'}
       </button>
+    </div>
+    {quickRange && rangeOpen && (
+      <div className="grid grid-cols-2 gap-2 pb-3 pl-7 pr-1" aria-label={`${field.label} range controls`}>
+        <label className="text-[11px] font-medium text-mf-muted">
+          Minimum{isPercent(field) ? ' (%)' : field.unit === 'INR' ? ' (₹)' : ''}
+          <input
+            className={`${inputClass} mt-1 h-9 text-sm`}
+            type="number"
+            inputMode="decimal"
+            step="any"
+            placeholder="No minimum"
+            aria-label={`Minimum ${field.label}`}
+            value={minimum}
+            onChange={(e) => {
+              setMinimum(e.target.value);
+              if (!e.target.validity.badInput) onRangeChange(field, e.target.value, maximum);
+            }}
+          />
+        </label>
+        <label className="text-[11px] font-medium text-mf-muted">
+          Maximum{isPercent(field) ? ' (%)' : field.unit === 'INR' ? ' (₹)' : ''}
+          <input
+            className={`${inputClass} mt-1 h-9 text-sm`}
+            type="number"
+            inputMode="decimal"
+            step="any"
+            placeholder="No maximum"
+            aria-label={`Maximum ${field.label}`}
+            value={maximum}
+            onChange={(e) => {
+              setMaximum(e.target.value);
+              if (!e.target.validity.badInput) onRangeChange(field, minimum, e.target.value);
+            }}
+          />
+        </label>
+        {rangeError && <p className="col-span-2 text-xs text-mf-loss" role="alert">Minimum must be less than or equal to maximum. Results keep the last valid range.</p>}
+        <p className="col-span-2 text-[11px] text-mf-muted">Results update as you type. Leave both empty to keep all funds.</p>
+      </div>
+    )}
     </div>
   );
 }
@@ -63,6 +134,7 @@ export function FilterRail({
   fields,
   onShowMetric,
   onPickField,
+  onRangeChange,
   mode,
   onModeChange,
   maxColumns,
@@ -71,11 +143,13 @@ export function FilterRail({
   fields: Map<string, FieldDef>;
   onShowMetric: (field: FieldDef, shown: boolean) => void;
   onPickField: (field: FieldDef) => void;
+  onRangeChange: (field: FieldDef, minimum: string, maximum: string) => void;
   mode: FilterMode;
   onModeChange: (mode: FilterMode) => void;
   maxColumns: number;
 }) {
   const [query, setQuery] = useState('');
+  const [rangeField, setRangeField] = useState<string | null>(null);
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     const map = new Map<string, FieldDef[]>();
@@ -92,9 +166,24 @@ export function FilterRail({
     return shown.size + additionCount <= maxColumns;
   };
   const toggle = (field: FieldDef, enabled: boolean) => onShowMetric(field, enabled);
-  const drawBasicField = (field: FieldDef) => (
-    <MetricRow key={field.id} field={field} shown={shown.has(field.id)} canShow={canShow(field)} onToggle={toggle} onFilter={onPickField} />
-  );
+  const drawBasicField = (field: FieldDef) => {
+    const candidate = view.conditions.find((node): node is Condition => 'field' in node && node.field === field.id);
+    const activeCondition = candidate && ['between', '>=', '>', '<=', '<'].includes(candidate.op) ? candidate : undefined;
+    return (
+      <MetricRow
+        key={field.id}
+        field={field}
+        shown={shown.has(field.id)}
+        canShow={canShow(field)}
+        onToggle={toggle}
+        onFilter={onPickField}
+        activeCondition={activeCondition}
+        onRangeChange={onRangeChange}
+        rangeOpen={rangeField === field.id}
+        onRangeToggle={(picked) => setRangeField((current) => current === picked.id ? null : picked.id)}
+      />
+    );
+  };
 
   return (
     <div className="space-y-4">
