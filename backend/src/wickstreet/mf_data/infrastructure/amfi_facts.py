@@ -450,7 +450,7 @@ class AmfiFactsAdapter:
     """Fetches AMFI's scheme-fact pages; parsing is in the module's pure functions."""
 
     name = AMFI
-    adapter_version = "amfi-facts-2026-10-24.4"
+    adapter_version = "amfi-facts-2026-10-24.5"
 
     def __init__(
         self, *, min_interval_seconds: float, timeout_seconds: float, max_attempts: int

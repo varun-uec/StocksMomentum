@@ -302,7 +302,7 @@ def test_a_name_two_schemes_share_joins_the_live_one_when_only_one_is() -> None:
 def test_a_name_two_schemes_share_joins_neither() -> None:
     schemes = [SchemeRef(1, 9, "Alpha Fund"), SchemeRef(2, 9, "ALPHA  fund"), SchemeRef(3, 9, "B")]
     codes, names = scheme_keys(schemes, {3: "ABC / O / 1"})
-    assert names == {"b": 3}
+    assert names == {"b": 3, "~b": 3}
     assert codes == {"abco1": 3}
 
 
@@ -318,6 +318,27 @@ def test_a_segregated_portfolio_note_is_optional_in_a_name() -> None:
     assert names["mediumtermfundexistingnumberofsegregatedportfolios2"] == 2
     renamed = [SchemeRef(4, 9, "ICICI Prudential Large Cap Fund (erstwhile Bluechip Fund)")]
     assert scheme_keys(renamed, {})[1]["iciciprudentiallargecapfund"] == 4
+
+
+def test_amfi_notes_fund_of_funds_months_and_tenures_are_optional_in_a_name() -> None:
+    schemes = [
+        SchemeRef(1, 9, "Baroda Short Term Fund (the scheme has 2 segregated portfolios)"),
+        SchemeRef(2, 9, "Sundaram Large Cap Fund ( Formerly Know as Sundaram Blue Chip Fund)"),
+        SchemeRef(3, 9, "Baroda BNP Paribas Gold ETF Fund of Fund"),
+        SchemeRef(4, 9, "SBI CRISIL IBX Gilt Index - April 2029 Fund"),
+        SchemeRef(5, 9, "SBI Fixed Maturity Plan (FMP) - Series 1 (3668 Days)"),
+        SchemeRef(6, 9, "SBI Debt Fund Series C - 27 (391 Days)"),
+        SchemeRef(7, 9, "Tata Value Fund - Series 2"),
+    ]
+    _, names = scheme_keys(schemes, {})
+    assert join_by_name(names, "Baroda Short Term Fund") == 1
+    assert join_by_name(names, "Sundaram Large Cap Fund") == 2
+    assert join_by_name(names, "Baroda BNP Paribas Gold ETF FOF") == 3
+    assert join_by_name(names, "SBI CRISIL IBX Gilt Index-APR-2029 Fund") == 4
+    assert join_by_name(names, "SBI Fixed Maturity Plan (FMP)- Series 1") == 5
+    # A filed tenure never drops to meet AMFI's shortened name of another tenure.
+    assert join_by_name(names, "SBI Debt Fund Series C - 27 (1260 Days)") is None
+    assert join_by_name(names, "Tata Value Fund Series 2 (1103 Days)") == 7
 
 
 @pytest.mark.parametrize(

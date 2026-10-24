@@ -79,7 +79,7 @@ _MONTHS = (
 class AmcPortfolioAdapter:
     """One AMC's monthly portfolio files, found on its disclosure page."""
 
-    adapter_version = "amc-portfolios-2026-10-24.6"
+    adapter_version = "amc-portfolios-2026-10-24.7"
 
     def __init__(
         self,

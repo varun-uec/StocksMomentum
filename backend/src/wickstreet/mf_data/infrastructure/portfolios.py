@@ -27,7 +27,7 @@ from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from wickstreet.mf_data.domain.facts import compact
+from wickstreet.mf_data.domain.facts import compact, loose
 from wickstreet.mf_data.domain.model import (
     CASH,
     DEBT,
@@ -211,6 +211,7 @@ def _scheme(rows: list[Row], names: Mapping[str, int]) -> tuple[int | None, str]
     Each text is tried whole, before '(' or ' - ', without a leading sheet code
     ("IB43-Groww Nifty 50 Index Fund", as Groww files them), and as a title's name
     ("MONTHLY PORTFOLIO STATEMENT OF SAMCO FLEXICAP FUND AS ON ...", as Samco does).
+    Only when no form joins does a whole form join by its ``loose`` key.
     """
     label = ""
     for row in rows:
@@ -218,18 +219,20 @@ def _scheme(rows: list[Row], names: Mapping[str, int]) -> tuple[int | None, str]
             if len(text) < 6 or text.replace(".", "").isdigit() or _BLOCK.match(text):
                 continue
             label = label or text
-            for candidate in (
-                text,
-                text.split("(")[0],
-                text.split(" - ")[0],
-                _SHEET_CODE.sub("", text),
-                _TITLE.sub("", text),
-            ):
-                key = compact(
-                    candidate.replace("Portfolio of", "")
-                    .replace("Monthly Portfolio", "")
-                    .removeprefix("SCHEME:")
+            candidates = [
+                c.replace("Portfolio of", "")
+                .replace("Monthly Portfolio", "")
+                .removeprefix("SCHEME:")
+                for c in (
+                    text,
+                    text.split("(")[0],
+                    text.split(" - ")[0],
+                    _SHEET_CODE.sub("", text),
+                    _TITLE.sub("", text),
                 )
+            ]
+            whole = [candidates[0], *candidates[3:]]
+            for key in [compact(c) for c in candidates] + [loose(c) for c in whole]:
                 if key in names:
                     return names[key], text
     return None, label

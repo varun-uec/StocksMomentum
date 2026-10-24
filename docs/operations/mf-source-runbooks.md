@@ -154,7 +154,7 @@ Not fetched automatically (manual import only), with the reason found on 2026-10
 
 A month that names its files only in titles, or that files one workbook per scheme, comes through `TitledPortfolioAdapter` or the `each` option: every matching file is fetched in turn and kept as one ZIP whose members are sorted and stamped 1980-01-01, so the same files give the same raw SHA-256.
 
-A scheme renamed by its AMC joins its older months by sheet code: the codes in the AMC's newest kept file, where the names are AMFI's current ones, join sheets whose old names join nothing. Motilal reuses sheet codes across funds of funds, so none is learnt there.
+A scheme renamed by its AMC joins its older months by sheet code: the codes in the AMC's newest kept file, where the names are AMFI's current ones, join sheets whose old names join nothing. Motilal reuses sheet codes across funds of funds, so none is learnt there. A first ingest reads months oldest first, so it has no newest file to learn codes from. After a new AMC's first full ingest, run it once more with `--reparse`; on 2026-10-24 that joined 9 renamed Sundaram schemes.
 
 Default command reads PPFAS and DSP for the last completed month. Choose an AMC explicitly and a month-end; `--start/--end` inclusive ranges are stepped monthly:
 

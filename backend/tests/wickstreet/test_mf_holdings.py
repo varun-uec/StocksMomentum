@@ -16,10 +16,13 @@ import pytest
 
 from tests.wickstreet.test_mf_facts import _xlsx
 from wickstreet.analytics.domain import holdings as h
+from wickstreet.mf_data.domain.facts import scheme_keys
+from wickstreet.mf_data.domain.model import SchemeRef
 from wickstreet.mf_data.domain.reads import HoldingRow, Portfolio
 from wickstreet.mf_data.infrastructure.amc import (
     _LINK,
     AmcPortfolioAdapter,
+    _first_month,
     _same_site,
     amc_adapters,
 )
@@ -553,6 +556,78 @@ async def test_whiteoak_and_trust_name_the_month_in_a_title_not_a_file_name() ->
     assert found is not None and found.content == b"sep"
 
 
+def test_a_title_names_the_month_of_its_first_date() -> None:
+    assert _first_month("Portfolio as on 30th September 2023 for Apr 2026 Index Fund") == (
+        2023,
+        9,
+    )
+    assert _first_month("Disclosure - 30th September2026") == (2026, 9)
+    assert _first_month("Report as on 30.09.2026") == (2026, 9)
+    assert _first_month("Sep 30, 2026 - All Funds") == (2026, 9)
+    assert _first_month("Fund Monthly Portfolio") is None
+
+
+async def test_mirae_invesco_and_quantum_pick_the_month_by_title() -> None:
+    adapters = amc_adapters(min_interval_seconds=0, timeout_seconds=1, max_attempts=1)
+    mirae = adapters["mirae"]
+    listing = {
+        "DataCount": 3,
+        "Data": [
+            {"Title": "Portfolio Details as on 30th September 2026 for A Fund", "URL": "/a.xlsx"},
+            {
+                "Title": "Portfolio Details as on 31st August 2026 for Sep 2032 FMP",
+                "URL": "/b.xlsx",
+            },
+            {"Title": "Fortnightly Portfolio as on 15th September 2026", "URL": "/c.xlsx"},
+        ],
+    }
+    _serve(
+        mirae,
+        {
+            "/AjaxService/GetDownloadsData": httpx.Response(200, text=json.dumps(listing)),
+            "/a.xlsx": httpx.Response(200, content=b"a"),
+        },
+    )
+    raw = await mirae.portfolio(date(2026, 9, 30))
+    assert raw is not None
+    assert zipfile.ZipFile(io.BytesIO(raw.content)).namelist() == ["a.xlsx"]
+
+    invesco = adapters["invesco"]
+    rows = [
+        {
+            "Name": "Invesco A Fund",
+            "AugUrl": "https://i.example/aug.xlsx",
+            "SepUrl": "https://i.example/sep.xlsx",
+        }
+    ]
+    asked = _serve(
+        invesco,
+        {
+            "/api/CompleteMonthlyHoldings": httpx.Response(200, text=json.dumps(rows)),
+            "/sep.xlsx": httpx.Response(200, content=b"sep"),
+        },
+    )
+    raw = await invesco.portfolio(date(2026, 9, 30))
+    assert raw is not None
+    assert zipfile.ZipFile(io.BytesIO(raw.content)).namelist() == ["sep.xlsx"]
+    assert len([u for u in asked if "classification=" in u]) == len(invesco.CLASSES)
+
+    quantum = adapters["quantum"]
+    page = (
+        "GTMcodeforxml('https://q.example/f/aug.xlsx', 'x', 'August 2026 - All Funds')"
+        "GTMcodeforxml('https://q.example/f/sep.xlsx', 'x', 'September 2026 - All Funds')"
+    )
+    _serve(
+        quantum,
+        {
+            "/portfolio/combined/-1/1/2026/0": httpx.Response(200, text=page),
+            "/f/sep.xlsx": httpx.Response(200, content=b"sep"),
+        },
+    )
+    raw = await quantum.portfolio(date(2026, 9, 30))
+    assert raw is not None and raw.content == b"sep"
+
+
 def _one_scheme(scheme: str) -> bytes:
     return _xlsx(
         [
@@ -579,3 +654,17 @@ def test_a_renamed_scheme_joins_its_old_months_by_sheet_code() -> None:
         bundle.writestr("a.xlsx", _one_scheme("SBI Arbitrage Fund"))
         bundle.writestr("b.xlsx", _one_scheme("SBI Other Fund"))
     assert sheet_codes(buffer.getvalue(), names | {"sbiotherfund": 2}) == {}
+
+
+def test_a_sheet_joins_by_its_whole_loose_name_only() -> None:
+    _, names = scheme_keys(
+        [
+            SchemeRef(5, 9, "SBI Fixed Maturity Plan (FMP) - Series 1 (3668 Days)"),
+            SchemeRef(6, 9, "SBI Debt Fund Series C - 27 (391 Days)"),
+        ],
+        {},
+    )
+    fmp = parse_portfolios(_one_scheme("SBI Fixed Maturity Plan (FMP)- Series 1"), names)
+    assert {x.sd_id for x in fmp.holdings} == {5}
+    other = _one_scheme("SBI Debt Fund Series C - 27 (1260 Days)")
+    assert parse_portfolios(other, names).holdings == []
