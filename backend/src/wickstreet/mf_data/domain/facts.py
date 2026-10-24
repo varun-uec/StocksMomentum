@@ -31,6 +31,20 @@ def scheme_keys(
     return codes, names
 
 
+_TRAILING_NOTE = re.compile(r"\s*\([^()]*\)\s*$")
+
+
+def join_by_name(names: Mapping[str, int], name: str) -> int | None:
+    """The scheme a filed name names, also without a trailing note such as a ticker.
+
+    "Motilal Oswal Nifty 500 Index Fund (MOFNIFTY500)" joins "... Index Fund".
+    """
+    found = names.get(compact(name))
+    if found is None and _TRAILING_NOTE.search(name):
+        found = names.get(compact(_TRAILING_NOTE.sub("", name)))
+    return found
+
+
 CENT = Decimal("0.01")
 
 

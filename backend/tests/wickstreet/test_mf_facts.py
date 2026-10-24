@@ -24,7 +24,7 @@ from wickstreet.analytics.domain.metrics import (
     RiskFree,
 )
 from wickstreet.analytics.domain.relations import DailyNavs
-from wickstreet.mf_data.domain.facts import join_by_navs, nav_index, scheme_keys
+from wickstreet.mf_data.domain.facts import join_by_name, join_by_navs, nav_index, scheme_keys
 from wickstreet.mf_data.domain.model import DIRECT, REGULAR, SCHEME, RawFile, SchemeRef
 from wickstreet.mf_data.domain.reads import FactPoint, FactView
 from wickstreet.mf_data.infrastructure import amfi_facts as a
@@ -481,3 +481,10 @@ def test_returns_with_idcw_reinvest_each_payout_at_its_record_date_nav() -> None
     assert young["cagr_3y_with_idcw"] == Missing("NA", "history_too_short")
     growth = e.idcw_fields("growth", [], None, as_of, {})
     assert growth["idcw_1y"] == Missing("NM", "not_idcw_option")
+
+
+def test_a_name_with_a_trailing_ticker_joins_its_scheme() -> None:
+    names = {"motilaloswalnifty500indexfund": 12020}
+    assert join_by_name(names, "Motilal Oswal Nifty 500 Index Fund (MOFNIFTY500)") == 12020
+    assert join_by_name(names, "Motilal Oswal Nifty 500 Index Fund") == 12020
+    assert join_by_name(names, "Motilal Oswal Nifty 500 ETF (MONIFTY500)") is None

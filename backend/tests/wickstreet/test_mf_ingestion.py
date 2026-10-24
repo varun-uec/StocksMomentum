@@ -32,6 +32,7 @@ from wickstreet.config import WickstreetSettings
 from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.domain.rights import RightsDeniedError, Use
 from wickstreet.data_rights.infrastructure.register import SqlRightsRegister, record_grants
+from wickstreet.mf_data.application.facts import IngestFacts
 from wickstreet.mf_data.application.ingest import (
     Backfill,
     CrossCheck,
@@ -47,6 +48,7 @@ from wickstreet.mf_data.domain.model import (
     AMFI,
     MFAPI,
     TIGZIG,
+    Fact,
     Holding,
     NavRecord,
     Portfolios,
@@ -646,3 +648,63 @@ async def test_a_portfolio_reparse_supersedes_lines_from_the_kept_file(
         "SELECT asset, superseded_revision IS NULL FROM wickstreet.holding ORDER BY revision_id",
     ) == [("other", False), ("derivative", True)]
     assert (await ingest.reparse("fakeamc", D1 + timedelta(days=31))).status == "skipped"
+
+
+class FakeFacts:
+    """A tracking-error file whose join improves between two parses (a join fix)."""
+
+    name = "fakefacts"
+    adapter_version = "fake-1"
+
+    def __init__(self) -> None:
+        self.names_seen: list[int] = []
+        self.fetches = 0
+
+    async def tracking_error(self, day: date) -> RawFile:
+        self.fetches += 1
+        return RawFile("fake://te", datetime.now(UTC), b"one file")
+
+    def parse_tracking_error(self, raw: RawFile, day: date, names: Any) -> SchemeFacts:
+        self.names_seen.append(len(names))
+        value = Decimal("0.05") if len(self.names_seen) == 1 else Decimal("0.04")
+        return SchemeFacts([Fact(1, "tracking_error", "direct", day, num=value)])
+
+
+async def test_a_facts_reparse_supersedes_from_the_kept_file_and_fetches_nothing(
+    app_database: Database, mf_urls: Urls, tmp_path: Path
+) -> None:
+    owner = Database(mf_urls.owner)
+    await record_grants(
+        owner,
+        source="fakefacts",
+        mode="personal",
+        uses=[Use.AUTOMATED_RETRIEVAL, Use.STORAGE],
+        basis="test",
+        granted_by="tests",
+    )
+    await owner.dispose()
+    store = SqlMfStore(app_database)
+    run = await store.open_run(AMFI, "scheme-list", D1, D1)
+    [(grant,)] = await _rows(app_database, "SELECT min(id) FROM wickstreet.rights_grant")
+    provenance = Provenance(
+        "fake://list", "2026-09-01T00:00:00+00:00", "1" * 64, "x", "f", "c", None, grant
+    )
+    await store.publish_facts(
+        run.id, SchemeFacts([]), provenance, [SchemeRef(1, 1, "Example Fund")]
+    )
+    source = FakeFacts()
+    facts = IngestFacts(
+        source,
+        store,
+        FileRawStore(tmp_path),
+        RightsGate(SqlRightsRegister(app_database, "personal")),
+    )
+    assert (await facts.tracking_error(D1)).status == "published"
+    fixed = await facts.tracking_error(D1, reparse=True)
+    assert (fixed.status, fixed.superseded, source.fetches) == ("published", 1, 1)
+    assert await _rows(
+        app_database,
+        "SELECT num, superseded_revision IS NULL FROM wickstreet.scheme_fact ORDER BY revision_id",
+    ) == [(Decimal("0.05"), False), (Decimal("0.04"), True)]
+    assert (await facts.tracking_error(day(9), reparse=True)).status == "skipped"
+    assert await store.run_status("fakefacts", "tracking-error-day", day(9)) is None

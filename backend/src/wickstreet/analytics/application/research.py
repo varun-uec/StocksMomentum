@@ -226,12 +226,6 @@ def _plus(a: Any, b: Any) -> float | None:
     return a + b if isinstance(a, float) and isinstance(b, float) else None
 
 
-def _gap(cagr: Value, benchmark: Value) -> Value:
-    if isinstance(cagr, float) and isinstance(benchmark, float):
-        return cagr - benchmark
-    return Missing("NA", NOT_FILED)
-
-
 class ComputeSnapshot:
     """Compute the snapshot of the published revision once (MF-11)."""
 
@@ -279,7 +273,6 @@ class ComputeSnapshot:
         options: dict[int, str] = {}
         cost_groups: dict[tuple[str, str, str], list[int]] = defaultdict(list)
         candidates: list[tuple[int, str, str, str, float | None, Value]] = []
-        cagr_at = METRIC_FIELDS.index("cagr_3y")
         groups: dict[tuple[str, str, str], list[tuple[int, PeerFund]]] = defaultdict(list)
         grouped: dict[int, PeerFund] = {}
         pair_keys: dict[int, tuple[str, str, str, str]] = {}
@@ -306,7 +299,9 @@ class ComputeSnapshot:
                 filed = facts.get("tracking_benchmark", scheme_level=True)
                 filed = filed or facts.get("benchmark", scheme_level=True)
                 te = facts.get("tracking_error")
-                gap = _gap(metric_values[cagr_at], extra[pid]["bench_ret_3y"])
+                # The proxy's tracking difference: its own return against the index,
+                # both from one AMFI report.
+                gap = extra[pid]["excess_3y"]
                 if filed is not None and filed.txt and pid in daily:
                     name = fund.nav_name or fund.scheme_name or fund.amfi_code
                     candidates.append(

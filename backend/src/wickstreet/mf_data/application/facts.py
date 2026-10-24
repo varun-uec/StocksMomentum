@@ -78,20 +78,39 @@ class IngestFacts:
         parse: Callable[[RawFile], tuple[SchemeFacts, list[SchemeRef]]],
         *,
         refetch: bool,
+        reparse: bool = False,
     ) -> Outcome:
+        """Fetch, parse and publish one period; with ``reparse``, parse its kept file again.
+
+        A reparse is for a parser or join fix: nothing is fetched, a changed fact becomes
+        a new revision and the old value stays as history (MF-5).
+        """
+        if reparse and await self._store.run_status(self._source.name, dataset, start) is None:
+            return Outcome(end, "skipped")
         run = await self._store.open_run(self._source.name, dataset, start, end)
-        if run.status in SETTLED and not refetch:
+        if run.status in SETTLED and not (refetch or reparse):
             return Outcome(end, "skipped")
         retrieval = await self._grant(run.id, Use.AUTOMATED_RETRIEVAL)
-        try:
-            raw = await fetch()
-        except SourceError as exc:
-            await self._store.close_run(run.id, "failed", error=str(exc))
-            return Outcome(end, "failed", error=str(exc))
-        path = self._raw_store.save(self._source.name, dataset, end, raw)
-        if raw.sha256 == run.raw_sha256:
-            await self._store.close_run(run.id, "unchanged", raw_sha256=raw.sha256)
-            return Outcome(end, "unchanged")
+        if reparse:
+            stored = await self._store.stored_raw(run.id)
+            if stored is None:
+                return Outcome(end, "skipped")
+            raw = RawFile(stored.url, stored.fetched_at, self._raw_store.load(stored.path))
+            if raw.sha256 != stored.sha256:
+                error = f"Raw file {stored.path} does not match its recorded SHA-256."
+                await self._store.close_run(run.id, "failed", error=error)
+                return Outcome(end, "failed", error=error)
+            path = stored.path
+        else:
+            try:
+                raw = await fetch()
+            except SourceError as exc:
+                await self._store.close_run(run.id, "failed", error=str(exc))
+                return Outcome(end, "failed", error=str(exc))
+            path = self._raw_store.save(self._source.name, dataset, end, raw)
+            if raw.sha256 == run.raw_sha256:
+                await self._store.close_run(run.id, "unchanged", raw_sha256=raw.sha256)
+                return Outcome(end, "unchanged")
         try:
             found, schemes = parse(raw)
         except SourceLayoutError as exc:
@@ -193,7 +212,7 @@ class IngestFacts:
         listed, codes = await self._store.scheme_keys()
         return scheme_keys(listed, codes)
 
-    async def ter(self, month: date, *, refetch: bool = False) -> Outcome:
+    async def ter(self, month: date, *, refetch: bool = False, reparse: bool = False) -> Outcome:
         """Read one month of daily TER (``month`` is the first of the month)."""
         codes, names = await self._keys()
         end = _month_end(month)
@@ -204,10 +223,11 @@ class IngestFacts:
             lambda: self._source.ter_month(month),
             lambda raw: (self._source.parse_ter(raw, codes, names), []),
             refetch=refetch,
+            reparse=reparse,
         )
 
     async def performance(
-        self, day: date, *, closed_ended: bool = False, refetch: bool = False
+        self, day: date, *, closed_ended: bool = False, refetch: bool = False, reparse: bool = False
     ) -> Outcome:
         """Read fund performance on the NAV date ``day``."""
         _, names = await self._keys()
@@ -219,6 +239,7 @@ class IngestFacts:
             lambda: self._source.performance(day, closed_ended=closed_ended),
             lambda raw: (self._source.parse_performance(raw, day, names, navs), []),
             refetch=refetch,
+            reparse=reparse,
         )
 
     async def idcw(
@@ -305,7 +326,9 @@ class IngestFacts:
             revision=published.revision,
         )
 
-    async def tracking_error(self, day: date, *, refetch: bool = False) -> Outcome:
+    async def tracking_error(
+        self, day: date, *, refetch: bool = False, reparse: bool = False
+    ) -> Outcome:
         """Read index-fund tracking error on the NAV date ``day``."""
         _, names = await self._keys()
         return await self._run(
@@ -315,6 +338,7 @@ class IngestFacts:
             lambda: self._source.tracking_error(day),
             lambda raw: (self._source.parse_tracking_error(raw, day, names), []),
             refetch=refetch,
+            reparse=reparse,
         )
 
 

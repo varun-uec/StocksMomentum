@@ -29,7 +29,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree
 
-from wickstreet.mf_data.domain.facts import compact, join_by_navs
+from wickstreet.mf_data.domain.facts import compact, join_by_name, join_by_navs
 from wickstreet.mf_data.domain.model import (
     AMFI,
     DIRECT,
@@ -295,7 +295,7 @@ def parse_ter(raw: RawFile, codes: Mapping[str, int], names: Mapping[str, int]) 
     unmatched: set[str] = set()
     for row in rows[1:]:
         code, name, serial = row.get("A", ""), row.get("B", ""), row.get("E", "")
-        sd_id = codes.get(compact(code)) or names.get(compact(name))
+        sd_id = codes.get(compact(code)) or join_by_name(names, name)
         if sd_id is None:
             unmatched.add(code or name)
             continue
@@ -365,7 +365,7 @@ def parse_performance(
     for query in found["queries"]:
         for row in query.get("data") or []:
             name = str(row.get("schemeName") or "")
-            sd_id = names.get(compact(name))
+            sd_id = join_by_name(names, name)
             if sd_id is None and navs:
                 filed = [_number(row.get("navRegular")), _number(row.get("navDirect"))]
                 sd_id = join_by_navs(navs, filed)
@@ -385,7 +385,7 @@ def parse_tracking_error(raw: RawFile, day: date, names: Mapping[str, int]) -> S
     unmatched: set[str] = set()
     for row in found["data"]:
         name = str(row.get("Scheme_Name") or "")
-        sd_id = names.get(compact(name))
+        sd_id = join_by_name(names, name)
         if sd_id is None:
             unmatched.add(name)
             continue

@@ -173,7 +173,7 @@ Sources: AMFI's monthly "TER of MF schemes" file, the fund performance report (o
 
 ## Benchmark proxy (v6)
 
-NSE and BSE terms bar automated retrieval of index TRI, so Wickstreet uses a proxy and labels it. For each benchmark (filed names normalised: case, spaces, "TRI", "Total Return Index", "S&P"), the proxy is the active direct growth index fund or ETF with that benchmark and the lowest tracking error AMFI lists; ties go to the lower plan-option id. `bench_proxy_gap_3y` is the proxy's 3Y CAGR minus AMFI's reported 3Y benchmark return: the tracking difference the proxy adds.
+NSE and BSE terms bar automated retrieval of index TRI, so Wickstreet uses a proxy and labels it. For each benchmark (filed names normalised: case, spaces, "TRI", "Total Return Index", "S&P"), the proxy is the active direct growth index fund or ETF with that benchmark and the lowest tracking error AMFI lists; ties go to the lower plan-option id. `bench_proxy_gap_3y` is the proxy's 3Y return minus its benchmark's 3Y return, both from the proxy's latest AMFI fund performance report: the tracking difference the proxy adds.
 
 Over the common daily NAV dates of the last 3 years (more than 500 steps, each 7 days or shorter), with daily returns rₜ (fund) and pₜ (proxy):
 

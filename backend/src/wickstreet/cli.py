@@ -293,6 +293,9 @@ def mf_facts(
     end: str | None = typer.Option(None, help="Last date, YYYY-MM-DD; default today."),
     closed_ended: bool = typer.Option(False, help="Performance: include closed-ended schemes."),
     refetch: bool = typer.Option(False, help="Re-read periods already settled."),
+    reparse: bool = typer.Option(
+        False, help="TER, performance, tracking error: re-derive published periods from kept files."
+    ),
     missing: bool = typer.Option(False, help="SSD: read only schemes with no stored SSD."),
     stored: Path | None = typer.Option(None, help="SSD: publish this kept file."),  # noqa: B008
     compute: bool = typer.Option(True, help="Compute the snapshot after a publish."),
@@ -329,7 +332,7 @@ def mf_facts(
         elif dataset == "ter":
             outcomes = []
             for month in _months(first, last):
-                outcomes.append(await facts.ter(month, refetch=refetch))
+                outcomes.append(await facts.ter(month, refetch=refetch, reparse=reparse))
                 _print(outcomes[-1])
         elif dataset == "idcw":
             outcomes = [await facts.idcw(last, refetch=refetch)]
@@ -352,10 +355,10 @@ def mf_facts(
             for day in days:
                 if dataset == "performance":
                     outcome = await facts.performance(
-                        day, closed_ended=closed_ended, refetch=refetch
+                        day, closed_ended=closed_ended, refetch=refetch, reparse=reparse
                     )
                 else:
-                    outcome = await facts.tracking_error(day, refetch=refetch)
+                    outcome = await facts.tracking_error(day, refetch=refetch, reparse=reparse)
                 _print(outcome)
                 outcomes.append(outcome)
         else:

@@ -226,7 +226,7 @@ FACT_FIELDS = (
         "Benchmark",
         "number",
         "fraction",
-        "The proxy fund's 3Y CAGR less AMFI's 3Y benchmark return: how far the proxy lags.",
+        "The proxy fund's 3Y return less its benchmark's, both from one AMFI report.",
     ),
 )
 IDCW_FIELDS = (
