@@ -24,7 +24,13 @@ from wickstreet.analytics.domain.metrics import (
     RiskFree,
 )
 from wickstreet.analytics.domain.relations import DailyNavs
-from wickstreet.mf_data.domain.facts import join_by_name, join_by_navs, nav_index, scheme_keys
+from wickstreet.mf_data.domain.facts import (
+    join_by_name,
+    join_by_navs,
+    nav_index,
+    pick_by_navs,
+    scheme_keys,
+)
 from wickstreet.mf_data.domain.model import DIRECT, REGULAR, SCHEME, RawFile, SchemeRef
 from wickstreet.mf_data.domain.reads import FactPoint, FactView
 from wickstreet.mf_data.infrastructure import amfi_facts as a
@@ -252,6 +258,32 @@ def test_a_nav_pair_must_point_to_one_scheme() -> None:
     assert join_by_navs(index, [Decimal("10.00"), None]) is None
     assert join_by_navs(index, [Decimal("12.00"), Decimal("12.00")]) is None
     assert join_by_navs(index, [Decimal("10.00"), Decimal("11.00")]) is None
+
+
+def test_two_rows_under_one_name_keep_the_one_whose_navs_are_the_schemes() -> None:
+    """AMFI filed two "Sundaram Banking and PSU Debt Fund" rows in 2020, one an older scheme's."""
+    index = nav_index({9240: [Decimal("33.0457"), Decimal("33.2726")], 93: [Decimal("29.7899")]})
+    older, own = [Decimal("29.7899"), None], [Decimal("33.0457"), Decimal("33.2726")]
+    assert pick_by_navs(index, 9240, [older, own]) == 1
+    assert pick_by_navs(index, 9240, [older, [Decimal("41.0"), None]]) is None
+    rows = [
+        {"schemeName": "Sundaram Banking and PSU Debt Fund", "navRegular": 29.7899}
+        | {"return10YearRegular": 8.37},
+        {"schemeName": "Sundaram Banking and PSU Debt Fund", "navRegular": 33.0457}
+        | {"navDirect": 33.2726, "return10YearRegular": 7.66},
+    ]
+    found = a.parse_performance(
+        _raw(_performance(rows)), date(2020, 7, 31), {"sundarambankingandpsudebtfund": 9240}, index
+    )
+    assert {f.sd_id: f.num for f in found.facts if f.name == "ret_10y"} == {9240: Decimal("7.66")}
+    # A lone row is never checked: a filed NAV can be another plan's or another day's.
+    lone = a.parse_performance(
+        _raw(_performance(rows[:1])),
+        date(2020, 7, 31),
+        {"sundarambankingandpsudebtfund": 9240},
+        index,
+    )
+    assert {f.sd_id: f.num for f in lone.facts if f.name == "ret_10y"} == {9240: Decimal("8.37")}
 
 
 def test_a_name_two_schemes_share_joins_neither() -> None:

@@ -30,7 +30,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree
 
-from wickstreet.mf_data.domain.facts import compact, join_by_name, join_by_navs
+from wickstreet.mf_data.domain.facts import compact, join_by_name, join_by_navs, pick_by_navs
 from wickstreet.mf_data.domain.model import (
     AMFI,
     DIRECT,
@@ -358,21 +358,36 @@ def parse_performance(
     names: Mapping[str, int],
     navs: Mapping[Decimal, set[int]] | None = None,
 ) -> SchemeFacts:
-    """Fund performance rows for ``day``, joined by scheme name, else by their NAV pair."""
+    """Fund performance rows for ``day``, joined by scheme name, else by their NAV pair.
+
+    Two rows that join one scheme by name with different NAVs keep the row whose NAVs
+    are the scheme's (:func:`pick_by_navs`).
+    """
     found = _json(raw)
     if not isinstance(found, dict) or not isinstance(found.get("queries"), list):
         raise SourceLayoutError("Not a combined fund-performance file.")
     facts: list[Fact] = []
     unmatched: set[str] = set()
+    joined: dict[int, list[tuple[dict[str, object], list[Decimal | None]]]] = {}
     for query in found["queries"]:
         for row in query.get("data") or []:
             name = str(row.get("schemeName") or "")
+            filed = [_number(row.get("navRegular")), _number(row.get("navDirect"))]
             sd_id = join_by_name(names, name)
             if sd_id is None and navs:
-                filed = [_number(row.get("navRegular")), _number(row.get("navDirect"))]
                 sd_id = join_by_navs(navs, filed)
             if sd_id is None:
                 unmatched.add(name)
+                continue
+            joined.setdefault(sd_id, []).append((row, filed))
+    for sd_id, rows in joined.items():
+        distinct = {tuple(filed) for _, filed in rows}
+        pick = (
+            pick_by_navs(navs, sd_id, [f for _, f in rows]) if navs and len(distinct) > 1 else None
+        )
+        for k, (row, _) in enumerate(rows):
+            if pick is not None and k != pick and tuple(rows[k][1]) != tuple(rows[pick][1]):
+                unmatched.add(str(row.get("schemeName") or ""))
                 continue
             facts.extend(_performance_facts(row, sd_id, day))
     return SchemeFacts(_unique(facts), unmatched=len(unmatched))
@@ -435,7 +450,7 @@ class AmfiFactsAdapter:
     """Fetches AMFI's scheme-fact pages; parsing is in the module's pure functions."""
 
     name = AMFI
-    adapter_version = "amfi-facts-2026-10-24.1"
+    adapter_version = "amfi-facts-2026-10-24.4"
 
     def __init__(
         self, *, min_interval_seconds: float, timeout_seconds: float, max_attempts: int

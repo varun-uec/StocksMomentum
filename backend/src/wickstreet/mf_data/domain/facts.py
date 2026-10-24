@@ -89,3 +89,21 @@ def join_by_navs(index: Mapping[Decimal, set[int]], filed: Sequence[Decimal | No
         return None
     found = set.intersection(*(index.get(v, set()) for v in given))
     return next(iter(found)) if len(found) == 1 else None
+
+
+def pick_by_navs(
+    index: Mapping[Decimal, set[int]], sd_id: int, rows: Sequence[Sequence[Decimal | None]]
+) -> int | None:
+    """Of rows that share one scheme's name, the one whose filed NAVs are that scheme's.
+
+    AMFI's performance file can list two schemes under one name: "Sundaram Banking and
+    PSU Debt Fund" twice in 2020, one row an older scheme's. The row is the one, and the
+    only one, that files a NAV the scheme has that day; else ``None``, and the caller
+    keeps its first row as before.
+    """
+    own = [
+        k
+        for k, filed in enumerate(rows)
+        if any(sd_id in index.get(_cents(v), set()) for v in filed if v is not None)
+    ]
+    return own[0] if len(own) == 1 else None
