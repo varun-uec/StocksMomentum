@@ -383,6 +383,7 @@ def mf_portfolios(
     start: str | None = typer.Option(None, help="First month, YYYY-MM-DD; default last month."),
     end: str | None = typer.Option(None, help="Last month, YYYY-MM-DD; default last month."),
     refetch: bool = typer.Option(False, help="Re-read months already settled."),
+    reparse: bool = typer.Option(False, help="Re-derive published months from kept files."),
     compute: bool = typer.Option(True, help="Compute the snapshot after a publish."),
 ) -> None:
     """Acquire monthly portfolio disclosures from AMC pages (doc 21 E4)."""
@@ -395,7 +396,12 @@ def mf_portfolios(
         summary = Summary()
         for name in amc:
             for month in _months(first, last):
-                outcome = await ingestion.portfolios.month(name, _month_end(month), refetch=refetch)
+                if reparse:
+                    outcome = await ingestion.portfolios.reparse(name, _month_end(month))
+                else:
+                    outcome = await ingestion.portfolios.month(
+                        name, _month_end(month), refetch=refetch
+                    )
                 typer.echo(f"{name} ", nl=False)
                 _print(outcome)
                 summary.add(outcome)

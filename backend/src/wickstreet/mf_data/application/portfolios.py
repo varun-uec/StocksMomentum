@@ -108,6 +108,27 @@ class IngestPortfolios:
             return Outcome(month_end, "unchanged")
         return await self._publish(source, run.id, raw, month_end, retrieval)
 
+    async def reparse(self, name: str, month_end: date) -> Outcome:
+        """Re-derive a published month from its kept raw file with the current parser.
+
+        For a parser fix: changed portfolios become a new revision and the old lines stay
+        as history (MF-5). Nothing is fetched.
+        """
+        source = self._sources[name]
+        if await self._store.run_status(name, HOLDINGS_MONTH, month_end) is None:
+            return Outcome(month_end, "skipped")
+        run = await self._store.open_run(name, HOLDINGS_MONTH, month_end, month_end)
+        stored = await self._store.stored_raw(run.id)
+        if stored is None:
+            return Outcome(month_end, "skipped")
+        raw = RawFile(stored.url, stored.fetched_at, self._raw_store.load(stored.path))
+        if raw.sha256 != stored.sha256:
+            error = f"Raw file {stored.path} does not match its recorded SHA-256."
+            await self._store.close_run(run.id, "failed", error=error)
+            return Outcome(month_end, "failed", error=error)
+        retrieval = await self._grant(run.id, name, Use.AUTOMATED_RETRIEVAL)
+        return await self._publish(source, run.id, raw, month_end, retrieval)
+
     async def import_file(self, name: str, raw: RawFile, month_end: date) -> Outcome:
         """Publish a file a person downloaded from AMC ``name``; Wickstreet fetched nothing."""
         source = self._sources[name]

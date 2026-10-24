@@ -42,11 +42,14 @@ from wickstreet.mf_data.application.ingest import (
     Outcome,
     Reparse,
 )
+from wickstreet.mf_data.application.portfolios import IngestPortfolios
 from wickstreet.mf_data.domain.model import (
     AMFI,
     MFAPI,
     TIGZIG,
+    Holding,
     NavRecord,
+    Portfolios,
     RawFile,
     SchemeFacts,
     SchemeRef,
@@ -571,3 +574,75 @@ async def test_ssd_codes_join_plans_and_settle_a_wrongly_listed_isin(
         "INF000X10002": 2,  # kept: the plan's name does not name scheme 1
         "INF000Y10002": 1,  # joined by code; nothing listed it
     }
+
+
+class FakeAmc:
+    """One AMC file a month; the parser's asset kind stands for the parser version."""
+
+    name = "fakeamc"
+    adapter_version = "fake-1"
+
+    def __init__(self) -> None:
+        self.kind = "other"
+        self.fetches = 0
+
+    async def portfolio(self, month_end: date) -> RawFile | None:
+        self.fetches += 1
+        return RawFile("fake://amc/2026-09", datetime.now(UTC), b"one file")
+
+    def parse_portfolios(self, raw: RawFile, names: Any, fallback: date | None) -> Portfolios:
+        line = Holding(
+            1,
+            D1,
+            0,
+            "Axis Bank Limited Oct26",
+            None,
+            "Stock Futures",
+            "ARBITRAGE",
+            self.kind,
+            None,
+            None,
+            Decimal("-0.5"),
+        )
+        return Portfolios([line], [])
+
+
+async def test_a_portfolio_reparse_supersedes_lines_from_the_kept_file(
+    app_database: Database, mf_urls: Urls, tmp_path: Path
+) -> None:
+    owner = Database(mf_urls.owner)
+    await record_grants(
+        owner,
+        source="fakeamc",
+        mode="personal",
+        uses=[Use.AUTOMATED_RETRIEVAL, Use.STORAGE],
+        basis="test",
+        granted_by="tests",
+    )
+    await owner.dispose()
+    store = SqlMfStore(app_database)
+    run = await store.open_run(AMFI, "scheme-list", D1, D1)
+    [(grant,)] = await _rows(app_database, "SELECT min(id) FROM wickstreet.rights_grant")
+    provenance = Provenance(
+        "fake://list", "2026-09-01T00:00:00+00:00", "1" * 64, "x", "f", "c", None, grant
+    )
+    await store.publish_facts(
+        run.id, SchemeFacts([]), provenance, [SchemeRef(1, 1, "Example Fund")]
+    )
+    amc = FakeAmc()
+    ingest = IngestPortfolios(
+        {"fakeamc": amc},
+        store,
+        FileRawStore(tmp_path),
+        RightsGate(SqlRightsRegister(app_database, "personal")),
+    )
+    assert (await ingest.month("fakeamc", D1)).status == "published"
+    amc.kind = "derivative"  # the parser fix
+    assert (await ingest.month("fakeamc", D1, refetch=True)).status == "unchanged"
+    fixed = await ingest.reparse("fakeamc", D1)
+    assert (fixed.status, fixed.superseded, amc.fetches) == ("published", 1, 2)
+    assert await _rows(
+        app_database,
+        "SELECT asset, superseded_revision IS NULL FROM wickstreet.holding ORDER BY revision_id",
+    ) == [("other", False), ("derivative", True)]
+    assert (await ingest.reparse("fakeamc", D1 + timedelta(days=31))).status == "skipped"
