@@ -211,15 +211,20 @@ function Ideas({ presets: all }: { presets?: Preset[] }) {
     if (!preset) return null;
     const view = presetView(preset);
     const columns = [...new Set(['category', 'score', 'cagr_3y', 'sharpe_3y', 'score_cat_rank', 'score_cat_count', ...view.columns])];
-    return { filter: filterOf(view), sort: view.sort, columns, page: { size: 4 } };
+    return { filter: filterOf(view), sort: view.sort, columns, page: { size: 8 } };
   }, [preset]);
   const screen = useScreen(body);
-  const lines = useSparklines((screen.data?.rows ?? []).map((r) => r.amfi_code));
+  // Four funds, scored ones first: an unscored fund leads an idea only when nothing else matches (review 1, rank 12).
+  const rows = useMemo(() => {
+    const all = screen.data?.rows ?? [];
+    return [...all.filter((r) => r.values.score != null), ...all.filter((r) => r.values.score == null)].slice(0, 4);
+  }, [screen.data]);
+  const lines = useSparklines(rows.map((r) => r.amfi_code));
   return (
     <Card title="Ideas to research" subtitle={preset && <>Why these funds: {preset.purpose.charAt(0).toLowerCase() + preset.purpose.slice(1)}</>} action={preset && <Link to={`/mf/screen?preset=${preset.id}`} className="text-sm font-medium text-mf-brand hover:underline">See all {screen.data ? screen.data.matched : ''}</Link>}>
-      <div className="mf-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div className="flex flex-wrap gap-2">
         {presets?.map((p, i) => (
-          <Chip key={p.id} pressed={i === active} onClick={() => setActive(i)} className="shrink-0">
+          <Chip key={p.id} pressed={i === active} onClick={() => setActive(i)}>
             {p.name}
           </Chip>
         ))}
@@ -233,7 +238,7 @@ function Ideas({ presets: all }: { presets?: Preset[] }) {
           <p className="py-6 text-center text-sm text-mf-muted">No fund matches this collection today.</p>
         ) : (
           <ul className={cx('divide-y divide-mf-line transition-opacity', screen.isPlaceholderData && 'opacity-50')}>
-            {screen.data.rows.map((r) => (
+            {rows.map((r) => (
               <li key={r.amfi_code}>
                 <Link to={`/mf/funds/${r.amfi_code}`} className="group flex items-center gap-3 py-3">
                   <ScoreBadge score={r.values.score as number | null} />
@@ -258,7 +263,7 @@ function Ideas({ presets: all }: { presets?: Preset[] }) {
   );
 }
 
-const WINDOWS = { '1Y': 1, '3Y': 3, '5Y': 5, Max: 99 } as const;
+const WINDOWS = { '1Y': 1, '3Y': 3, '5Y': 5, All: 99 } as const;
 type Window = keyof typeof WINDOWS;
 
 function MarketContext() {

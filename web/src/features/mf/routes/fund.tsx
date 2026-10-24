@@ -10,7 +10,7 @@ import { FundMark } from '../components/FundMark';
 import { Benchmark, FactsAndCosts } from '../components/fund/Facts';
 import { Holdings } from '../components/fund/Holdings';
 import { Profile } from '../components/fund/Profile';
-import { FundHeadline, Overview } from '../components/fund/Overview';
+import { FundHeadline, KeyFactsStrip, Overview } from '../components/fund/Overview';
 import { Peers } from '../components/fund/Peers';
 import { Performance } from '../components/fund/Performance';
 import { Risk } from '../components/fund/Risk';
@@ -162,13 +162,16 @@ export default function Fund() {
   );
 
   return (
-    <div className="flex flex-col gap-3 pb-16 sm:gap-6 sm:pb-0">
-      <div className="order-0 flex flex-wrap items-center justify-between gap-2">
-        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
+    <div className="flex flex-col gap-3 sm:gap-6">
+      <div className="order-0 flex items-center justify-between gap-2">
+        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
           <I.arrowLeft className="h-4 w-4" />
           Back
         </button>
-        <div className="hidden flex-wrap gap-2 sm:flex">{actions}</div>
+        {/* One actions row at every width; on phones it scrolls sideways, so no bar covers the page. */}
+        <div tabIndex={0} className="mf-scroll -mr-1 flex min-w-0 gap-2 overflow-x-auto py-1 pr-1 sm:flex-wrap sm:justify-end sm:overflow-visible" role="group" aria-label="Fund actions; scroll sideways for more actions">
+          {actions}
+        </div>
       </div>
 
       {tab === 'overview' ? (
@@ -184,6 +187,9 @@ export default function Fund() {
             <LastNav code={code} />
           </div>
           <FundHeadline code={code} metrics={m} />
+          <div className="sm:hidden">
+            <KeyFactsStrip code={code} metrics={m} />
+          </div>
         </header>
       ) : (
         // Other tabs keep the identity and NAV in one strip, so their first chart sits high (audit 5.3).
@@ -202,9 +208,6 @@ export default function Fund() {
           <LastNav code={code} compact />
         </header>
       )}
-      <div tabIndex={0} className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex gap-2 overflow-x-auto border-t border-mf-line bg-mf-surface/95 px-3 py-2 backdrop-blur sm:hidden" role="group" aria-label="Fund actions; scroll horizontally for more actions">
-        {actions}
-      </div>
 
       <div className="order-2">
         <TabLinks label="Fund sections" active={tab} tabs={TABS.map((t) => ({ id: t.id, label: t.label, to: `?tab=${t.id}` }))} />

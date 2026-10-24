@@ -3,6 +3,7 @@
  * screens, cards with the same columns and order on phones. A missing value
  * shows its reason, never a zero.
  */
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import type { FieldDef, ScreenRow, SortKey } from '../../api';
 import { categoryShort, formatField, missingLabel, schemeName, tone } from '../../format';
@@ -58,6 +59,22 @@ export function ResultsTable({
   stale?: boolean;
 }) {
   const primary = sort[0];
+  // Width hidden to the right of the wide table, so a column never disappears without a cue (review 1, rank 3).
+  const wide = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState(0);
+  useEffect(() => {
+    const el = wide.current;
+    if (!el) return;
+    const update = () => setHidden(Math.max(0, el.scrollWidth - el.clientWidth - el.scrollLeft));
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [columns.length, rows.length]);
   const lines = useSparklines(rows.map((r) => r.amfi_code));
   const line = (r: ScreenRow) => {
     const points = lines.data?.series[r.amfi_code];
@@ -66,7 +83,15 @@ export function ResultsTable({
   return (
     <div className={cx('transition-opacity duration-150', stale && 'opacity-50')} aria-busy={stale}>
       {/* Wide screens */}
-      <div className="mf-scroll hidden overflow-x-auto rounded-card border border-mf-line bg-mf-surface md:block" role="region" aria-label="Screen results" tabIndex={0}>
+      {hidden > 8 && (
+        <p className="mb-2 hidden items-center justify-end gap-2 text-xs text-mf-muted md:flex">
+          More columns to the right
+          <button type="button" onClick={() => wide.current?.scrollBy({ left: 320, behavior: 'smooth' })} className="inline-flex items-center gap-1 rounded-full border border-mf-line-strong bg-mf-surface px-2.5 py-1 font-medium text-mf-brand-strong hover:border-mf-brand/50">
+            Scroll <I.chevronRight className="h-3.5 w-3.5" />
+          </button>
+        </p>
+      )}
+      <div ref={wide} className="mf-scroll hidden overflow-x-auto rounded-card border border-mf-line bg-mf-surface md:block" role="region" aria-label="Screen results" tabIndex={0}>
         <table className="w-full min-w-[760px] text-sm">
           <thead className="sticky top-0 z-10 bg-mf-sunken text-xs text-mf-muted">
             <tr>
@@ -95,7 +120,7 @@ export function ResultsTable({
           <tbody>
             {rows.map((r) => (
               <tr key={r.amfi_code} className="group border-t border-mf-line hover:bg-mf-sunken/50">
-                <th scope="row" className="sticky left-0 w-[280px] min-w-[220px] max-w-[280px] bg-mf-surface px-4 py-2.5 text-left font-normal transition-colors group-hover:bg-mf-sunken">
+                <th scope="row" className="sticky left-0 w-[240px] min-w-[200px] max-w-[240px] bg-mf-surface px-4 py-2.5 text-left font-normal transition-colors group-hover:bg-mf-sunken">
                   <div className="flex items-center gap-2.5">
                     <FundMark amc={String(r.values.amc ?? '')} size="sm" />
                     <div className="min-w-0">

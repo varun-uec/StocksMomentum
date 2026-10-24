@@ -56,7 +56,7 @@ function RangeControl({ field, min, max, onChange }: { field: FieldDef; min: unk
         type={date ? 'date' : 'number'}
         inputMode={date ? undefined : 'decimal'}
         step="any"
-        placeholder={side === 'Minimum' ? 'No minimum' : 'No maximum'}
+        placeholder="Any"
         aria-label={`${side} ${field.label}`}
         value={value}
         onChange={(e) => {
@@ -72,7 +72,7 @@ function RangeControl({ field, min, max, onChange }: { field: FieldDef; min: unk
       {input('Maximum', high, setHigh)}
       {inverted && <p className="col-span-2 text-xs text-mf-loss" role="alert">Minimum must be less than or equal to maximum. Results keep the last valid range.</p>}
       <p className="col-span-2 text-[11px] text-mf-muted">
-        {field.range ? `Snapshot values run from ${formatField(field, field.range[0])} to ${formatField(field, field.range[1])}. ` : ''}
+        {field.range ? `All ${field.coverage.values.toLocaleString('en-IN')} plan options with a value run from ${formatField(field, field.range[0])} to ${formatField(field, field.range[1])}. ` : ''}
         Results update as you type. Leave both empty to keep all funds.
       </p>
     </div>

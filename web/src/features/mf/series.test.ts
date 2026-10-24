@@ -35,9 +35,9 @@ describe('chart series', () => {
   });
 
   it('offers only the windows the history covers', () => {
-    expect(availableWindows(points)).toEqual(['1Y', '3Y', '5Y', '10Y', 'Max']);
-    expect(availableWindows(points.slice(1))).toEqual(['1Y', '3Y', 'Max']);
-    expect(availableWindows([['2026-01-01', 1]])).toEqual(['Max']);
+    expect(availableWindows(points)).toEqual(['1Y', '3Y', '5Y', '10Y', 'All']);
+    expect(availableWindows(points.slice(1))).toEqual(['1Y', '3Y', 'All']);
+    expect(availableWindows([['2026-01-01', 1]])).toEqual(['All']);
   });
 });
 

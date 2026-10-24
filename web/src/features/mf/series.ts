@@ -5,7 +5,7 @@
  */
 import type { NavRow, Point } from './api';
 
-export const WINDOWS = { '1Y': 1, '3Y': 3, '5Y': 5, '10Y': 10, Max: 99 } as const;
+export const WINDOWS = { '1Y': 1, '3Y': 3, '5Y': 5, '10Y': 10, All: 99 } as const;
 export type WindowKey = keyof typeof WINDOWS;
 
 /** Points on or after the same calendar date `years` before the last point. */
@@ -31,7 +31,7 @@ export function rebase(points: Point[], base: number, start?: string): Point[] {
 
 /** How many years a window can show: the longest window the series covers. */
 export function availableWindows(points: Point[]): WindowKey[] {
-  if (points.length < 2) return ['Max'];
+  if (points.length < 2) return ['All'];
   const years = (Date.parse(points[points.length - 1][0]) - Date.parse(points[0][0])) / (365.25 * 864e5);
   return (Object.keys(WINDOWS) as WindowKey[]).filter((k) => WINDOWS[k] === 99 || WINDOWS[k] <= years + 0.02);
 }

@@ -171,18 +171,21 @@ test.describe('on a phone', () => {
 test.describe('at the 390 px investor viewport', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  test('Overview keeps identity and actions while showing the primary plot above the action bar', async ({ page }) => {
+  test('Overview keeps identity, actions and key facts on the first screen with the primary plot above the navigation', async ({ page }) => {
     await page.goto(`/mf/funds/${FUND}?tab=overview`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('img', { name: /^Score \d+ of 100$/ })).toBeInViewport();
     await expect(page.getByRole('heading', { name: 'Growth of ₹10,000' })).toBeInViewport();
     const bar = page.getByRole('group', { name: 'Fund actions' });
     await expect(bar.getByRole('button', { name: 'Add to watchlist' })).toBeInViewport();
+    // The six key facts sit on the first screen (independent review 1, rank 1).
+    const facts = page.getByRole('link', { name: /^Key facts/ });
+    for (const label of ['TER', 'AUM', 'Risk', 'Benchmark', 'Manager', 'Portfolio']) await expect(facts.getByText(label, { exact: true })).toBeInViewport();
     const chart = page.getByRole('figure', { name: 'Growth of ₹10,000 chart' });
     await expect(chart).toBeVisible();
     const figureTop = await chart.evaluate((element) => element.getBoundingClientRect().top);
-    const actionsTop = await bar.evaluate((element) => element.getBoundingClientRect().top);
-    expect(actionsTop - figureTop, 'show a useful portion of the NAV plot above the fixed action bar').toBeGreaterThanOrEqual(80);
+    const navTop = await page.getByRole('navigation', { name: 'Mutual fund research' }).evaluate((element) => element.getBoundingClientRect().top);
+    expect(navTop - figureTop, 'show a useful portion of the NAV plot above the fixed navigation').toBeGreaterThanOrEqual(80);
     await expectNoSideScroll(page);
   });
 });

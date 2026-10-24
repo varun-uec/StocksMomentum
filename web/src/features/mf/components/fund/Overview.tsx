@@ -127,18 +127,22 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
         <span className="sm:hidden"><ScoreRing score={s?.score} size={44} /></span>
         <span className="hidden sm:inline-flex"><ScoreRing score={s?.score} /></span>
         <div className="text-sm">
-          <p className="font-medium text-mf-ink">Wickstreet score</p>
+          <p className="hidden font-medium text-mf-ink sm:block">Wickstreet score</p>
           <p className="hidden text-mf-muted sm:block">{s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} scored ${category} funds` : s ? missingLabel(s.state) : 'Loading…'}</p>
-          <p className="text-mf-muted sm:hidden">{s?.rank ? `Rank ${s.rank} / ${s.peers_ranked} · ${category}` : s ? missingLabel(s.state) : 'Loading…'}</p>
-          <Link to="?tab=peers" className="text-xs font-medium text-mf-brand hover:underline">How it ranks</Link>
+          {/* Two lines reserved: the rank arrives after the page and must not push the facts down (CLS budget). */}
+          <p className="min-h-10 text-mf-ink-soft sm:hidden">
+            <span className="font-medium text-mf-ink">Score</span> · {s?.rank ? `rank ${s.rank} / ${s.peers_ranked} ${category}` : s ? missingLabel(s.state) : 'Loading…'} ·{' '}
+            <Link to="?tab=peers" className="font-medium text-mf-brand hover:underline">How it ranks</Link>
+          </p>
+          {/* On phones the three numbers share the score block, so they fit the first screen. */}
+          <p className="mt-0.5 text-xs font-medium tabular text-mf-ink-soft sm:hidden">
+            1Y {isNum(v.ret_1y) ? <Delta value={v.ret_1y} /> : '—'}
+            <span className="mx-1 text-mf-muted">·</span>3Y {isNum(v.cagr_3y) ? <Delta value={v.cagr_3y} /> : '—'}
+            <span className="mx-1 text-mf-muted">·</span>Worst 3Y {isNum(v.mdd_3y) ? <Delta value={v.mdd_3y} /> : '—'}
+          </p>
+          <Link to="?tab=peers" className="hidden text-xs font-medium text-mf-brand hover:underline sm:inline">How it ranks</Link>
         </div>
       </div>
-      {/* On phones the three numbers stay on one line, so they fit the first screen. */}
-      <p className="text-xs font-medium tabular text-mf-ink-soft sm:hidden">
-        1Y {isNum(v.ret_1y) ? <Delta value={v.ret_1y} /> : '—'}
-        <span className="mx-1 text-mf-muted">·</span>3Y {isNum(v.cagr_3y) ? <Delta value={v.cagr_3y} /> : '—'}
-        <span className="mx-1 text-mf-muted">·</span>Worst 3Y {isNum(v.mdd_3y) ? <Delta value={v.mdd_3y} /> : '—'}
-      </p>
       <dl className="hidden grid-cols-3 gap-2 text-center sm:grid sm:w-[360px]">
         {[
           ['1Y return', v.ret_1y, 'ret_1y'],
@@ -195,7 +199,7 @@ function Fact({ label, value, sub, source, to }: { label: string; value: ReactNo
       <dt className="text-xs font-medium text-mf-muted">{label}</dt>
       <dd className="mt-0.5 text-[15px] font-semibold leading-snug text-mf-ink">{value}</dd>
       {sub && <dd className="mt-0.5 text-xs leading-snug text-mf-ink-soft">{sub}</dd>}
-      {source && <dd className="mt-1 text-[11px] text-mf-muted">{source}</dd>}
+      {source && <dd className="mt-1 text-xs text-mf-muted">{source}</dd>}
     </>
   );
   return to ? (
@@ -204,6 +208,33 @@ function Fact({ label, value, sub, source, to }: { label: string; value: ReactNo
     </Link>
   ) : (
     <dl className="rounded-[12px] border border-mf-line bg-mf-surface px-3.5 py-3">{body}</dl>
+  );
+}
+
+/** The six key facts in one compact grid for the phone hero; the dated card follows the chart. */
+export function KeyFactsStrip({ code, metrics }: { code: string; metrics: Metrics }) {
+  const profile = useProfile(code);
+  const v = metrics.values;
+  const managers = profile.data?.managers ?? [];
+  const items: [string, string][] = [
+    ['TER', isNum(v.ter) ? pct(v.ter, 2) : '—'],
+    ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : '—'],
+    ['Risk', typeof v.riskometer === 'string' ? v.riskometer : '—'],
+    ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : '—'],
+    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managers.length > 1 ? ` +${managers.length - 1}` : ''}` : '—'],
+    ['Portfolio', typeof v.holdings_as_of === 'string' ? date(v.holdings_as_of) : '—'],
+  ];
+  return (
+    <a href="#key-facts" className="mt-2 block rounded-[12px] bg-mf-surface/80 p-2 ring-1 ring-mf-line" aria-label="Key facts; go to their dates and sources">
+      <dl className="grid grid-cols-3 gap-x-2 gap-y-1.5">
+        {items.map(([k, value]) => (
+          <div key={k} className="min-w-0">
+            <dt className="text-[11px] text-mf-muted">{k}</dt>
+            <dd className="truncate text-[13px] font-semibold text-mf-ink" title={value}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </a>
   );
 }
 
@@ -226,8 +257,12 @@ export function KeyFacts({ code, metrics }: { code: string; metrics: Metrics }) 
     ['Debt', v.debt_share],
     ['Cash', v.cash_share],
   ].filter((p): p is [string, number] => isNum(p[1]));
+  // The rest of net assets (REITs, InvITs, other funds, derivatives) gets a labelled share, so the bar reads to 100%.
+  const rest = 1 - mix.reduce((n, [, x]) => n + x, 0);
+  if (mix.length && rest > 0.005) mix.push(['Other', rest]);
   return (
     <Card
+      id="key-facts"
       title="Key facts"
       subtitle="Latest filings, each with its date"
       action={
@@ -260,7 +295,12 @@ export function KeyFacts({ code, metrics }: { code: string; metrics: Metrics }) 
         <Fact
           label="Benchmark"
           value={typeof v.benchmark === 'string' ? v.benchmark : why('benchmark')}
-          sub={isNum(v.excess_3y) ? `${pct(v.excess_3y, 1, true)} a year over it, 3Y` : undefined}
+          sub={
+            <>
+              {isNum(v.excess_3y) && <>{pct(v.excess_3y, 1, true)} a year over it, 3Y. </>}
+              {(v.asset_class === 'Equity' || v.asset_class === 'Hybrid') && 'The chart’s dashed line is a proxy, not this index.'}
+            </>
+          }
           source={typeof v.perf_as_of === 'string' ? `Tier 1, AMFI report of ${date(v.perf_as_of)}` : undefined}
           to="?tab=benchmark"
         />
@@ -274,7 +314,7 @@ export function KeyFacts({ code, metrics }: { code: string; metrics: Metrics }) 
                 ? `Since ${date(managers[0].since)}`
                 : undefined
           }
-          source={managers.length ? 'Start dates as filed' : undefined}
+          source={managers.length ? `Scheme document of ${date(profile.data?.document?.managers?.as_of)}` : undefined}
           to="?tab=facts"
         />
         <Fact
@@ -367,7 +407,8 @@ export function Essentials({ detail, metrics }: { detail: FundDetail; metrics: M
     ['Fund house', f.amc],
     ['Category', f.category],
     ['Plan · option', `${f.plan} · ${f.option}`],
-    ['Launch date', date(f.launch_date)],
+    ['Launch date (NFO)', date(f.launch_date)],
+    ['Allotment date', date(metrics.values.inception)],
     ['First stored NAV', date(detail.classification.since_start)],
     ['ISIN', f.isin_growth ?? f.isin_reinvest ?? '—'],
     ['AMFI code', f.amfi_code],

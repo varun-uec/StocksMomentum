@@ -241,7 +241,7 @@ export function MfShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main id="mf-main" tabIndex={-1} className="mf-main mx-auto max-w-[1440px] px-4 py-6 outline-none sm:px-6 lg:px-8 lg:pb-28 lg:pt-8">
+        <main id="mf-main" tabIndex={-1} className="mf-main mx-auto max-w-[1440px] px-4 pb-6 pt-4 outline-none sm:px-6 sm:pt-6 lg:px-8 lg:pb-28 lg:pt-8">
           <MixedSnapshots />
           {children}
         </main>

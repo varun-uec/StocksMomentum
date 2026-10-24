@@ -66,8 +66,8 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
   const [log, setLog] = useState(false);
   const points = useMemo(() => navPoints(navs.data?.navs ?? []), [navs.data]);
   const windows = availableWindows(points);
-  const [window, setWindow] = useState<WindowKey>('Max');
-  const active = windows.includes(window) ? window : 'Max';
+  const [window, setWindow] = useState<WindowKey>('All');
+  const active = windows.includes(window) ? window : 'All';
   const fund = useMemo(() => {
     const cut = sinceYears(points, WINDOWS[active]);
     return rebase(cut, 10_000);
@@ -77,12 +77,18 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
   const end = fund[fund.length - 1]?.[1];
   const proxyEnd = proxy[proxy.length - 1]?.[1];
   const series = [{ id: 'fund', label: 'This fund', points: fund, color: seriesColor(0) }, ...(proxy.length ? [{ id: 'proxy', label: 'Large-cap proxy', points: proxy, color: token('chart2'), dashed: true }] : [])];
-  // Market-proxy falls in the window, drawn behind the line (audit U-03).
-  const bands = falls && start ? (regimes.data?.windows ?? []).filter((w) => w.kind !== 'recovery' && w.end >= start).map((w) => ({ start: w.start < start ? start : w.start, end: w.end, color: token(w.kind === 'crash' ? 'loss' : 'warning') })) : [];
+  // Market-proxy falls in the window, drawn faintly behind the line (audit U-03); the data stays the strongest mark (review 1, rank 14).
+  const bands = falls && start ? (regimes.data?.windows ?? []).filter((w) => w.kind !== 'recovery' && w.end >= start).map((w) => ({ start: w.start < start ? start : w.start, end: w.end, color: token('muted', 0.55) })) : [];
   return (
     <ChartFrame
       title={title}
-      subtitle={start ? `From ${date(start)}, NAV rebased; dividends inside the NAV, before tax` : undefined}
+      subtitle={
+        start ? (
+          <>
+            From {date(start)}, NAV rebased<span className="max-sm:hidden">; dividends inside the NAV</span>, before tax
+          </>
+        ) : undefined
+      }
       controls={
         <>
           <div className="hidden items-center gap-3 sm:flex">
@@ -115,10 +121,10 @@ export function GrowthChart({ code, metrics, height = 280, title = 'Growth of â‚
         fund.length > 1 && (
           <>
             <LegendDot color={seriesColor(0)} label={<>This fund <b className="tabular">{inr(end)}</b></>} />
-            {proxyEnd !== undefined && <LegendDot color={token('chart2')} dashed label={<>Large-cap proxy <b className="tabular">{inr(proxyEnd)}</b></>} />}
+            {proxyEnd !== undefined && <LegendDot color={token('chart2')} dashed label={<><span>Large-cap proxy<span className="max-sm:hidden">, not the benchmark</span></span> <b className="tabular">{inr(proxyEnd)}</b></>} />}
             {bands.length > 0 && (
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-4 rounded-[3px]" style={{ background: token('warning', 0.3) }} aria-hidden="true" />
+                <span className="h-3 w-4 rounded-[3px]" style={{ background: token('muted', 0.18) }} aria-hidden="true" />
                 Proxy fall
               </span>
             )}

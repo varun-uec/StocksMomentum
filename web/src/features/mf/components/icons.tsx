@@ -42,7 +42,7 @@ export const I = {
   shield: icon(<path d="M12 3 5 6v6c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z" />),
   calendar: icon(<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>),
   stocks: icon(<><path d="M7 4v16M17 4v16" /><rect x="4.5" y="8" width="5" height="7" rx="1" /><rect x="14.5" y="6" width="5" height="9" rx="1" /></>),
-  settings: icon(<><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" /></>),
+  settings: icon(<><path d="M12 3a9 9 0 0 0 0 18c1.2 0 1.9-1 1.5-2-.4-1.1.4-2.2 1.6-2.2H17a4 4 0 0 0 4-4C21 7 17 3 12 3z" /><circle cx="7.5" cy="11.5" r="1" /><circle cx="10" cy="7.5" r="1" /><circle cx="14.5" cy="7.5" r="1" /></>),
   grid: icon(<><rect x="4" y="4" width="7" height="7" rx="1" /><rect x="13" y="4" width="7" height="7" rx="1" /><rect x="4" y="13" width="7" height="7" rx="1" /><rect x="13" y="13" width="7" height="7" rx="1" /></>),
   list: icon(<path d="M8 6h12M8 12h12M8 18h12M4 6h0M4 12h0M4 18h0" />),
 };

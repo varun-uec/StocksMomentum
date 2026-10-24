@@ -55,7 +55,7 @@ test('Basic metric selection shows real values without adding a filter', async (
     (window as Window & { __mfClicks?: number }).__mfClicks = 0;
   });
   await expect(page.getByRole('button', { name: 'Filter by Return 1Y' })).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByText(/Snapshot values run from −?[\d.,]+% to [\d.,]+%/)).toBeVisible();
+  await expect(page.getByText(/plan options with a value run from −?[\d.,]+% to [\d.,]+%/)).toBeVisible();
   const minimum = page.getByRole('spinbutton', { name: 'Minimum Return 1Y' });
   await expect(minimum).toBeVisible();
   const thresholdResult = page.waitForResponse((response) =>
