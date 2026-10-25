@@ -10,6 +10,7 @@ import pytest
 
 from wickstreet.analytics.domain.fields import FIELDS, INDEX
 from wickstreet.analytics.domain.metrics import NO_NAV, Missing, Value
+from wickstreet.analytics.domain.presets import PRESETS
 from wickstreet.analytics.domain.screening import (
     CursorError,
     FilterError,
@@ -282,3 +283,12 @@ def test_field_labels_read_as_words_not_codes() -> None:
     """Audit F-16: no derived label repeats an upper-cased field id."""
     codes = re.compile(r"\b(RET|VOL|MDD|SHARPE|SORTINO|CONSISTENCY|RISK)\b")
     assert [f.label for f in FIELDS if codes.search(f.label)] == []
+
+
+def test_calm_equity_admits_only_diversified_equity_categories() -> None:
+    calm = next(p for p in PRESETS if p.id == "calm_equity")
+    parse_filter(calm.filter)
+    (categories,) = [c["value"] for c in calm.filter["all"] if c["field"] == "category"]
+    assert len(categories) == 11
+    assert all(c.startswith("Equity Scheme - ") and "Thematic" not in c for c in categories)
+    assert calm.sort == [{"field": "vol_3y", "dir": "asc"}]

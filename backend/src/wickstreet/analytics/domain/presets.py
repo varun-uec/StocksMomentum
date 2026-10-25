@@ -11,6 +11,21 @@ _DIRECT_GROWTH: list[dict[str, Any]] = [
     {"field": "option", "op": "in", "value": ["growth"]},
 ]
 
+# Every SEBI equity category but Sectoral/Thematic: one sector or theme is not diversified.
+_DIVERSIFIED_EQUITY = [
+    "Equity Scheme - Large Cap Fund",
+    "Equity Scheme - Large & Mid Cap Fund",
+    "Equity Scheme - Mid Cap Fund",
+    "Equity Scheme - Small Cap Fund",
+    "Equity Scheme - Multi Cap Fund",
+    "Equity Scheme - Flexi Cap Fund",
+    "Equity Scheme - Focused Fund",
+    "Equity Scheme - Value Fund",
+    "Equity Scheme - Contra Fund",
+    "Equity Scheme - Dividend Yield Fund",
+    "Equity Scheme - ELSS",
+]
+
 
 @dataclass(frozen=True, slots=True)
 class Preset:
@@ -50,17 +65,19 @@ PRESETS = (
     Preset(
         "calm_equity",
         "Calm equity",
-        "Equity funds in the calmer half of their category with an above-median 3Y return.",
+        "Diversified equity funds, no sector or theme funds, in the calmer half of their "
+        "category by 3Y volatility, with a 3Y return at or above the category median. "
+        "Calmest first.",
         {
             "all": [
                 *_DIRECT_GROWTH,
-                {"field": "asset_class", "op": "in", "value": ["Equity"]},
+                {"field": "category", "op": "in", "value": _DIVERSIFIED_EQUITY},
                 {"field": "vol_3y_cat_pct", "op": ">=", "value": 50},
                 {"field": "cagr_3y_cat_pct", "op": ">=", "value": 50},
             ]
         },
-        [{"field": "ret_risk_3y", "dir": "desc"}],
-        ["category", "cagr_3y", "vol_3y", "ret_risk_3y", "sortino_3y"],
+        [{"field": "vol_3y", "dir": "asc"}],
+        ["category", "vol_3y", "mdd_3y", "cagr_3y", "ret_risk_3y"],
     ),
     Preset(
         "shallow_drawdown_hybrids",
