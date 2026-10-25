@@ -34,7 +34,7 @@ export function usePeers(code: string, values: Record<string, unknown> | undefin
       ? {
           filter: { all: [{ field: 'status', op: 'in', value: ['active'] }, { field: 'plan', op: 'in', value: [plan] }, { field: 'option', op: 'in', value: [option] }, { field: 'category', op: 'in', value: [category] }] },
           sort: [{ field: 'aum_cr', dir: 'desc' }],
-          columns: ['aum_cr', 'holdings_as_of'],
+          columns: ['aum_cr', 'holdings_as_of', 'ret_1y', 'cagr_3y', 'mdd_3y', 'ter'],
           page: { size: count + 1 },
         }
       : null;

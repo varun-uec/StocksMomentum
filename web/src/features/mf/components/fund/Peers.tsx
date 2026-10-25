@@ -6,11 +6,12 @@
  */
 import { useMemo } from 'react';
 import { Link } from 'react-router';
-import { categoryShort, enumLabel, formatField, inr, month, pct } from '../../format';
-import { useDirectRegular, useNearDuplicates, useRankHistory } from '../../queries';
+import { categoryShort, enumLabel, formatField, inr, isNum, month, pct, schemeName } from '../../format';
+import { useDirectRegular, useNearDuplicates, usePeers, useRankHistory } from '../../queries';
+import { COMPARE_LIMIT } from '../../workspace';
 import { seriesColor } from '../../theme/themes';
 import { ChartFrame, LegendDot, TimeChart } from '../charts';
-import { Card, Delta, ErrorState, Meter, Skeleton, buttonClass } from '../ui';
+import { Card, Delta, ErrorState, Meter, Skeleton, buttonClass, cx } from '../ui';
 import type { FundTabProps } from './shared';
 
 const RANKED: { base: string; label: string; better: 'higher' | 'lower' }[] = [
@@ -128,6 +129,83 @@ function DirectRegular({ code }: { code: string }) {
   );
 }
 
+/** The fund beside its largest peers, the alternatives an investor weighs first (assessment 25 Oct, rank 2). */
+function LargestPeers({ code, metrics }: Pick<FundTabProps, 'code' | 'metrics'>) {
+  const { peers, isError, error } = usePeers(code, metrics.values, COMPARE_LIMIT - 1);
+  const rows = [{ amfi_code: code, name: metrics.name, values: metrics.values }, ...(peers ?? [])];
+  const cost = (v: unknown) => (isNum(v) ? pct(v, 2) : '—');
+  const size = (v: unknown) => (isNum(v) ? `₹${Math.round(v).toLocaleString('en-IN')} Cr` : '—');
+  const ret = (v: unknown) => (isNum(v) ? <Delta value={v} /> : <span className="text-mf-muted">—</span>);
+  return (
+    <Card
+      title={`Largest ${categoryShort(String(metrics.values.category))} peers`}
+      subtitle="By assets under management, same plan and option · the latest snapshot"
+      action={peers?.length ? <Link to={`/mf/compare?${rows.map((r) => `code=${r.amfi_code}`).join('&')}`} className={buttonClass('primary', 'sm')}>Compare these {rows.length}</Link> : undefined}
+    >
+      {isError ? (
+        <ErrorState error={error} compact />
+      ) : !peers ? (
+        <Skeleton className="h-40" />
+      ) : (
+        <>
+        {/* Phones: one block per fund, so no number sits past the edge. */}
+        <ul className="divide-y divide-mf-line sm:hidden">
+          {rows.map((r) => (
+            <li key={r.amfi_code} className="py-3">
+              {r.amfi_code === code ? (
+                <p className="font-semibold text-mf-ink">{schemeName(r.name)} <span className="font-normal text-mf-muted">· this fund</span></p>
+              ) : (
+                <Link to={`/mf/funds/${r.amfi_code}`} className="font-medium text-mf-ink hover:text-mf-brand-strong">{schemeName(r.name)}</Link>
+              )}
+              <dl className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1.5 text-sm tabular">
+                {([['1Y', ret(r.values.ret_1y)], ['3Y CAGR', ret(r.values.cagr_3y)], ['Worst 3Y fall', ret(r.values.mdd_3y)], ['TER', cost(r.values.ter)], ['AUM', size(r.values.aum_cr)]] as const).map(([k, value]) => (
+                  <div key={k} className={cx('min-w-0', k === 'AUM' && 'col-span-2')}>
+                    <dt className="text-[11px] text-mf-muted">{k}</dt>
+                    <dd className="font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          ))}
+        </ul>
+        <div className="mf-scroll -mx-1 hidden overflow-x-auto px-1 sm:block">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead className="text-xs text-mf-muted">
+              <tr className="border-b border-mf-line">
+                <th scope="col" className="py-2 text-left font-medium">Fund</th>
+                <th scope="col" className="py-2 text-right font-medium">1Y</th>
+                <th scope="col" className="py-2 text-right font-medium">3Y CAGR</th>
+                <th scope="col" className="py-2 text-right font-medium">Worst 3Y fall</th>
+                <th scope="col" className="py-2 text-right font-medium">TER</th>
+                <th scope="col" className="py-2 text-right font-medium">AUM</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.amfi_code} className="border-b border-mf-line last:border-0">
+                  <th scope="row" className="max-w-[220px] py-2.5 pr-3 text-left font-normal">
+                    {r.amfi_code === code ? (
+                      <span className="block truncate font-semibold text-mf-ink">{schemeName(r.name)} <span className="font-normal text-mf-muted">· this fund</span></span>
+                    ) : (
+                      <Link to={`/mf/funds/${r.amfi_code}`} className="block truncate text-mf-ink hover:text-mf-brand-strong">{schemeName(r.name)}</Link>
+                    )}
+                  </th>
+                  <td className="py-2.5 text-right tabular">{ret(r.values.ret_1y)}</td>
+                  <td className="py-2.5 text-right tabular">{ret(r.values.cagr_3y)}</td>
+                  <td className="py-2.5 text-right tabular">{ret(r.values.mdd_3y)}</td>
+                  <td className="py-2.5 text-right tabular">{cost(r.values.ter)}</td>
+                  <td className="py-2.5 text-right tabular">{size(r.values.aum_cr)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
 function NearDuplicates({ code }: { code: string }) {
   const nd = useNearDuplicates(code);
   return (
@@ -158,6 +236,7 @@ export function Peers({ code, metrics, fields }: FundTabProps) {
   const studio = `/mf/studio?mode=frontier&category=${encodeURIComponent(String(v.category))}&plan=${v.plan}&option=${v.option}&code=${code}`;
   return (
     <div className="space-y-6">
+      <LargestPeers code={code} metrics={metrics} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <RankHistory code={code} />
         <CurrentRanks metrics={metrics} fields={fields} />

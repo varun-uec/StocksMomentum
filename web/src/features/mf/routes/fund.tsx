@@ -218,7 +218,8 @@ export default function Fund() {
         // Other tabs keep the identity and NAV in one strip, so their first chart sits high (audit 5.3).
         <header className="order-1 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[16px] border border-mf-line bg-mf-surface px-4 py-3 shadow-card">
           <FundMark amc={f.amc} size="md" className="hidden sm:inline-grid" />
-          <div className="min-w-0 flex-1">
+          {/* On phones the name takes the whole first line; score and NAV wrap below it. */}
+          <div className="min-w-0 flex-1 max-sm:basis-full">
             <h1 className="truncate font-display text-[20px] leading-tight sm:text-[24px]">{schemeName(m.name)}</h1>
             <Identity category={f.category} plan={String(m.values.plan)} option={String(m.values.option)} amc={f.amc} status={status} />
           </div>
