@@ -158,7 +158,7 @@ export function Holdings({ code }: Pick<FundTabProps, 'code'>) {
     return (
       <div className="grid gap-4 lg:grid-cols-2">
         <EmptyState title="No portfolio disclosure stored for this scheme yet">
-          Wickstreet reads PPFAS and DSP monthly files directly. Other AMCs publish theirs through pages built in the browser; download the month&rsquo;s file from the AMC and import it with <code>wickstreet mf import-portfolios</code>.
+          Wickstreet stores the monthly portfolio only where it can read the fund house&rsquo;s file. For any other fund house, download the month&rsquo;s file from it and import it with <code>wickstreet mf import-portfolios</code>.
         </EmptyState>
         <DependencyPanel title="Sector style and valuation" needs="E7, company fundamentals with a licence">
           Weighted P/E, P/B and ROE need a stock data supplier; none with a clear grant was found.

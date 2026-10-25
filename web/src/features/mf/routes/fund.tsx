@@ -17,10 +17,10 @@ import { Risk } from '../components/fund/Risk';
 import { I } from '../components/icons';
 import { Badge, Button, Delta, EmptyState, ErrorState, Field, Loading, Sheet, SnapshotNote, TabLinks, buttonClass, cx, inputClass, useTitle } from '../components/ui';
 import { ScoreBadge } from '../components/ScoreBadge';
-import { MfApiError } from '../api';
+import { MfApiError, type Metrics } from '../api';
 import { rememberFund } from '../context';
 import { categoryShort, date, enumLabel, isNum, schemeName } from '../format';
-import { useFields, useFund, useMetrics, useNavs } from '../queries';
+import { useFields, useFund, useMetrics, useNavs, usePeers } from '../queries';
 import { token } from '../theme/themes';
 import { useRecordMutations, useRecords, type NoteBody } from '../workspace';
 
@@ -116,6 +116,28 @@ function NoteSheet({ open, onClose, code, name }: { open: boolean; onClose: () =
   );
 }
 
+/** One click from a fund to Compare with its two largest same-category peers (assessment 25 Oct, rank 2). */
+function ComparePeers({ code, metrics }: { code: string; metrics: Metrics }) {
+  const { peers } = usePeers(code, metrics.values, 2);
+  const label = (
+    <>
+      <I.compare className="h-4 w-4" />
+      Compare peers
+    </>
+  );
+  // Until the peers load, a disabled twin holds the place, so the row does not shift.
+  if (!peers?.length) return <span className={cx(buttonClass('secondary', 'sm'), 'pointer-events-none opacity-50')} aria-hidden="true">{label}</span>;
+  return (
+    <Link
+      to={`/mf/compare?${[code, ...peers.map((p) => p.amfi_code)].map((c) => `code=${c}`).join('&')}`}
+      className={buttonClass('secondary', 'sm')}
+      title={`With ${peers.map((p) => schemeName(p.name)).join(' and ')}, the largest ${categoryShort(String(metrics.values.category))} peers by AUM`}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export default function Fund() {
   const { code = '' } = useParams();
   const [params] = useSearchParams();
@@ -149,6 +171,7 @@ export default function Fund() {
   const actions = (
     <>
       <WatchButton code={code} name={m.name} label />
+      <ComparePeers code={code} metrics={m} />
       <CompareButton code={code} name={m.name} label />
       <Link to={`/mf/simulate?code=${code}`} className={buttonClass('secondary', 'sm')}>
         <I.lab className="h-4 w-4" />

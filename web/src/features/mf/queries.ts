@@ -23,6 +23,27 @@ export const useScreen = (body: ScreenRequest | null) =>
     placeholderData: keepPreviousData,
   });
 
+/**
+ * A fund's largest active peers by AUM: the same category, plan and option, the fund itself left out.
+ * They are the alternatives most investors weigh, so "Compare peers" opens with them.
+ */
+export function usePeers(code: string, values: Record<string, unknown> | undefined, count: number) {
+  const { category, plan, option } = values ?? {};
+  const body: ScreenRequest | null =
+    typeof category === 'string' && typeof plan === 'string' && typeof option === 'string'
+      ? {
+          filter: { all: [{ field: 'status', op: 'in', value: ['active'] }, { field: 'plan', op: 'in', value: [plan] }, { field: 'option', op: 'in', value: [option] }, { field: 'category', op: 'in', value: [category] }] },
+          sort: [{ field: 'aum_cr', dir: 'desc' }],
+          columns: ['aum_cr', 'holdings_as_of'],
+          page: { size: count + 1 },
+        }
+      : null;
+  const query = useScreen(body);
+  // A placeholder page belongs to the previous fund's peer group.
+  const peers = query.isPlaceholderData ? undefined : query.data?.rows.filter((r) => r.amfi_code !== code).slice(0, count);
+  return { ...query, peers };
+}
+
 export const useFundSearch = (q: string) =>
   useQuery({
     queryKey: ['mf', 'search', q],

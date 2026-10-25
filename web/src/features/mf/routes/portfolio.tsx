@@ -265,7 +265,7 @@ function Analysis({ view }: { view: PortfolioView }) {
               )}
             </>
           ) : (
-            <p className="text-sm text-mf-muted">None of your funds has a stored portfolio yet. PPFAS and DSP are read directly; import other AMCs&rsquo; monthly files.</p>
+            <p className="text-sm text-mf-muted">None of your funds has a stored portfolio yet. Wickstreet stores one only where it can read the fund house&rsquo;s monthly file; import the others&rsquo; files.</p>
           )}
         </Card>
       </div>

@@ -9,13 +9,13 @@ import { pctTick } from '../axis';
 import { ChartFrame, LegendDot, PeerScatter, TimeChart, mergeSeries, thin } from '../components/charts';
 import { startingFunds, useRecentFunds } from '../context';
 import { rebase } from '../series';
-import type { Missing } from '../api';
+import type { CompareResponse, Missing } from '../api';
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { ScoreBadge } from '../components/ScoreBadge';
 import { Badge, Button, Card, Chip, EmptyState, ErrorState, Loading, PageHeader, Segmented, SnapshotNote, buttonClass, cx, useTitle } from '../components/ui';
 import { categoryShort, date, formatField, inr, inrTick, isNum, missingLabel, pct, schemeName } from '../format';
-import { useCompare, useFields, useOverlap } from '../queries';
+import { useCompare, useFields, useOverlap, usePeers } from '../queries';
 import { heat, seriesColor, token } from '../theme/themes';
 import { COMPARE_LIMIT, setTray, useCompareTray, useRecordMutations, type WatchlistBody } from '../workspace';
 import { revisionFromSearch } from '../scenario';
@@ -92,6 +92,27 @@ const GROUPS: { title: string; rows: { id: string; better: Better; label?: strin
     ],
   },
 ];
+
+/** The first fund's next-largest peers, one click each, so a peer set never needs a search. */
+function PeerSuggestions({ first, codes, onAdd }: { first: CompareResponse['funds'][number]; codes: string[]; onAdd: (code: string) => void }) {
+  const { peers } = usePeers(first.amfi_code, first.values, COMPARE_LIMIT + 1);
+  const left = peers?.filter((p) => !codes.includes(p.amfi_code)).slice(0, 3) ?? [];
+  if (!left.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-mf-muted">Largest {categoryShort(String(first.values.category))} peers by AUM:</span>
+      {left.map((p) => (
+        <Chip key={p.amfi_code} onClick={() => onAdd(p.amfi_code)}>
+          <span className="inline-flex items-center gap-1">
+            <I.plus className="h-3.5 w-3.5" />
+            {schemeName(p.name)}
+            {typeof p.values.holdings_as_of === 'string' && <span className="text-xs text-mf-brand-strong" title="A stored portfolio, so overlap can be read">· holdings</span>}
+          </span>
+        </Chip>
+      ))}
+    </div>
+  );
+}
 
 export default function Compare() {
   useTitle('Compare funds');
@@ -177,6 +198,7 @@ export default function Compare() {
           <p className="text-sm text-mf-muted">Five funds is the limit. Remove one to add another.</p>
         )}
       </div>
+      {codes.length < COMPARE_LIMIT && data?.funds[0] && <PeerSuggestions first={data.funds[0]} codes={codes} onAdd={(code) => setCodes([...codes, code])} />}
     </div>
   );
 
@@ -443,7 +465,7 @@ function HoldingsOverlap({ codes, dataRevision }: { codes: string[]; dataRevisio
     <Card title="Do they own the same securities?" subtitle="Weighted overlap from each fund's latest monthly portfolio: the sum of the smaller weight over every security both hold">
       {known.length === 0 ? (
         <p className="text-sm text-mf-muted">
-          No pair has two stored portfolios. Wickstreet reads PPFAS and DSP files directly; import other AMCs&rsquo; files to compare them.
+          No pair has two stored portfolios. Wickstreet stores the monthly portfolio only where it can read the fund house&rsquo;s file. Without one: {o.funds.filter((f) => !f.as_of).map((f) => name(f.code)).join(', ')}.
         </p>
       ) : (
         <ul className="space-y-5">
