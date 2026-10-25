@@ -216,9 +216,13 @@ function Categories() {
                           </div>
                           <p className="mt-1 flex items-center gap-2 text-xs text-mf-ink-soft">
                             <ScoreBadge score={row.values.score as number | null} size="sm" />
-                            <span className="min-w-0 truncate">
-                              {LENSES[lens].pick} · <span className="font-medium">{schemeName(row.name)}</span>
-                              {pickValue(row) && <> · {pickValue(row)}</>}
+                            {/* The name may truncate; the pick and its value never do. */}
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">{schemeName(row.name)}</span>
+                              <span className="block text-mf-muted">
+                                {LENSES[lens].pick}
+                                {pickValue(row) && <> · <span className="tabular text-mf-ink">{pickValue(row)}</span></>}
+                              </span>
                             </span>
                           </p>
                         </div>

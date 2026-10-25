@@ -82,3 +82,14 @@ test('Compare peers opens PPFAS with its two largest Flexi Cap peers in one clic
   await expect(page.getByText(/Largest Flexi Cap peers by AUM/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Do they own the same securities?' })).toBeVisible();
 });
+
+test('Discover names each category’s largest fund and opens it sorted by size', async ({ page, request }) => {
+  const largest = (await (await request.post('/api/v1/mf/screener/run', { data: { filter: { all: FLEXI_UNIVERSE }, sort: [{ field: 'aum_cr', dir: 'desc' }], columns: [], page: { size: 1 } } })).json()).rows[0];
+  await page.goto('/mf');
+  await page.getByRole('radiogroup', { name: 'Highlight in each category' }).getByRole('radio', { name: 'Largest' }).click();
+  const card = page.getByRole('link', { name: /^Flexi Cap/ });
+  await expect(card).toContainText(largest.name.split(' - ')[0]);
+  await expect(card).toContainText(/Largest · ₹[\d,]+ Cr/);
+  await card.click();
+  await expect(page.getByRole('region', { name: 'Screen results' }).locator('tbody tr').first()).toContainText(largest.name.split(' - ')[0]);
+});
