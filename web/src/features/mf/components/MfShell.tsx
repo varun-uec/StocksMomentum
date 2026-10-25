@@ -158,6 +158,23 @@ const PHONE: NavItem[] = [
   { to: '/mf/workspace', label: 'My space', icon: I.star },
 ];
 
+/** True while the page scrolls down past the first screen; false on any upward scroll or near the top. */
+function useHideOnScrollDown(): boolean {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - last) < 8) return;
+      setHidden(y > last && y > 120);
+      last = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  return hidden;
+}
+
 export function MfShell({ children }: { children: ReactNode }) {
   const [palette, setPalette] = usePalette();
   const { resolvedTheme, setMode } = useTheme();
@@ -165,7 +182,8 @@ export function MfShell({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState(false);
   const { pathname } = useLocation();
-  const tray = useCompareTray().funds.length > 0 && !pathname.startsWith('/mf/compare') && !pathname.startsWith('/mf/funds/');
+  const picked = useCompareTray().funds.length;
+  const navHidden = useHideOnScrollDown();
 
   // ScrollRestoration owns the scroll position, so Back returns to the same row.
   useEffect(() => {
@@ -174,7 +192,7 @@ export function MfShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="mf-root" data-tray={tray || undefined}>
+    <div className="mf-root">
       <style>{themeCss(THEMES[palette])}</style>
       <a href="#mf-main" className="sr-only z-[100] rounded bg-mf-surface px-3 py-2 focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
         Skip to content
@@ -241,7 +259,7 @@ export function MfShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main id="mf-main" tabIndex={-1} className="mf-main mx-auto max-w-[1440px] px-4 pb-6 pt-4 outline-none sm:px-6 sm:pt-6 lg:px-8 lg:pb-28 lg:pt-8">
+        <main id="mf-main" tabIndex={-1} className="mf-main mx-auto max-w-[1440px] px-4 pb-6 pt-3 outline-none sm:px-6 sm:pt-6 lg:px-8 lg:pb-28 lg:pt-8">
           <MixedSnapshots />
           {children}
         </main>
@@ -249,8 +267,8 @@ export function MfShell({ children }: { children: ReactNode }) {
 
       <CompareTray />
 
-      {/* Phone navigation */}
-      <nav aria-label="Mutual fund research" className="fixed inset-x-0 bottom-0 z-30 border-t border-mf-line bg-mf-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      {/* Phone navigation: it slides away while the reader scrolls down, so it never covers a chart for long. */}
+      <nav aria-label="Mutual fund research" className={cx('fixed inset-x-0 bottom-0 z-30 border-t border-mf-line bg-mf-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none lg:hidden', navHidden && 'translate-y-full')}>
         <ul className="flex">
           {PHONE.map((item) => (
             <li key={item.to} className="flex-1">
@@ -259,7 +277,16 @@ export function MfShell({ children }: { children: ReactNode }) {
                 end={item.end}
                 className={({ isActive }) => cx('flex h-16 flex-col items-center justify-center gap-1 text-[11px]', isActive ? 'font-medium text-mf-brand-strong' : 'text-mf-muted')}
               >
-                <item.icon className="h-5 w-5" />
+                <span className="relative">
+                  <item.icon className="h-5 w-5" />
+                  {/* On phones the compare selection lives here, not in a tray over the page. */}
+                  {item.to === '/mf/compare' && picked > 0 && (
+                    <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-mf-brand px-1 text-[10px] font-semibold leading-none text-mf-on-brand">
+                      {picked}
+                      <span className="sr-only"> funds picked</span>
+                    </span>
+                  )}
+                </span>
                 {item.label}
               </NavLink>
             </li>

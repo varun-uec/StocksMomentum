@@ -162,9 +162,9 @@ export default function Fund() {
   );
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-6">
+    <div className="flex flex-col gap-2.5 sm:gap-6">
       <div className="order-0 flex items-center justify-between gap-2">
-        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
+        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
           <I.arrowLeft className="h-4 w-4" />
           Back
         </button>

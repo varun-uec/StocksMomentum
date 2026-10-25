@@ -24,21 +24,20 @@ export function CompareTray() {
     window.addEventListener('mf-announce', onAnnounce);
     return () => window.removeEventListener('mf-announce', onAnnounce);
   }, []);
-  // A fund page has its own action bar on phones; the tray stays on wide screens.
+  // Wide screens only: on phones the Compare tab in the bottom bar shows the count (assessment 25 Oct, rank 7).
   const hidden = funds.length === 0 || pathname.startsWith('/mf/compare');
-  const onFund = pathname.startsWith('/mf/funds/');
   return (
     <>
       <p className="sr-only" aria-live="polite">
         {message}
       </p>
       {!hidden && (
-        <aside aria-label="Compare tray" className={cx('mf-rise fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 lg:bottom-5 lg:left-[252px] lg:right-auto lg:max-w-[720px]', onFund && 'hidden lg:block')}>
+        <aside aria-label="Compare tray" className="mf-rise fixed bottom-5 left-[252px] z-30 hidden max-w-[720px] lg:block">
           <div className="flex h-12 items-center gap-3 rounded-[14px] border border-mf-line bg-mf-surface/95 px-2 pl-4 shadow-raised backdrop-blur">
             <p className="shrink-0 text-sm font-medium">
               Compare <span className="text-mf-muted">{funds.length}/{COMPARE_LIMIT}</span>
             </p>
-            <ul className="mf-scroll hidden min-w-0 flex-1 gap-1.5 overflow-x-auto sm:flex">
+            <ul className="mf-scroll flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
               {funds.map((f) => (
                 <li key={f.code} className="flex shrink-0 items-center gap-1 rounded-full bg-mf-sunken py-1 pl-3 pr-1 text-xs">
                   <span className="max-w-[160px] truncate">{schemeName(f.name)}</span>
@@ -56,7 +55,6 @@ export function CompareTray() {
                 </li>
               ))}
             </ul>
-            {/* Phones show no chips, so Clear is their only way to empty the tray (audit 5.9). */}
             <button
               type="button"
               onClick={() => {
@@ -68,11 +66,11 @@ export function CompareTray() {
               Clear
             </button>
             {funds.length >= 2 ? (
-              <Link to={`/mf/compare?${funds.map((f) => `code=${f.code}`).join('&')}`} className={cx(buttonClass('primary', 'sm'), 'ml-auto sm:ml-0')}>
+              <Link to={`/mf/compare?${funds.map((f) => `code=${f.code}`).join('&')}`} className={buttonClass('primary', 'sm')}>
                 Compare
               </Link>
             ) : (
-              <span className="ml-auto text-xs text-mf-muted sm:ml-0">Add one more</span>
+              <span className="text-xs text-mf-muted">Add one more</span>
             )}
           </div>
         </aside>

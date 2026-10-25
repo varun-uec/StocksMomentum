@@ -129,10 +129,11 @@ export function FundHeadline({ code, metrics }: { code: string; metrics: Metrics
         <div className="text-sm">
           <p className="hidden font-medium text-mf-ink sm:block">Wickstreet score</p>
           <p className="hidden text-mf-muted sm:block">{s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} scored ${category} funds` : s ? missingLabel(s.state) : 'Loading…'}</p>
-          {/* Two lines reserved: the rank arrives after the page and must not push the facts down (CLS budget). */}
-          <p className="min-h-10 text-mf-ink-soft sm:hidden">
-            <span className="font-medium text-mf-ink">Score</span> · {s?.rank ? `rank ${s.rank} / ${s.peers_ranked} ${category}` : s ? missingLabel(s.state) : 'Loading…'} ·{' '}
-            <Link to="?tab=peers" className="font-medium text-mf-brand hover:underline">How it ranks</Link>
+          {/* One line, reserved: the rank arrives after the page and must not push the facts down (CLS budget). */}
+          <p className="h-5 truncate text-mf-ink-soft sm:hidden">
+            <Link to="?tab=peers" className="font-medium text-mf-brand hover:underline" aria-label={s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} ${category} funds by score. How it ranks` : undefined}>
+              {s?.rank ? `Rank ${s.rank} of ${s.peers_ranked} ${category}` : s ? missingLabel(s.state) : 'Loading…'} ›
+            </Link>
           </p>
           {/* On phones the three numbers share the score block, so they fit the first screen. */}
           <p className="mt-0.5 text-xs font-medium tabular text-mf-ink-soft sm:hidden">
@@ -217,26 +218,28 @@ export function KeyFactsStrip({ code, metrics }: { code: string; metrics: Metric
   const v = metrics.values;
   const managers = profile.data?.managers ?? [];
   const managerCount = isNum(v.manager_count) ? v.manager_count : managers.length;
-  const items: [string, string][] = [
-    ['TER', isNum(v.ter) ? pct(v.ter, 2) : '—'],
-    ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : '—'],
-    ['Risk', typeof v.riskometer === 'string' ? v.riskometer : '—'],
-    ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : '—'],
-    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managerCount > 1 ? ` +${managerCount - 1}` : ''}` : '—'],
-    ['Portfolio', typeof v.holdings_as_of === 'string' ? date(v.holdings_as_of) : '—'],
+  // Each fact keeps its source and date, as on wide screens (assessment 25 Oct, rank 6). The year shows only when it is not the snapshot's.
+  const on = (iso: unknown) => (typeof iso === 'string' ? date(iso).replace(` ${metrics.as_of.slice(0, 4)}`, '') : '');
+  const items: [string, string, string][] = [
+    ['TER', isNum(v.ter) ? pct(v.ter, 2) : '—', isNum(v.ter) ? `AMFI ${on(v.ter_as_of)}` : ''],
+    ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : '—', isNum(v.aum_cr) ? `AMFI ${on(v.aum_as_of)}` : ''],
+    ['Risk', typeof v.riskometer === 'string' ? v.riskometer : '—', profile.data?.riskometer_as_of ? `AMFI ${on(profile.data.riskometer_as_of)}` : ''],
+    ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : '—', typeof v.perf_as_of === 'string' ? `AMFI ${on(v.perf_as_of)}` : ''],
+    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managerCount > 1 ? ` +${managerCount - 1}` : ''}` : '—', managers.length ? `Scheme doc ${on(profile.data?.document?.managers?.as_of)}` : ''],
+    ['Portfolio', typeof v.holdings_as_of === 'string' ? date(v.holdings_as_of) : '—', typeof v.holdings_as_of === 'string' ? 'AMC filing' : ''],
   ];
   return (
-    <a href="#key-facts" className="mt-2 block rounded-[12px] bg-mf-surface/80 p-2 ring-1 ring-mf-line">
+    <a href="#key-facts" className="mt-2 block rounded-[12px] bg-mf-surface/80 px-2 py-1.5 ring-1 ring-mf-line">
       <span className="sr-only">Key facts: </span>
-      <dl className="grid grid-cols-3 gap-x-2 gap-y-1.5">
-        {items.map(([k, value]) => (
+      <dl className="grid grid-cols-3 gap-x-2 gap-y-1">
+        {items.map(([k, value, source]) => (
           <div key={k} className="min-w-0">
             <dt className="text-[11px] text-mf-muted">{k}</dt>
             <dd className="truncate text-[13px] font-semibold text-mf-ink" title={value}>{value}</dd>
+            {source && <dd className="truncate text-[10px] leading-3 text-mf-muted" title={source}>{source}</dd>}
           </div>
         ))}
       </dl>
-      <span className="sr-only">. Dates and sources are in Key facts below.</span>
     </a>
   );
 }
