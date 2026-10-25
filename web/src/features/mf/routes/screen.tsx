@@ -40,6 +40,12 @@ function categoryOf(view: ScreenView): string | null {
   return c && isCondition(c) && Array.isArray(c.value) && c.value.length === 1 ? String(c.value[0]) : null;
 }
 
+/** How many categories the view keeps, when it keeps more than one. */
+function categoryCount(view: ScreenView): number {
+  const c = view.conditions.find((n) => isCondition(n) && n.field === 'category' && n.op === 'in');
+  return c && isCondition(c) && Array.isArray(c.value) && c.value.length > 1 ? c.value.length : 0;
+}
+
 /** The view with one category condition, or none. */
 function withCategory(view: ScreenView, category: string | null): ScreenView {
   const rest = view.conditions.filter((n) => !(isCondition(n) && n.field === 'category'));
@@ -190,7 +196,7 @@ export default function Screen() {
           <>
             <div className="mr-2 text-right">
               <p className="text-[22px] font-semibold leading-none tabular" aria-live="polite">
-                {first ? first.matched.toLocaleString('en-IN') : '—'} <span className="text-sm font-normal text-mf-muted">funds</span>
+                {first ? first.matched.toLocaleString('en-IN') : '—'} <span className="text-sm font-normal text-mf-muted">{first?.matched === 1 ? 'fund' : 'funds'}</span>
               </p>
               <p className="text-xs text-mf-muted">of {first?.total.toLocaleString('en-IN') ?? '—'} plan options</p>
             </div>
@@ -298,7 +304,9 @@ export default function Screen() {
           <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
             <label className="flex min-w-0 items-center gap-2 whitespace-nowrap text-sm text-mf-muted">
               <span className="max-sm:sr-only">Category</span>
-              <select className={cx(inputClass, 'h-9 max-sm:w-full sm:w-auto sm:max-w-[200px]')} value={categoryOf(view) ?? ''} onChange={(e) => setView(withCategory(view, e.target.value || null))}>
+              <select className={cx(inputClass, 'h-9 max-sm:w-full sm:w-auto sm:max-w-[200px]')} value={categoryOf(view) ?? (categoryCount(view) ? 'several' : '')} onChange={(e) => setView(withCategory(view, e.target.value === 'several' ? null : e.target.value || null))}>
+                {/* A preset can keep several categories; say so rather than "All". */}
+                {categoryCount(view) > 0 && <option value="several" disabled>{categoryCount(view)} categories</option>}
                 <option value="">All categories</option>
                 {(fields.byId.get('category')?.values ?? []).filter((c) => c !== 'Unclassified').map((c) => (
                   <option key={c} value={c}>

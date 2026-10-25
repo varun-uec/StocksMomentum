@@ -86,7 +86,8 @@ function ValuesControl({ field, picked, onChange }: { field: FieldDef; picked: s
   const all = field.values ?? [];
   const list = all.filter((v) => !find || valueLabel(v).toLowerCase().includes(find.toLowerCase()) || v.toLowerCase().includes(find.toLowerCase()));
   return (
-    <fieldset>
+    // A fieldset is min-content wide by default; min-w-0 keeps a long value inside the rail.
+    <fieldset className="min-w-0">
       <legend className="sr-only">{field.label} values</legend>
       {all.length > 8 && <input className={`${inputClass} mb-2 h-9 text-sm`} placeholder={`Find in ${all.length} values`} value={find} onChange={(e) => setFind(e.target.value)} aria-label={`Find a ${field.label} value`} />}
       <ul className="mf-scroll max-h-56 space-y-0.5 overflow-y-auto">

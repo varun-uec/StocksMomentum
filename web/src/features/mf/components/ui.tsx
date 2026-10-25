@@ -265,7 +265,8 @@ export function Stat({
         {label}
         {help && <InfoTip label={typeof label === 'string' ? label : 'About this value'}>{help}</InfoTip>}
       </div>
-      <div className={cx('mt-1 truncate text-[22px] font-semibold leading-tight tabular text-mf-ink', valueClass)}>{value}</div>
+      {/* Below 360 px two tiles share 106 px each; a smaller face keeps ₹6,10,000 whole. */}
+      <div className={cx('mt-1 truncate text-[19px] font-semibold leading-tight tabular text-mf-ink min-[360px]:text-[22px]', valueClass)}>{value}</div>
       {sub && <div className="mt-0.5 text-xs leading-snug text-mf-muted">{sub}</div>}
     </div>
   );

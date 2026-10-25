@@ -53,13 +53,14 @@ export function fallVerdict(windows: FundRegimes['windows'], drawdowns: Drawdown
   const recovered = own ? own.recovery !== null : false;
   const recoveryDays = own?.recovery_days ?? null;
   const compare = fund > w.proxy_return ? 'less than' : fund < w.proxy_return ? 'more than' : 'as much as';
+  // The window is the proxy's; the fund's own peak and low can fall on other days, so the
+  // Risk tab's deepest fall can differ. Name it when it does (QA review 25 Oct, defect 16).
+  const ownFall = own && (own.peak !== w.start || own.trough !== w.end) ? ` Its own fall, from its ${date(own.peak)} peak to its ${date(own.trough)} low, was ${pct(-own.depth)}` : '';
   const tail = !own
     ? '.'
-    : recovered
-      ? `, and regained its previous peak ${recoveryDays} days after its low.`
-      : ', and has not yet regained its previous peak.';
+    : `${ownFall ? `.${ownFall}` : ''}${recovered ? `, and it regained that peak ${recoveryDays} days after its low.` : ', and it has not yet regained that peak.'}`;
   const move = fund < 0 ? `lost ${pct(-fund)}` : `gained ${pct(fund)}`;
-  const text = `In the deepest market fall it lived through (${date(w.start)} to ${date(w.end)}), it ${move}, ${compare} the market proxy's ${pct(-w.proxy_return)} fall${tail}`;
+  const text = `In the deepest market fall it lived through (${date(w.start)} to ${date(w.end)}), it ${move} over those dates, ${compare} the market proxy's ${pct(-w.proxy_return)} fall${tail}`;
   return { start: w.start, end: w.end, fund, proxy: w.proxy_return, recoveryDays, recovered, text };
 }
 

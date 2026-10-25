@@ -3,7 +3,7 @@
  * screens, cards with the same columns and order on phones. A missing value
  * shows its reason, never a zero.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
 import type { FieldDef, ScreenRow, SortKey } from '../../api';
 import { categoryShort, formatField, missingLabel, schemeName, tone } from '../../format';
@@ -34,6 +34,12 @@ function Cell({ row, column, fields }: { row: ScreenRow; column: string; fields:
       </span>
     );
   const field = fields.get(column);
+  if (field?.type === 'enum')
+    return (
+      <span className="inline-block max-w-[150px] truncate align-bottom" title={String(value)}>
+        {formatField(field, value, fields)}
+      </span>
+    );
   const text = field ? formatField(field, value, fields) : typeof value === 'number' ? value.toLocaleString('en-IN', { maximumFractionDigits: 4 }) : String(value);
   const t = field && SIGNED.has(field.unit ?? '') ? tone(value) : 'flat';
   return <span className={cx('tabular', t === 'loss' && 'text-mf-loss')}>{text}</span>;
@@ -64,19 +70,58 @@ export function ResultsTable({
   // Width hidden to the right of the wide table, so a column never disappears without a cue (review 1, rank 3).
   const wide = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(0);
+  // The visible widths of the columns cut by the right edge and by the sticky fund
+  // column; a fade covers each, so no value shows in part.
+  const [cut, setCut] = useState({ left: 0, right: 0, fund: 0 });
   useEffect(() => {
     const el = wide.current;
     if (!el) return;
-    const update = () => setHidden(Math.max(0, el.scrollWidth - el.clientWidth - el.scrollLeft));
+    const update = () => {
+      setHidden(Math.max(0, el.scrollWidth - el.clientWidth - el.scrollLeft));
+      const box = el.getBoundingClientRect();
+      const [fund, ...rest] = [...el.querySelectorAll('thead th')].map((th) => th.getBoundingClientRect()).filter((r) => r.width > 0);
+      if (!fund) return;
+      const right = rest.find((r) => r.left < box.right - 1 && r.right > box.right);
+      const left = rest.find((r) => r.left < fund.right - 1 && r.right > fund.right + 1);
+      setCut({ right: right ? box.right - 1 - right.left : 0, left: left ? left.right - fund.right : 0, fund: fund.right - box.left });
+    };
     update();
     el.addEventListener('scroll', update, { passive: true });
     const observer = new ResizeObserver(update);
     observer.observe(el);
+    // A shown or removed column changes the table, not the scroller.
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
     return () => {
       el.removeEventListener('scroll', update);
       observer.disconnect();
     };
   }, [columns.length, rows.length]);
+  /**
+   * Scroll by whole columns: each stop puts a column's left edge at the sticky fund
+   * column's right edge, so the Scroll button and arrow keys never stop mid-column.
+   * "page" brings the column cut by the right edge to the left.
+   */
+  const step = (to: 'next' | 'previous' | 'page') => {
+    const el = wide.current;
+    if (!el) return;
+    const ths = [...el.querySelectorAll<HTMLElement>('thead th')].filter((th) => th.offsetWidth > 0);
+    const fund = ths[0]?.offsetWidth ?? 0;
+    const starts = ths.slice(1).map((th) => th.offsetLeft - fund);
+    const now = el.scrollLeft;
+    const cut = ths.slice(1).find((th) => th.offsetLeft + th.offsetWidth > now + el.clientWidth + 1);
+    const target =
+      to === 'previous'
+        ? [...starts].reverse().find((x) => x < now - 1)
+        : to === 'page' && cut && cut.offsetLeft - fund > now + 1
+          ? cut.offsetLeft - fund
+          : starts.find((x) => x > now + 1);
+    if (target !== undefined) el.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    step(e.key === 'ArrowRight' ? 'next' : 'previous');
+  };
   const lines = useSparklines(rows.map((r) => r.amfi_code));
   const line = (r: ScreenRow) => {
     const points = lines.data?.series[r.amfi_code];
@@ -88,13 +133,13 @@ export function ResultsTable({
       {hidden > 8 && (
         <p className="mb-2 hidden items-center justify-end gap-2 text-xs text-mf-muted md:flex">
           More columns to the right
-          <button type="button" onClick={() => wide.current?.scrollBy({ left: 320, behavior: 'smooth' })} className="inline-flex items-center gap-1 rounded-full border border-mf-line-strong bg-mf-surface px-2.5 py-1 font-medium text-mf-brand-strong hover:border-mf-brand/50">
+          <button type="button" onClick={() => step('page')} className="inline-flex items-center gap-1 rounded-full border border-mf-line-strong bg-mf-surface px-2.5 py-1 font-medium text-mf-brand-strong hover:border-mf-brand/50">
             Scroll <I.chevronRight className="h-3.5 w-3.5" />
           </button>
         </p>
       )}
       <div className="relative hidden md:block">
-      <div ref={wide} className="mf-scroll overflow-x-auto rounded-card border border-mf-line bg-mf-surface" role="region" aria-label="Screen results" tabIndex={0}>
+      <div ref={wide} onKeyDown={onKey} className="mf-scroll overflow-x-auto rounded-card border border-mf-line bg-mf-surface" role="region" aria-label="Screen results" tabIndex={0}>
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-mf-sunken text-xs text-mf-muted">
             <tr>
@@ -149,7 +194,9 @@ export function ResultsTable({
         </table>
       </div>
       {/* A cut-off column fades out at the edge, so it reads as "more to the right", not as a clipped number. */}
-      {hidden > 8 && <div className="pointer-events-none absolute inset-y-px right-px w-16 rounded-r-card bg-gradient-to-l from-mf-surface via-mf-surface/80 to-transparent" aria-hidden="true" />}
+      {/* Each fade starts at the cut column's edge, so a whole column beside it stays clear. */}
+      {hidden > 8 && <div className="pointer-events-none absolute inset-y-px right-px rounded-r-card" style={{ width: Math.max(cut.right, 12), background: 'linear-gradient(to left, rgb(var(--mf-surface)) calc(100% - 8px), rgb(var(--mf-surface) / 0))' }} aria-hidden="true" />}
+      {cut.left > 1 && <div className="pointer-events-none absolute inset-y-px" style={{ left: cut.fund, width: cut.left, background: 'linear-gradient(to right, rgb(var(--mf-surface)) calc(100% - 8px), rgb(var(--mf-surface) / 0))' }} aria-hidden="true" />}
       </div>
 
       {/* Phones */}

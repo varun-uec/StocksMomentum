@@ -319,7 +319,7 @@ export default function Compare() {
                             const missing = v === null || v === undefined;
                             const isBest = best !== null && v === best;
                             return (
-                              <td key={f.amfi_code} className={cx('px-3 py-2.5 text-right tabular', isBest && 'font-semibold text-mf-brand-strong', isNum(v) && v < 0 && field?.unit === 'fraction' && !isBest && 'text-mf-loss')}>
+                              <td key={f.amfi_code} className={cx('px-3 py-2.5 text-right tabular', isBest && 'font-semibold', isNum(v) && v < 0 && field?.unit === 'fraction' ? 'text-mf-loss' : isBest && 'text-mf-brand-strong')}>
                                 {missing ? (
                                   <span className="text-xs text-mf-muted">{missingLabel(f.states[r.id])}</span>
                                 ) : r.id === 'score_cat_rank' ? (
@@ -328,7 +328,8 @@ export default function Compare() {
                                   formatField(field, v, fields.byId)
                                 )}
                                 {isBest && <span className="sr-only"> (strongest)</span>}
-                                {isBest && <I.check className="ml-1 inline h-3.5 w-3.5" />}
+                                {/* The mark, not the colour, says "strongest": a loss stays red. */}
+                                {isBest && <I.check className="ml-1 inline h-3.5 w-3.5 text-mf-brand-strong" />}
                               </td>
                             );
                           })}
@@ -413,9 +414,18 @@ function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes
               <>
                 <p className="mt-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-mf-ink">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: seriesColor(best.i) }} aria-hidden="true" />
-                  <span className="truncate" title={best.f.name}>{short(best.f.name)}</span>
+                  <span className="line-clamp-2 leading-snug sm:truncate" title={best.f.name}>{short(best.f.name)}</span>
                 </p>
-                <p className="mt-0.5 text-xs tabular text-mf-ink-soft sm:hidden">{known.map((x) => pct(x.v, q.digits ?? 1, q.id !== 'ter')).join(' vs ')}</p>
+                {/* Phones: each value carries its fund's dot, the same colour as the fund chips above. */}
+                <ul className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-xs tabular text-mf-ink-soft sm:hidden">
+                  {known.map((x) => (
+                    <li key={x.f.amfi_code} className={cx('inline-flex items-center gap-1', x === best && 'font-semibold text-mf-ink')}>
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: seriesColor(x.i) }} aria-hidden="true" />
+                      <span className="sr-only">{short(x.f.name)}: </span>
+                      {pct(x.v, q.digits ?? 1, q.id !== 'ter')}
+                    </li>
+                  ))}
+                </ul>
                 <ul className="mt-1.5 hidden space-y-0.5 text-xs text-mf-ink-soft sm:block">
                   {known.map((x) => (
                     <li key={x.f.amfi_code} className="flex justify-between gap-2">

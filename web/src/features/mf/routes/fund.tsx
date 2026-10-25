@@ -170,8 +170,8 @@ export default function Fund() {
 
   const actions = (
     <>
-      <WatchButton code={code} name={m.name} label />
       <ComparePeers code={code} metrics={m} />
+      <WatchButton code={code} name={m.name} label />
       <CompareButton code={code} name={m.name} label />
       <Link to={`/mf/simulate?code=${code}`} className={buttonClass('secondary', 'sm')}>
         <I.lab className="h-4 w-4" />
@@ -187,9 +187,10 @@ export default function Fund() {
   return (
     <div className="flex flex-col gap-2.5 sm:gap-6">
       <div className="order-0 flex items-center justify-between gap-2">
-        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink sm:min-h-0">
+        <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/mf/screen'))} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm text-mf-muted hover:text-mf-ink max-sm:min-w-10 max-sm:justify-center sm:min-h-0">
           <I.arrowLeft className="h-4 w-4" />
-          Back
+          {/* An arrow alone on phones, so the first actions fit at 320 px. */}
+          <span className="max-sm:sr-only">Back</span>
         </button>
         {/* One actions row at every width; on phones it scrolls sideways, so no bar covers the page. */}
         <div tabIndex={0} className="mf-scroll -mr-1 flex min-w-0 gap-2 overflow-x-auto py-1 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)] sm:flex-wrap sm:justify-end sm:overflow-visible sm:pr-1 sm:[mask-image:none]" role="group" aria-label="Fund actions; scroll sideways for more actions">

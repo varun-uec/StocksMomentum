@@ -32,7 +32,7 @@ describe('fallVerdict (audit U-02)', () => {
     expect(v.fund).toBe(-0.3093);
     expect(v.proxy).toBe(-0.3553);
     expect(v.recoveryDays).toBe(105);
-    expect(v.text).toBe("In the deepest market fall it lived through (12 Feb 2020 to 23 Mar 2020), it lost 30.9%, less than the market proxy's 35.5% fall, and regained its previous peak 105 days after its low.");
+    expect(v.text).toBe("In the deepest market fall it lived through (12 Feb 2020 to 23 Mar 2020), it lost 30.9% over those dates, less than the market proxy's 35.5% fall. Its own fall, from its 20 Jan 2020 peak to its 23 Mar 2020 low, was 31.0%, and it regained that peak 105 days after its low.");
   });
 
   it('never implies a recovery that has not happened', () => {

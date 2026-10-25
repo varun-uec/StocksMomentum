@@ -5,6 +5,7 @@
  * Percent inputs show human units and serialise as fractions (15% → 0.15).
  */
 import type { Condition, FieldDef, FilterNode, Preset, SortKey } from './api';
+import { date } from './format';
 
 export const VIEW_VERSION = 1;
 export const MAX_FORMULAS = 10;
@@ -202,9 +203,19 @@ export function describe(node: FilterNode, fields: Map<string, FieldDef>, short:
   const field = fields.get(node.field);
   const label = field?.label ?? node.field;
   const op = OP_TEXT[node.op] ?? node.op;
-  const one = (v: unknown) => (typeof v === 'number' ? `${fromApi(field, v).toLocaleString('en-IN', { maximumFractionDigits: 4 })}${isPercent(field) ? '%' : ''}` : short(String(v)));
+  // A true minus sign, as in the tables, and dates as people write them.
+  const one = (v: unknown) =>
+    typeof v === 'number'
+      ? `${fromApi(field, v).toLocaleString('en-IN', { maximumFractionDigits: 4 }).replace(/^-/, '−')}${isPercent(field) ? '%' : ''}`
+      : field?.type === 'date'
+        ? date(v)
+        : short(String(v));
   if (node.op === 'is_available' || node.op === 'is_missing') return `${label} ${op}`;
   if (node.op === 'top_pct' || node.op === 'bottom_pct') return `${label} ${op} ${node.value}%`;
+  // A category percentile is 100 for the best fund (for volatility, the calmest), so
+  // "≥ 50" reads as "in its category's best 50%", never as "more volatile than half".
+  if (node.field.endsWith('_cat_pct') && (node.op === '>=' || node.op === '>') && typeof node.value === 'number')
+    return `${label.replace(/ category percentile$/, '')} in its category’s best ${100 - node.value}%`;
   if (node.op === 'between' && Array.isArray(node.value)) {
     const [lo, hi] = node.value;
     return `${label} ${lo === null ? '' : `≥ ${one(lo)}`}${lo !== null && hi !== null ? ' and ' : ''}${hi === null ? '' : `≤ ${one(hi)}`}`;

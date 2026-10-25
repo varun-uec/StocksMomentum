@@ -225,13 +225,13 @@ export function KeyFactsStrip({ code, metrics }: { code: string; metrics: Metric
     ['AUM', isNum(v.aum_cr) ? `₹${Math.round(v.aum_cr).toLocaleString('en-IN')} Cr` : '—', isNum(v.aum_cr) ? `AMFI ${on(v.aum_as_of)}` : ''],
     ['Risk', typeof v.riskometer === 'string' ? v.riskometer : '—', profile.data?.riskometer_as_of ? `AMFI ${on(profile.data.riskometer_as_of)}` : ''],
     ['Benchmark', typeof v.benchmark === 'string' ? v.benchmark : '—', typeof v.perf_as_of === 'string' ? `AMFI ${on(v.perf_as_of)}` : ''],
-    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managerCount > 1 ? ` +${managerCount - 1}` : ''}` : '—', managers.length ? `Scheme doc ${on(profile.data?.document?.managers?.as_of)}` : ''],
+    ['Manager', managers.length ? `${managers[0].name.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/, '').split(' ').slice(-1)[0]}${managerCount > 1 ? ` +${managerCount - 1}` : ''}` : '—', managers.length ? `Doc read ${on(profile.data?.document?.managers?.as_of)}` : ''],
     ['Portfolio', typeof v.holdings_as_of === 'string' ? date(v.holdings_as_of) : '—', typeof v.holdings_as_of === 'string' ? 'AMC filing' : ''],
   ];
   return (
     <a href="#key-facts" className="mt-2 block rounded-[12px] bg-mf-surface/80 px-2 py-1.5 ring-1 ring-mf-line">
       <span className="sr-only">Key facts: </span>
-      <dl className="grid grid-cols-3 gap-x-2 gap-y-1">
+      <dl className="grid grid-cols-2 gap-x-2 gap-y-1 min-[360px]:grid-cols-3">
         {items.map(([k, value, source]) => (
           <div key={k} className="min-w-0">
             <dt className="text-[11px] text-mf-muted">{k}</dt>

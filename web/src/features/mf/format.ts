@@ -126,7 +126,8 @@ export function formatValue(value: unknown, unit: Unit, type: FieldDef['type'] =
     case 'count':
       return isNum(value) ? value.toLocaleString('en-IN') : '—';
     default:
-      return isNum(value) ? num(value, 2) : String(value);
+      // A unitless value such as a formula: small ones keep four decimals, so 0.0148 never reads 0.01.
+      return isNum(value) ? num(value, value !== 0 && Math.abs(value) < 0.1 ? 4 : 2) : String(value);
   }
 }
 

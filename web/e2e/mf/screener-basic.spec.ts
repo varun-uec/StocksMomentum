@@ -2,7 +2,7 @@ import { expect, test } from './fixtures';
 
 const encodeView = (view: object) => Buffer.from(JSON.stringify({ v: 1, ...view })).toString('base64url');
 const countLabel = (page: import('@playwright/test').Page) =>
-  page.locator('[aria-live="polite"]').filter({ hasText: /funds$/ }).first();
+  page.locator('[aria-live="polite"]').filter({ hasText: /funds?$/ }).first();
 
 test('Basic metric selection shows real values without adding a filter', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -55,7 +55,8 @@ test('Basic metric selection shows real values without adding a filter', async (
     (window as Window & { __mfClicks?: number }).__mfClicks = 0;
   });
   await expect(page.getByRole('button', { name: 'Filter by Return 1Y' })).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByText(/plan options with a value run from −?[\d.,]+% to [\d.,]+%/)).toBeVisible();
+  // The universe's range no longer sits beside it: it described 7,887 options, not this result (assessment 25 Oct).
+  await expect(page.getByText(/plan options with a value run from/)).toHaveCount(0);
   // The range of the funds on screen, so a threshold relates to this result set.
   await expect(page.getByText(new RegExp(`The ${shown.matched} funds shown run from −?[\\d.,]+% to −?[\\d.,]+%`))).toBeVisible();
   const minimum = page.getByRole('spinbutton', { name: 'Minimum Return 1Y' });

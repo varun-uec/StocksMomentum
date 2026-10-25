@@ -40,6 +40,10 @@ describe('percent fields', () => {
     expect(describeCondition({ field: 'score', op: 'between', value: [60, null] }, fields)).toBe('Score ≥ 60');
     expect(describeCondition({ field: 'category', op: 'in', value: ['A', 'B', 'C'] }, fields)).toBe('Category is A, B +1');
     expect(describeCondition({ field: 'cagr_3y', op: 'top_pct', value: 25 }, fields)).toBe('CAGR 3Y in top 25%');
+    expect(describeCondition({ field: 'cagr_3y', op: 'between', value: [-0.1, null] }, fields)).toBe('CAGR 3Y ≥ −10%');
+    const more = new Map([...fields, ['vol_3y_cat_pct', { id: 'vol_3y_cat_pct', label: 'Volatility 3Y category percentile', unit: 'percentile', type: 'number' } as FieldDef], ['since_start', { id: 'since_start', label: 'First valid NAV', unit: null, type: 'date' } as FieldDef]]);
+    expect(describeCondition({ field: 'vol_3y_cat_pct', op: '>=', value: 50 }, more)).toBe('Volatility 3Y in its category’s best 50%');
+    expect(describeCondition({ field: 'since_start', op: 'between', value: ['2020-01-01', null] }, more)).toBe('First valid NAV ≥ 1 Jan 2020');
   });
 });
 

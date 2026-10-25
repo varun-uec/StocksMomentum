@@ -15,7 +15,7 @@ import { ChartFrame, Histogram, LegendDot, TimeChart } from '../components/chart
 import { FundSearch } from '../components/FundSearch';
 import { I } from '../components/icons';
 import { Badge, Button, Card, DependencyPanel, ErrorState, Field, PageHeader, Segmented, Skeleton, SnapshotNote, Stat, cx, inputClass, useTitle } from '../components/ui';
-import { categoryShort, date, enumLabel, inr, inrTick, pct, schemeName } from '../format';
+import { categoryShort, date, enumLabel, inr, inrTick, month, pct, schemeName } from '../format';
 import { useMetrics } from '../queries';
 import { seriesColor, token } from '../theme/themes';
 import { startingFunds, useRecentFunds } from '../context';
@@ -359,10 +359,11 @@ export default function Simulate() {
         <div className="order-1 min-w-0 space-y-6 lg:order-2 lg:min-h-[760px]">
           {run.data && (
             <a href="#scenario-inputs" className="flex items-center justify-between gap-3 rounded-[12px] border border-mf-line bg-mf-surface px-4 py-2.5 text-sm lg:hidden">
-              <span className="min-w-0 truncate">
-                <b>{kind.label}</b> · {inr(Number(inputs.amount), true)} · {date(inputs.start)} – {date(inputs.end)}
+              {/* Month dates keep it one line at 390 px; at 320 it wraps rather than cut a number. */}
+              <span className="min-w-0">
+                <b>{kind.label}</b> · {inr(Number(inputs.amount), true)} · {month(inputs.start.slice(0, 7))} – {month(inputs.end.slice(0, 7))}
               </span>
-              <span className="shrink-0 font-medium text-mf-brand-strong">Edit inputs ↓</span>
+              <span className="shrink-0 font-medium text-mf-brand-strong" aria-label="Edit inputs">Edit ↓</span>
             </a>
           )}
           {run.isError && (

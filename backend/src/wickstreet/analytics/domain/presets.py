@@ -64,7 +64,7 @@ PRESETS = (
     ),
     Preset(
         "calm_equity",
-        "Calm equity",
+        "Calm equity by category",
         "Diversified equity funds, no sector or theme funds, in the calmer half of their "
         "category by 3Y volatility, with a 3Y return at or above the category median. "
         "Calmest first.",

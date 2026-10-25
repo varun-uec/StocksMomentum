@@ -83,7 +83,7 @@ function Hero({ presets }: { presets?: Preset[] }) {
           <h1 className="font-display text-[30px] leading-[1.08] text-mf-ink sm:text-[40px]">Find better mutual fund investments.</h1>
           <p className="mt-2 text-[15px] text-mf-ink-soft">Ten years of real NAVs, explained. Search a fund, or start from a question.</p>
           <div className="mt-5 max-w-xl">
-            <FundSearch size="lg" label="Search funds from the home page" placeholder="Try “parag”, “sbi smallcap” or an AMFI code" />
+            <FundSearch size="lg" label="Search funds from the home page" placeholder="Try “parag” or an AMFI code" />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {presets
@@ -116,8 +116,9 @@ function Facts() {
     fields.data && `${fields.data.fields.length} fields · method v${fields.data.method_version}`,
   ].filter(Boolean);
   return (
-    <p className="mt-5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-mf-muted">
-      {facts.length ? facts.map((f, i) => <span key={i} className="tabular">{i > 0 && <span aria-hidden="true" className="mr-3">·</span>}{f}</span>) : <Skeleton className="h-4 w-72" />}
+    // Phones get a two-column grid, so no wrapped line starts with a dot.
+    <p className="mt-5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-mf-muted sm:flex sm:flex-wrap">
+      {facts.length ? facts.map((f, i) => <span key={i} className="tabular">{i > 0 && <span aria-hidden="true" className="mr-3 max-sm:hidden">·</span>}{f}</span>) : <Skeleton className="h-4 w-72" />}
     </p>
   );
 }
@@ -285,7 +286,8 @@ function Ideas({ presets: all }: { presets?: Preset[] }) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-mf-ink group-hover:text-mf-brand-strong">{schemeName(r.name)}</p>
                     <p className="mt-0.5 truncate text-xs text-mf-muted">
-                      {categoryShort(String(r.values.category))} · <span className="tabular">{pct(r.values.cagr_3y)}</span> 3Y CAGR · Sharpe <span className="tabular">{num(r.values.sharpe_3y)}</span>
+                      {/* Numbers first: on a narrow phone the truncation falls on the category, not a value. */}
+                      <span className="tabular">{pct(r.values.cagr_3y)}</span> 3Y CAGR · Sharpe <span className="tabular">{num(r.values.sharpe_3y)}</span> · {categoryShort(String(r.values.category))}
                       {r.values.score_cat_rank != null && ` · rank ${r.values.score_cat_rank}/${r.values.score_cat_count}`}
                     </p>
                   </div>

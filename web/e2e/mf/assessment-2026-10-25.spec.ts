@@ -65,7 +65,7 @@ test.describe('on a phone', () => {
     const facts = page.getByRole('link', { name: /^Key facts/ });
     await expect(facts).toContainText(/TER.+AMFI \d+ \w{3}/s);
     await expect(facts).toContainText(/AUM.+AMFI \d+ \w{3}/s);
-    await expect(facts).toContainText('Scheme doc');
+    await expect(facts).toContainText('Doc read');
     await expect(facts).toContainText('AMC filing');
   });
 });
