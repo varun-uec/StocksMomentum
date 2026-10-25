@@ -739,11 +739,15 @@ class SqlMfStore:
         found: SchemeFacts,
         provenance: Provenance,
         schemes: Sequence[SchemeRef] = (),
+        *,
+        retract: bool = False,
     ) -> Published:
         """Publish schemes, ISIN joins and facts as revision R, or mark the run unchanged.
 
         A fact with a different value for a stored key supersedes it. Scheme names and
-        ISIN joins are kept as last listed.
+        ISIN joins are kept as last listed. With ``retract`` (a reparse after a parser or
+        join fix), a current fact that an earlier publish of this run wrote and the new
+        parse no longer gives is superseded: the file never said it.
         """
         facts = [(f.sd_id, f.name, f.plan, f.as_of, f.num, f.txt) for f in found.facts]
         try:
@@ -776,6 +780,20 @@ class SqlMfStore:
                     ),
                     {"r": revision_id},
                 )
+                retracted = 0
+                if retract:
+                    result = await connection.execute(
+                        text(
+                            "UPDATE wickstreet.scheme_fact t SET superseded_revision = :r "
+                            "WHERE t.superseded_revision IS NULL AND t.revision_id IN "
+                            "(SELECT v.id FROM wickstreet.revision v WHERE v.run_id = :run "
+                            "AND v.id <> :r) AND NOT EXISTS (SELECT 1 FROM fact_stage s "
+                            "WHERE s.sd_id = t.sd_id AND s.name = t.name AND s.plan = t.plan "
+                            "AND s.as_of = t.as_of)"
+                        ),
+                        {"r": revision_id, "run": run_id},
+                    )
+                    retracted = int(result.rowcount)
                 inserted = await connection.execute(
                     text(
                         "INSERT INTO wickstreet.scheme_fact "
@@ -786,7 +804,7 @@ class SqlMfStore:
                     ),
                     {"r": revision_id},
                 )
-                if inserted.rowcount == 0 and listed == 0:
+                if inserted.rowcount == 0 and listed == 0 and retracted == 0:
                     raise _NothingChangedError
                 await self._point(connection, revision_id)
                 await self._finish(
@@ -797,14 +815,16 @@ class SqlMfStore:
                     revision_id=revision_id,
                     rows=len(facts),
                     inserted=int(inserted.rowcount) + listed,
-                    superseded=int(superseded.rowcount),
+                    superseded=int(superseded.rowcount) + retracted,
                     anomalies=found.unmatched,
                 )
         except _NothingChangedError:
             await self.close_run(run_id, "unchanged", raw_sha256=provenance.raw_sha256)
             return Published(revision=None, inserted=0, superseded=0)
         return Published(
-            int(revision_id), int(inserted.rowcount) + listed, int(superseded.rowcount)
+            int(revision_id),
+            int(inserted.rowcount) + listed,
+            int(superseded.rowcount) + retracted,
         )
 
     async def _upsert_schemes(

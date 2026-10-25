@@ -619,6 +619,37 @@ async def test_an_isin_two_ssds_list_joins_the_scheme_its_plan_name_names(
     }
 
 
+async def test_a_facts_reparse_retracts_what_its_file_no_longer_says(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    """A parser fix can drop a fact: AMFI's 0 for a plan an ETF lacks. A reparse
+    supersedes the fact its own run wrote; another run's facts stay."""
+    store = SqlMfStore(app_database)
+    [(grant,)] = await _rows(
+        app_database, "SELECT min(id) FROM wickstreet.rights_grant WHERE use = 'storage'"
+    )
+    provenance = Provenance(
+        "fake://ter", "2026-09-01T00:00:00+00:00", "0" * 64, "x", "f", "c", None, grant
+    )
+    schemes = [SchemeRef(1, 1, "Gamma ETF")]
+    regular = Fact(1, "ter", "regular", D1, num=Decimal("0.09"))
+    absent = Fact(1, "ter", "direct", D1, num=Decimal("0"))
+    other = Fact(1, "aum_cr", "", D1, num=Decimal("12"))
+    elsewhere = await store.open_run(AMFI, "aum", D1, D1)
+    await store.publish_facts(elsewhere.id, SchemeFacts([other]), provenance, schemes)
+    run = await store.open_run(AMFI, "ter-month", D1, D1)
+    await store.publish_facts(run.id, SchemeFacts([regular, absent]), provenance, schemes)
+    fixed = await store.publish_facts(
+        run.id, SchemeFacts([regular]), provenance, schemes, retract=True
+    )
+    assert fixed.superseded == 1
+    assert await _rows(
+        app_database,
+        "SELECT name, plan, superseded_revision IS NULL FROM wickstreet.scheme_fact "
+        "ORDER BY name, plan",
+    ) == [("aum_cr", "", True), ("ter", "direct", False), ("ter", "regular", True)]
+
+
 class FakeAmc:
     """One AMC file a month; the parser's asset kind stands for the parser version."""
 

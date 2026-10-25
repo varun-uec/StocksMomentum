@@ -288,8 +288,14 @@ class MfStore(Protocol):
         found: SchemeFacts,
         provenance: Provenance,
         schemes: Sequence[SchemeRef] = (),
+        *,
+        retract: bool = False,
     ) -> Published:
-        """Write changed schemes, ISIN joins and facts as a new revision, atomically."""
+        """Write changed schemes, ISIN joins and facts as a new revision, atomically.
+
+        With ``retract`` (a reparse), a fact this run published before and the new parse
+        no longer gives is superseded too.
+        """
         ...
 
 

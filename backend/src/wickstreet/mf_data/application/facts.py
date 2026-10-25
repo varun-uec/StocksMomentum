@@ -146,7 +146,9 @@ class IngestFacts:
             retrieval_grant_id=retrieval,
             storage_grant_id=storage,
         )
-        published = await self._store.publish_facts(run.id, found, provenance, schemes)
+        published = await self._store.publish_facts(
+            run.id, found, provenance, schemes, retract=reparse
+        )
         return Outcome(
             end,
             "published" if published.revision is not None else "unchanged",
