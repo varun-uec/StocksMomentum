@@ -10,6 +10,7 @@ import { useSearchParams } from 'react-router';
 import { MfApiError, mfApi, type Condition, type FieldDef, type ScreenRequest, type ScreenRow } from '../api';
 import { I } from '../components/icons';
 import { ConditionEditor } from '../components/screener/ConditionEditor';
+import { AskScreen } from '../components/screener/AskScreen';
 import { FilterRail, METRIC_AS_OF_FIELDS, type FilterMode } from '../components/screener/FilterRail';
 import { FormulaEditor } from '../components/screener/FormulaEditor';
 import { ResultsTable, columnLabel } from '../components/screener/ResultsTable';
@@ -241,6 +242,13 @@ export default function Screen() {
           </button>
         </div>
       )}
+
+      <AskScreen
+        base={view.mode === 'all' ? view.conditions : [{ any: view.conditions }]}
+        sort={view.sort}
+        initial={params.get('ask')}
+        onApply={(read) => setView({ mode: 'all', conditions: read.filter.all, sort: read.sort, columns: read.columns, formulas: {} })}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[256px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside aria-label="Filters" className="hidden lg:block">

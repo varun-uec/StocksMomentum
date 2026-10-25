@@ -12,7 +12,7 @@ _DIRECT_GROWTH: list[dict[str, Any]] = [
 ]
 
 # Every SEBI equity category but Sectoral/Thematic: one sector or theme is not diversified.
-_DIVERSIFIED_EQUITY = [
+DIVERSIFIED_EQUITY = [
     "Equity Scheme - Large Cap Fund",
     "Equity Scheme - Large & Mid Cap Fund",
     "Equity Scheme - Mid Cap Fund",
@@ -71,7 +71,7 @@ PRESETS = (
         {
             "all": [
                 *_DIRECT_GROWTH,
-                {"field": "category", "op": "in", "value": _DIVERSIFIED_EQUITY},
+                {"field": "category", "op": "in", "value": DIVERSIFIED_EQUITY},
                 {"field": "vol_3y_cat_pct", "op": ">=", "value": 50},
                 {"field": "cagr_3y_cat_pct", "op": ">=", "value": 50},
             ]

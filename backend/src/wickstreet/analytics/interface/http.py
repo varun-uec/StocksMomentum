@@ -26,6 +26,7 @@ from wickstreet.analytics.application.research import (
 from wickstreet.analytics.domain import classify
 from wickstreet.analytics.domain.calculators import SimulationError
 from wickstreet.analytics.domain.fields import FIELDS, INDEX
+from wickstreet.analytics.domain.interpret import interpret
 from wickstreet.analytics.domain.metrics import Missing
 from wickstreet.analytics.domain.presets import PRESETS
 from wickstreet.analytics.domain.screening import Group, explain
@@ -274,6 +275,39 @@ async def compare(
         "series": {c: [[d, v] for d, v in points] for c, points in result.series.items()},
         "correlations": result.correlations,
         "average_correlation": result.average_correlation,
+    }
+
+
+class InterpretIn(BaseModel):
+    """``POST /screener/interpret``: plain words, optionally refining the current screen."""
+
+    text: str = Field(min_length=1, max_length=500)
+    base: list[Any] | None = None
+    sort: list[Any] | None = None
+
+
+@router.post("/screener/interpret")
+async def screener_interpret(_: Context, body: InterpretIn) -> dict[str, Any]:
+    """Read a plain-language request into a filter, sort and columns; run it with /screener/run.
+
+    The reading is rule-based and deterministic. It states every condition it added,
+    the defaults it assumed and the words it did not understand; it never returns
+    fund data, so nothing here can be invented.
+    """
+    result = interpret(body.text, body.base, body.sort)
+    return {
+        "engine": "rules",
+        "filter": result.filter,
+        "sort": result.sort,
+        "columns": result.columns,
+        "clauses": [
+            {"phrase": c.phrase, "explanation": c.explanation, "conditions": list(c.conditions)}
+            for c in result.clauses
+        ],
+        "assumptions": result.assumptions,
+        "not_understood": result.not_understood,
+        "notes": result.notes,
+        "refined": result.refined,
     }
 
 

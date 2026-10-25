@@ -531,3 +531,43 @@ async def test_retained_revision_rebuild_uses_its_own_nav_values_and_date(
     assert (await _compute(app_database).execute(old_revision)).status == "current"
     with pytest.raises(ValueError, match="already published"):
         await _compute(app_database).execute(10**9)
+
+
+async def test_an_interpreted_screen_runs_like_the_same_screen_built_by_hand(
+    published: FakeSource, app_database: Database, client: TestClient
+) -> None:
+    await _compute(app_database).execute()
+    read = client.post(
+        "/screener/interpret", json={"text": "regular or direct, 1 year return above 5%"}
+    )
+    assert read.status_code == 200
+    body = read.json()
+    assert body["engine"] == "rules"
+    assert {"field": "ret_1y", "op": ">", "value": 0.05} in body["filter"]["all"]
+    assert [c for c in body["filter"]["all"] if c["field"] == "plan"] == [
+        {"field": "plan", "op": "in", "value": ["direct", "regular"]}
+    ]
+    by_hand = {
+        "all": [
+            {"field": "status", "op": "in", "value": ["active"]},
+            {"field": "option", "op": "in", "value": ["growth"]},
+            {"field": "plan", "op": "in", "value": ["direct", "regular"]},
+            {"field": "ret_1y", "op": ">", "value": 0.05},
+        ]
+    }
+    request = {"sort": body["sort"], "columns": body["columns"]}
+    ran = client.post("/screener/run", json={"filter": body["filter"], **request})
+    manual = client.post("/screener/run", json={"filter": by_hand, **request})
+    assert ran.status_code == manual.status_code == 200
+    codes = [r["amfi_code"] for r in ran.json()["rows"]]
+    assert codes and codes == [r["amfi_code"] for r in manual.json()["rows"]]
+    refined = client.post(
+        "/screener/interpret",
+        json={
+            "text": "remove the return limit",
+            "base": body["filter"]["all"],
+            "sort": body["sort"],
+        },
+    ).json()
+    assert refined["refined"] and all(c["field"] != "ret_1y" for c in refined["filter"]["all"])
+    assert client.post("/screener/interpret", json={"text": ""}).status_code == 422
