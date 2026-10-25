@@ -3,9 +3,10 @@
  * the agent runtime ships there is no chat box and no generated answer. Each
  * example question links to the view that answers it with today's tools.
  */
-import { Link } from 'react-router';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { I } from '../components/icons';
-import { Badge, DependencyPanel, PageHeader, useTitle } from '../components/ui';
+import { Badge, Button, DependencyPanel, PageHeader, cx, inputClass, useTitle } from '../components/ui';
 
 const QUESTIONS = [
   { en: 'Which flexi-cap funds stayed consistent over three years?', hi: 'कौन से फ़्लेक्सी-कैप फ़ंड तीन साल तक लगातार अच्छे रहे?', to: '/mf/screen?preset=category_leaders', tool: 'Screener · Category leaders' },
@@ -19,6 +20,7 @@ export default function Ask() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Coming later" title="Ask Wickstreet, in your language" lead="Questions in English, हिन्दी or Hinglish, answered with cited numbers from the same tools you see here. It opens an editable view you can check and save." />
+      <ScreenInWords />
       <DependencyPanel title="Research assistant" needs="an assistant that cites every number to a Wickstreet tool">
         Every number in an answer will come from a tool result, never from the model’s wording. No answer is shown until that runtime exists.
       </DependencyPanel>
@@ -43,5 +45,34 @@ export default function Ask() {
         </ul>
       </section>
     </div>
+  );
+}
+
+/** Works today: a plain-English screen request opens the screener with it read into conditions. */
+function ScreenInWords() {
+  const navigate = useNavigate();
+  const [text, setText] = useState('');
+  return (
+    <section aria-labelledby="ask-screen-now" className="rounded-card border border-mf-brand/25 bg-mf-surface p-5 shadow-card">
+      <h2 id="ask-screen-now" className="flex flex-wrap items-center gap-2 font-display text-xl">
+        Screen funds in plain words <Badge tone="brand">Works now · English</Badge>
+      </h2>
+      <p className="mt-1 text-sm text-mf-muted">The screener shows how it read each phrase and which words it could not use. Every fund and number comes from the screen itself.</p>
+      <form
+        className="mt-3 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (text.trim()) navigate(`/mf/screen?ask=${encodeURIComponent(text.trim())}`);
+        }}
+      >
+        <label htmlFor="ask-screen-now-input" className="sr-only">
+          Describe the funds you want
+        </label>
+        <input id="ask-screen-now-input" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="e.g. diversified equity funds with low drawdowns and TER below 1%" className={cx(inputClass, 'min-w-0 flex-1')} />
+        <Button type="submit" variant="primary" disabled={!text.trim()}>
+          Screen
+        </Button>
+      </form>
+    </section>
   );
 }

@@ -98,6 +98,19 @@ export interface ScreenResponse extends Envelope {
   next: string | null;
 }
 
+/** `POST /screener/interpret`: plain words read into a runnable screen, never fund data. */
+export interface Interpretation {
+  engine: 'rules';
+  filter: { all: FilterNode[] };
+  sort: SortKey[];
+  columns: string[];
+  clauses: { phrase: string; explanation: string; conditions: Condition[] }[];
+  assumptions: string[];
+  not_understood: string[];
+  notes: string[];
+  refined: boolean;
+}
+
 export interface FundHit {
   amfi_code: string;
   name: string;
@@ -433,6 +446,7 @@ export const mfApi = {
   fields: (signal?: AbortSignal) => get<FieldsResponse>('/screener/fields', signal),
   presets: (signal?: AbortSignal) => get<{ presets: Preset[] }>('/screener/presets', signal),
   screen: (body: ScreenRequest, signal?: AbortSignal) => post<ScreenResponse>('/screener/run', body, signal),
+  interpret: (body: { text: string; base?: FilterNode[]; sort?: SortKey[] }, signal?: AbortSignal) => post<Interpretation>('/screener/interpret', body, signal),
   search: (q: string, limit = 8, signal?: AbortSignal) =>
     get<Envelope & { funds: FundHit[] }>(`/funds${qs({ q, limit })}`, signal),
   sparklines: (codes: string[], signal?: AbortSignal) =>

@@ -121,7 +121,12 @@ test('TER selection also shows its AMFI filing date', async ({ page }) => {
   expect(response.request().postDataJSON().columns).toEqual(expect.arrayContaining(['ter', 'ter_as_of']));
   expect(data.rows.some((row: { values: Record<string, unknown> }) => typeof row.values.ter === 'number' && typeof row.values.ter_as_of === 'string')).toBe(true);
   await expect(page.getByRole('columnheader', { name: 'TER', exact: true })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'TER date', exact: true })).toBeVisible();
+  // The filing date rides in the TER cell, so it costs no result column (QA 25 Oct, defect 9).
+  await expect(page.getByRole('columnheader', { name: 'TER date', exact: true })).toHaveCount(0);
+  const filed = data.rows.find((row: { values: Record<string, unknown> }) => typeof row.values.ter_as_of === 'string').values.ter_as_of as string;
+  const [y, m, d] = filed.split('-');
+  const label = `as of ${Number(d)} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m) - 1]} ${y}`;
+  await expect(page.getByRole('region', { name: 'Screen results' }).getByText(label).first()).toBeVisible();
   await expect(count).toHaveText(before);
 });
 

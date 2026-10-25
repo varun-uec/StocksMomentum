@@ -82,6 +82,9 @@ def test_legacy_pipeline_only_differs_by_source_table() -> None:
         "__doc__",
         "__module__",
         "__annotations__",
+        # Python 3.13 records these for every class body.
+        "__firstlineno__",
+        "__static_attributes__",
         "_model",
     }
     assert overridden == set()

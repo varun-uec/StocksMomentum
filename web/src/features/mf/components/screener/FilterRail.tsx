@@ -245,11 +245,7 @@ export function FilterRail({
     return [...map.entries()];
   }, [fields, query, mode]);
   const shown = new Set(view.columns);
-  const canShow = (field: FieldDef) => {
-    const companion = METRIC_AS_OF_FIELDS[field.id];
-    const additionCount = Number(!shown.has(field.id)) + Number(!!companion && fields.has(companion) && !shown.has(companion));
-    return shown.size + additionCount <= maxColumns;
-  };
+  const canShow = (field: FieldDef) => shown.has(field.id) || shown.size < maxColumns;
   const toggle = (field: FieldDef, enabled: boolean) => onShowMetric(field, enabled);
   const drawBasicField = (field: FieldDef) => (
     <MetricRow
