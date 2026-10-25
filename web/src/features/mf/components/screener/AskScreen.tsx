@@ -20,19 +20,23 @@ export function AskScreen({
   base,
   sort,
   initial,
+  current = false,
   onApply,
 }: {
-  /** The current screen's top-level conditions, refined by a follow-up question. */
-  base: FilterNode[];
+  /** The current screen's conditions, refined by a follow-up; null when they cannot be (Match any). */
+  base: FilterNode[] | null;
   sort: SortKey[];
   /** A question handed over in the URL, read once on arrival. */
   initial?: string | null;
+  /** The page opened on a preset, saved or linked screen, so the first question refines it. */
+  current?: boolean;
   onApply: (result: Interpretation) => void;
 }) {
   const [text, setText] = useState(initial ?? '');
   const [turns, setTurns] = useState<{ asked: string; result: Interpretation }[]>([]);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [onCurrent, setOnCurrent] = useState(current && !initial);
   const input = useRef<HTMLInputElement>(null);
   const wide = typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(min-width: 768px)').matches;
 
@@ -42,7 +46,7 @@ export function AskScreen({
     setBusy(true);
     setFailed(false);
     try {
-      const result = await mfApi.interpret({ text: question, ...(refine ? { base, sort } : {}) });
+      const result = await mfApi.interpret({ text: question, ...(refine && base ? { base, sort } : {}) });
       setTurns((previous) => [...(refine ? previous : []), { asked: question, result }]);
       setText('');
       onApply(result);
@@ -64,7 +68,7 @@ export function AskScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
-  const refining = turns.length > 0;
+  const refining = (turns.length > 0 || onCurrent) && base !== null;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     void ask(text, refining);
@@ -83,6 +87,7 @@ export function AskScreen({
             className="text-xs font-medium text-mf-brand-strong underline-offset-2 hover:underline"
             onClick={() => {
               setTurns([]);
+              setOnCurrent(false);
               setText('');
               input.current?.focus();
             }}
@@ -115,6 +120,7 @@ export function AskScreen({
         </p>
       )}
 
+      {base === null && <p className="mt-2 text-xs text-mf-muted">This screen matches any condition, so a question starts a new screen.</p>}
       {!refining && !failed && (
         <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Example requests">
           {EXAMPLES.map((example) => (

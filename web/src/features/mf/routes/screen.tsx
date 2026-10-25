@@ -244,10 +244,20 @@ export default function Screen() {
       )}
 
       <AskScreen
-        base={view.mode === 'all' ? view.conditions : [{ any: view.conditions }]}
+        base={view.mode === 'all' ? view.conditions : null}
         sort={view.sort}
         initial={params.get('ask')}
-        onApply={(read) => setView({ mode: 'all', conditions: read.filter.all, sort: read.sort, columns: read.columns, formulas: {} })}
+        current={!!(encoded || presetId || savedId)}
+        // Formulas and their shown columns stay; the reading never drops the reader's own work.
+        onApply={(read) =>
+          setView({
+            mode: 'all',
+            conditions: read.filter.all,
+            sort: read.sort,
+            columns: [...read.columns, ...view.columns.filter((c) => c in view.formulas && !read.columns.includes(c))].slice(0, MAX_COLUMNS),
+            formulas: view.formulas,
+          })
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[256px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)]">

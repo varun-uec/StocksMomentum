@@ -124,7 +124,7 @@ _HOUSE_BRANDS = {"parag parikh": "in-amc-ppfas"}
 _NUMBER_WORDS = {"one": 1, "three": 3, "five": 5, "ten": 10}
 _HORIZON = r"(?P<h>1|3|5|10|one|three|five|ten)\s*-?\s*(?:y|yr|yrs|year|years)\b"
 _HORIZON_PLAIN = r"(?:1|3|5|10|one|three|five|ten)\s*-?\s*(?:y|yr|yrs|year|years)\b"
-_NUM = r"(?P<num>-?\d+(?:\.\d+)?)"
+_NUM = r"(?P<num>-?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|-?\d+(?:\.\d+)?)"
 _BELOW = r"below|under|less than|lower than|at most|max(?:imum)?|up to|not more than|<=|<|≤"
 _ABOVE = r"above|over|more than|greater than|higher than|at least|min(?:imum)?|>=|>|≥"
 _THRESHOLD = re.compile(
@@ -192,7 +192,7 @@ class _Reader:
         for match in re.finditer(r"[^\s,;.]+", self.text):
             word = match.group().strip("\"'()").lower()
             consumed = any(self.used[match.start() : match.end()])
-            if consumed or not word or word in _STOP or re.fullmatch(r"[\d.%-]+", word):
+            if consumed or not word or word in _STOP:
                 if run:
                     found.append(" ".join(run))
                     run = []
@@ -203,63 +203,81 @@ class _Reader:
         return found
 
 
+_METRIC_WORD = re.compile(
+    r"\b(?:ter|expense(?: ratio)?|cost|fees?|returns?|cagr|performance|gains?|"
+    r"aum|assets|corpus|size|sharpe|drawdowns?|falls?|volatility)\b"
+)
+# A metric word only governs numbers in its own part of the sentence.
+_SEGMENT_BREAK = re.compile(r",|;|\b(?:and|with|that|which|but|plus)\b")
+
+
 def _thresholds(r: _Reader) -> None:
-    """A comparator and a number, read against the metric word nearest to it."""
+    """A comparator and a number, read against the metric word in the same phrase."""
     for match in list(_THRESHOLD.finditer(r.low)):
         if not r.free(*match.span()):
             continue
-        before, after = r.window(*match.span())
-        value = float(match.group("num"))
+        after = r.low[match.end() : match.end() + 40]
         unit = (match.group("unit") or "").replace(" ", "")
-        below = re.fullmatch(_BELOW, match.group("cmp")) is not None
-        op, word = ("<=", "at most") if below else (">=", "at least")
-        if match.group("cmp") in ("below", "under", "less than", "lower than", "<"):
+        # "over 5 years" is a period, not a threshold.
+        if not unit and re.match(r"\s*-?\s*(?:y|yr|yrs|years?)\b", after):
+            continue
+        value = float(match.group("num").replace(",", ""))
+        cmp = match.group("cmp")
+        if cmp in ("below", "under", "less than", "lower than", "<"):
             op, word = "<", "below"
-        elif match.group("cmp") in (
-            "above",
-            "over",
-            "more than",
-            "greater than",
-            "higher than",
-            ">",
-        ):
+        elif cmp in ("above", "over", "more than", "greater than", "higher than", ">"):
             op, word = ">", "above"
-        # The metric word closest to the number decides; words after it count when
-        # nothing sits before it ("returns above 12% over 5 years").
-        metric_end = match.end()
-        near = re.findall(
-            r"\b(?:ter|expense(?: ratio)?|cost|fees?|returns?|cagr|performance|gains?|"
-            r"aum|assets|corpus|size|"
-            r"sharpe|drawdowns?|falls?|volatility|risk)\b",
-            before,
-        )
-        metric = near[-1] if near else None
-        span_start = match.start()
-        if metric is None:
-            ahead = re.match(
-                r"\s*(?:in\s+|of\s+)?"
-                r"(ter|expense ratio|returns?|cagr|aum|sharpe|drawdown|volatility)",
-                after,
-            )
-            metric = ahead.group(1) if ahead else None
-            metric_end = match.end() + ahead.end() if ahead else match.end()
+        elif re.fullmatch(_BELOW, cmp):
+            op, word = "<=", "at most"
         else:
-            span_start = match.start() - (len(before) - before.rfind(metric))
-        if metric is None:
+            op, word = ">=", "at least"
+        breaks = [b.end() for b in _SEGMENT_BREAK.finditer(r.low, 0, match.start())]
+        segment = breaks[-1] if breaks else 0
+        near = [
+            m for m in _METRIC_WORD.finditer(r.low, segment, match.start()) if r.free(*m.span())
+        ]
+        metric_end = match.end()
+        span_start = match.start()
+        ahead = re.match(
+            r"\s*(?:in\s+|of\s+)?"
+            r"(ter|expense ratio|returns?|cagr|aum|assets|sharpe|drawdowns?|volatility)\b",
+            after,
+        )
+        if unit.endswith(("crore", "crores", "cr")):
+            # A crore amount can only be a fund size.
+            metric = "aum"
+            if near and near[-1].group() in ("aum", "assets", "corpus", "size"):
+                span_start = near[-1].start()
+            elif ahead and ahead.group(1) in ("aum", "assets"):
+                metric_end = match.end() + ahead.end()
+        elif near:
+            metric = near[-1].group()
+            span_start = near[-1].start()
+        elif ahead:
+            metric = ahead.group(1)
+            metric_end = match.end() + ahead.end()
+        else:
             continue
         leading = re.search(rf"{_HORIZON_PLAIN}\s*$", r.low[:span_start])
         if leading and r.free(leading.start(), span_start):
             span_start = leading.start()
-        horizon_text = before[-30:] + " " + after[:30]
         end = metric_end
         trailing = re.match(
+            r"\s*(?:p\.?\s*a\.?|per annum|annuali[sz]ed|a year)?"
             rf"\s*(?:(?:over|in|for)\s+)?(?:the\s+)?(?:last\s+|past\s+)?{_HORIZON}",
-            r.low[end : end + 40],
+            r.low[end : end + 50],
         )
         if trailing:
             end += trailing.end()
-        phrase = r.text[span_start:end]
-        clause = _threshold_clause(metric, op, word, value, unit, horizon_text, phrase)
+        else:
+            annual = re.match(r"\s*(?:p\.?\s*a\.?|per annum|annuali[sz]ed)", r.low[end : end + 20])
+            end += annual.end() if annual else 0
+        if not r.free(span_start, end):
+            continue
+        horizon_text = r.low[span_start:end]
+        clause = _threshold_clause(
+            metric, op, word, value, unit, horizon_text, r.text[span_start:end]
+        )
         if clause is not None:
             r.take(span_start, end, clause)
 
@@ -393,7 +411,7 @@ def _concepts(r: _Reader) -> None:
             (),
         ),
         (
-            r"low[- ]risk|conservative",
+            r"low[- ]risk|conservative(?!\s+hybrid)",
             "SEBI riskometer at Moderate or lower",
             {"field": "riskometer_level", "op": "<=", "value": 3},
             (),
@@ -453,7 +471,8 @@ def _concepts(r: _Reader) -> None:
             5: "cagr_5y_cat_pct",
             10: "cagr_5y_cat_pct",
         }[h]
-        h = 5 if h == 10 else h
+        capped = h == 10
+        h = 5 if capped else h
         label = "1Y return" if h == 1 else f"{h}Y CAGR"
         share = "top quarter" if top else "better half"
         r.take(
@@ -461,16 +480,43 @@ def _concepts(r: _Reader) -> None:
             end,
             Clause(
                 phrase,
-                f"{label} in the {share} of its category",
+                f"{label} in the {share} of its category"
+                + (" (category positions go up to 5 years)" if capped else ""),
                 ({"field": field_id, "op": ">=", "value": 75 if top else 50},),
                 sort=({"field": field_id.removesuffix("_cat_pct"), "dir": "desc"},),
             ),
         )
 
 
+_NEGATION = re.compile(
+    r"\b(?:not|no|non|exclud(?:e|es|ing)|except|avoid(?:ing)?|without|other than|drop|remove|skip)"
+    r"\s+(?:the\s+|any\s+)?$"
+)
+_SIZES = {"large": "Large Cap", "mid": "Mid Cap", "small": "Small Cap"}
+
+
+def _size_pairs() -> tuple[tuple[str, tuple[str, ...], str], ...]:
+    """Size pairs: "small and mid cap" names two categories; "large and mid cap" is one."""
+    pairs = []
+    for a in _SIZES:
+        for b in _SIZES:
+            if a == b:
+                continue
+            joint = r"\s*(?:,|or|/)\s*" if {a, b} == {"large", "mid"} else r"\s*(?:,|and|&|or|/)\s*"
+            pairs.append(
+                (
+                    rf"{a}{joint}{b}\s*-?\s*caps?",
+                    (_EQ + _SIZES[a] + " Fund", _EQ + _SIZES[b] + " Fund"),
+                    f"{_SIZES[a]}, {_SIZES[b]}",
+                )
+            )
+    return tuple(pairs)
+
+
 def _categories(r: _Reader) -> None:
     for match in r.find(
-        r"(?:nifty\s*(?:next\s*)?50|sensex|large\s*-?\s*cap|mid\s*-?\s*cap|small\s*-?\s*cap)\s+index(?:\s+funds?)?"
+        r"(?:nifty\s*(?:next\s*)?50|sensex|large\s*-?\s*cap|mid\s*-?\s*cap|small\s*-?\s*cap)"
+        r"\s+index(?:\s+funds?)?"
     ):
         r.take(
             *match.span(),
@@ -484,30 +530,60 @@ def _categories(r: _Reader) -> None:
         )
         return
     found: list[str] = []
+    excluded: list[str] = []
     labels: list[str] = []
+    dropped: list[str] = []
     phrases: list[tuple[int, int]] = []
-    for pattern, categories, label in _CATEGORIES:
+    hits: list[tuple[int, int, tuple[str, ...], str]] = []
+    for pattern, categories, label in (*_size_pairs(), *_CATEGORIES):
         for match in r.find(pattern):
-            # "small" in "smaller falls" is never a category; patterns need the cap word.
-            found.extend(c for c in categories if c not in found)
-            labels.append(label)
-            phrases.append(match.span())
+            hits.append((match.start(), match.end(), categories, label))
             for i in range(*match.span()):
                 r.used[i] = True
-    if found:
-        start = min(s for s, _ in phrases)
+    negated_until = -1
+    for start, end, categories, label in sorted(hits):
+        negation = _NEGATION.search(r.low, max(0, start - 30), start)
+        # "not sectoral or thematic": an "or" list after a negation stays negated.
+        chained = negated_until >= 0 and re.fullmatch(
+            r"\s*(?:funds?\s+)?(?:or|nor|/)\s*", r.low[negated_until:start]
+        )
+        if negation or chained:
+            if negation:
+                for i in range(negation.start(), start):
+                    r.used[i] = True
+                start = negation.start()
+            excluded.extend(c for c in categories if c not in excluded)
+            dropped.append(label)
+            negated_until = end
+        else:
+            found.extend(c for c in categories if c not in found)
+            labels.append(label)
+            negated_until = -1
+        phrases.append((start, end))
+    if found or excluded:
+        kept = [c for c in found if c not in excluded]
+        text = ""
+        if found:
+            text = "Category: " + ", ".join(labels)
+            if dropped:
+                text += ", without " + ", ".join(dropped)
+            condition: Node = {"field": "category", "op": "in", "value": kept}
+        else:
+            text = "Any category except " + ", ".join(dropped)
+            condition = {"field": "category", "op": "not_in", "value": excluded}
         r.clauses.append(
             (
-                start,
+                min(s for s, _ in phrases),
                 Clause(
-                    ", ".join(r.text[s:e] for s, e in phrases),
-                    "Category: " + ", ".join(labels),
-                    ({"field": "category", "op": "in", "value": found},),
-                    removes=frozenset({"asset_class"}),
+                    ", ".join(r.text[s:e] for s, e in sorted(phrases)),
+                    text,
+                    (condition,),
+                    removes=frozenset({"asset_class"}) if found else frozenset(),
                 ),
             )
         )
-        return
+        if found:
+            return
     for word, asset in _ASSET_CLASSES:
         for match in r.find(rf"{word}(?:\s+(?:funds?|schemes?|oriented))?"):
             r.take(
@@ -516,7 +592,7 @@ def _categories(r: _Reader) -> None:
                     r.text[match.start() : match.end()],
                     f"Asset class: {asset}",
                     ({"field": "asset_class", "op": "in", "value": [asset]},),
-                    removes=frozenset({"category"}),
+                    removes=frozenset() if excluded else frozenset({"category"}),
                 ),
             )
             return
@@ -623,7 +699,7 @@ _REMOVABLE: tuple[tuple[str, frozenset[str], str], ...] = (
     (r"sharpe", frozenset({"sharpe_3y", "sharpe_3y_cat_pct"}), "Sharpe"),
     (r"benchmark", frozenset({"excess_1y", "excess_3y", "excess_5y", "excess_10y"}), "benchmark"),
     (r"score|rating", frozenset({"score"}), "score"),
-    (r"risk(?:ometer)?", frozenset({"riskometer_level"}), "riskometer"),
+    (r"risk(?:ometer)?", frozenset({"riskometer_level", "vol_3y", "vol_3y_cat_pct"}), "risk"),
 )
 
 
@@ -735,8 +811,8 @@ def interpret(
     r = _Reader(text)
     _removals(r)
     _sorts(r)
-    _thresholds(r)
     _concepts(r)
+    _thresholds(r)
     _categories(r)
     _houses(r)
     _plans(r)
@@ -745,7 +821,25 @@ def interpret(
 
     refined = base is not None
     added = [cond for c in clauses for cond in c.conditions]
-    replaced = {cond["field"] for cond in added} | {f for c in clauses for f in c.removes}
+    base_fields = set(_fields_of(base or []))
+    for i, cond in enumerate(added):
+        # "drop the sectoral funds" narrows a category list the screen already has.
+        if cond["field"] == "category" and cond["op"] == "not_in":
+            listed = next(
+                (n for n in base or [] if n.get("field") == "category" and n.get("op") == "in"),
+                None,
+            )
+            if listed is not None:
+                added[i] = {
+                    "field": "category",
+                    "op": "in",
+                    "value": [v for v in listed["value"] if v not in cond["value"]],
+                }
+    removed = {f for c in clauses for f in c.removes}
+    if "consistency_3y" in base_fields and "consistency_3y" not in removed:
+        # The 5Y half of "consistent five-year performance" goes with consistency.
+        removed.discard("cagr_5y_cat_pct")
+    replaced = {cond["field"] for cond in added} | removed
     kept = [node for node in (base or []) if not set(_fields_of([node])) & replaced]
     assumptions: list[str] = []
     defaults: list[Node] = []
@@ -779,7 +873,9 @@ def interpret(
         columns.append(sort[0]["field"])
 
     tree = {"all": conditions}
-    parse_filter(tree)
+    # What this reading adds must be valid; kept conditions (formulas too) already ran.
+    if defaults or added:
+        parse_filter({"all": [*defaults, *added]})
     parse_sort(sort)
     notes = []
     if not clauses and not refined:

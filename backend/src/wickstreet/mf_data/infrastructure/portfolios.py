@@ -517,9 +517,7 @@ def _csv_table(decoded: str, delimiter: str) -> list[Row]:
     rows = []
     for values in csv.reader(io.StringIO(decoded), delimiter=delimiter, strict=True):
         cells = {
-            _column(index): value.strip()
-            for index, value in enumerate(values)
-            if value.strip()
+            _column(index): value.strip() for index, value in enumerate(values) if value.strip()
         }
         rows.append(cells)
     return rows
