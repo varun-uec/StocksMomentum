@@ -177,7 +177,7 @@ def test_excluded_counts_name_the_reasons() -> None:
             ]
         }
     )
-    assert excluded_for_missing(snap.missing, tree) == [
+    assert excluded_for_missing(snap.rows, tree) == [
         {
             "path": "all[0]",
             "field": "ret_1y",
@@ -185,6 +185,24 @@ def test_excluded_counts_name_the_reasons() -> None:
             "reasons": {NO_NAV: 1, "gap_in_window": 1},
         }
     ]
+
+
+def test_excluded_counts_only_funds_that_meet_the_other_parts() -> None:
+    # Fund 4 lacks ret_1y too, but it is not active, so ret_1y is not what drops it.
+    tree = parse_filter(
+        {
+            "all": [
+                {"field": "ret_1y", "op": ">", "value": 0},
+                {"field": "active", "op": "=", "value": True},
+            ]
+        }
+    )
+    assert excluded_for_missing(ROWS, tree) == [
+        {"path": "all[0]", "field": "ret_1y", "count": 1, "reasons": {"gap_in_window": 1}},
+        {"path": "all[1]", "field": "active", "count": 0, "reasons": {}},
+    ]
+    either = parse_filter({"any": [{"field": "ret_1y", "op": ">", "value": 0}]})
+    assert excluded_for_missing(ROWS, either) == []
 
 
 def test_cursor_is_pinned_to_its_request() -> None:

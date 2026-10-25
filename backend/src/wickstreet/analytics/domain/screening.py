@@ -16,6 +16,7 @@ import binascii
 import hashlib
 import json
 import math
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
@@ -275,21 +276,29 @@ def screen(rows: Sequence[FundRow], where: Group | None, sort: Sequence[SortKey]
     return matched
 
 
-def excluded_for_missing(
-    missing: Mapping[str, Mapping[str, int]], where: Group | None
-) -> list[dict[str, Any]]:
-    """For each condition, the funds it excludes because the value is missing, by reason."""
+def excluded_for_missing(rows: Sequence[FundRow], where: Group | None) -> list[dict[str, Any]]:
+    """For each part of a top-level ``all``: funds that meet every other part but lack its value.
+
+    Those funds fail the screen only because the value is missing. A part inside a group or
+    under ``any`` never excludes a fund alone, so it has no count.
+    """
     if where is None:
         return []
+    parts = where.children if where.kind == "all" else ()
     found = []
-    for condition in where.conditions():
-        if condition.op == "is_missing":
+    for i, part in enumerate(parts):
+        if not isinstance(part, Condition) or part.op == "is_missing":
             continue
-        reasons = missing[condition.field]
+        rest = Group("all", parts[:i] + parts[i + 1 :])
+        reasons = Counter(
+            value.reason
+            for r in rows
+            if isinstance(value := r.values[part.index], Missing) and rest.matches(r.values)
+        )
         found.append(
             {
-                "path": condition.path,
-                "field": condition.field,
+                "path": part.path,
+                "field": part.field,
                 "count": sum(reasons.values()),
                 "reasons": dict(sorted(reasons.items(), key=lambda kv: (-kv[1], kv[0]))),
             }

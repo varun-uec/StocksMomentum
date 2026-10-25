@@ -230,7 +230,7 @@ export default function Screen() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[256px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside aria-label="Filters" className="hidden lg:block">
           <div className="mf-scroll sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-1">
             <FilterRail view={view} fields={byId} onShowMetric={toggleMetric} onPickField={(field) => setEditing({ field })} onConditionChange={setBasicCondition} onEditField={editField} openField={refining} onOpenField={setRefining} shownRanges={stale ? undefined : shownRanges} matched={first?.matched} mode={filterMode} onModeChange={changeFilterMode} maxColumns={MAX_COLUMNS} />
@@ -279,7 +279,9 @@ export default function Screen() {
             {excluded.length > 0 && (
               <details className="mt-3 text-xs text-mf-muted">
                 <summary className="cursor-pointer">
-                  {excluded.reduce((n, e) => n + e.count, 0).toLocaleString('en-IN')} exclusions because a value is missing. A missing value never matches.
+                  {excluded.length === 1
+                    ? `${excluded[0].count.toLocaleString('en-IN')} ${excluded[0].count === 1 ? 'fund meets' : 'funds meet'} every other condition but ${excluded[0].count === 1 ? 'has' : 'have'} no ${columnLabel(excluded[0].field, byId)} value, so ${excluded[0].count === 1 ? 'it is' : 'they are'} left out.`
+                    : `${excluded.reduce((n, e) => n + e.count, 0).toLocaleString('en-IN')} funds are left out only because a value is missing.`}
                 </summary>
                 <ul className="mt-2 space-y-1 pl-4">
                   {excluded.map((e) => (
@@ -434,7 +436,12 @@ export default function Screen() {
               Apply filters
             </Button>
           </>
-        ) : undefined}
+        ) : (
+          // Basic filters apply as you type; the button carries the live count and closes the sheet.
+          <Button variant="primary" className="w-full" aria-live="polite" onClick={() => setFiltersOpen(false)}>
+            {stale || !first ? 'Updating…' : `Show ${first.matched.toLocaleString('en-IN')} ${first.matched === 1 ? 'fund' : 'funds'}`}
+          </Button>
+        )}
       >
         {(filterMode === 'basic' || draft) && (
           <>

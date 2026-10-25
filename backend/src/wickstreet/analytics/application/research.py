@@ -642,7 +642,7 @@ class Research:
             if request.data_revision not in (None, revision):
                 raise FilterError("page.after", "cursor does not match this request")
         snapshot, envelope = await self._pinned(revision)
-        rows, known, formula_missing = with_formulas(snapshot.rows, request.formulas)
+        rows, known, _ = with_formulas(snapshot.rows, request.formulas)
         # Parse again against the real formula positions.
         where = resolve(parse_filter(request.filter, known), rows)
         sort = parse_sort(list(request.sort), known)
@@ -652,7 +652,7 @@ class Research:
             envelope=envelope,
             total=len(rows),
             matched=len(matched),
-            excluded_missing=excluded_for_missing(snapshot.missing | formula_missing, where),
+            excluded_missing=excluded_for_missing(rows, where),
             columns=columns,
             rows=matched[offset:end],
             next=encode_cursor(snapshot.revision, request_id, end) if end < len(matched) else None,

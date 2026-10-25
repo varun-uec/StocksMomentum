@@ -73,7 +73,7 @@ function RangeControl({ field, min, max, onChange, onScreen }: { field: FieldDef
       {inverted && <p className="col-span-2 text-xs text-mf-loss" role="alert">Minimum must be less than or equal to maximum. Results keep the last valid range.</p>}
       <p className="col-span-2 text-[11px] text-mf-muted">
         {onScreen ? `The ${onScreen.count.toLocaleString('en-IN')} funds shown run from ${formatField(field, onScreen.range[0])} to ${formatField(field, onScreen.range[1])}. ` : ''}
-        {field.range ? `All ${field.coverage.values.toLocaleString('en-IN')} plan options with a value run from ${formatField(field, field.range[0])} to ${formatField(field, field.range[1])}. ` : ''}
+        {!onScreen && field.range ? `Values run from ${formatField(field, field.range[0])} to ${formatField(field, field.range[1])}. ` : ''}
         Results update as you type. Leave both empty to keep all funds.
       </p>
     </div>
