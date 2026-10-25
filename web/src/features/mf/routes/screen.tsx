@@ -17,7 +17,7 @@ import { Badge, Button, Chip, EmptyState, ErrorState, Field, Loading, PageHeader
 import { download, screenCsv } from '../csv';
 import { categoryShort, valueLabel } from '../format';
 import { useFields, usePresets } from '../queries';
-import { DEFAULT_CATEGORY, basicControl, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, presetView, type ScreenView } from '../view-spec';
+import { DEFAULT_CATEGORY, basicControl, decodeView, defaultView, describe, encodeView, filterOf, isCondition, isGate, mixesCategories, normalizeEnumAliases, presetView, type ScreenView } from '../view-spec';
 import { isConflict, useRecordMutations, useRecords, type ResearchRecord } from '../workspace';
 import { useDebounced } from '../use-debounced';
 
@@ -71,7 +71,9 @@ export default function Screen() {
   const savedRecord = savedId ? saved.data?.find((r) => r.id === savedId) : undefined;
   const preset = presetId ? presets.data?.presets.find((p) => p.id === presetId) : undefined;
   const badLink = !!encoded && !decoded;
-  const view: ScreenView | null = decoded ?? savedRecord?.body.view ?? (preset ? presetView(preset) : null) ?? (presetId && !presets.data ? null : savedId && saved.isLoading ? null : defaultView());
+  const sourceView: ScreenView | null = decoded ?? savedRecord?.body.view ?? (preset ? presetView(preset) : null) ?? (presetId && !presets.data ? null : savedId && saved.isLoading ? null : defaultView());
+
+  const view = sourceView && fields.data ? normalizeEnumAliases(sourceView, fields.data.fields) : sourceView;
 
   const setView = (next: ScreenView) => {
     const p = new URLSearchParams();

@@ -28,6 +28,8 @@ export interface FieldDef {
   unit: Unit;
   description: string;
   values?: string[];
+  /** Source labels and stable identities mapped to the displayed enum value. */
+  aliases?: Record<string, string>;
   available: boolean;
   coverage: { values: number; missing: Record<string, number> };
   /** A number field's lowest and highest value in the snapshot. */

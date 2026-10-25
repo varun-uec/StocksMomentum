@@ -8,7 +8,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from momentum25.domain.engines.base import EvaluationContext
 from momentum25.domain.engines.trend_template import TrendTemplateEngine
@@ -18,8 +18,10 @@ from momentum25.domain.entities.strategy import EngineConfig
 from momentum25.domain.value_objects.indicators import IndicatorSet
 from momentum25.domain.value_objects.results import SectorStats
 from momentum25.domain.value_objects.types import Symbol
+from momentum25.infrastructure.config.settings import get_settings
 from momentum25.infrastructure.persistence.database import get_database
 from momentum25.infrastructure.persistence.models import Base
+from tests.database_guard import exclusive_test_database
 
 _TEST_DATABASE_SUFFIX = "_test"
 
@@ -42,7 +44,18 @@ def _require_test_database(engine: AsyncEngine) -> None:
 
 
 @pytest.fixture(scope="session")
-async def db_engine() -> AsyncIterator[AsyncEngine]:
+async def database_session_guard() -> AsyncIterator[None]:
+    """Hold the shared DB lock before either suite can reset schemas or tables."""
+    engine = create_async_engine(get_settings().database_url)
+    try:
+        async with exclusive_test_database(engine):
+            yield
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+async def db_engine(database_session_guard: None) -> AsyncIterator[AsyncEngine]:
     """Session-scoped engine bound to the session event loop; schema created once.
 
     Because the engine is created once on the single session-scoped event loop (see

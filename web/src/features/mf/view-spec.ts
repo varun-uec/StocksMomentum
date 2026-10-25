@@ -234,3 +234,16 @@ export function formulaNameError(name: string, fields: Map<string, FieldDef>, ta
   if (taken.includes(name)) return 'That name is in use.';
   return null;
 }
+
+/** Resolve saved/URL enum aliases before rendering controls; never mutate the saved record. */
+export function normalizeEnumAliases(view: ScreenView, fields: readonly FieldDef[]): ScreenView {
+  const key = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
+  const aliases = new Map(fields.filter((f) => f.aliases).map((f) => [f.id, new Map(Object.entries(f.aliases!).map(([a, v]) => [key(a), v]))]));
+  const normalize = (node: FilterNode): FilterNode => {
+    if (!isCondition(node)) return 'all' in node ? { all: node.all.map(normalize) } : { any: node.any.map(normalize) };
+    const known = aliases.get(node.field);
+    if (!known || !['in', 'not_in'].includes(node.op) || !Array.isArray(node.value)) return node;
+    return { ...node, value: [...new Set(node.value.map((v: unknown) => typeof v === 'string' ? known.get(key(v)) ?? v : v))] };
+  };
+  return { ...view, conditions: view.conditions.map(normalize) };
+}

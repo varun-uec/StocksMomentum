@@ -416,20 +416,10 @@ function AtAGlance({ funds, codes, dataRevision }: { funds: CompareFund[]; codes
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: seriesColor(best.i) }} aria-hidden="true" />
                   <span className="line-clamp-2 leading-snug sm:truncate" title={best.f.name}>{short(best.f.name)}</span>
                 </p>
-                {/* Phones: each value carries its fund's dot, the same colour as the fund chips above. */}
-                <ul className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-xs tabular text-mf-ink-soft sm:hidden">
+                <ul className="mt-1.5 space-y-1.5 text-xs text-mf-ink-soft sm:space-y-0.5">
                   {known.map((x) => (
-                    <li key={x.f.amfi_code} className={cx('inline-flex items-center gap-1', x === best && 'font-semibold text-mf-ink')}>
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: seriesColor(x.i) }} aria-hidden="true" />
-                      <span className="sr-only">{short(x.f.name)}: </span>
-                      {pct(x.v, q.digits ?? 1, q.id !== 'ter')}
-                    </li>
-                  ))}
-                </ul>
-                <ul className="mt-1.5 hidden space-y-0.5 text-xs text-mf-ink-soft sm:block">
-                  {known.map((x) => (
-                    <li key={x.f.amfi_code} className="flex justify-between gap-2">
-                      <span className="truncate">{short(x.f.name)}</span>
+                    <li key={x.f.amfi_code} className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:flex-nowrap">
+                      <span className="min-w-0 leading-snug sm:truncate">{short(x.f.name)}</span>
                       <span className={cx('shrink-0 tabular', x === best && 'font-semibold text-mf-ink')}>{pct(x.v, q.digits ?? 1, q.id !== 'ter')}</span>
                     </li>
                   ))}

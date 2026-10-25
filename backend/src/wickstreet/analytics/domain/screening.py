@@ -26,6 +26,7 @@ from wickstreet.analytics.domain.fields import FIELDS
 from wickstreet.analytics.domain.fieldspec import Field
 from wickstreet.analytics.domain.metrics import Missing, Value
 from wickstreet.analytics.domain.snapshot import FundRow
+from wickstreet.mf_data.domain.amc_identity import canonical_amc
 
 MAX_DEPTH = 2
 MAX_SORT_KEYS = 5
@@ -86,6 +87,8 @@ class Condition:
         value = values[self.index]
         if isinstance(value, Missing):
             return self.op == "is_missing"
+        if self.field == "amc" and isinstance(value, str):
+            value = canonical_amc(value)
         return _TESTS[self.op](value, self.value)
 
 
@@ -186,7 +189,7 @@ def _operand(field: Field, op: str, value: Any, path: str) -> Any:
         unknown = sorted(set(value) - set(field.values)) if field.values else []
         if unknown:
             raise FilterError(path, f"{field.id} has no value {unknown[0]!r}")
-        return frozenset(value)
+        return frozenset(canonical_amc(v) for v in value) if field.id == "amc" else frozenset(value)
     return _scalar(field, value, path)
 
 

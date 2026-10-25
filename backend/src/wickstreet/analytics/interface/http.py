@@ -31,6 +31,7 @@ from wickstreet.analytics.domain.presets import PRESETS
 from wickstreet.analytics.domain.screening import Group, explain
 from wickstreet.analytics.domain.snapshot import FundRow
 from wickstreet.dependencies import Context
+from wickstreet.mf_data.domain.amc_identity import amc_provenance, canonical_amc
 
 router = APIRouter(tags=["mf-research"])
 
@@ -160,7 +161,8 @@ async def funds_search(
             {
                 "amfi_code": fund.amfi_code,
                 "name": fund.nav_name,
-                "amc": fund.amc,
+                "amc": canonical_amc(fund.amc),
+                **amc_provenance(fund.amc),
                 "category": None if row is None else cell(row, "category"),
                 "plan": None if row is None else cell(row, "plan"),
                 "option": None if row is None else cell(row, "option"),
@@ -195,6 +197,7 @@ async def fund_detail(
     """Attributes, classification and curated links of one plan-option."""
     detail = await research.fund(code, data_revision)
     fund = asdict(detail.fund)
+    fund |= {"amc": canonical_amc(detail.fund.amc)} | amc_provenance(detail.fund.amc)
     fund["launch_date"] = None if detail.fund.launch_date is None else str(detail.fund.launch_date)
     classification = (
         "category",

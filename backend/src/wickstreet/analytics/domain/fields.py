@@ -27,6 +27,7 @@ from wickstreet.analytics.domain.metrics import (
 )
 from wickstreet.analytics.domain.peers import PEER_METRICS, SCORE_PARTS, THEN_METRICS
 from wickstreet.analytics.domain.relations import NEAR_DUPLICATE
+from wickstreet.mf_data.domain.amc_identity import canonical_amc
 from wickstreet.mf_data.domain.reads import FundRecord
 
 _FRACTION = "fraction"
@@ -77,7 +78,14 @@ _ROLLING_STATS = {
 }
 
 FIELDS: tuple[Field, ...] = (
-    Field("amc", "Fund house", "Fund", "enum", None, "AMC as AMFI's scheme master names it."),
+    Field(
+        "amc",
+        "Fund house",
+        "Fund",
+        "enum",
+        None,
+        "Canonical fund house; AMFI source labels are retained in provenance.",
+    ),
     Field(
         "category",
         "Category",
@@ -633,7 +641,7 @@ def attributes(fund: FundRecord, sibling: str | None) -> dict[str, Value]:
     category = sibling or category
     option = classify.option_of(fund)
     return {
-        "amc": fund.amc or "",
+        "amc": canonical_amc(fund.amc),
         "category": category,
         "category_basis": basis,
         "source_category": fund.category or "",

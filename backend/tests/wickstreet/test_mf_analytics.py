@@ -456,3 +456,78 @@ async def test_v4_views_answer_through_the_api(
     assert client.get("/funds/10001/regimes").json()["windows"] == []
     compared = client.get("/compare?code=10001&code=10002").json()
     assert compared["average_correlation"] is None
+
+
+async def test_amc_aliases_cover_master_and_listing_only_plans_and_preserve_source(
+    mf_urls: Urls, app_database: Database, tmp_path: Path, client: TestClient
+) -> None:
+    await _grant(mf_urls, USES)
+    legal = "HDFC Asset Management Company Limited"
+    label = "HDFC Mutual Fund"
+    files = {
+        day: content.replace(b"Example Mutual Fund", label.encode())
+        for day, content in FILES.items()
+    }
+    files[AS_OF] = nav_file(AS_OF, {"10001": "12", "10002": "22", "10003": "10"}).replace(
+        b"Example Mutual Fund", label.encode()
+    )
+    source = FakeSource(
+        files, master=master_file(CODES[:2]).replace(b"Example AMC Limited", legal.encode())
+    )
+    await _publish(app_database, tmp_path, source)
+    await _compute(app_database).execute()
+    registry = client.get("/screener/fields").json()
+    field = next(f for f in registry["fields"] if f["id"] == "amc")
+    assert field["values"] == [label]
+    assert field["aliases"][legal] == label
+    assert field["aliases"]["in-amc-hdfc"] == label
+    for alias in (legal, label, "in-amc-hdfc"):
+        response = client.post(
+            "/screener/run",
+            json={
+                "filter": {"all": [{"field": "amc", "op": "in", "value": [alias]}]},
+                "columns": ["amc"],
+                "sort": [{"field": "amc", "dir": "asc"}],
+            },
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["matched"] == 3
+        assert {r["values"]["amc"] for r in body["rows"]} == {label}
+        found = client.get("/funds", params={"q": alias}).json()["funds"]
+        assert {f["amfi_code"] for f in found} == set(CODES)
+        assert {f["amc"] for f in found} == {label}
+    detail = client.get("/funds/10001").json()["fund"]
+    assert (detail["amc"], detail["source_amc"], detail["amc_id"]) == (label, legal, "in-amc-hdfc")
+    snapshot = await SqlSnapshotStore(app_database).find(None, METHOD_VERSION)
+    assert snapshot is not None
+    assert snapshot.tables["amc_identity_version"] == 1
+    assert snapshot.by_code["10001"].anchors["source_amc"] == legal
+    assert snapshot.by_code["10003"].anchors["source_amc"] == label
+
+
+async def test_retained_revision_rebuild_uses_its_own_nav_values_and_date(
+    published: FakeSource, app_database: Database, tmp_path: Path
+) -> None:
+    reader = SqlMfReader(app_database)
+    old_revision = await reader.pointer()
+    assert old_revision is not None
+    later = date(2026, 10, 23)
+    published.files[later] = nav_file(later, {"10001": "24", "10002": "44"})
+    await _days(app_database, tmp_path, published).execute(later)
+    # Rebuild the retained revision only after the newer data exists.
+    old = await _compute(app_database).execute(old_revision)
+    latest = await _compute(app_database).execute()
+    assert old.revision == old_revision
+    assert latest.revision != old_revision
+    store = SqlSnapshotStore(app_database)
+    first = await store.find(old_revision, METHOD_VERSION)
+    current = await store.find(None, METHOD_VERSION)
+    assert first is not None and current is not None
+    assert first.as_of == AS_OF
+    assert current.as_of == later
+    assert cell(first.by_code["10001"], "nav") == 12
+    assert cell(current.by_code["10001"], "nav") == 24
+    assert (await _compute(app_database).execute(old_revision)).status == "current"
+    with pytest.raises(ValueError, match="already published"):
+        await _compute(app_database).execute(10**9)

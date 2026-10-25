@@ -194,7 +194,7 @@ class MfReader(Protocol):
         """Return the published revision, or ``None`` before the first publish."""
         ...
 
-    def history(self) -> AbstractAsyncContextManager[History]:
+    def history(self, revision: int | None = None) -> AbstractAsyncContextManager[History]:
         """Open one consistent read of every series at the published revision."""
         ...
 

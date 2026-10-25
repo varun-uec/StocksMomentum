@@ -167,10 +167,10 @@ def _ingest(settings: WickstreetSettings, work: Callable[[Ingestion], Awaitable[
         _compute(settings)
 
 
-def _compute(settings: WickstreetSettings) -> None:
+def _compute(settings: WickstreetSettings, revision: int | None = None) -> None:
     started = time.perf_counter()
     outcome = _with_database(
-        settings.database_url, lambda db: build_analytics(settings, db).compute.execute()
+        settings.database_url, lambda db: build_analytics(settings, db).compute.execute(revision)
     )
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     # ru_maxrss is bytes on macOS and kilobytes on Linux.
@@ -227,9 +227,7 @@ def mf_archive(
         if cutoff is None:
             raise typer.BadParameter("No AMFI NAV date is stored yet: run `mf backfill` first.")
         typer.echo(f"cutoff (first AMFI date): {cutoff}")
-        return await ingestion.archive.execute(
-            first, last, cutoff, today, _print, refetch=refetch
-        )
+        return await ingestion.archive.execute(first, last, cutoff, today, _print, refetch=refetch)
 
     _ingest(settings, work)
 
@@ -485,9 +483,13 @@ def mf_report() -> None:
 
 
 @mf_app.command("metrics")
-def mf_metrics() -> None:
-    """Compute the metric snapshot of the published revision; a no-op when it exists."""
-    _compute(get_settings())
+def mf_metrics(
+    revision: int | None = typer.Option(
+        None, min=1, help="Recompute a retained published revision."
+    ),
+) -> None:
+    """Compute a snapshot at the latest or a retained revision; idempotent."""
+    _compute(get_settings(), revision)
 
 
 @mf_app.command("retire-snapshot")

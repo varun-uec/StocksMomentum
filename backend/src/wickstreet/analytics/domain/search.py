@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
+from wickstreet.mf_data.domain.amc_identity import canonical_amc
 from wickstreet.mf_data.domain.reads import FundRecord, compact, search_terms
 
 
@@ -27,6 +28,7 @@ def ranked(
     query: str, found: Sequence[FundRecord], standing: Mapping[str, Standing]
 ) -> list[FundRecord]:
     """Order matches; ``standing`` holds the active funds among them."""
+    query = canonical_amc(query)
     exact = query.strip().upper()
     phrase = "".join(search_terms(query))
 

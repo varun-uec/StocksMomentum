@@ -147,6 +147,12 @@ from wickstreet.analytics.domain.tax import (
 from wickstreet.analytics.domain.views import correlation
 from wickstreet.data_rights.application.gate import RightsGate
 from wickstreet.data_rights.domain.rights import Use
+from wickstreet.mf_data.domain.amc_identity import (
+    AMC_IDENTITY_VERSION,
+    AMCS,
+    amc_key,
+    amc_provenance,
+)
 from wickstreet.mf_data.domain.model import TBILL_91
 from wickstreet.mf_data.domain.reads import (
     FundRecord,
@@ -309,7 +315,7 @@ class ComputeSnapshot:
                     )
             if status == ACTIVE:
                 pair_keys[fund.plan_option_id] = (
-                    fund.amc or "",
+                    amc_key(fund.amc),
                     fund.scheme_name or "",
                     str(values["option"]),
                     str(values["plan"]),
@@ -354,6 +360,7 @@ class ComputeSnapshot:
         code = {fund.plan_option_id: fund.amfi_code for fund in records}
         levels = proxy_index(proxy_days)
         tables = {
+            "amc_identity_version": AMC_IDENTITY_VERSION,
             "pairs": {code[a]: code[b] for a, b in partners.items()},
             "near_duplicates": {
                 code[pid]: [[code[q], c, n] for q, c, n in found[:MAX_LISTED]]
@@ -413,7 +420,7 @@ class ComputeSnapshot:
                     fund.amfi_code,
                     fund.nav_name or fund.scheme_name or fund.amfi_code,
                     ordered(values),
-                    anchors,
+                    anchors | amc_provenance(fund.amc),
                 )
             )
             await _turn(done + 1)
@@ -425,14 +432,17 @@ class ComputeSnapshot:
         self._snapshots = snapshots
         self._rights = rights
 
-    async def execute(self) -> ComputeOutcome:
+    async def execute(self, revision: int | None = None) -> ComputeOutcome:
         """No-op when the published revision already has a snapshot."""
         pointer = await self._reader.pointer()
+        if revision is not None and (pointer is None or not 0 < revision <= pointer):
+            raise ValueError("Revision must be positive and already published.")
+        pointer = pointer if revision is None else revision
         if pointer is None:
             return ComputeOutcome("nothing_published", None)
         if await self._snapshots.exists(pointer, METHOD_VERSION):
             return ComputeOutcome("current", pointer)
-        async with self._reader.history() as history:
+        async with self._reader.history(revision) as history:
             grants = [await self._rights.require(s, Use.DERIVED_METRICS) for s in history.sources]
             encoded = await self.encode(history)
         snapshot_id = await self._snapshots.insert(
@@ -610,6 +620,15 @@ class Research:
                     "type": f.type,
                     "unit": f.unit,
                     "description": f.description,
+                    **(
+                        {
+                            "aliases": {
+                                alias: amc.name for amc in AMCS for alias in (*amc.aliases, amc.id)
+                            }
+                        }
+                        if f.id == "amc"
+                        else {}
+                    ),
                     **({"values": list(values)} if values is not None else {}),
                     "available": available,
                     "coverage": coverage,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldDef, FilterNode } from './api';
-import { UNIVERSE, basicCondition, basicControl, decodeView, defaultView, describe as describeCondition, encodeView, filterOf, formulaNameError, fromApi, mixesCategories, toApi } from './view-spec';
+import { UNIVERSE, basicCondition, basicControl, decodeView, defaultView, describe as describeCondition, encodeView, filterOf, formulaNameError, fromApi, mixesCategories, normalizeEnumAliases, toApi } from './view-spec';
 import { toggleCode } from './workspace';
 
 const fields = new Map<string, FieldDef>([
@@ -145,5 +145,25 @@ describe('basic controls', () => {
     expect(basicControl(cagr, [{ field: 'cagr_3y', op: '>=', value: 0.1 }, { field: 'cagr_3y', op: '>', value: 0.2 }])).toBeNull();
     expect(basicControl(category, [{ field: 'category', op: 'not_in', value: ['x'] }])).toBeNull();
     expect(basicControl(cagr, [{ any: [{ field: 'cagr_3y', op: '>=', value: 0.1 }, { field: 'score', op: '>=', value: 50 }] }])).toBeNull();
+  });
+});
+
+
+describe('saved enum aliases', () => {
+  it('resolves nested saved and URL filters, deduplicates, preserves unknowns and the original', () => {
+    const saved = defaultView();
+    saved.conditions.push({ any: [
+      { field: 'amc', op: 'in', value: ['HDFC Asset Management Company Limited', 'in-amc-hdfc', 'Unknown AMC'] },
+      { field: 'amc', op: 'not_in', value: ['  HDFC   MUTUAL FUND '] },
+    ] });
+    const before = encodeView(saved);
+    const field: FieldDef = { id: 'amc', label: 'Fund house', group: 'Fund', type: 'enum', unit: null, description: 'Canonical fund house', available: true, coverage: { values: 1, missing: {} }, aliases: { 'HDFC Asset Management Company Limited': 'HDFC Mutual Fund', 'in-amc-hdfc': 'HDFC Mutual Fund', 'HDFC Mutual Fund': 'HDFC Mutual Fund' } };
+    const normalized = normalizeEnumAliases(decodeView(before)!, [field]);
+    expect(normalized.conditions.at(-1)).toEqual({ any: [
+      { field: 'amc', op: 'in', value: ['HDFC Mutual Fund', 'Unknown AMC'] },
+      { field: 'amc', op: 'not_in', value: ['HDFC Mutual Fund'] },
+    ] });
+    expect(encodeView(saved)).toBe(before);
+    expect(normalizeEnumAliases(normalized, [field])).toEqual(normalized);
   });
 });

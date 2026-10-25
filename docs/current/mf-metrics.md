@@ -16,7 +16,9 @@ The method behind every number in the MF screener and research API ([ADR-017](..
 | 7 | 2026-10-24 | E5: 6 fields from AMFI's IDCW history ("IDCW (v7)" below). Monthly facts (fund performance, tracking error) are read on the latest business day of each month, not a weekend month-end with few funds reported | Superseded by v8 |
 | 8 | 2026-10-24 | Deterministic storage. Every stored float is rounded to 10 significant digits; computation keeps full precision. Beta, R² and alpha against the benchmark proxy use exactly rounded sums (`math.fsum`) instead of NumPy's BLAS-backed `cov` and `corrcoef`. Values move in the 10th significant digit or less | In use (owner decision of 2026-10-24) |
 
-Snapshots of v1 to v6 stay stored; reads use v7.
+| 9 | 2026-10-25 | Canonical AMC identities backed by retained AMFI code matches; aliases resolve to one fund-house value, stable IDs and source labels stay in provenance. [Identity and recovery rules](mf-amc-identities.md) | Rebuild and independent acceptance in progress |
+
+Earlier snapshots remain stored for audit. Serving reads use method v9.
 
 ## Observations
 

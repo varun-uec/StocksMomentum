@@ -65,7 +65,7 @@ def urls() -> Urls:
 
 
 @pytest.fixture(scope="session")
-async def mf_schema(urls: Urls) -> Urls:
+async def mf_schema(urls: Urls, database_session_guard: None) -> Urls:
     """Rebuild the MF schema once per session: roles, schema, migrations to head."""
     admin = create_async_engine(urls.admin)
     async with admin.begin() as connection:

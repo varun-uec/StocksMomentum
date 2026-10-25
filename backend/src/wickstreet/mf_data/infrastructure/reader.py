@@ -19,6 +19,7 @@ from sqlalchemy import TextClause, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncResult
 
 from platform_common.database import Database
+from wickstreet.mf_data.domain.amc_identity import amc_identity
 from wickstreet.mf_data.domain.model import TBILL_91
 from wickstreet.mf_data.domain.reads import (
     SEARCH_SYNONYMS,
@@ -93,7 +94,7 @@ _BY_CODES = "plan_option_id IN (SELECT id FROM wickstreet.plan_option WHERE amfi
 _ORDINAL = "(n.nav_date - DATE '0001-01-01') + 1"
 _STREAM = (
     f"SELECT n.plan_option_id, {_ORDINAL}, n.nav::float8, n.anomaly FROM wickstreet.nav n "
-    "WHERE n.superseded_revision IS NULL ORDER BY n.plan_option_id, n.nav_date"
+    f"WHERE {_visible('n')} ORDER BY n.plan_option_id, n.nav_date"
 )
 _STREAM_BATCH = 20_000
 _RATES = text(
@@ -262,22 +263,24 @@ class SqlMfReader:
             return await self._sources(connection, revision)
 
     @asynccontextmanager
-    async def history(self) -> AsyncIterator[History]:
-        """Open one consistent, read-only pass over every series at the pointer."""
+    async def history(self, revision: int | None = None) -> AsyncIterator[History]:
+        """Read every series consistently at a retained revision or the live pointer."""
         async with self._database.engine.connect() as base:
             connection = await base.execution_options(
                 isolation_level="REPEATABLE READ", postgresql_readonly=True
             )
             async with connection.begin():
-                revision = await connection.scalar(
+                pointer = await connection.scalar(
                     text("SELECT revision_id FROM wickstreet.publication")
                 )
+                if revision is not None and (pointer is None or not 0 < revision <= pointer):
+                    raise ValueError("Revision must be positive and already published.")
+                revision = pointer if revision is None else revision
                 if revision is None:
                     raise NothingPublishedError("No MF revision is published yet.")
                 as_of = await connection.scalar(
-                    text(
-                        "SELECT max(nav_date) FROM wickstreet.nav WHERE superseded_revision IS NULL"
-                    )
+                    text(f"SELECT max(nav_date) FROM wickstreet.nav n WHERE {_visible('n')}"),
+                    {"r": revision},
                 )
                 sources = await self._sources(connection, revision)
                 risk_free = [
@@ -290,7 +293,7 @@ class SqlMfReader:
                 found = await connection.execute(text(_funds_sql("TRUE")), {"r": revision})
                 records = {row[0]: _record(row) for row in found}
                 rows = await connection.stream(
-                    text(_STREAM).execution_options(yield_per=_STREAM_BATCH)
+                    text(_STREAM).execution_options(yield_per=_STREAM_BATCH), {"r": revision}
                 )
                 yield History(revision, as_of, sources, _grouped(records, rows), risk_free, facts)
 
@@ -314,6 +317,11 @@ class SqlMfReader:
             bound |= {f"t{i}_{j}": f"%{o}%" for j, o in enumerate(options)}
             clauses.append(" OR ".join(f"{compact} LIKE :t{i}_{j}" for j in range(len(options))))
         match = " AND ".join(f"({c})" for c in clauses)
+        identity = amc_identity(query)
+        if identity is not None:
+            # Exact known aliases query the same source-label set, before LIMIT.
+            bound |= {f"amc{i}": alias for i, alias in enumerate(identity.aliases)}
+            match = "f.amc IN (" + ", ".join(f":amc{i}" for i in range(len(identity.aliases))) + ")"
         sql = text(
             f"SELECT * FROM ({_funds_sql('TRUE')}) f(id, amfi_code, amc, scheme_name, nav_name, "
             "scheme_type, category, plan, option, isin_growth, isin_reinvest, launch_date) "

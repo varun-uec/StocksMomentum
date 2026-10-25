@@ -274,3 +274,7 @@ The ADD was written for a greenfield MVP (milestones M0–M8). The code has grow
 | D10 | `POST /runs` triggers a refresh (ADD §16). | `POST /runs` schedules the offline-by-default ingest-and-screen pipeline; direct downloads require explicit opt-in. | Resolved in the 2026-10-19 E2E audit. |
 
 The Wickstreet program ([ADD Amendment A1](../architecture/ADD-amendment-A1.md), ADR-011 to ADR-014) began on 2026-10-17. See [state.md](state.md#in-flight).
+
+## Canonical AMC identity (method v9, 25 October 2026)
+
+The pure `mf_data/domain/amc_identity.py` registry resolves 55 evidenced AMFI NAV/master label pairs to stable IDs. Analytics stores one canonical house label and preserves the original label and ID in row provenance. Saved-screen operands and exact full-house searches accept both labels and the stable ID; the UI resolves saved aliases before rendering checkboxes. No source records or scheme joins are rewritten. `mf metrics --revision R` rebuilds a retained snapshot using revision-visible NAVs and facts. See [identity evidence and recovery](mf-amc-identities.md).

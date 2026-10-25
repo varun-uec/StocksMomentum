@@ -1,8 +1,25 @@
 # Wickstreet 2.0 execution ledger
 
-**Updated:** 2026-10-24. This is the ranked execution backlog. The accepted scope remains [document 20](20-wickstreet-2.0-complete-mf-scope.md); current code and evidence take precedence over older planned status. Completion means implementation plus independent evidence, not passing tests alone.
+**Updated:** 2026-10-25. This is the ranked execution backlog. The accepted scope remains [document 20](20-wickstreet-2.0-complete-mf-scope.md); current code and evidence take precedence over older planned status. Completion means implementation plus independent evidence, not passing tests alone.
 
 Every backlog item also uses the product-wide interaction rule in [the design system](ui-ux/02-design-system.md): deliver useful evidence early, remove unnecessary interaction, apply context-aware defaults, and measure completion, interaction cost, response, and usability on representative desktop and mobile workflows.
+
+## 25 October remediation
+
+The [25 Oct live assessment](ui-ux/tickertape-competitive-benchmark/LIVE_ASSESSMENT_2026-10-25.md) P0 list, then backlog items. Report: [remediation-2026-10-25/REPORT.md](ui-ux/remediation-2026-10-25/REPORT.md). Independent review: [QA-REVIEW.md](ui-ux/remediation-2026-10-25/QA-REVIEW.md).
+
+| Item | Status | Evidence |
+|---|---|---|
+| Screener columns readable at 1280–1536 px | Fixed; QA re-check pending | Six default columns fit; Scroll and arrows move by whole columns; a cut column is fully faded. |
+| Threshold journey (Return 1Y ≥ −10%) | Independently accepted | `ret_1y between [-0.1, null]`, 46 → 37 funds on desktop and phone; raw-NAV recompute gives the same 37. |
+| Enum, boolean and date inline filters | Accepted on desktop; phone sheet re-check pending | Fund house, Active, First valid NAV; counts match the DB. |
+| Phone overlays (320–430 px) | Fixed; QA re-check pending | No tray on phones (count on the Compare tab); bottom bar hides while scrolling down. |
+| Phone fact provenance | Independently accepted | Six facts show source and date; dates match the API. |
+| Calm equity collection | Rule accepted; wording fixed, re-check pending | Diversified equity only, 57 funds, none sectoral. |
+| Compare peers (PPFAS → HDFC, Kotak) | Independently accepted | One click; values match the API; overlap unavailable state is true. |
+| Category lens (size, cost) and Peers table | Built; in QA re-check | Discover cards, Peers tab "Compare these 5". |
+| TER and scheme-join data integrity | Fixed and corrected on real data | Snapshot 6236; 81 → 0 zero-TER plans; UTI Large Cap 1.19% as filed. |
+| Tickertape matched comparison | Running | [COMPARATIVE_TEST.md](ui-ux/remediation-2026-10-25/COMPARATIVE_TEST.md) when it lands. |
 
 | Rank | Investor problem / capability | Dependencies and components | Value / effort | Acceptance and independent verification | Status / evidence |
 |---|---|---|---|---|---|

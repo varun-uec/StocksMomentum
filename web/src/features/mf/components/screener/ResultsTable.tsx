@@ -70,20 +70,22 @@ export function ResultsTable({
   // Width hidden to the right of the wide table, so a column never disappears without a cue (review 1, rank 3).
   const wide = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(0);
-  // The visible widths of the columns cut by the right edge and by the sticky fund
-  // column; a fade covers each, so no value shows in part.
-  const [cut, setCut] = useState({ left: 0, right: 0, fund: 0 });
+  // Hide the entire contents of a column crossing either viewport edge. A paint
+  // overlay can sit below sticky headers and leave misleading fragments visible.
+  const [clipped, setClipped] = useState<string[]>([]);
   useEffect(() => {
     const el = wide.current;
     if (!el) return;
     const update = () => {
       setHidden(Math.max(0, el.scrollWidth - el.clientWidth - el.scrollLeft));
       const box = el.getBoundingClientRect();
-      const [fund, ...rest] = [...el.querySelectorAll('thead th')].map((th) => th.getBoundingClientRect()).filter((r) => r.width > 0);
+      const fund = el.querySelector('thead th')?.getBoundingClientRect();
       if (!fund) return;
-      const right = rest.find((r) => r.left < box.right - 1 && r.right > box.right);
-      const left = rest.find((r) => r.left < fund.right - 1 && r.right > fund.right + 1);
-      setCut({ right: right ? box.right - 1 - right.left : 0, left: left ? left.right - fund.right : 0, fund: fund.right - box.left });
+      const next = [...el.querySelectorAll<HTMLElement>('thead th[data-column]')].filter((th) => {
+        const r = th.getBoundingClientRect();
+        return r.width > 0 && (r.left < fund.right - 1 || r.right > box.right - 1);
+      }).map((th) => th.dataset.column!);
+      setClipped((previous) => previous.join('|') === next.join('|') ? previous : next);
     };
     update();
     el.addEventListener('scroll', update, { passive: true });
@@ -146,13 +148,13 @@ export function ResultsTable({
               <th scope="col" className="sticky left-0 z-10 bg-mf-sunken px-4 py-3 text-left font-medium">
                 Fund
               </th>
-              <th scope="col" className={cx('w-[96px] px-2 py-3 text-left font-medium', compact && 'max-2xl:hidden')}>
+              <th scope="col" data-column="__nav" style={{ visibility: clipped.includes('__nav') ? 'hidden' : undefined }} className={cx('w-[96px] px-2 py-3 text-left font-medium', compact && 'max-2xl:hidden')}>
                 3Y NAV
               </th>
               {columns.map((c) => {
                 const active = primary?.field === c;
                 return (
-                  <th key={c} scope="col" aria-sort={active ? (primary.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-1.5 py-2.5 text-right align-bottom font-medium">
+                  <th key={c} scope="col" data-column={c} style={{ visibility: clipped.includes(c) ? 'hidden' : undefined }} aria-sort={active ? (primary.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-1.5 py-2.5 text-right align-bottom font-medium">
                     {/* Long labels wrap to two lines, so a column is as wide as its values, not its name. */}
                     <button type="button" onClick={() => onSort(c)} className={cx('ml-auto inline-flex max-w-[6.5rem] items-end gap-0.5 text-balance text-right leading-tight hover:text-mf-ink', active && 'text-mf-brand-strong')} title={fields.get(c)?.description}>
                       {columnLabel(c, fields)}
@@ -182,9 +184,9 @@ export function ResultsTable({
                     </div>
                   </div>
                 </th>
-                <td className={cx('w-[96px] px-2 py-2', compact && 'max-2xl:hidden')}>{line(r)}</td>
+                <td style={{ visibility: clipped.includes('__nav') ? 'hidden' : undefined }} className={cx('w-[96px] px-2 py-2', compact && 'max-2xl:hidden')}>{line(r)}</td>
                 {columns.map((c) => (
-                  <td key={c} className="whitespace-nowrap px-1.5 py-3 text-right">
+                  <td key={c} style={{ visibility: clipped.includes(c) ? 'hidden' : undefined }} className="whitespace-nowrap px-1.5 py-3 text-right">
                     <Cell row={r} column={c} fields={fields} />
                   </td>
                 ))}
@@ -193,10 +195,6 @@ export function ResultsTable({
           </tbody>
         </table>
       </div>
-      {/* A cut-off column fades out at the edge, so it reads as "more to the right", not as a clipped number. */}
-      {/* Each fade starts at the cut column's edge, so a whole column beside it stays clear. */}
-      {hidden > 8 && <div className="pointer-events-none absolute inset-y-px right-px rounded-r-card" style={{ width: Math.max(cut.right, 12), background: 'linear-gradient(to left, rgb(var(--mf-surface)) calc(100% - 8px), rgb(var(--mf-surface) / 0))' }} aria-hidden="true" />}
-      {cut.left > 1 && <div className="pointer-events-none absolute inset-y-px" style={{ left: cut.fund, width: cut.left, background: 'linear-gradient(to right, rgb(var(--mf-surface)) calc(100% - 8px), rgb(var(--mf-surface) / 0))' }} aria-hidden="true" />}
       </div>
 
       {/* Phones */}

@@ -1,6 +1,6 @@
-import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 import { BACKEND_DIR, E2E_DATABASE_URL } from './e2e/env';
+import { runArtifacts } from './e2e/run-artifacts';
 
 /**
  * End-to-end tests run the production build, served by the real API, against an
@@ -9,12 +9,14 @@ import { BACKEND_DIR, E2E_DATABASE_URL } from './e2e/env';
  * E2E_DATABASE_URL (required; see e2e/env.ts).
  */
 const PORT = 8765;
-const webDist = fileURLToPath(new URL('./dist', import.meta.url));
+const artifacts = runArtifacts('stock');
+const webDist = artifacts.dist;
 const backend = BACKEND_DIR;
 const databaseUrl = E2E_DATABASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
+  outputDir: artifacts.results,
   // The MF workstation has its own config (playwright.mf.config.ts): it reads the live MF API.
   testIgnore: ['mf/**'],
   fullyParallel: false,
@@ -27,7 +29,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `npm run build && cd ${backend} && .venv/bin/python ../web/e2e/db.py verify && .venv/bin/alembic upgrade head && .venv/bin/python ../web/e2e/db.py seed && .venv/bin/python ../web/e2e/seed-screening.py && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port ${PORT} --app-dir src`,
+    command: `npm run build -- --outDir "${webDist}" && cd ${backend} && .venv/bin/python ../web/e2e/db.py verify && .venv/bin/alembic upgrade head && .venv/bin/python ../web/e2e/db.py seed && .venv/bin/python ../web/e2e/seed-screening.py && .venv/bin/uvicorn momentum25.main:app --host 127.0.0.1 --port ${PORT} --app-dir src`,
     url: `http://localhost:${PORT}/api/v1/health/live`,
     reuseExistingServer: false,
     timeout: 120_000,

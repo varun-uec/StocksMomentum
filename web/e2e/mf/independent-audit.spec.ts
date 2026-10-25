@@ -235,7 +235,8 @@ test('A-12: chart focus is visible to keyboard users', async ({ page }) => {
   const surface = page.locator('.recharts-surface[tabindex="0"]').first();
   await surface.focus();
   await page.keyboard.press('ArrowRight');
-  expect(await surface.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
+  await expect(surface).toBeFocused();
+  await expect.poll(() => surface.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
 });
 
 test('A-13: the comparison table uses the chart’s rupees', async ({ page }) => {
