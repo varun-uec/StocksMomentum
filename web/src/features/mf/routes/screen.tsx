@@ -26,6 +26,8 @@ const EXPORT_PAGE = 500;
 const MAX_COLUMNS = 12;
 // Read with every result row for the fund cell, never shown as columns or exported.
 const ROW_EXTRAS = ['amc', 'category'];
+/** Filing dates read with their filed metrics, shown in the metric's cell. */
+const asOfOf = (columns: string[]) => columns.flatMap((c) => (METRIC_AS_OF_FIELDS[c] ? [METRIC_AS_OF_FIELDS[c]] : []));
 
 interface ScreenBody {
   view: ScreenView;
@@ -89,7 +91,7 @@ export default function Screen() {
   const request = useMemo<Omit<ScreenRequest, 'page'> | null>(() => (debouncedKey ? JSON.parse(debouncedKey) : null), [debouncedKey]);
   const results = useInfiniteQuery({
     queryKey: ['mf', 'screen-pages', request],
-    queryFn: ({ pageParam, signal }) => mfApi.screen({ ...request!, columns: [...new Set([...request!.columns, ...ROW_EXTRAS])], page: { size: PAGE, ...(pageParam ? { after: pageParam } : {}) } }, signal),
+    queryFn: ({ pageParam, signal }) => mfApi.screen({ ...request!, columns: [...new Set([...request!.columns, ...asOfOf(request!.columns), ...ROW_EXTRAS])], page: { size: PAGE, ...(pageParam ? { after: pageParam } : {}) } }, signal),
     initialPageParam: '' as string,
     getNextPageParam: (last) => last.next ?? undefined,
     enabled: !!request && !!fields.data,
@@ -136,10 +138,12 @@ export default function Screen() {
   for (const name of Object.keys(view.formulas))
     byId.set(name, { id: name, label: name, group: 'Formulas', type: 'number', unit: null, description: view.formulas[name], available: true, coverage: { values: 0, missing: {} } });
 
-  /** The columns with a filtered field and its as-of companion first, like a shown metric, while room is left. */
+  /**
+   * The columns with a filtered field first, like a shown metric, while room is left. A
+   * filed metric's date rides in its cell, and the fund house is already on every row.
+   */
   const withColumns = (columns: string[], id: string) => {
-    const companion = METRIC_AS_OF_FIELDS[id];
-    const added = [id, ...(companion ? [companion] : [])].filter((c) => !columns.includes(c) && byId.has(c));
+    const added = ROW_EXTRAS.includes(id) || columns.includes(id) || !byId.has(id) ? [] : [id];
     return [...added.slice(0, Math.max(MAX_COLUMNS - columns.length, 0)), ...columns];
   };
 
@@ -169,12 +173,12 @@ export default function Screen() {
 
   const toggleMetric = (field: FieldDef, shown: boolean) => {
     if (shown && view.columns.includes(field.id)) return;
-    const companion = METRIC_AS_OF_FIELDS[field.id];
-    const ids = [field.id, ...(companion && fields.byId.has(companion) ? [companion] : [])];
-    if (shown && view.columns.length + ids.filter((id) => !view.columns.includes(id)).length > MAX_COLUMNS) return;
+    if (shown && view.columns.length >= MAX_COLUMNS) return;
+    // Hiding a metric also hides a date column an older saved screen kept beside it.
+    const ids = [field.id, ...(METRIC_AS_OF_FIELDS[field.id] ? [METRIC_AS_OF_FIELDS[field.id]] : [])];
     setView({
       ...view,
-      columns: shown ? [...ids.filter((id) => !view.columns.includes(id)), ...view.columns] : view.columns.filter((column) => !ids.includes(column)),
+      columns: shown ? [field.id, ...view.columns] : view.columns.filter((column) => !ids.includes(column)),
     });
     // Showing a metric opens its refine control at once; filtering stays optional.
     setRefining((open) => (shown ? field.id : open === field.id ? null : open));
