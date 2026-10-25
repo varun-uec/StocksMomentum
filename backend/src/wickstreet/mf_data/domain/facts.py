@@ -56,7 +56,11 @@ def scheme_keys(
     which AMFI's name gives without its tenure: a filed name never drops its own, so
     "SBI Debt Fund Series C - 27 (1260 Days)" never joins "... (391 Days)".
     """
-    codes = {compact(code): sd_id for sd_id, code in sebi_codes.items()}
+    # A SEBI code two schemes' SSDs share joins neither; the row joins by name instead.
+    by_code: dict[str, set[int]] = {}
+    for sd_id, code in sebi_codes.items():
+        by_code.setdefault(compact(code), set()).add(sd_id)
+    codes = {code: next(iter(ids)) for code, ids in by_code.items() if len(ids) == 1}
 
     def keyed(key_of: Callable[[SchemeRef], str]) -> dict[str, int]:
         sharers: dict[str, set[SchemeRef]] = {}

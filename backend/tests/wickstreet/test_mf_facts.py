@@ -342,6 +342,15 @@ def test_a_name_two_schemes_share_joins_neither() -> None:
     assert codes == {"abco1": 3}
 
 
+def test_a_code_two_schemes_share_joins_neither() -> None:
+    # AMFI serves UTI Large Cap's SSD under 264 and 807; the TER row must join by name.
+    schemes = [SchemeRef(264, 28, "UTI - Large Cap Fund"), SchemeRef(807, 28, "UTI - MEPUS")]
+    shared = "UTIM/O/E/LCF/86/10/0001"
+    codes, names = scheme_keys(schemes, {264: shared, 807: shared})
+    assert codes == {}
+    assert names["utilargecapfund"] == 264
+
+
 def test_a_segregated_portfolio_note_is_optional_in_a_name() -> None:
     schemes = [
         SchemeRef(1, 9, "Credit Risk Fund (Existing Number of Segregated Portfolios - 1)"),
