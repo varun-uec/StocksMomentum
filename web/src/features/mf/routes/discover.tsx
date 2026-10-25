@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import type { Condition, Preset, ScreenRequest } from '../api';
+import type { Condition, Preset, ScreenRequest, ScreenRow, SortKey } from '../api';
 import { ChartFrame, Sparkline, TimeChart, thin } from '../components/charts';
 import { FundSearch } from '../components/FundSearch';
 import { FundRow } from '../components/FundRow';
@@ -40,14 +40,33 @@ const LEADERS: ScreenRequest = {
   page: { size: 20 },
 };
 
-export const categoryLink = (category: string) =>
+/**
+ * Three plain ways into a category (assessment 25 Oct, rank 9): our score, size and cost.
+ * Size and cost are facts, not recommendations; each card names the rule it applies.
+ */
+type Lens = 'score' | 'aum' | 'ter';
+const LENSES: Record<Lens, { label: string; pick: string; sort: SortKey; columns: string[] }> = {
+  score: { label: 'Top score', pick: 'Top score', sort: { field: 'score', dir: 'desc' }, columns: ['score', 'cagr_3y', 'cagr_5y', 'sharpe_3y', 'mdd_3y', 'consistency_3y', 'score_cat_rank'] },
+  aum: { label: 'Largest', pick: 'Largest', sort: { field: 'aum_cr', dir: 'desc' }, columns: ['aum_cr', 'aum_as_of', 'ter', 'ter_as_of', 'cagr_3y', 'mdd_3y', 'score'] },
+  ter: { label: 'Lowest cost', pick: 'Lowest TER', sort: { field: 'ter', dir: 'asc' }, columns: ['ter', 'ter_as_of', 'aum_cr', 'aum_as_of', 'cagr_3y', 'mdd_3y', 'score'] },
+};
+
+export const categoryLink = (category: string, lens: Lens = 'score') =>
   `/mf/screen?v=${encodeView({
     mode: 'all',
     conditions: [...UNIVERSE, { field: 'category', op: 'in', value: [category] } as Condition],
-    sort: [{ field: 'score', dir: 'desc' }],
-    columns: ['score', 'cagr_3y', 'cagr_5y', 'sharpe_3y', 'mdd_3y', 'consistency_3y', 'score_cat_rank'],
+    sort: [LENSES[lens].sort],
+    columns: LENSES[lens].columns,
     formulas: {},
   })}`;
+
+/** Every fund in the shown categories with a size or cost value, so each category's largest or cheapest comes first. */
+const byLens = (lens: Exclude<Lens, 'score'>): ScreenRequest => ({
+  filter: { all: [...UNIVERSE, { field: 'category', op: 'in', value: CATEGORIES }, { field: LENSES[lens].sort.field, op: 'is_available', value: null }] },
+  sort: [{ field: 'category', dir: 'asc' }, LENSES[lens].sort],
+  columns: ['category', 'score', LENSES[lens].sort.field],
+  page: { size: 500 },
+});
 
 const REGIME_WORDS: Record<string, string> = { crash: 'crash', correction: 'correction', recovery: 'recovery' };
 
@@ -149,21 +168,33 @@ function MarketPulse() {
 }
 
 function Categories() {
+  const [lens, setLens] = useState<Lens>('score');
   const leaders = useScreen(LEADERS);
-  const rows = new Map((leaders.data?.rows ?? []).map((r) => [String(r.values.category), r]));
+  const ranked = useScreen(lens === 'score' ? null : byLens(lens));
+  const medians = new Map((leaders.data?.rows ?? []).map((r) => [String(r.values.category), r]));
+  const rows = new Map<string, ScreenRow>();
+  // Rows come sorted by category, then by the lens, so the first row per category is its pick.
+  for (const r of (lens === 'score' ? leaders.data : ranked.isPlaceholderData ? undefined : ranked.data)?.rows ?? []) if (!rows.has(String(r.values.category))) rows.set(String(r.values.category), r);
   const lines = useSparklines([...rows.values()].map((r) => r.amfi_code));
+  const loading = leaders.isLoading || (lens !== 'score' && (ranked.isLoading || ranked.isPlaceholderData));
+  const pickValue = (r: ScreenRow) => (lens === 'aum' ? `₹${Math.round(Number(r.values.aum_cr)).toLocaleString('en-IN')} Cr` : lens === 'ter' ? `${pct(r.values.ter, 2)} TER` : null);
   return (
-    <Card title="Explore by category" subtitle="Active Direct Growth plans · each category's median 3Y CAGR, and the NAV of its top-scored fund (not a category average)" action={<Link to="/mf/screen" className="text-sm font-medium text-mf-brand hover:underline">Open screener</Link>}>
+    <Card
+      title="Explore by category"
+      subtitle={`Active Direct Growth plans · each category's median 3Y CAGR, and the NAV of its ${lens === 'score' ? 'top-scored fund' : lens === 'aum' ? 'largest fund by AUM' : 'fund with the lowest expense ratio'} (not a category average)`}
+      action={<Segmented label="Highlight in each category" value={lens} onChange={setLens} options={(Object.keys(LENSES) as Lens[]).map((k) => ({ value: k, label: LENSES[k].label }))} />}
+    >
       {leaders.isError ? (
         <ErrorState error={leaders.error} onRetry={() => leaders.refetch()} compact />
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {CATEGORIES.map((c, i) => {
             const row = rows.get(c);
+            const median = medians.get(c);
             return (
               <li key={c}>
                 <Link
-                  to={categoryLink(c)}
+                  to={categoryLink(c, lens)}
                   className="group block h-full rounded-[14px] border border-mf-line p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-mf-brand/50 hover:shadow-raised motion-reduce:hover:translate-y-0"
                   style={{ background: `linear-gradient(160deg, ${token(i % 2 ? 'warningSoft' : 'brandSoft', 0.75)}, ${token('surface')} 70%)` }}
                 >
@@ -171,22 +202,23 @@ function Categories() {
                     <p className="text-sm font-semibold text-mf-ink">{categoryShort(c)}</p>
                     <I.arrowUpRight className="h-4 w-4 text-mf-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
                   </div>
-                  {leaders.isLoading ? (
+                  {loading ? (
                     <Skeleton className="mt-3 h-24 w-full" />
                   ) : (
                     <>
-                      <p className="mt-2 text-[24px] font-semibold leading-none tabular text-mf-ink">{pct(row?.values.cagr_3y_cat_median)}</p>
-                      <p className="mt-1 text-xs text-mf-muted">median 3Y CAGR of {row?.values.cagr_3y_cat_count ?? '—'} funds with 3 years of NAVs</p>
+                      <p className="mt-2 text-[24px] font-semibold leading-none tabular text-mf-ink">{pct(median?.values.cagr_3y_cat_median)}</p>
+                      <p className="mt-1 text-xs text-mf-muted">median 3Y CAGR of {median?.values.cagr_3y_cat_count ?? '—'} funds with 3 years of NAVs</p>
                       {row && (
                         <div className="mt-3 border-t border-mf-line pt-2">
-                          <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-mf-muted">Top fund’s NAV, 3 years</p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-mf-muted">{LENSES[lens].pick} fund’s NAV, 3 years</p>
                           <div className="h-[34px]">
-                            {lines.data?.series[row.amfi_code] && <Sparkline points={lines.data.series[row.amfi_code]} height={34} label={`${schemeName(row.name)}, the category's top-scored fund: month-end NAV over 3 years. Not a category average.`} />}
+                            {lines.data?.series[row.amfi_code] && <Sparkline points={lines.data.series[row.amfi_code]} height={34} label={`${schemeName(row.name)}, the category's ${LENSES[lens].pick.toLowerCase()} fund: month-end NAV over 3 years. Not a category average.`} />}
                           </div>
                           <p className="mt-1 flex items-center gap-2 text-xs text-mf-ink-soft">
                             <ScoreBadge score={row.values.score as number | null} size="sm" />
                             <span className="min-w-0 truncate">
-                              Top score · <span className="font-medium">{schemeName(row.name)}</span>
+                              {LENSES[lens].pick} · <span className="font-medium">{schemeName(row.name)}</span>
+                              {pickValue(row) && <> · {pickValue(row)}</>}
                             </span>
                           </p>
                         </div>
