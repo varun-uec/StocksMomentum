@@ -153,6 +153,9 @@ class SchemeFacts:
     unmatched: int = 0
     # AMFI code -> scheme, from an SSD's own list; an ISIN listed directly wins.
     codes: dict[str, int] = field(default_factory=dict)
+    # ISIN -> every scheme whose SSD lists it, when more than one does. AMFI serves the
+    # same document under two scheme ids (UTI Large Cap as 264 and 807, 2026-10-25).
+    contested: dict[str, tuple[int, ...]] = field(default_factory=dict)
 
 
 # Monthly portfolio disclosures (doc 21 E4): one row per filed line of one scheme's

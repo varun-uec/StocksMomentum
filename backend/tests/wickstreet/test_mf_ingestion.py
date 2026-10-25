@@ -583,6 +583,42 @@ async def test_ssd_codes_join_plans_and_settle_a_wrongly_listed_isin(
     }
 
 
+async def test_an_isin_two_ssds_list_joins_the_scheme_its_plan_name_names(
+    app_database: Database, tmp_path: Path, granted: None
+) -> None:
+    """AMFI can serve one SSD under two scheme ids. The plan's NAV name settles the
+    ISIN, whatever order the documents came in; a tie leaves the join as it was."""
+    source = FakeSource({}, master=master_file(["10001", "10002"]))
+    pipeline = _pipeline(app_database, tmp_path, source)
+    await pipeline.master.execute(day(1))
+    store = pipeline.store
+    [(grant,)] = await _rows(
+        app_database, "SELECT min(id) FROM wickstreet.rights_grant WHERE use = 'storage'"
+    )
+    provenance = Provenance(
+        "fake://ssd", "2026-09-01T00:00:00+00:00", "0" * 64, "x", "f", "c", None, grant
+    )
+    schemes = [
+        SchemeRef(1, 1, "Example Fund 10001"),
+        SchemeRef(3, 1, "Master Equity Plan Unit Scheme"),
+        SchemeRef(4, 1, "Example Fund"),
+    ]
+    run = await store.open_run(AMFI, "ssd", day(1), day(1))
+    wrong = SchemeFacts([], isins={"INF000X10001": 3, "INF000X10002": 3, "INF000Y10001": 3})
+    assert (await store.publish_facts(run.id, wrong, provenance, schemes)).revision is not None
+    run = await store.open_run(AMFI, "ssd", day(2), day(2))
+    contested = SchemeFacts(
+        [],
+        contested={"INF000X10001": (1, 3), "INF000X10002": (3, 4), "INF000Y10001": (1, 4)},
+    )
+    assert (await store.publish_facts(run.id, contested, provenance, schemes)).revision is not None
+    assert dict(await _rows(app_database, "SELECT isin, sd_id FROM wickstreet.scheme_isin")) == {
+        "INF000X10001": 1,  # "Example Fund 10001 - Direct Plan - Growth" names 1, not 3
+        "INF000X10002": 4,  # "Example Fund 10002 - …" names 4 ("Example Fund"), not 3
+        "INF000Y10001": 3,  # it names both 1 and 4: a tie keeps the join as it was
+    }
+
+
 class FakeAmc:
     """One AMC file a month; the parser's asset kind stands for the parser version."""
 

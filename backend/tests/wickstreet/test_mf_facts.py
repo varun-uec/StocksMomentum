@@ -24,6 +24,7 @@ from wickstreet.analytics.domain.metrics import (
     RiskFree,
 )
 from wickstreet.analytics.domain.relations import DailyNavs
+from wickstreet.mf_data.application.facts import merge_ssds
 from wickstreet.mf_data.domain.facts import (
     join_by_name,
     join_by_navs,
@@ -31,7 +32,14 @@ from wickstreet.mf_data.domain.facts import (
     pick_by_navs,
     scheme_keys,
 )
-from wickstreet.mf_data.domain.model import DIRECT, REGULAR, SCHEME, RawFile, SchemeRef
+from wickstreet.mf_data.domain.model import (
+    DIRECT,
+    REGULAR,
+    SCHEME,
+    RawFile,
+    SchemeFacts,
+    SchemeRef,
+)
 from wickstreet.mf_data.domain.reads import FactPoint, FactView
 from wickstreet.mf_data.infrastructure import amfi_facts as a
 
@@ -131,6 +139,16 @@ def test_ter_month_becomes_change_points_joined_by_code_then_name() -> None:
     assert found.unmatched == 1
 
 
+def test_ter_skips_a_plan_filed_with_a_zero_total() -> None:
+    # An ETF has no Direct plan; AMFI files 0 in its Direct columns.
+    rows = [_TER_HEADER, _ter_row("E/1", "Gamma ETF", date(2026, 10, 1), 0.09, 0)]
+    found = a.parse_ter(_raw(_xlsx(rows)), {"e1": 5}, {})
+    assert {(f.name, f.plan, str(f.num)) for f in found.facts} == {
+        ("ter", REGULAR, "0.09"),
+        ("ter_base", REGULAR, "1.0"),
+    }
+
+
 def test_ter_rejects_a_changed_header() -> None:
     with pytest.raises(a.SourceLayoutError):
         a.parse_ter(_raw(_xlsx([["Code", "Name"]])), {}, {})
@@ -153,6 +171,24 @@ def test_ssd_keeps_filed_elements_and_lists_isins() -> None:
         "ssd:ISINs": "Regular Plan - Growth : INF879O01019, Direct Plan - Growth : INF879O01027",
     }
     assert found.isins == {"INF879O01019": 7, "INF879O01027": 7}
+
+
+def test_merged_ssds_contest_an_isin_two_documents_list() -> None:
+    def ssd(sd_id: int, isins: str) -> SchemeFacts:
+        xml = (
+            "<SchemeSummaryDocument><SchemeSummary>"
+            f"<ISINs>{isins}</ISINs></SchemeSummary></SchemeSummaryDocument>"
+        )
+        return a.parse_ssd(_raw(xml.encode()), sd_id, date(2026, 10, 24))
+
+    parts = [
+        ssd(264, "Growth-INF789F01US8, Growth-INF789F01976"),
+        ssd(807, "Growth-INF789F01US8"),
+        ssd(9, "Growth-INF247L01957"),
+    ]
+    merged = merge_ssds(parts, unmatched=0)
+    assert merged.isins == {"INF789F01976": 264, "INF247L01957": 9}
+    assert merged.contested == {"INF789F01US8": (264, 807)}
 
 
 def test_ssd_rows_map_to_the_summary_elements() -> None:

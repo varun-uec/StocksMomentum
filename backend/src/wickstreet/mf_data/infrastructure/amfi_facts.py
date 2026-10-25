@@ -91,6 +91,9 @@ _TER_COLUMNS = (
     ("ter_base", DIRECT, "K"),
     ("ter", DIRECT, "O"),
 )
+# A plan's Total TER column. AMFI files 0 there for a plan the scheme does not offer,
+# such as the Direct plan of an ETF; no offered plan has a zero total TER.
+_TER_TOTAL = {REGULAR: "J", DIRECT: "O"}
 _NOT_FILED = frozenset({"", "not applicable", "na", "n.a.", "nil", "-"})
 
 
@@ -307,7 +310,7 @@ def parse_ter(raw: RawFile, codes: Mapping[str, int], names: Mapping[str, int]) 
             raise SourceLayoutError(f"TER date {serial!r} for {name} is not a date.") from None
         for fact, plan, column in _TER_COLUMNS:
             value = _number(row.get(column))
-            if value is not None:
+            if value is not None and _number(row.get(_TER_TOTAL[plan])) != 0:
                 daily.setdefault((sd_id, fact, plan), {})[day] = value
     facts = []
     for (sd_id, fact, plan), values in daily.items():

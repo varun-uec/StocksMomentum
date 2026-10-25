@@ -849,6 +849,28 @@ class SqlMfStore:
                 {"isins": list(found.isins), "ids": list(found.isins.values()), "r": revision_id},
             )
             changed += int(result.rowcount)
+        if found.contested:
+            # Two SSDs list the ISIN: the scheme the plan's NAV name names wins, and only
+            # when no other claimant's name is in it too. Otherwise the join stays as it was.
+            pairs = [(isin, s) for isin, ids in found.contested.items() for s in ids]
+            result = await connection.execute(
+                text(
+                    "WITH u(i, s) AS (SELECT * FROM unnest(CAST(:isins AS text[]), "
+                    "CAST(:ids AS int[]))), named AS (SELECT u.i, u.s FROM u "
+                    "JOIN wickstreet.scheme a ON a.sd_id = u.s "
+                    "JOIN wickstreet.plan_option_master m ON m.superseded_revision IS NULL "
+                    "AND u.i IN (m.isin_growth, m.isin_reinvest) "
+                    f"WHERE position({compacted('a.name')} in {compacted('m.nav_name')}) > 0) "
+                    "INSERT INTO wickstreet.scheme_isin (isin, sd_id, revision_id) "
+                    "SELECT DISTINCT i, s, CAST(:r AS bigint) FROM named n "
+                    "WHERE NOT EXISTS (SELECT 1 FROM named o WHERE o.i = n.i AND o.s <> n.s) "
+                    "ON CONFLICT (isin) DO UPDATE SET sd_id = excluded.sd_id, "
+                    "revision_id = excluded.revision_id "
+                    "WHERE scheme_isin.sd_id IS DISTINCT FROM excluded.sd_id"
+                ),
+                {"isins": [p[0] for p in pairs], "ids": [p[1] for p in pairs], "r": revision_id},
+            )
+            changed += int(result.rowcount)
         if found.codes:
             # A code the SSD lists joins through that plan-option's master ISINs. Where an
             # SSD lists the ISIN for another scheme, one of the two AMC filings is wrong:

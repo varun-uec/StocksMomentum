@@ -15,7 +15,7 @@ A fact source joins rows to scheme ids from the stored list, so the list runs fi
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, date, datetime, timedelta
 
 from wickstreet.data_rights.application.gate import RightsGate
@@ -48,6 +48,25 @@ from wickstreet.mf_data.domain.ports import (
 Progress = Callable[[int, int], None]
 RECENT_DAYS = 30
 RECENT = timedelta(days=RECENT_DAYS)
+
+
+def merge_ssds(parts: Sequence[SchemeFacts], unmatched: int) -> SchemeFacts:
+    """One result from many SSDs; an ISIN that two of them list is contested.
+
+    The store settles a contested ISIN against the plan's own name, so document order
+    never decides it.
+    """
+    facts: list[Fact] = []
+    claims: dict[str, set[int]] = {}
+    codes: dict[str, int] = {}
+    for one in parts:
+        facts.extend(one.facts)
+        for isin, sd_id in one.isins.items():
+            claims.setdefault(isin, set()).add(sd_id)
+        codes |= one.codes
+    isins = {i: next(iter(s)) for i, s in claims.items() if len(s) == 1}
+    contested = {i: tuple(sorted(s)) for i, s in claims.items() if len(s) > 1}
+    return SchemeFacts(facts, isins, unmatched, codes, contested)
 
 
 class IngestFacts:
@@ -190,21 +209,17 @@ class IngestFacts:
 
         def parse(raw: RawFile) -> tuple[SchemeFacts, list[SchemeRef]]:
             documents = json.loads(raw.content)
-            facts: list[Fact] = []
-            isins: dict[str, int] = {}
-            codes: dict[str, int] = {}
+            parts = []
             for sd_id, xml in sorted(documents.items(), key=lambda kv: int(kv[0])):
                 try:
-                    one = self._source.parse_ssd(
-                        RawFile(raw.url, raw.fetched_at, xml.encode()), int(sd_id), today
+                    parts.append(
+                        self._source.parse_ssd(
+                            RawFile(raw.url, raw.fetched_at, xml.encode()), int(sd_id), today
+                        )
                     )
                 except SourceLayoutError:
                     continue
-                facts.extend(one.facts)
-                isins |= one.isins
-                codes |= one.codes
-            unmatched = len(listed) - len(documents)
-            return SchemeFacts(facts, isins, unmatched, codes), []
+            return merge_ssds(parts, unmatched=len(listed) - len(documents)), []
 
         return await self._run(SSD, today, today, fetch, parse, refetch=refetch)
 
