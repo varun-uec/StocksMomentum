@@ -283,7 +283,7 @@ export function MfShell({ children }: { children: ReactNode }) {
                   {item.to === '/mf/compare' && picked > 0 && (
                     <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-mf-brand px-1 text-[10px] font-semibold leading-none text-mf-on-brand">
                       {picked}
-                      <span className="sr-only"> funds picked</span>
+                      <span className="sr-only"> {picked === 1 ? 'fund' : 'funds'} picked</span>
                     </span>
                   )}
                 </span>

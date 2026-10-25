@@ -99,10 +99,11 @@ function PeerSuggestions({ first, codes, onAdd }: { first: CompareResponse['fund
   const left = peers?.filter((p) => !codes.includes(p.amfi_code)).slice(0, 3) ?? [];
   if (!left.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-mf-muted">Largest {categoryShort(String(first.values.category))} peers by AUM:</span>
+    // One sideways row on phones, so the answers stay on the first screen.
+    <div className="mf-scroll -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 text-sm sm:flex-wrap sm:overflow-visible" role="group" aria-label="Add a peer">
+      <span className="shrink-0 text-mf-muted">Largest {categoryShort(String(first.values.category))} peers by AUM:</span>
       {left.map((p) => (
-        <Chip key={p.amfi_code} onClick={() => onAdd(p.amfi_code)}>
+        <Chip key={p.amfi_code} onClick={() => onAdd(p.amfi_code)} className="shrink-0">
           <span className="inline-flex items-center gap-1">
             <I.plus className="h-3.5 w-3.5" />
             {schemeName(p.name)}

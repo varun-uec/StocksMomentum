@@ -121,7 +121,7 @@ function ComparePeers({ code, metrics }: { code: string; metrics: Metrics }) {
   const { peers } = usePeers(code, metrics.values, 2);
   const label = (
     <>
-      <I.compare className="h-4 w-4" />
+      <I.layers className="h-4 w-4" />
       Compare peers
     </>
   );

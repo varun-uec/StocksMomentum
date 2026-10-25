@@ -129,7 +129,10 @@ function MarketPulse() {
             </p>
           )}
           <div className="mt-3 h-[84px]">{year.length > 1 && <Sparkline points={year} height={84} label="Large-cap proxy level over the last year" />}</div>
-          <p className="mt-1 text-[11px] text-mf-muted">Large-cap proxy, last 12 months. Built from fund NAVs; not an official index.</p>
+          <p className="mt-1 text-[11px] text-mf-muted">
+            {/* The line's colour follows the 12-month change, so the change is named next to it. */}
+            Large-cap proxy, last 12 months{year.length > 1 ? `: ${pct(year[year.length - 1][1] / year[0][1] - 1, 1, true)}` : ''}. Built from fund NAVs; not an official index.
+          </p>
         </>
       )}
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-mf-line pt-3">

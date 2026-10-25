@@ -98,7 +98,7 @@ export function CompareButton({ code, name, size = 'sm', label }: { code: string
       }}
     >
       {selected ? <I.check className="h-4 w-4" /> : <I.compare className="h-4 w-4" />}
-      {label && (selected ? 'In comparison' : 'Compare')}
+      {label && (selected ? 'In comparison' : 'Add to compare')}
     </Button>
   );
 }
